@@ -15,6 +15,7 @@ const Admin = () => {
   const [user, setUser] = useState<any>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [debugInfo, setDebugInfo] = useState<any>({});
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -28,22 +29,55 @@ const Admin = () => {
       }
 
       setUser(user);
+      console.log('Current user:', user);
+
+      // Debug: Check if user exists in user_roles table
+      const { data: allRoles, error: allRolesError } = await supabase
+        .from('user_roles')
+        .select('*');
+      
+      console.log('All user roles:', allRoles);
+      console.log('All roles error:', allRolesError);
 
       // Check if user is admin
-      const { data: roleData } = await supabase
+      const { data: roleData, error: roleError } = await supabase
         .from('user_roles')
         .select('role')
         .eq('user_id', user.id)
         .eq('role', 'admin')
         .single();
 
+      console.log('Role check result:', roleData);
+      console.log('Role check error:', roleError);
+
+      // Check user's roles (all of them)
+      const { data: userRoles, error: userRolesError } = await supabase
+        .from('user_roles')
+        .select('*')
+        .eq('user_id', user.id);
+
+      console.log('User roles:', userRoles);
+      console.log('User roles error:', userRolesError);
+
+      setDebugInfo({
+        userId: user.id,
+        userEmail: user.email,
+        allRoles,
+        roleData,
+        roleError,
+        userRoles,
+        userRolesError
+      });
+
       if (!roleData) {
         toast({
           title: "Access Denied",
-          description: "You don't have admin privileges. Contact an administrator.",
+          description: `You don't have admin privileges. Contact an administrator. User ID: ${user.id}`,
           variant: "destructive",
         });
-        navigate('/');
+        
+        // Don't navigate away immediately so we can see the debug info
+        setLoading(false);
         return;
       }
 
@@ -80,7 +114,34 @@ const Admin = () => {
   }
 
   if (!isAdmin) {
-    return null;
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <Card className="w-full max-w-2xl">
+          <CardHeader>
+            <CardTitle className="text-red-600">Access Denied</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="mb-4">You don't have admin privileges. Contact an administrator.</p>
+            
+            <div className="bg-gray-100 p-4 rounded-lg">
+              <h3 className="font-semibold mb-2">Debug Information:</h3>
+              <pre className="text-xs overflow-auto">
+                {JSON.stringify(debugInfo, null, 2)}
+              </pre>
+            </div>
+            
+            <div className="mt-4 flex gap-2">
+              <Button onClick={() => navigate('/')}>
+                Back to Home
+              </Button>
+              <Button variant="outline" onClick={handleSignOut}>
+                Sign Out
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   return (

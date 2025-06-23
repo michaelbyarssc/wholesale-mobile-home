@@ -134,23 +134,32 @@ export const ImageDataInitializer = () => {
         .select('id, model')
         .eq('active', true);
 
-      if (homesError) throw homesError;
+      if (homesError) {
+        console.error('Error fetching mobile homes:', homesError);
+        throw homesError;
+      }
+
+      console.log('Found mobile homes:', mobileHomes?.length || 0);
 
       // Check if images already exist
       const { data: existingImages, error: existingError } = await supabase
         .from('mobile_home_images')
         .select('mobile_home_id');
 
-      if (existingError) throw existingError;
+      if (existingError) {
+        console.error('Error checking existing images:', existingError);
+        throw existingError;
+      }
 
       if (existingImages && existingImages.length > 0) {
-        console.log('Images already exist in database');
+        console.log('Images already exist in database, count:', existingImages.length);
         setIsInitialized(true);
         setIsLoading(false);
         return;
       }
 
       // Insert images for each home
+      let totalInserted = 0;
       for (const home of mobileHomes || []) {
         const homeImageData = imageData.find(data => data.mobile_home_model === home.model);
         
@@ -163,20 +172,26 @@ export const ImageDataInitializer = () => {
             alt_text: img.alt_text
           }));
 
-          const { error: insertError } = await supabase
+          console.log(`Inserting ${imagesToInsert.length} images for ${home.model}`);
+
+          const { data: insertedData, error: insertError } = await supabase
             .from('mobile_home_images')
-            .insert(imagesToInsert);
+            .insert(imagesToInsert)
+            .select();
 
           if (insertError) {
             console.error(`Error inserting images for ${home.model}:`, insertError);
           } else {
-            console.log(`Successfully inserted images for ${home.model}`);
+            console.log(`Successfully inserted ${insertedData?.length || 0} images for ${home.model}`);
+            totalInserted += insertedData?.length || 0;
           }
+        } else {
+          console.log(`No image data found for model: ${home.model}`);
         }
       }
 
+      console.log(`Image data initialization completed. Total images inserted: ${totalInserted}`);
       setIsInitialized(true);
-      console.log('Image data initialization completed');
     } catch (error) {
       console.error('Error initializing image data:', error);
     } finally {
@@ -185,13 +200,18 @@ export const ImageDataInitializer = () => {
   };
 
   useEffect(() => {
-    initializeImageData();
-  }, []);
+    if (!isInitialized && !isLoading) {
+      initializeImageData();
+    }
+  }, [isInitialized, isLoading]);
 
   if (isLoading) {
     return (
-      <div className="text-sm text-gray-500 p-2">
-        Initializing image data...
+      <div className="text-sm text-gray-500 p-2 bg-blue-50 rounded border">
+        <div className="flex items-center space-x-2">
+          <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+          <span>Initializing image data...</span>
+        </div>
       </div>
     );
   }

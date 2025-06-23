@@ -113,6 +113,17 @@ export const MobileHomesTab = () => {
     }
   };
 
+  const formatSize = (home: MobileHome) => {
+    if (home.length_feet && home.width_feet) {
+      return `${home.width_feet}x${home.length_feet}`;
+    }
+    return 'N/A';
+  };
+
+  const getHomeName = (home: MobileHome) => {
+    return `${home.series} ${home.model}`;
+  };
+
   if (isLoading) {
     return (
       <Card>
@@ -190,6 +201,8 @@ export const MobileHomesTab = () => {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Size</TableHead>
                   <TableHead>Manufacturer</TableHead>
                   <TableHead>Series</TableHead>
                   <TableHead>Model</TableHead>
@@ -203,6 +216,8 @@ export const MobileHomesTab = () => {
               <TableBody>
                 {mobileHomes.map((home) => (
                   <TableRow key={home.id}>
+                    <TableCell className="font-medium">{getHomeName(home)}</TableCell>
+                    <TableCell>{formatSize(home)}</TableCell>
                     <TableCell>{home.manufacturer}</TableCell>
                     <TableCell>{home.series}</TableCell>
                     <TableCell>{home.model}</TableCell>

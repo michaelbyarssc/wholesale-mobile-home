@@ -11,22 +11,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { MobileHomeEditDialog } from './MobileHomeEditDialog';
 import { Edit } from 'lucide-react';
+import type { Database } from '@/integrations/supabase/types';
 
-interface MobileHome {
-  id: string;
-  manufacturer: string;
-  series: string;
-  model: string;
-  price: number;
-  square_footage: number | null;
-  bedrooms: number | null;
-  bathrooms: number | null;
-  length_feet: number | null;
-  width_feet: number | null;
-  features: string[] | null;
-  description: string | null;
-  active: boolean;
-}
+type MobileHome = Database['public']['Tables']['mobile_homes']['Row'];
+type MobileHomeInsert = Database['public']['Tables']['mobile_homes']['Insert'];
 
 export const MobileHomesTab = () => {
   const { toast } = useToast();
@@ -34,7 +22,7 @@ export const MobileHomesTab = () => {
   const [editingHome, setEditingHome] = useState<MobileHome | null>(null);
   const [formData, setFormData] = useState({
     manufacturer: 'Clayton',
-    series: 'Tru',
+    series: 'Tru' as 'Tru' | 'Epic',
     model: '',
     price: ''
   });
@@ -56,14 +44,16 @@ export const MobileHomesTab = () => {
     e.preventDefault();
     
     try {
+      const insertData: MobileHomeInsert = {
+        manufacturer: formData.manufacturer,
+        series: formData.series,
+        model: formData.model,
+        price: parseFloat(formData.price)
+      };
+
       const { error } = await supabase
         .from('mobile_homes')
-        .insert({
-          manufacturer: formData.manufacturer,
-          series: formData.series,
-          model: formData.model,
-          price: parseFloat(formData.price)
-        });
+        .insert(insertData);
 
       if (error) throw error;
 
@@ -72,7 +62,7 @@ export const MobileHomesTab = () => {
         description: "Mobile home added successfully.",
       });
 
-      setFormData({ manufacturer: 'Clayton', series: 'Tru' as 'Tru' | 'Epic', model: '', price: '' });
+      setFormData({ manufacturer: 'Clayton', series: 'Tru', model: '', price: '' });
       setShowAddForm(false);
       refetch();
     } catch (error) {
@@ -161,7 +151,7 @@ export const MobileHomesTab = () => {
               </div>
               <div>
                 <Label htmlFor="series">Series</Label>
-                <Select value={formData.series} onValueChange={(value) => setFormData({...formData, series: value})}>
+                <Select value={formData.series} onValueChange={(value: 'Tru' | 'Epic') => setFormData({...formData, series: value})}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>

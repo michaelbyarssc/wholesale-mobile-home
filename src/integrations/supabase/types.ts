@@ -119,6 +119,47 @@ export type Database = {
           },
         ]
       }
+      mobile_home_images: {
+        Row: {
+          alt_text: string | null
+          created_at: string
+          display_order: number
+          id: string
+          image_type: string
+          image_url: string
+          mobile_home_id: string
+          updated_at: string
+        }
+        Insert: {
+          alt_text?: string | null
+          created_at?: string
+          display_order?: number
+          id?: string
+          image_type?: string
+          image_url: string
+          mobile_home_id: string
+          updated_at?: string
+        }
+        Update: {
+          alt_text?: string | null
+          created_at?: string
+          display_order?: number
+          id?: string
+          image_type?: string
+          image_url?: string
+          mobile_home_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mobile_home_images_mobile_home_id_fkey"
+            columns: ["mobile_home_id"]
+            isOneToOne: false
+            referencedRelation: "mobile_homes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mobile_homes: {
         Row: {
           active: boolean

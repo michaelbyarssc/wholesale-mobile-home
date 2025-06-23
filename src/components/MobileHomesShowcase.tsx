@@ -6,6 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Home, Bed, Bath, Maximize, Ruler } from 'lucide-react';
+import { MobileHomeImageCarousel } from './MobileHomeImageCarousel';
+import { ImageDataInitializer } from './ImageDataInitializer';
 
 interface MobileHome {
   id: string;
@@ -22,6 +24,15 @@ interface MobileHome {
   floor_plan_image_url: string | null;
   exterior_image_url: string | null;
   active: boolean;
+}
+
+interface MobileHomeImage {
+  id: string;
+  mobile_home_id: string;
+  image_url: string;
+  image_type: string;
+  display_order: number;
+  alt_text: string | null;
 }
 
 export const MobileHomesShowcase = () => {
@@ -42,33 +53,26 @@ export const MobileHomesShowcase = () => {
     }
   });
 
+  const { data: homeImages = [] } = useQuery({
+    queryKey: ['mobile-home-images'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('mobile_home_images')
+        .select('*')
+        .order('mobile_home_id')
+        .order('image_type')
+        .order('display_order');
+      
+      if (error) throw error;
+      return data as MobileHomeImage[];
+    }
+  });
+
   const truHomes = mobileHomes.filter(home => home.series === 'Tru');
   const epicHomes = mobileHomes.filter(home => home.series === 'Epic');
 
-  // Function to get appropriate image based on model name
-  const getHomeImage = (home: MobileHome) => {
-    if (home.exterior_image_url) {
-      return home.exterior_image_url;
-    }
-    
-    // Map specific models to their downloaded images
-    const modelImageMap: { [key: string]: string } = {
-      'Tru MH 14x56': '/images/tru-mh-14x56-exterior.jpg',
-      'Tru MH 14x60': '/images/tru-mh-14x60-exterior.jpg', 
-      'Tru MH 14x66': '/images/tru-mh-14x66-exterior.jpg',
-      'Tru MH 14x70': '/images/tru-mh-14x70-exterior.jpg',
-      'Tru MH 16x76': '/images/tru-mh-16x76-exterior.jpg',
-      'Tru MH 16x80': '/images/tru-mh-16x80-exterior.jpg',
-      'Tru MH 18x76': '/images/tru-mh-18x76-exterior.jpg',
-      'Tru MH 18x80': '/images/tru-mh-18x80-exterior.jpg',
-      'Tru MH 18x84': '/images/tru-mh-18x84-exterior.jpg',
-      'Tru MH 20x76': '/images/tru-mh-20x76-exterior.jpg',
-      'Tru MH 20x80': '/images/tru-mh-20x80-exterior.jpg',
-      'Tru MH 20x84': '/images/tru-mh-20x84-exterior.jpg',
-      'Tru MH 22x84': '/images/tru-mh-22x84-exterior.jpg'
-    };
-
-    return modelImageMap[home.model] || '/images/mobile-home-exterior-1.jpg';
+  const getHomeImages = (homeId: string) => {
+    return homeImages.filter(image => image.mobile_home_id === homeId);
   };
 
   const renderHomeCard = (home: MobileHome, index: number) => (
@@ -88,30 +92,11 @@ export const MobileHomesShowcase = () => {
       </CardHeader>
       
       <CardContent className="space-y-4">
-        {/* Home Image */}
-        <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden">
-          <img 
-            src={getHomeImage(home)} 
-            alt={`${home.manufacturer} ${home.model}`}
-            className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
-            onError={(e) => {
-              // Fallback to placeholder if image fails to load
-              const target = e.target as HTMLImageElement;
-              target.style.display = 'none';
-              target.parentElement!.innerHTML = `
-                <div class="w-full h-full flex items-center justify-center text-gray-400">
-                  <div class="text-center">
-                    <svg class="h-8 w-8 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"></path>
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 011-1h3a2 2 0 011 1v1a2 2 0 01-1 1H6a2 2 0 01-1-1V5z"></path>
-                    </svg>
-                    <p class="text-sm">Image Coming Soon</p>
-                  </div>
-                </div>
-              `;
-            }}
-          />
-        </div>
+        {/* Home Image Carousel */}
+        <MobileHomeImageCarousel 
+          images={getHomeImages(home.id)} 
+          homeModel={`${home.manufacturer} ${home.model}`}
+        />
 
         {/* Specifications Grid */}
         <div className="grid grid-cols-2 gap-4">
@@ -185,6 +170,7 @@ export const MobileHomesShowcase = () => {
 
   return (
     <section className="py-20 bg-gray-50">
+      <ImageDataInitializer />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
           <h3 className="text-3xl font-bold text-gray-900 mb-4">

@@ -10,6 +10,7 @@ import { EstimatesTab } from '@/components/admin/EstimatesTab';
 import { MobileHomesTab } from '@/components/admin/MobileHomesTab';
 import { ServicesTab } from '@/components/admin/ServicesTab';
 import { SettingsTab } from '@/components/admin/SettingsTab';
+import { UserManagementTab } from '@/components/admin/UserManagementTab';
 
 const Admin = () => {
   const [user, setUser] = useState<any>(null);
@@ -174,10 +175,11 @@ const Admin = () => {
 
       <div className="container mx-auto px-4 py-8">
         <Tabs defaultValue="estimates" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="estimates">Estimates</TabsTrigger>
             <TabsTrigger value="mobile-homes">Mobile Homes</TabsTrigger>
             <TabsTrigger value="services">Services</TabsTrigger>
+            <TabsTrigger value="users">Users</TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
 
@@ -191,6 +193,10 @@ const Admin = () => {
 
           <TabsContent value="services">
             <ServicesTab />
+          </TabsContent>
+
+          <TabsContent value="users">
+            <UserManagementTab />
           </TabsContent>
 
           <TabsContent value="settings">

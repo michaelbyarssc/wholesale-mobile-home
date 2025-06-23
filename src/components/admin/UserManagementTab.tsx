@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { UserPlus, Shield, ShieldOff, AlertTriangle, Edit } from 'lucide-react';
+import { UserPlus, Shield, ShieldOff, AlertTriangle, Edit, Percent } from 'lucide-react';
 
 interface UserProfile {
   user_id: string;
@@ -18,6 +18,7 @@ interface UserProfile {
   last_name: string | null;
   role: 'admin' | 'user' | null;
   created_at: string;
+  markup_percentage?: number;
 }
 
 export const UserManagementTab = () => {
@@ -26,6 +27,8 @@ export const UserManagementTab = () => {
   const [newUserEmail, setNewUserEmail] = useState('');
   const [newUserRole, setNewUserRole] = useState<'admin' | 'user'>('user');
   const [editingUser, setEditingUser] = useState<string | null>(null);
+  const [editingMarkup, setEditingMarkup] = useState<string | null>(null);
+  const [markupValue, setMarkupValue] = useState<number>(0);
   const [editForm, setEditForm] = useState({
     email: '',
     first_name: '',
@@ -75,10 +78,22 @@ export const UserManagementTab = () => {
 
       console.log('Profiles data:', profileData);
 
+      // Fetch customer markups
+      const { data: markupData, error: markupError } = await supabase
+        .from('customer_markups')
+        .select('user_id, markup_percentage');
+
+      if (markupError) {
+        console.error('Error fetching markups:', markupError);
+      }
+
+      console.log('Markup data:', markupData);
+
       // Combine the data
       const combinedData: UserProfile[] = roleData?.map(role => {
         const profile = profileData?.find(p => p.user_id === role.user_id);
-        console.log(`Combining user ${role.user_id}:`, { role, profile });
+        const markup = markupData?.find(m => m.user_id === role.user_id);
+        console.log(`Combining user ${role.user_id}:`, { role, profile, markup });
         
         return {
           user_id: role.user_id,
@@ -86,7 +101,8 @@ export const UserManagementTab = () => {
           first_name: profile?.first_name || null,
           last_name: profile?.last_name || null,
           role: role.role,
-          created_at: role.created_at
+          created_at: role.created_at,
+          markup_percentage: markup?.markup_percentage || 0
         };
       }) || [];
 
@@ -102,6 +118,54 @@ export const UserManagementTab = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const updateMarkupPercentage = async (userId: string, percentage: number) => {
+    try {
+      // First, try to update existing markup
+      const { data: updateData, error: updateError } = await supabase
+        .from('customer_markups')
+        .update({ markup_percentage: percentage, updated_at: new Date().toISOString() })
+        .eq('user_id', userId)
+        .select();
+
+      // If no rows were updated (markup doesn't exist), create a new one
+      if (updateData && updateData.length === 0) {
+        const { error: insertError } = await supabase
+          .from('customer_markups')
+          .insert({ user_id: userId, markup_percentage: percentage });
+
+        if (insertError) throw insertError;
+      } else if (updateError) {
+        throw updateError;
+      }
+
+      toast({
+        title: "Markup updated",
+        description: `Markup percentage set to ${percentage}%`,
+      });
+
+      // Refresh the users list
+      fetchUserProfiles();
+      setEditingMarkup(null);
+    } catch (error: any) {
+      console.error('Error updating markup:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update markup percentage",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const startEditingMarkup = (userId: string, currentMarkup: number) => {
+    setEditingMarkup(userId);
+    setMarkupValue(currentMarkup);
+  };
+
+  const cancelMarkupEdit = () => {
+    setEditingMarkup(null);
+    setMarkupValue(0);
   };
 
   const inviteUser = async (e: React.FormEvent) => {
@@ -384,9 +448,9 @@ export const UserManagementTab = () => {
       {/* Existing User Roles Section */}
       <Card>
         <CardHeader>
-          <CardTitle>User Roles</CardTitle>
+          <CardTitle>User Roles & Pricing</CardTitle>
           <p className="text-sm text-gray-600">
-            Manage roles for users who have already registered.
+            Manage roles and markup percentages for users who have already registered.
           </p>
         </CardHeader>
         <CardContent>
@@ -397,6 +461,7 @@ export const UserManagementTab = () => {
                   <TableHead>Name</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Role</TableHead>
+                  <TableHead>Markup %</TableHead>
                   <TableHead>Assigned</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -404,7 +469,7 @@ export const UserManagementTab = () => {
               <TableBody>
                 {userProfiles.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-8 text-gray-500">
+                    <TableCell colSpan={6} className="text-center py-8 text-gray-500">
                       No users with assigned roles found
                     </TableCell>
                   </TableRow>
@@ -431,6 +496,47 @@ export const UserManagementTab = () => {
                             </>
                           )}
                         </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {editingMarkup === profile.user_id ? (
+                          <div className="flex items-center gap-2">
+                            <Input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              value={markupValue}
+                              onChange={(e) => setMarkupValue(parseFloat(e.target.value) || 0)}
+                              className="w-20"
+                            />
+                            <Button
+                              size="sm"
+                              onClick={() => updateMarkupPercentage(profile.user_id, markupValue)}
+                            >
+                              Save
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={cancelMarkupEdit}
+                            >
+                              Cancel
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="flex items-center gap-1">
+                              <Percent className="h-3 w-3" />
+                              {profile.markup_percentage || 0}%
+                            </Badge>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => startEditingMarkup(profile.user_id, profile.markup_percentage || 0)}
+                            >
+                              <Edit className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        )}
                       </TableCell>
                       <TableCell>
                         {new Date(profile.created_at).toLocaleDateString()}
@@ -531,6 +637,7 @@ export const UserManagementTab = () => {
               <li>• <strong>User Registration:</strong> Users sign up through the normal registration flow</li>
               <li>• <strong>Profile Creation:</strong> User profiles are automatically created with name and email</li>
               <li>• <strong>Role Assignment:</strong> Admins can assign roles to registered users</li>
+              <li>• <strong>Markup Percentage:</strong> Set individual markup percentages for each customer</li>
               <li>• <strong>Invitations:</strong> Send registration invitations with pre-assigned roles</li>
               <li>• <strong>Role Changes:</strong> Modify user roles as needed</li>
               <li>• <strong>Profile Editing:</strong> Edit user names and email addresses as needed</li>

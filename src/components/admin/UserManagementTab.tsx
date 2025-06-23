@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -35,6 +34,7 @@ export const UserManagementTab = () => {
     first_name: '',
     last_name: ''
   });
+  const [creatingUser, setCreatingUser] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -167,6 +167,67 @@ export const UserManagementTab = () => {
   const cancelMarkupEdit = () => {
     setEditingMarkup(null);
     setMarkupValue(0);
+  };
+
+  const createUserDirectly = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!newUserEmail) {
+      toast({
+        title: "Error",
+        description: "Please enter an email address",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setCreatingUser(true);
+      
+      // Generate a temporary password
+      const tempPassword = 'temp-' + Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8);
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Not authenticated');
+      }
+
+      const { data, error } = await supabase.functions.invoke('admin-create-user', {
+        body: {
+          email: newUserEmail,
+          password: tempPassword,
+          role: newUserRole,
+          markup_percentage: 30
+        }
+      });
+
+      if (error) throw error;
+
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      toast({
+        title: "User created successfully",
+        description: `User ${newUserEmail} has been created with ${newUserRole} role and 30% markup. Temporary password: ${tempPassword}`,
+      });
+
+      // Clear the form
+      setNewUserEmail('');
+      setNewUserRole('user');
+
+      // Refresh the users list
+      fetchUserProfiles();
+    } catch (error: any) {
+      console.error('Error creating user:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create user",
+        variant: "destructive",
+      });
+    } finally {
+      setCreatingUser(false);
+    }
   };
 
   const inviteUser = async (e: React.FormEvent) => {
@@ -425,16 +486,16 @@ export const UserManagementTab = () => {
         </CardContent>
       </Card>
 
-      {/* Invite User Section */}
+      {/* Create User Section */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <UserPlus className="h-5 w-5" />
-            Invite New User
+            Create New User
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={inviteUser} className="space-y-4">
+          <form onSubmit={createUserDirectly} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="email">Email Address</Label>
@@ -460,7 +521,52 @@ export const UserManagementTab = () => {
                 </Select>
               </div>
             </div>
-            <Button type="submit" className="w-full md:w-auto">
+            <Button type="submit" className="w-full md:w-auto" disabled={creatingUser}>
+              {creatingUser ? "Creating User..." : "Create User"}
+            </Button>
+            <p className="text-sm text-gray-600">
+              User will be created directly with a temporary password. The user can change their password after logging in.
+            </p>
+          </form>
+        </CardContent>
+      </Card>
+
+      {/* Invite User Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <UserPlus className="h-5 w-5" />
+            Invite New User (Alternative)
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={inviteUser} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="invite-email">Email Address</Label>
+                <Input
+                  id="invite-email"
+                  type="email"
+                  value={newUserEmail}
+                  onChange={(e) => setNewUserEmail(e.target.value)}
+                  placeholder="user@example.com"
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="invite-role">Role</Label>
+                <Select value={newUserRole} onValueChange={(value: 'admin' | 'user') => setNewUserRole(value)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="user">User</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <Button type="submit" className="w-full md:w-auto" variant="outline">
               Send Invitation
             </Button>
             <p className="text-sm text-gray-600">

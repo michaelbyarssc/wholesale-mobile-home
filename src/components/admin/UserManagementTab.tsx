@@ -160,7 +160,7 @@ export const UserManagementTab = () => {
 
   const startEditingMarkup = (userId: string, currentMarkup: number) => {
     setEditingMarkup(userId);
-    setMarkupValue(currentMarkup);
+    setMarkupValue(currentMarkup || 30); // Default to 30% when editing
   };
 
   const cancelMarkupEdit = () => {
@@ -198,17 +198,41 @@ export const UserManagementTab = () => {
           .from('user_roles')
           .insert([{ user_id: data.user.id, role: newUserRole }]);
 
+        // Create default markup for new user (30%)
+        const { error: markupError } = await supabase
+          .from('customer_markups')
+          .insert([{ user_id: data.user.id, markup_percentage: 30 }]);
+
         if (roleError) {
           console.error('Error assigning role:', roleError);
+        }
+        
+        if (markupError) {
+          console.error('Error creating default markup:', markupError);
+        }
+
+        if (roleError && !markupError) {
           toast({
             title: "Invitation sent but role assignment failed",
             description: `Invitation sent to ${newUserEmail} but couldn't assign the ${newUserRole} role`,
             variant: "destructive",
           });
+        } else if (!roleError && markupError) {
+          toast({
+            title: "Invitation sent but markup creation failed",
+            description: `Invitation sent to ${newUserEmail} but couldn't create default markup`,
+            variant: "destructive",
+          });
+        } else if (roleError && markupError) {
+          toast({
+            title: "Invitation sent with issues",
+            description: `Invitation sent to ${newUserEmail} but couldn't assign role or create markup`,
+            variant: "destructive",
+          });
         } else {
           toast({
             title: "User invitation sent",
-            description: `Invitation sent to ${newUserEmail} with ${newUserRole} role. They will need to set their password.`,
+            description: `Invitation sent to ${newUserEmail} with ${newUserRole} role and 30% default markup.`,
           });
         }
       }

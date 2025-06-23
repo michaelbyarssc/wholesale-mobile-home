@@ -8,7 +8,7 @@ interface CustomerMarkup {
 }
 
 export const useCustomerPricing = (user: User | null) => {
-  const [customerMarkup, setCustomerMarkup] = useState<number>(0);
+  const [customerMarkup, setCustomerMarkup] = useState<number>(30); // Default to 30%
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -29,10 +29,23 @@ export const useCustomerPricing = (user: User | null) => {
           console.error('Error fetching customer markup:', error);
         }
 
-        setCustomerMarkup(data?.markup_percentage || 0);
+        // If no markup found, create one with 30% default
+        if (!data || error?.code === 'PGRST116') {
+          const { error: insertError } = await supabase
+            .from('customer_markups')
+            .insert({ user_id: user.id, markup_percentage: 30 });
+
+          if (insertError) {
+            console.error('Error creating default markup:', insertError);
+          }
+          
+          setCustomerMarkup(30);
+        } else {
+          setCustomerMarkup(data.markup_percentage || 30);
+        }
       } catch (error) {
         console.error('Error fetching customer markup:', error);
-        setCustomerMarkup(0);
+        setCustomerMarkup(30);
       } finally {
         setLoading(false);
       }

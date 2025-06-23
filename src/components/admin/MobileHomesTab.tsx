@@ -24,7 +24,7 @@ export const MobileHomesTab = () => {
   const [showAddForm, setShowAddForm] = useState(false);
   const [formData, setFormData] = useState({
     manufacturer: 'Clayton',
-    series: 'Tru',
+    series: 'Tru' as 'Tru' | 'Epic',
     model: '',
     price: ''
   });
@@ -62,7 +62,7 @@ export const MobileHomesTab = () => {
         description: "Mobile home added successfully.",
       });
 
-      setFormData({ manufacturer: 'Clayton', series: 'Tru', model: '', price: '' });
+      setFormData({ manufacturer: 'Clayton', series: 'Tru' as 'Tru' | 'Epic', model: '', price: '' });
       setShowAddForm(false);
       refetch();
     } catch (error) {
@@ -141,7 +141,7 @@ export const MobileHomesTab = () => {
               </div>
               <div>
                 <Label htmlFor="series">Series</Label>
-                <Select value={formData.series} onValueChange={(value) => setFormData({...formData, series: value})}>
+                <Select value={formData.series} onValueChange={(value) => setFormData({...formData, series: value as 'Tru' | 'Epic'})}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>

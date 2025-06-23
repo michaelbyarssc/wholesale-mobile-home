@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,11 +6,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { User } from '@supabase/supabase-js';
 import { Link } from 'react-router-dom';
+import { useConditionalServices } from '@/hooks/useConditionalServices';
 
 interface MobileHome {
   id: string;
@@ -26,6 +27,11 @@ interface Service {
   name: string;
   description?: string;
   price: number;
+  dependencies?: string[];
+  applicable_manufacturers?: string[];
+  applicable_series?: string[];
+  requires_admin?: boolean;
+  conditional_pricing?: any;
 }
 
 const EstimateForm = () => {
@@ -105,21 +111,88 @@ const EstimateForm = () => {
     }
   });
 
+  const {
+    availableServices,
+    getServicePrice,
+    getDependencies,
+    getMissingDependencies,
+    getServicesByDependency
+  } = useConditionalServices(services, selectedHome, mobileHomes, selectedServices);
+
   const handleServiceToggle = (serviceId: string) => {
-    setSelectedServices(prev => 
-      prev.includes(serviceId) 
-        ? prev.filter(id => id !== serviceId)
-        : [...prev, serviceId]
-    );
+    const service = services.find(s => s.id === serviceId);
+    if (!service) return;
+
+    if (selectedServices.includes(serviceId)) {
+      // Removing service - check if other services depend on it
+      const dependentServices = getServicesByDependency(serviceId);
+      const selectedDependentServices = dependentServices.filter(s => 
+        selectedServices.includes(s.id)
+      );
+
+      if (selectedDependentServices.length > 0) {
+        toast({
+          title: "Cannot Remove Service",
+          description: `This service is required by: ${selectedDependentServices.map(s => s.name).join(', ')}`,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setSelectedServices(prev => prev.filter(id => id !== serviceId));
+    } else {
+      // Adding service - check dependencies
+      const missingDeps = getMissingDependencies(serviceId);
+      if (missingDeps.length > 0) {
+        const missingServiceNames = missingDeps.map(depId => 
+          services.find(s => s.id === depId)?.name
+        ).filter(Boolean);
+
+        toast({
+          title: "Missing Dependencies",
+          description: `Please select these services first: ${missingServiceNames.join(', ')}`,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setSelectedServices(prev => [...prev, serviceId]);
+    }
   };
 
   const calculateTotal = () => {
     const homePrice = selectedHome ? mobileHomes.find(h => h.id === selectedHome)?.price || 0 : 0;
     const servicesPrice = selectedServices.reduce((total, serviceId) => {
-      const service = services.find(s => s.id === serviceId);
-      return total + (service?.price || 0);
+      return total + getServicePrice(serviceId);
     }, 0);
     return homePrice + servicesPrice;
+  };
+
+  const isServiceDisabled = (service: Service) => {
+    const missingDeps = getMissingDependencies(service.id);
+    return missingDeps.length > 0;
+  };
+
+  const getServiceStatusBadges = (service: Service) => {
+    const badges = [];
+    
+    if (service.requires_admin) {
+      badges.push(<Badge key="admin" variant="outline" className="text-xs">Admin Required</Badge>);
+    }
+    
+    const dependencies = getDependencies(service.id);
+    if (dependencies.length > 0) {
+      const depNames = dependencies.map(depId => 
+        services.find(s => s.id === depId)?.name
+      ).filter(Boolean);
+      badges.push(
+        <Badge key="deps" variant="outline" className="text-xs">
+          Requires: {depNames.join(', ')}
+        </Badge>
+      );
+    }
+
+    return badges;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -283,30 +356,60 @@ const EstimateForm = () => {
           <Card>
             <CardHeader>
               <CardTitle className="text-blue-900">Additional Services</CardTitle>
+              {selectedHome && (
+                <p className="text-sm text-gray-600">
+                  Services available for your selected mobile home
+                </p>
+              )}
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {services.map((service) => (
-                  <div key={service.id} className="flex items-center space-x-3 p-3 border rounded-lg">
-                    <Checkbox
-                      id={service.id}
-                      checked={selectedServices.includes(service.id)}
-                      onCheckedChange={() => handleServiceToggle(service.id)}
-                    />
-                    <div className="flex-1">
-                      <Label htmlFor={service.id} className="font-medium cursor-pointer">
-                        {service.name}
-                      </Label>
-                      {service.description && (
-                        <p className="text-xs text-gray-500">{service.description}</p>
-                      )}
-                      <p className="text-sm text-gray-600">
-                        ${service.price.toLocaleString()}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              {!selectedHome ? (
+                <p className="text-gray-500 text-center py-4">
+                  Please select a mobile home first to see available services
+                </p>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {availableServices.map((service) => {
+                    const isDisabled = isServiceDisabled(service);
+                    return (
+                      <div 
+                        key={service.id} 
+                        className={`p-3 border rounded-lg ${
+                          isDisabled ? 'opacity-50 bg-gray-50' : ''
+                        }`}
+                      >
+                        <div className="flex items-start space-x-3">
+                          <Checkbox
+                            id={service.id}
+                            checked={selectedServices.includes(service.id)}
+                            onCheckedChange={() => handleServiceToggle(service.id)}
+                            disabled={isDisabled}
+                          />
+                          <div className="flex-1">
+                            <Label 
+                              htmlFor={service.id} 
+                              className={`font-medium cursor-pointer ${
+                                isDisabled ? 'cursor-not-allowed' : ''
+                              }`}
+                            >
+                              {service.name}
+                            </Label>
+                            {service.description && (
+                              <p className="text-xs text-gray-500 mt-1">{service.description}</p>
+                            )}
+                            <p className="text-sm text-gray-600 mt-1">
+                              ${getServicePrice(service.id).toLocaleString()}
+                            </p>
+                            <div className="flex flex-wrap gap-1 mt-2">
+                              {getServiceStatusBadges(service)}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </CardContent>
           </Card>
 

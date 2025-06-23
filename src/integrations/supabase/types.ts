@@ -131,29 +131,47 @@ export type Database = {
       services: {
         Row: {
           active: boolean
+          applicable_manufacturers: Json | null
+          applicable_series: Json | null
+          conditional_pricing: Json | null
+          conditions: Json | null
           created_at: string
+          dependencies: Json | null
           description: string | null
           id: string
           name: string
           price: number
+          requires_admin: boolean | null
           updated_at: string
         }
         Insert: {
           active?: boolean
+          applicable_manufacturers?: Json | null
+          applicable_series?: Json | null
+          conditional_pricing?: Json | null
+          conditions?: Json | null
           created_at?: string
+          dependencies?: Json | null
           description?: string | null
           id?: string
           name: string
           price: number
+          requires_admin?: boolean | null
           updated_at?: string
         }
         Update: {
           active?: boolean
+          applicable_manufacturers?: Json | null
+          applicable_series?: Json | null
+          conditional_pricing?: Json | null
+          conditions?: Json | null
           created_at?: string
+          dependencies?: Json | null
           description?: string | null
           id?: string
           name?: string
           price?: number
+          requires_admin?: boolean | null
           updated_at?: string
         }
         Relationships: []

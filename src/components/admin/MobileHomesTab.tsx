@@ -22,7 +22,7 @@ export const MobileHomesTab = () => {
   const [editingHome, setEditingHome] = useState<MobileHome | null>(null);
   const [formData, setFormData] = useState({
     manufacturer: 'Clayton',
-    series: 'Tru' as 'Tru' | 'Epic',
+    series: 'Tru' as Database['public']['Enums']['mobile_home_series'],
     model: '',
     price: ''
   });
@@ -151,7 +151,7 @@ export const MobileHomesTab = () => {
               </div>
               <div>
                 <Label htmlFor="series">Series</Label>
-                <Select value={formData.series} onValueChange={(value: 'Tru' | 'Epic') => setFormData({...formData, series: value})}>
+                <Select value={formData.series} onValueChange={(value: Database['public']['Enums']['mobile_home_series']) => setFormData({...formData, series: value})}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>

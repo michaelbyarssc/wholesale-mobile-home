@@ -45,20 +45,30 @@ export const MobileHomesShowcase = () => {
   const truHomes = mobileHomes.filter(home => home.series === 'Tru');
   const epicHomes = mobileHomes.filter(home => home.series === 'Epic');
 
-  // Function to get appropriate image based on home type
-  const getHomeImage = (home: MobileHome, index: number) => {
+  // Function to get appropriate image based on model name
+  const getHomeImage = (home: MobileHome) => {
     if (home.exterior_image_url) {
       return home.exterior_image_url;
     }
     
-    // Use different images based on home size and index for variety
-    const images = [
-      '/images/mobile-home-exterior-1.jpg',
-      '/images/mobile-home-exterior-2.jpg',
-      '/images/mobile-home-interior-1.jpg'
-    ];
-    
-    return images[index % images.length];
+    // Map specific models to their downloaded images
+    const modelImageMap: { [key: string]: string } = {
+      'Tru MH 14x56': '/images/tru-mh-14x56-exterior.jpg',
+      'Tru MH 14x60': '/images/tru-mh-14x60-exterior.jpg', 
+      'Tru MH 14x66': '/images/tru-mh-14x66-exterior.jpg',
+      'Tru MH 14x70': '/images/tru-mh-14x70-exterior.jpg',
+      'Tru MH 16x76': '/images/tru-mh-16x76-exterior.jpg',
+      'Tru MH 16x80': '/images/tru-mh-16x80-exterior.jpg',
+      'Tru MH 18x76': '/images/tru-mh-18x76-exterior.jpg',
+      'Tru MH 18x80': '/images/tru-mh-18x80-exterior.jpg',
+      'Tru MH 18x84': '/images/tru-mh-18x84-exterior.jpg',
+      'Tru MH 20x76': '/images/tru-mh-20x76-exterior.jpg',
+      'Tru MH 20x80': '/images/tru-mh-20x80-exterior.jpg',
+      'Tru MH 20x84': '/images/tru-mh-20x84-exterior.jpg',
+      'Tru MH 22x84': '/images/tru-mh-22x84-exterior.jpg'
+    };
+
+    return modelImageMap[home.model] || '/images/mobile-home-exterior-1.jpg';
   };
 
   const renderHomeCard = (home: MobileHome, index: number) => (
@@ -81,7 +91,7 @@ export const MobileHomesShowcase = () => {
         {/* Home Image */}
         <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden">
           <img 
-            src={getHomeImage(home, index)} 
+            src={getHomeImage(home)} 
             alt={`${home.manufacturer} ${home.model}`}
             className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
             onError={(e) => {

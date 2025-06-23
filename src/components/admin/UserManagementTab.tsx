@@ -221,7 +221,7 @@ export const UserManagementTab = () => {
   const startEditingUser = (profile: UserProfile) => {
     setEditingUser(profile.user_id);
     setEditForm({
-      email: profile.email || '',
+      email: profile.email === 'No email' ? '' : profile.email || '',
       first_name: profile.first_name || '',
       last_name: profile.last_name || ''
     });
@@ -238,7 +238,11 @@ export const UserManagementTab = () => {
     if (!editingUser) return;
 
     try {
-      const { error } = await supabase
+      console.log('Updating profile for user:', editingUser);
+      console.log('Update data:', editForm);
+
+      // First, try to update existing profile
+      const { data: updateData, error: updateError } = await supabase
         .from('profiles')
         .update({
           email: editForm.email,
@@ -246,9 +250,30 @@ export const UserManagementTab = () => {
           last_name: editForm.last_name,
           updated_at: new Date().toISOString()
         })
-        .eq('user_id', editingUser);
+        .eq('user_id', editingUser)
+        .select();
 
-      if (error) throw error;
+      console.log('Update result:', { updateData, updateError });
+
+      // If no rows were updated (profile doesn't exist), create a new one
+      if (updateData && updateData.length === 0) {
+        console.log('No existing profile found, creating new one...');
+        const { data: insertData, error: insertError } = await supabase
+          .from('profiles')
+          .insert({
+            user_id: editingUser,
+            email: editForm.email,
+            first_name: editForm.first_name,
+            last_name: editForm.last_name
+          })
+          .select();
+
+        console.log('Insert result:', { insertData, insertError });
+
+        if (insertError) throw insertError;
+      } else if (updateError) {
+        throw updateError;
+      }
 
       toast({
         title: "Profile updated",
@@ -275,7 +300,7 @@ export const UserManagementTab = () => {
     if (profile.first_name || profile.last_name) {
       return `${profile.first_name || ''} ${profile.last_name || ''}`.trim();
     }
-    return profile.email || 'Unknown User';
+    return profile.email === 'No email' ? 'Unknown User' : profile.email || 'Unknown User';
   };
 
   if (loading) {

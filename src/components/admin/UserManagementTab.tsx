@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -41,8 +40,9 @@ export const UserManagementTab = () => {
   const fetchUserProfiles = async () => {
     try {
       setLoading(true);
+      console.log('Fetching user profiles...');
       
-      // Fetch user roles and profiles separately, then join them
+      // Fetch user roles and profiles separately
       const { data: roleData, error: roleError } = await supabase
         .from('user_roles')
         .select('user_id, role, created_at');
@@ -56,6 +56,8 @@ export const UserManagementTab = () => {
         });
         return;
       }
+
+      console.log('User roles data:', roleData);
 
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
@@ -71,19 +73,24 @@ export const UserManagementTab = () => {
         return;
       }
 
-      // Join the data manually
-      const combinedData: UserProfile[] = roleData.map(role => {
-        const profile = profileData.find(p => p.user_id === role.user_id);
+      console.log('Profiles data:', profileData);
+
+      // Combine the data
+      const combinedData: UserProfile[] = roleData?.map(role => {
+        const profile = profileData?.find(p => p.user_id === role.user_id);
+        console.log(`Combining user ${role.user_id}:`, { role, profile });
+        
         return {
           user_id: role.user_id,
-          email: profile?.email || '',
+          email: profile?.email || 'No email',
           first_name: profile?.first_name || null,
           last_name: profile?.last_name || null,
           role: role.role,
           created_at: role.created_at
         };
-      });
+      }) || [];
 
+      console.log('Combined data:', combinedData);
       setUserProfiles(combinedData);
     } catch (error) {
       console.error('Error in fetchUserProfiles:', error);
@@ -383,7 +390,7 @@ export const UserManagementTab = () => {
                         {getDisplayName(profile)}
                       </TableCell>
                       <TableCell>
-                        {profile.email}
+                        {profile.email || 'No email'}
                       </TableCell>
                       <TableCell>
                         <Badge variant={profile.role === 'admin' ? "default" : "secondary"}>

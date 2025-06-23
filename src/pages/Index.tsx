@@ -3,6 +3,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle, Shield, Users, Zap } from 'lucide-react';
+import { MobileHomesShowcase } from '@/components/MobileHomesShowcase';
 
 const Index = () => {
   const navigate = useNavigate();
@@ -75,14 +76,19 @@ const Index = () => {
               size="lg"
               className="border-blue-600 text-blue-600 hover:bg-blue-50 px-8 py-4 text-lg w-full sm:w-auto"
               onClick={() => {
-                document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' });
+                document.getElementById('mobile-homes')?.scrollIntoView({ behavior: 'smooth' });
               }}
             >
-              Learn More
+              View Our Models
             </Button>
           </div>
         </div>
       </section>
+
+      {/* Mobile Homes Showcase */}
+      <div id="mobile-homes">
+        <MobileHomesShowcase />
+      </div>
 
       {/* Features Section */}
       <section id="features" className="py-20 bg-white">

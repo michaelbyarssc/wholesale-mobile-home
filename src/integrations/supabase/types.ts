@@ -122,36 +122,63 @@ export type Database = {
       mobile_homes: {
         Row: {
           active: boolean
+          bathrooms: number | null
+          bedrooms: number | null
           cost: number | null
           created_at: string
+          description: string | null
+          exterior_image_url: string | null
+          features: Json | null
+          floor_plan_image_url: string | null
           id: string
+          length_feet: number | null
           manufacturer: string
           model: string
           price: number
           series: Database["public"]["Enums"]["mobile_home_series"]
+          square_footage: number | null
           updated_at: string
+          width_feet: number | null
         }
         Insert: {
           active?: boolean
+          bathrooms?: number | null
+          bedrooms?: number | null
           cost?: number | null
           created_at?: string
+          description?: string | null
+          exterior_image_url?: string | null
+          features?: Json | null
+          floor_plan_image_url?: string | null
           id?: string
+          length_feet?: number | null
           manufacturer?: string
           model: string
           price: number
           series: Database["public"]["Enums"]["mobile_home_series"]
+          square_footage?: number | null
           updated_at?: string
+          width_feet?: number | null
         }
         Update: {
           active?: boolean
+          bathrooms?: number | null
+          bedrooms?: number | null
           cost?: number | null
           created_at?: string
+          description?: string | null
+          exterior_image_url?: string | null
+          features?: Json | null
+          floor_plan_image_url?: string | null
           id?: string
+          length_feet?: number | null
           manufacturer?: string
           model?: string
           price?: number
           series?: Database["public"]["Enums"]["mobile_home_series"]
+          square_footage?: number | null
           updated_at?: string
+          width_feet?: number | null
         }
         Relationships: []
       }

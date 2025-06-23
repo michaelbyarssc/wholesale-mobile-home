@@ -10,6 +10,7 @@ import Auth from "./pages/Auth";
 import Admin from "./pages/Admin";
 import MyEstimates from "./pages/MyEstimates";
 import NotFound from "./pages/NotFound";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
 
@@ -20,11 +21,32 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<EstimateForm />} />
-          <Route path="/estimate" element={<EstimateForm />} />
-          <Route path="/my-estimates" element={<MyEstimates />} />
+          <Route path="/" element={<Index />} />
           <Route path="/auth" element={<Auth />} />
-          <Route path="/admin" element={<Admin />} />
+          <Route 
+            path="/estimate" 
+            element={
+              <ProtectedRoute>
+                <EstimateForm />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/my-estimates" 
+            element={
+              <ProtectedRoute>
+                <MyEstimates />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/admin" 
+            element={
+              <ProtectedRoute>
+                <Admin />
+              </ProtectedRoute>
+            } 
+          />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

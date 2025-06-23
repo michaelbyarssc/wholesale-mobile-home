@@ -45,7 +45,23 @@ export const MobileHomesShowcase = () => {
   const truHomes = mobileHomes.filter(home => home.series === 'Tru');
   const epicHomes = mobileHomes.filter(home => home.series === 'Epic');
 
-  const renderHomeCard = (home: MobileHome) => (
+  // Function to get appropriate image based on home type
+  const getHomeImage = (home: MobileHome, index: number) => {
+    if (home.exterior_image_url) {
+      return home.exterior_image_url;
+    }
+    
+    // Use different images based on home size and index for variety
+    const images = [
+      '/images/mobile-home-exterior-1.jpg',
+      '/images/mobile-home-exterior-2.jpg',
+      '/images/mobile-home-interior-1.jpg'
+    ];
+    
+    return images[index % images.length];
+  };
+
+  const renderHomeCard = (home: MobileHome, index: number) => (
     <Card key={home.id} className="overflow-hidden hover:shadow-lg transition-shadow">
       <CardHeader className="pb-4">
         <div className="flex justify-between items-start">
@@ -62,6 +78,31 @@ export const MobileHomesShowcase = () => {
       </CardHeader>
       
       <CardContent className="space-y-4">
+        {/* Home Image */}
+        <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden">
+          <img 
+            src={getHomeImage(home, index)} 
+            alt={`${home.manufacturer} ${home.model}`}
+            className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+            onError={(e) => {
+              // Fallback to placeholder if image fails to load
+              const target = e.target as HTMLImageElement;
+              target.style.display = 'none';
+              target.parentElement!.innerHTML = `
+                <div class="w-full h-full flex items-center justify-center text-gray-400">
+                  <div class="text-center">
+                    <svg class="h-8 w-8 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"></path>
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 011-1h3a2 2 0 011 1v1a2 2 0 01-1 1H6a2 2 0 01-1-1V5z"></path>
+                    </svg>
+                    <p class="text-sm">Image Coming Soon</p>
+                  </div>
+                </div>
+              `;
+            }}
+          />
+        </div>
+
         {/* Specifications Grid */}
         <div className="grid grid-cols-2 gap-4">
           <div className="flex items-center space-x-2 text-sm">
@@ -110,16 +151,6 @@ export const MobileHomesShowcase = () => {
             </div>
           </div>
         )}
-
-        {/* Placeholder for images */}
-        <div className="grid grid-cols-1 gap-2">
-          <div className="aspect-video bg-gray-100 rounded-lg flex items-center justify-center text-gray-400">
-            <div className="text-center">
-              <Home className="h-8 w-8 mx-auto mb-2" />
-              <p className="text-sm">Floor Plan Coming Soon</p>
-            </div>
-          </div>
-        </div>
       </CardContent>
     </Card>
   );
@@ -168,7 +199,7 @@ export const MobileHomesShowcase = () => {
           <TabsContent value="Tru">
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
               {truHomes.length > 0 ? (
-                truHomes.map(renderHomeCard)
+                truHomes.map((home, index) => renderHomeCard(home, index))
               ) : (
                 <div className="col-span-full text-center py-8">
                   <p className="text-gray-500">No Tru series models available.</p>
@@ -180,7 +211,7 @@ export const MobileHomesShowcase = () => {
           <TabsContent value="Epic">
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
               {epicHomes.length > 0 ? (
-                epicHomes.map(renderHomeCard)
+                epicHomes.map((home, index) => renderHomeCard(home, index))
               ) : (
                 <div className="col-span-full text-center py-8">
                   <p className="text-gray-500">No Epic series models available.</p>

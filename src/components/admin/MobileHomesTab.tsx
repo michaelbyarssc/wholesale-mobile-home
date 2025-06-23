@@ -34,7 +34,7 @@ export const MobileHomesTab = () => {
   const [editingHome, setEditingHome] = useState<MobileHome | null>(null);
   const [formData, setFormData] = useState({
     manufacturer: 'Clayton',
-    series: 'Tru' as 'Tru' | 'Epic',
+    series: 'Tru',
     model: '',
     price: ''
   });
@@ -161,7 +161,7 @@ export const MobileHomesTab = () => {
               </div>
               <div>
                 <Label htmlFor="series">Series</Label>
-                <Select value={formData.series} onValueChange={(value) => setFormData({...formData, series: value as 'Tru' | 'Epic'})}>
+                <Select value={formData.series} onValueChange={(value) => setFormData({...formData, series: value})}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>

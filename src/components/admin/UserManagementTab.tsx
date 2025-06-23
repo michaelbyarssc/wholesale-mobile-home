@@ -35,22 +35,27 @@ export const UserManagementTab = () => {
     try {
       setLoading(true);
       
-      // Fetch user roles and join with profiles to get user information
-      const { data: roleData, error } = await supabase
+      // Fetch user roles and profiles separately, then join them
+      const { data: roleData, error: roleError } = await supabase
         .from('user_roles')
-        .select(`
-          user_id,
-          role,
-          created_at,
-          profiles!inner (
-            email,
-            first_name,
-            last_name
-          )
-        `);
+        .select('user_id, role, created_at');
 
-      if (error) {
-        console.error('Error fetching user profiles:', error);
+      if (roleError) {
+        console.error('Error fetching user roles:', roleError);
+        toast({
+          title: "Error",
+          description: "Failed to fetch user roles",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('user_id, email, first_name, last_name');
+
+      if (profileError) {
+        console.error('Error fetching profiles:', profileError);
         toast({
           title: "Error",
           description: "Failed to fetch user profiles",
@@ -59,17 +64,20 @@ export const UserManagementTab = () => {
         return;
       }
 
-      // Transform the data to match our interface
-      const usersWithProfiles: UserProfile[] = roleData.map(role => ({
-        user_id: role.user_id,
-        email: role.profiles.email || '',
-        first_name: role.profiles.first_name,
-        last_name: role.profiles.last_name,
-        role: role.role,
-        created_at: role.created_at
-      }));
+      // Join the data manually
+      const combinedData: UserProfile[] = roleData.map(role => {
+        const profile = profileData.find(p => p.user_id === role.user_id);
+        return {
+          user_id: role.user_id,
+          email: profile?.email || '',
+          first_name: profile?.first_name || null,
+          last_name: profile?.last_name || null,
+          role: role.role,
+          created_at: role.created_at
+        };
+      });
 
-      setUserProfiles(usersWithProfiles);
+      setUserProfiles(combinedData);
     } catch (error) {
       console.error('Error in fetchUserProfiles:', error);
       toast({

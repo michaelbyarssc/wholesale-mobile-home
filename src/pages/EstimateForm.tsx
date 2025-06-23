@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,6 +8,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from '@tanstack/react-query';
 
 interface MobileHome {
   id: string;
@@ -27,27 +29,6 @@ interface Service {
 const EstimateForm = () => {
   const { toast } = useToast();
   
-  // Mobile home options - you can modify these prices later in the admin
-  const mobileHomes: MobileHome[] = [
-    { id: '1', manufacturer: 'Clayton', series: 'Tru', model: 'Tru MH 16x80', price: 75000 },
-    { id: '2', manufacturer: 'Clayton', series: 'Tru', model: 'Tru MH 18x80', price: 85000 },
-    { id: '3', manufacturer: 'Clayton', series: 'Tru', model: 'Tru MH 20x80', price: 95000 },
-    { id: '4', manufacturer: 'Clayton', series: 'Epic', model: 'Epic MH 16x80', price: 95000 },
-    { id: '5', manufacturer: 'Clayton', series: 'Epic', model: 'Epic MH 18x80', price: 105000 },
-    { id: '6', manufacturer: 'Clayton', series: 'Epic', model: 'Epic MH 20x80', price: 115000 },
-  ];
-
-  // Services - you can modify these in the admin
-  const services: Service[] = [
-    { id: '1', name: 'Delivery and Setup', price: 5000 },
-    { id: '2', name: 'Site Preparation', price: 3500 },
-    { id: '3', name: 'Electrical Hookup', price: 1500 },
-    { id: '4', name: 'Plumbing Connections', price: 2000 },
-    { id: '5', name: 'Brick Skirting Installation', price: 4500 },
-    { id: '6', name: 'Vinyl Skirting Installation', price: 2500 },
-    { id: '7', name: 'Steps/Decks', price: 3000 },
-  ];
-
   const [selectedHome, setSelectedHome] = useState<string>('');
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [customerInfo, setCustomerInfo] = useState({
@@ -58,6 +39,36 @@ const EstimateForm = () => {
     preferredContact: '',
     timeline: '',
     requirements: ''
+  });
+
+  // Fetch mobile homes from database
+  const { data: mobileHomes = [], isLoading: homesLoading } = useQuery({
+    queryKey: ['mobile-homes'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('mobile_homes')
+        .select('*')
+        .eq('active', true)
+        .order('series', { ascending: true });
+      
+      if (error) throw error;
+      return data as MobileHome[];
+    }
+  });
+
+  // Fetch services from database
+  const { data: services = [], isLoading: servicesLoading } = useQuery({
+    queryKey: ['services'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('services')
+        .select('*')
+        .eq('active', true)
+        .order('name', { ascending: true });
+      
+      if (error) throw error;
+      return data as Service[];
+    }
   });
 
   const handleServiceToggle = (serviceId: string) => {
@@ -77,7 +88,7 @@ const EstimateForm = () => {
     return homePrice + servicesPrice;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!selectedHome || !customerInfo.name || !customerInfo.phone || !customerInfo.email) {
@@ -89,20 +100,70 @@ const EstimateForm = () => {
       return;
     }
 
-    // Here you would typically send the data to your backend
-    // For now, we'll show a success message
-    toast({
-      title: "Estimate Submitted!",
-      description: "We'll send your estimate via email and text shortly.",
-    });
-    
-    console.log('Estimate Data:', {
-      selectedHome: mobileHomes.find(h => h.id === selectedHome),
-      selectedServices: selectedServices.map(id => services.find(s => s.id === id)),
-      customerInfo,
-      total: calculateTotal()
-    });
+    try {
+      // Save estimate to database
+      const { data, error } = await supabase
+        .from('estimates')
+        .insert({
+          customer_name: customerInfo.name,
+          customer_phone: customerInfo.phone,
+          customer_email: customerInfo.email,
+          delivery_address: customerInfo.address,
+          preferred_contact: customerInfo.preferredContact,
+          timeline: customerInfo.timeline,
+          additional_requirements: customerInfo.requirements,
+          mobile_home_id: selectedHome,
+          selected_services: selectedServices,
+          total_amount: calculateTotal(),
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Send email and SMS notifications
+      await supabase.functions.invoke('send-estimate-notifications', {
+        body: { estimateId: data.id }
+      });
+
+      toast({
+        title: "Estimate Submitted!",
+        description: "We'll send your estimate via email and text shortly.",
+      });
+
+      // Reset form
+      setSelectedHome('');
+      setSelectedServices([]);
+      setCustomerInfo({
+        name: '',
+        phone: '',
+        email: '',
+        address: '',
+        preferredContact: '',
+        timeline: '',
+        requirements: ''
+      });
+
+    } catch (error) {
+      console.error('Error submitting estimate:', error);
+      toast({
+        title: "Error",
+        description: "There was a problem submitting your estimate. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
+
+  if (homesLoading || servicesLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-green-50 to-yellow-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-lg text-blue-900">Loading mobile homes and services...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-green-50 to-yellow-50 py-8">
@@ -112,6 +173,15 @@ const EstimateForm = () => {
             Wholesale Homes of the Carolinas
           </h1>
           <p className="text-lg text-green-700">Get Your Mobile Home Estimate</p>
+          <div className="mt-4">
+            <Button 
+              onClick={() => window.location.href = '/auth'} 
+              variant="outline"
+              className="mr-4"
+            >
+              Admin Login
+            </Button>
+          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-8">
@@ -167,6 +237,9 @@ const EstimateForm = () => {
                       <Label htmlFor={service.id} className="font-medium cursor-pointer">
                         {service.name}
                       </Label>
+                      {service.description && (
+                        <p className="text-xs text-gray-500">{service.description}</p>
+                      )}
                       <p className="text-sm text-gray-600">
                         ${service.price.toLocaleString()}
                       </p>

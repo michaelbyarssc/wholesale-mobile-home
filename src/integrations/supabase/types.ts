@@ -33,6 +33,30 @@ export type Database = {
         }
         Relationships: []
       }
+      customer_markups: {
+        Row: {
+          created_at: string
+          id: string
+          markup_percentage: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          markup_percentage?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          markup_percentage?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       estimates: {
         Row: {
           additional_requirements: string | null
@@ -98,6 +122,7 @@ export type Database = {
       mobile_homes: {
         Row: {
           active: boolean
+          cost: number | null
           created_at: string
           id: string
           manufacturer: string
@@ -108,6 +133,7 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          cost?: number | null
           created_at?: string
           id?: string
           manufacturer?: string
@@ -118,6 +144,7 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          cost?: number | null
           created_at?: string
           id?: string
           manufacturer?: string
@@ -165,6 +192,7 @@ export type Database = {
           applicable_series: Json | null
           conditional_pricing: Json | null
           conditions: Json | null
+          cost: number | null
           created_at: string
           dependencies: Json | null
           description: string | null
@@ -180,6 +208,7 @@ export type Database = {
           applicable_series?: Json | null
           conditional_pricing?: Json | null
           conditions?: Json | null
+          cost?: number | null
           created_at?: string
           dependencies?: Json | null
           description?: string | null
@@ -195,6 +224,7 @@ export type Database = {
           applicable_series?: Json | null
           conditional_pricing?: Json | null
           conditions?: Json | null
+          cost?: number | null
           created_at?: string
           dependencies?: Json | null
           description?: string | null

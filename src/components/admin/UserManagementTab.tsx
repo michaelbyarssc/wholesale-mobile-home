@@ -8,8 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { User } from '@supabase/supabase-js';
-import { UserPlus, Shield, ShieldOff, Plus } from 'lucide-react';
+import { UserPlus, Shield, ShieldOff, AlertTriangle } from 'lucide-react';
 
 interface UserWithRole {
   id: string;
@@ -19,29 +18,27 @@ interface UserWithRole {
 }
 
 export const UserManagementTab = () => {
-  const [users, setUsers] = useState<UserWithRole[]>([]);
+  const [userRoles, setUserRoles] = useState<UserWithRole[]>([]);
   const [loading, setLoading] = useState(true);
-  const [createUserLoading, setCreateUserLoading] = useState(false);
   const [newUserEmail, setNewUserEmail] = useState('');
-  const [newUserPassword, setNewUserPassword] = useState('');
   const [newUserRole, setNewUserRole] = useState<'admin' | 'user'>('user');
   const { toast } = useToast();
 
   useEffect(() => {
-    fetchUsers();
+    fetchUserRoles();
   }, []);
 
-  const fetchUsers = async () => {
+  const fetchUserRoles = async () => {
     try {
       setLoading(true);
       
-      // Get all user roles
-      const { data: userRoles, error: rolesError } = await supabase
+      // Only fetch user roles since we can't access auth.users with anon key
+      const { data: roleData, error } = await supabase
         .from('user_roles')
-        .select('user_id, role');
+        .select('user_id, role, created_at');
 
-      if (rolesError) {
-        console.error('Error fetching user roles:', rolesError);
+      if (error) {
+        console.error('Error fetching user roles:', error);
         toast({
           title: "Error",
           description: "Failed to fetch user roles",
@@ -50,33 +47,17 @@ export const UserManagementTab = () => {
         return;
       }
 
-      // Get all users from auth.users (this requires admin privileges)
-      const { data: { users: authUsers }, error: usersError } = await supabase.auth.admin.listUsers();
+      // Transform the data to match our interface
+      const usersWithRoles: UserWithRole[] = roleData.map(role => ({
+        id: role.user_id,
+        email: `User ${role.user_id.slice(0, 8)}...`, // We can't get email with anon key
+        created_at: role.created_at,
+        role: role.role
+      }));
 
-      if (usersError) {
-        console.error('Error fetching users:', usersError);
-        toast({
-          title: "Error", 
-          description: "Failed to fetch users. Make sure you have admin privileges.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Combine user data with role information
-      const usersWithRoles: UserWithRole[] = authUsers.map(user => {
-        const userRole = userRoles?.find(role => role.user_id === user.id);
-        return {
-          id: user.id,
-          email: user.email || '',
-          created_at: user.created_at,
-          role: userRole?.role || null
-        };
-      });
-
-      setUsers(usersWithRoles);
+      setUserRoles(usersWithRoles);
     } catch (error) {
-      console.error('Error in fetchUsers:', error);
+      console.error('Error in fetchUserRoles:', error);
       toast({
         title: "Error",
         description: "An unexpected error occurred",
@@ -87,26 +68,26 @@ export const UserManagementTab = () => {
     }
   };
 
-  const createUser = async (e: React.FormEvent) => {
+  const inviteUser = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!newUserEmail || !newUserPassword) {
+    if (!newUserEmail) {
       toast({
         title: "Error",
-        description: "Please fill in all fields",
+        description: "Please enter an email address",
         variant: "destructive",
       });
       return;
     }
 
     try {
-      setCreateUserLoading(true);
-
-      // Create the user using admin functions
-      const { data, error } = await supabase.auth.admin.createUser({
+      // Send invitation using the standard sign-up flow
+      const { data, error } = await supabase.auth.signUp({
         email: newUserEmail,
-        password: newUserPassword,
-        email_confirm: true, // Auto-confirm the email
+        password: 'temp-password-' + Math.random().toString(36).slice(-8), // Temporary password
+        options: {
+          emailRedirectTo: window.location.origin + '/auth'
+        }
       });
 
       if (error) throw error;
@@ -120,61 +101,51 @@ export const UserManagementTab = () => {
         if (roleError) {
           console.error('Error assigning role:', roleError);
           toast({
-            title: "User created but role assignment failed",
-            description: `User ${newUserEmail} was created but couldn't assign the ${newUserRole} role`,
+            title: "Invitation sent but role assignment failed",
+            description: `Invitation sent to ${newUserEmail} but couldn't assign the ${newUserRole} role`,
             variant: "destructive",
           });
         } else {
           toast({
-            title: "User created successfully",
-            description: `${newUserEmail} has been created with ${newUserRole} role`,
+            title: "User invitation sent",
+            description: `Invitation sent to ${newUserEmail} with ${newUserRole} role. They will need to set their password.`,
           });
         }
       }
 
       // Clear the form
       setNewUserEmail('');
-      setNewUserPassword('');
       setNewUserRole('user');
 
       // Refresh the users list
-      fetchUsers();
+      fetchUserRoles();
     } catch (error: any) {
-      console.error('Error creating user:', error);
+      console.error('Error inviting user:', error);
       toast({
         title: "Error",
-        description: error.message || "Failed to create user",
+        description: error.message || "Failed to send invitation",
         variant: "destructive",
       });
-    } finally {
-      setCreateUserLoading(false);
     }
   };
 
-  const updateUserRole = async (userId: string, email: string, newRole: 'admin' | 'user') => {
+  const updateUserRole = async (userId: string, newRole: 'admin' | 'user') => {
     try {
-      // First, remove any existing role for this user
-      const { error: deleteError } = await supabase
+      // Update the user's role
+      const { error } = await supabase
         .from('user_roles')
-        .delete()
+        .update({ role: newRole })
         .eq('user_id', userId);
 
-      if (deleteError) throw deleteError;
-
-      // Then, add the new role
-      const { error: insertError } = await supabase
-        .from('user_roles')
-        .insert([{ user_id: userId, role: newRole }]);
-
-      if (insertError) throw insertError;
+      if (error) throw error;
 
       toast({
         title: "Role updated",
-        description: `${email} is now a ${newRole}`,
+        description: `User role has been updated to ${newRole}`,
       });
 
       // Refresh the users list
-      fetchUsers();
+      fetchUserRoles();
     } catch (error: any) {
       console.error('Error updating user role:', error);
       toast({
@@ -185,26 +156,27 @@ export const UserManagementTab = () => {
     }
   };
 
-  const assignDefaultRole = async (userId: string, email: string) => {
+  const removeUserRole = async (userId: string) => {
     try {
       const { error } = await supabase
         .from('user_roles')
-        .insert([{ user_id: userId, role: 'user' }]);
+        .delete()
+        .eq('user_id', userId);
 
       if (error) throw error;
 
       toast({
-        title: "Role assigned",
-        description: `${email} has been assigned the user role`,
+        title: "User role removed",
+        description: "User role has been removed",
       });
 
       // Refresh the users list
-      fetchUsers();
+      fetchUserRoles();
     } catch (error: any) {
-      console.error('Error assigning default role:', error);
+      console.error('Error removing user role:', error);
       toast({
         title: "Error",
-        description: error.message || "Failed to assign default role",
+        description: error.message || "Failed to remove user role",
         variant: "destructive",
       });
     }
@@ -227,17 +199,33 @@ export const UserManagementTab = () => {
 
   return (
     <div className="space-y-6">
-      {/* Create New User Section */}
+      {/* Warning about limitations */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex items-start gap-3 p-4 bg-yellow-50 rounded-lg">
+            <AlertTriangle className="h-5 w-5 text-yellow-600 mt-0.5" />
+            <div>
+              <h4 className="font-medium text-yellow-800">User Management Limitations</h4>
+              <p className="text-sm text-yellow-700 mt-1">
+                Due to security restrictions, this interface can only manage user roles, not create users directly. 
+                Users must sign up through the normal registration process, then you can assign roles here.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Invite User Section */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Plus className="h-5 w-5" />
-            Create New User
+            <UserPlus className="h-5 w-5" />
+            Invite New User
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={createUser} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <form onSubmit={inviteUser} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="email">Email Address</Label>
                 <Input
@@ -246,17 +234,6 @@ export const UserManagementTab = () => {
                   value={newUserEmail}
                   onChange={(e) => setNewUserEmail(e.target.value)}
                   placeholder="user@example.com"
-                  required
-                />
-              </div>
-              <div>
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={newUserPassword}
-                  onChange={(e) => setNewUserPassword(e.target.value)}
-                  placeholder="Enter password"
                   required
                 />
               </div>
@@ -273,26 +250,22 @@ export const UserManagementTab = () => {
                 </Select>
               </div>
             </div>
-            <Button 
-              type="submit" 
-              disabled={createUserLoading}
-              className="w-full md:w-auto"
-            >
-              {createUserLoading ? 'Creating...' : 'Create User'}
+            <Button type="submit" className="w-full md:w-auto">
+              Send Invitation
             </Button>
+            <p className="text-sm text-gray-600">
+              An invitation will be sent to the email address. The user will need to complete registration and set their password.
+            </p>
           </form>
         </CardContent>
       </Card>
 
-      {/* Existing Users Section */}
+      {/* Existing User Roles Section */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <UserPlus className="h-5 w-5" />
-            User Management
-          </CardTitle>
+          <CardTitle>User Roles</CardTitle>
           <p className="text-sm text-gray-600">
-            Manage user accounts and role assignments. New users default to "user" role.
+            Manage roles for users who have already registered.
           </p>
         </CardHeader>
         <CardContent>
@@ -300,69 +273,65 @@ export const UserManagementTab = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Current Role</TableHead>
-                  <TableHead>Joined</TableHead>
+                  <TableHead>User ID</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Assigned</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {users.length === 0 ? (
+                {userRoles.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={4} className="text-center py-8 text-gray-500">
-                      No users found
+                      No user roles found
                     </TableCell>
                   </TableRow>
                 ) : (
-                  users.map((user) => (
+                  userRoles.map((user) => (
                     <TableRow key={user.id}>
-                      <TableCell className="font-medium">{user.email}</TableCell>
+                      <TableCell className="font-mono text-xs">
+                        {user.id.slice(0, 8)}...
+                      </TableCell>
                       <TableCell>
-                        {user.role ? (
-                          <Badge variant={user.role === 'admin' ? "default" : "secondary"}>
-                            {user.role === 'admin' ? (
-                              <>
-                                <Shield className="h-3 w-3 mr-1" />
-                                Admin
-                              </>
-                            ) : (
-                              <>
-                                <ShieldOff className="h-3 w-3 mr-1" />
-                                User
-                              </>
-                            )}
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline">No Role</Badge>
-                        )}
+                        <Badge variant={user.role === 'admin' ? "default" : "secondary"}>
+                          {user.role === 'admin' ? (
+                            <>
+                              <Shield className="h-3 w-3 mr-1" />
+                              Admin
+                            </>
+                          ) : (
+                            <>
+                              <ShieldOff className="h-3 w-3 mr-1" />
+                              User
+                            </>
+                          )}
+                        </Badge>
                       </TableCell>
                       <TableCell>
                         {new Date(user.created_at).toLocaleDateString()}
                       </TableCell>
-                      <TableCell className="text-right">
-                        {user.role ? (
-                          <Select
-                            value={user.role}
-                            onValueChange={(newRole: 'admin' | 'user') => 
-                              updateUserRole(user.id, user.email, newRole)
-                            }
-                          >
-                            <SelectTrigger className="w-32">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="user">User</SelectItem>
-                              <SelectItem value="admin">Admin</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        ) : (
-                          <Button
-                            size="sm"
-                            onClick={() => assignDefaultRole(user.id, user.email)}
-                          >
-                            Assign Role
-                          </Button>
-                        )}
+                      <TableCell className="text-right space-x-2">
+                        <Select
+                          value={user.role || 'user'}
+                          onValueChange={(newRole: 'admin' | 'user') => 
+                            updateUserRole(user.id, newRole)
+                          }
+                        >
+                          <SelectTrigger className="w-24">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="user">User</SelectItem>
+                            <SelectItem value="admin">Admin</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => removeUserRole(user.id)}
+                        >
+                          Remove
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))
@@ -372,12 +341,12 @@ export const UserManagementTab = () => {
           </div>
           
           <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-            <h4 className="font-medium text-blue-900 mb-2">Role Management:</h4>
+            <h4 className="font-medium text-blue-900 mb-2">How User Management Works:</h4>
             <ul className="text-sm text-blue-700 space-y-1">
-              <li>• <strong>User:</strong> Default role for new registrations - can access public features</li>
-              <li>• <strong>Admin:</strong> Full access to admin dashboard and user management</li>
-              <li>• Users without assigned roles can be given the default "user" role</li>
-              <li>• Admins can create new users and assign roles directly</li>
+              <li>• <strong>User Registration:</strong> Users sign up through the normal registration flow</li>
+              <li>• <strong>Role Assignment:</strong> Admins can assign roles to registered users</li>
+              <li>• <strong>Invitations:</strong> Send registration invitations with pre-assigned roles</li>
+              <li>• <strong>Role Changes:</strong> Modify user roles as needed</li>
             </ul>
           </div>
         </CardContent>

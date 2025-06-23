@@ -12,6 +12,9 @@ const Auth = () => {
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -42,11 +45,27 @@ const Auth = () => {
 
     try {
       if (isSignUp) {
+        // Validate all required fields for sign up
+        if (!firstName.trim() || !lastName.trim() || !phoneNumber.trim()) {
+          toast({
+            title: "Missing Information",
+            description: "Please fill in all required fields.",
+            variant: "destructive",
+          });
+          setLoading(false);
+          return;
+        }
+
         const { error } = await supabase.auth.signUp({
           email,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/admin`
+            emailRedirectTo: `${window.location.origin}/admin`,
+            data: {
+              first_name: firstName.trim(),
+              last_name: lastName.trim(),
+              phone_number: phoneNumber.trim()
+            }
           }
         });
         
@@ -81,6 +100,19 @@ const Auth = () => {
     }
   };
 
+  const resetForm = () => {
+    setEmail('');
+    setPassword('');
+    setFirstName('');
+    setLastName('');
+    setPhoneNumber('');
+  };
+
+  const toggleAuthMode = () => {
+    setIsSignUp(!isSignUp);
+    resetForm();
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-green-50 to-yellow-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
@@ -103,24 +135,63 @@ const Auth = () => {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleAuth} className="space-y-4">
+              {isSignUp && (
+                <>
+                  <div>
+                    <Label htmlFor="firstName">First Name *</Label>
+                    <Input
+                      id="firstName"
+                      type="text"
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                      required
+                      placeholder="Enter your first name"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="lastName">Last Name *</Label>
+                    <Input
+                      id="lastName"
+                      type="text"
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                      required
+                      placeholder="Enter your last name"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="phoneNumber">Phone Number *</Label>
+                    <Input
+                      id="phoneNumber"
+                      type="tel"
+                      value={phoneNumber}
+                      onChange={(e) => setPhoneNumber(e.target.value)}
+                      required
+                      placeholder="Enter your phone number"
+                    />
+                  </div>
+                </>
+              )}
               <div>
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email">Email *</Label>
                 <Input
                   id="email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
+                  placeholder="Enter your email address"
                 />
               </div>
               <div>
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password">Password *</Label>
                 <Input
                   id="password"
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
+                  placeholder="Enter your password"
                 />
               </div>
               <Button 
@@ -135,7 +206,7 @@ const Auth = () => {
             <div className="mt-4 text-center">
               <Button
                 variant="link"
-                onClick={() => setIsSignUp(!isSignUp)}
+                onClick={toggleAuthMode}
                 className="text-blue-600"
               >
                 {isSignUp 

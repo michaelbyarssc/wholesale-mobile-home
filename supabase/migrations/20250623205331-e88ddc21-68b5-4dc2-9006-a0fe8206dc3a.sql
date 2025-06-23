@@ -6,6 +6,7 @@ CREATE TABLE public.profiles (
   email text,
   first_name text,
   last_name text,
+  phone_number text,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now()
 );
@@ -40,12 +41,13 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
-  INSERT INTO public.profiles (user_id, email, first_name, last_name)
+  INSERT INTO public.profiles (user_id, email, first_name, last_name, phone_number)
   VALUES (
     NEW.id,
     NEW.email,
     COALESCE(NEW.raw_user_meta_data->>'first_name', ''),
-    COALESCE(NEW.raw_user_meta_data->>'last_name', '')
+    COALESCE(NEW.raw_user_meta_data->>'last_name', ''),
+    COALESCE(NEW.raw_user_meta_data->>'phone_number', '')
   );
   RETURN NEW;
 END;

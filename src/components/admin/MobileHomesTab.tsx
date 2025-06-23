@@ -24,6 +24,7 @@ export const MobileHomesTab = () => {
     manufacturer: 'Clayton',
     series: 'Tru' as Database['public']['Enums']['mobile_home_series'],
     model: '',
+    display_name: '',
     price: ''
   });
 
@@ -48,6 +49,7 @@ export const MobileHomesTab = () => {
         manufacturer: formData.manufacturer,
         series: formData.series,
         model: formData.model,
+        display_name: formData.display_name,
         price: parseFloat(formData.price)
       };
 
@@ -62,7 +64,7 @@ export const MobileHomesTab = () => {
         description: "Mobile home added successfully.",
       });
 
-      setFormData({ manufacturer: 'Clayton', series: 'Tru', model: '', price: '' });
+      setFormData({ manufacturer: 'Clayton', series: 'Tru', model: '', display_name: '', price: '' });
       setShowAddForm(false);
       refetch();
     } catch (error) {
@@ -121,7 +123,7 @@ export const MobileHomesTab = () => {
   };
 
   const getHomeName = (home: MobileHome) => {
-    return `${home.series} ${home.model}`;
+    return home.display_name || `${home.series} ${home.model}`;
   };
 
   if (isLoading) {
@@ -178,6 +180,16 @@ export const MobileHomesTab = () => {
                   id="model"
                   value={formData.model}
                   onChange={(e) => setFormData({...formData, model: e.target.value})}
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="display_name">Display Name (e.g., Bliss, Delight, Elation)</Label>
+                <Input
+                  id="display_name"
+                  value={formData.display_name}
+                  onChange={(e) => setFormData({...formData, display_name: e.target.value})}
+                  placeholder="Enter OwnTru model name"
                   required
                 />
               </div>

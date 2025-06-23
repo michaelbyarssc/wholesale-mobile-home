@@ -14,6 +14,7 @@ interface MobileHome {
   manufacturer: string;
   series: 'Tru' | 'Epic';
   model: string;
+  display_name: string | null;
   square_footage: number | null;
   bedrooms: number | null;
   bathrooms: number | null;
@@ -88,6 +89,10 @@ export const MobileHomesShowcase = () => {
     return images;
   };
 
+  const getHomeName = (home: MobileHome) => {
+    return home.display_name || `${home.manufacturer} ${home.model}`;
+  };
+
   const renderHomeCard = (home: MobileHome, index: number) => {
     const homeImageList = getHomeImages(home.id);
     console.log(`Rendering card for ${home.model} with ${homeImageList.length} images`);
@@ -97,7 +102,7 @@ export const MobileHomesShowcase = () => {
         <CardHeader className="pb-4">
           <div className="flex justify-between items-start">
             <CardTitle className="text-xl font-bold text-gray-900">
-              {home.manufacturer} {home.model}
+              {getHomeName(home)}
             </CardTitle>
             <Badge variant="secondary" className="bg-blue-100 text-blue-800">
               {home.series} Series
@@ -112,7 +117,7 @@ export const MobileHomesShowcase = () => {
           {/* Home Image Carousel */}
           <MobileHomeImageCarousel 
             images={homeImageList} 
-            homeModel={`${home.manufacturer} ${home.model}`}
+            homeModel={getHomeName(home)}
           />
 
           {/* Specifications Grid */}

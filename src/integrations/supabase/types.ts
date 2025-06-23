@@ -168,6 +168,7 @@ export type Database = {
           cost: number | null
           created_at: string
           description: string | null
+          display_name: string | null
           exterior_image_url: string | null
           features: Json | null
           floor_plan_image_url: string | null
@@ -188,6 +189,7 @@ export type Database = {
           cost?: number | null
           created_at?: string
           description?: string | null
+          display_name?: string | null
           exterior_image_url?: string | null
           features?: Json | null
           floor_plan_image_url?: string | null
@@ -208,6 +210,7 @@ export type Database = {
           cost?: number | null
           created_at?: string
           description?: string | null
+          display_name?: string | null
           exterior_image_url?: string | null
           features?: Json | null
           floor_plan_image_url?: string | null

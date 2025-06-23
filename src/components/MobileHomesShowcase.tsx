@@ -41,6 +41,7 @@ export const MobileHomesShowcase = () => {
   const { data: mobileHomes = [], isLoading } = useQuery({
     queryKey: ['public-mobile-homes'],
     queryFn: async () => {
+      console.log('Fetching mobile homes...');
       const { data, error } = await supabase
         .from('mobile_homes')
         .select('*')
@@ -48,14 +49,19 @@ export const MobileHomesShowcase = () => {
         .order('series', { ascending: true })
         .order('square_footage', { ascending: true });
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching mobile homes:', error);
+        throw error;
+      }
+      console.log('Mobile homes fetched:', data?.length || 0);
       return data as MobileHome[];
     }
   });
 
-  const { data: homeImages = [] } = useQuery({
+  const { data: homeImages = [], isLoading: imagesLoading } = useQuery({
     queryKey: ['mobile-home-images'],
     queryFn: async () => {
+      console.log('Fetching mobile home images...');
       const { data, error } = await supabase
         .from('mobile_home_images')
         .select('*')
@@ -63,7 +69,12 @@ export const MobileHomesShowcase = () => {
         .order('image_type')
         .order('display_order');
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching mobile home images:', error);
+        throw error;
+      }
+      console.log('Mobile home images fetched:', data?.length || 0);
+      console.log('Sample images:', data?.slice(0, 3));
       return data as MobileHomeImage[];
     }
   });
@@ -72,83 +83,99 @@ export const MobileHomesShowcase = () => {
   const epicHomes = mobileHomes.filter(home => home.series === 'Epic');
 
   const getHomeImages = (homeId: string) => {
-    return homeImages.filter(image => image.mobile_home_id === homeId);
+    const images = homeImages.filter(image => image.mobile_home_id === homeId);
+    console.log(`Images for home ${homeId}:`, images.length);
+    return images;
   };
 
-  const renderHomeCard = (home: MobileHome, index: number) => (
-    <Card key={home.id} className="overflow-hidden hover:shadow-lg transition-shadow">
-      <CardHeader className="pb-4">
-        <div className="flex justify-between items-start">
-          <CardTitle className="text-xl font-bold text-gray-900">
-            {home.manufacturer} {home.model}
-          </CardTitle>
-          <Badge variant="secondary" className="bg-blue-100 text-blue-800">
-            {home.series} Series
-          </Badge>
-        </div>
-        {home.description && (
-          <p className="text-gray-600 text-sm mt-2">{home.description}</p>
-        )}
-      </CardHeader>
-      
-      <CardContent className="space-y-4">
-        {/* Home Image Carousel */}
-        <MobileHomeImageCarousel 
-          images={getHomeImages(home.id)} 
-          homeModel={`${home.manufacturer} ${home.model}`}
-        />
+  const renderHomeCard = (home: MobileHome, index: number) => {
+    const homeImageList = getHomeImages(home.id);
+    console.log(`Rendering card for ${home.model} with ${homeImageList.length} images`);
+    
+    return (
+      <Card key={home.id} className="overflow-hidden hover:shadow-lg transition-shadow">
+        <CardHeader className="pb-4">
+          <div className="flex justify-between items-start">
+            <CardTitle className="text-xl font-bold text-gray-900">
+              {home.manufacturer} {home.model}
+            </CardTitle>
+            <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+              {home.series} Series
+            </Badge>
+          </div>
+          {home.description && (
+            <p className="text-gray-600 text-sm mt-2">{home.description}</p>
+          )}
+        </CardHeader>
+        
+        <CardContent className="space-y-4">
+          {/* Home Image Carousel */}
+          <MobileHomeImageCarousel 
+            images={homeImageList} 
+            homeModel={`${home.manufacturer} ${home.model}`}
+          />
 
-        {/* Specifications Grid */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="flex items-center space-x-2 text-sm">
-            <Maximize className="h-4 w-4 text-blue-600" />
-            <span className="text-gray-600">Square Footage:</span>
-            <span className="font-semibold">{home.square_footage || 'N/A'} sq ft</span>
-          </div>
-          
-          <div className="flex items-center space-x-2 text-sm">
-            <Ruler className="h-4 w-4 text-blue-600" />
-            <span className="text-gray-600">Dimensions:</span>
-            <span className="font-semibold">
-              {home.length_feet && home.width_feet 
-                ? `${home.width_feet}' × ${home.length_feet}'` 
-                : 'N/A'}
-            </span>
-          </div>
-          
-          <div className="flex items-center space-x-2 text-sm">
-            <Bed className="h-4 w-4 text-blue-600" />
-            <span className="text-gray-600">Bedrooms:</span>
-            <span className="font-semibold">{home.bedrooms || 'N/A'}</span>
-          </div>
-          
-          <div className="flex items-center space-x-2 text-sm">
-            <Bath className="h-4 w-4 text-blue-600" />
-            <span className="text-gray-600">Bathrooms:</span>
-            <span className="font-semibold">{home.bathrooms || 'N/A'}</span>
-          </div>
-        </div>
-
-        {/* Features */}
-        {home.features && home.features.length > 0 && (
-          <div>
-            <h4 className="font-semibold text-gray-900 mb-2 flex items-center">
-              <Home className="h-4 w-4 mr-2 text-blue-600" />
-              Key Features
-            </h4>
-            <div className="grid grid-cols-1 gap-1">
-              {home.features.map((feature, index) => (
-                <div key={index} className="flex items-center text-sm text-gray-600">
-                  <span className="w-2 h-2 bg-blue-600 rounded-full mr-2"></span>
-                  {feature}
-                </div>
-              ))}
+          {/* Specifications Grid */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="flex items-center space-x-2 text-sm">
+              <Maximize className="h-4 w-4 text-blue-600" />
+              <span className="text-gray-600">Square Footage:</span>
+              <span className="font-semibold">{home.square_footage || 'N/A'} sq ft</span>
+            </div>
+            
+            <div className="flex items-center space-x-2 text-sm">
+              <Ruler className="h-4 w-4 text-blue-600" />
+              <span className="text-gray-600">Dimensions:</span>
+              <span className="font-semibold">
+                {home.length_feet && home.width_feet 
+                  ? `${home.width_feet}' × ${home.length_feet}'` 
+                  : 'N/A'}
+              </span>
+            </div>
+            
+            <div className="flex items-center space-x-2 text-sm">
+              <Bed className="h-4 w-4 text-blue-600" />
+              <span className="text-gray-600">Bedrooms:</span>
+              <span className="font-semibold">{home.bedrooms || 'N/A'}</span>
+            </div>
+            
+            <div className="flex items-center space-x-2 text-sm">
+              <Bath className="h-4 w-4 text-blue-600" />
+              <span className="text-gray-600">Bathrooms:</span>
+              <span className="font-semibold">{home.bathrooms || 'N/A'}</span>
             </div>
           </div>
-        )}
-      </CardContent>
-    </Card>
-  );
+
+          {/* Features */}
+          {home.features && home.features.length > 0 && (
+            <div>
+              <h4 className="font-semibold text-gray-900 mb-2 flex items-center">
+                <Home className="h-4 w-4 mr-2 text-blue-600" />
+                Key Features
+              </h4>
+              <div className="grid grid-cols-1 gap-1">
+                {home.features.map((feature, index) => (
+                  <div key={index} className="flex items-center text-sm text-gray-600">
+                    <span className="w-2 h-2 bg-blue-600 rounded-full mr-2"></span>
+                    {feature}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    );
+  };
+
+  console.log('Render state:', { 
+    isLoading, 
+    imagesLoading, 
+    homeCount: mobileHomes.length, 
+    imageCount: homeImages.length,
+    truHomesCount: truHomes.length,
+    epicHomesCount: epicHomes.length
+  });
 
   if (isLoading) {
     return (
@@ -180,6 +207,11 @@ export const MobileHomesShowcase = () => {
             Explore our premium collection of mobile homes featuring modern designs, 
             quality construction, and thoughtful amenities for comfortable living.
           </p>
+          {/* Debug info */}
+          <div className="mt-4 text-sm text-gray-500">
+            Debug: {mobileHomes.length} homes, {homeImages.length} images
+            {imagesLoading && " (images still loading...)"}
+          </div>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">

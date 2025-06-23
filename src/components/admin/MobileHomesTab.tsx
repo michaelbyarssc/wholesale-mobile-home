@@ -10,7 +10,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { MobileHomeEditDialog } from './MobileHomeEditDialog';
-import { edit } from 'lucide-react';
+import { Edit } from 'lucide-react';
 
 interface MobileHome {
   id: string;
@@ -242,7 +242,7 @@ export const MobileHomesTab = () => {
                           variant="outline"
                           onClick={() => setEditingHome(home)}
                         >
-                          <edit className="h-4 w-4" />
+                          <Edit className="h-4 w-4" />
                         </Button>
                         <Button
                           size="sm"

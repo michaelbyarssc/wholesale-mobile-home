@@ -9,6 +9,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { MobileHomeEditDialog } from './MobileHomeEditDialog';
+import { edit } from 'lucide-react';
 
 interface MobileHome {
   id: string;
@@ -16,12 +18,20 @@ interface MobileHome {
   series: string;
   model: string;
   price: number;
+  square_footage: number | null;
+  bedrooms: number | null;
+  bathrooms: number | null;
+  length_feet: number | null;
+  width_feet: number | null;
+  features: string[] | null;
+  description: string | null;
   active: boolean;
 }
 
 export const MobileHomesTab = () => {
   const { toast } = useToast();
   const [showAddForm, setShowAddForm] = useState(false);
+  const [editingHome, setEditingHome] = useState<MobileHome | null>(null);
   const [formData, setFormData] = useState({
     manufacturer: 'Clayton',
     series: 'Tru' as 'Tru' | 'Epic',
@@ -84,8 +94,18 @@ export const MobileHomesTab = () => {
 
       if (error) throw error;
       refetch();
+      
+      toast({
+        title: "Success",
+        description: `Mobile home ${!active ? 'activated' : 'deactivated'} successfully.`,
+      });
     } catch (error) {
       console.error('Error updating mobile home:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update mobile home status.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -176,53 +196,77 @@ export const MobileHomesTab = () => {
             </form>
           )}
 
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Manufacturer</TableHead>
-                <TableHead>Series</TableHead>
-                <TableHead>Model</TableHead>
-                <TableHead>Price</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {mobileHomes.map((home) => (
-                <TableRow key={home.id}>
-                  <TableCell>{home.manufacturer}</TableCell>
-                  <TableCell>{home.series}</TableCell>
-                  <TableCell>{home.model}</TableCell>
-                  <TableCell>
-                    <Input
-                      type="number"
-                      defaultValue={home.price}
-                      onBlur={(e) => updatePrice(home.id, parseFloat(e.target.value))}
-                      className="w-32"
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <span className={`px-2 py-1 rounded-full text-xs ${
-                      home.active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                    }`}>
-                      {home.active ? 'Active' : 'Inactive'}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => toggleActive(home.id, home.active)}
-                    >
-                      {home.active ? 'Deactivate' : 'Activate'}
-                    </Button>
-                  </TableCell>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Manufacturer</TableHead>
+                  <TableHead>Series</TableHead>
+                  <TableHead>Model</TableHead>
+                  <TableHead>Price</TableHead>
+                  <TableHead>Sq Ft</TableHead>
+                  <TableHead>Bed/Bath</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {mobileHomes.map((home) => (
+                  <TableRow key={home.id}>
+                    <TableCell>{home.manufacturer}</TableCell>
+                    <TableCell>{home.series}</TableCell>
+                    <TableCell>{home.model}</TableCell>
+                    <TableCell>
+                      <Input
+                        type="number"
+                        defaultValue={home.price}
+                        onBlur={(e) => updatePrice(home.id, parseFloat(e.target.value))}
+                        className="w-24"
+                      />
+                    </TableCell>
+                    <TableCell>{home.square_footage || 'N/A'}</TableCell>
+                    <TableCell>
+                      {home.bedrooms || 'N/A'}/{home.bathrooms || 'N/A'}
+                    </TableCell>
+                    <TableCell>
+                      <span className={`px-2 py-1 rounded-full text-xs ${
+                        home.active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                      }`}>
+                        {home.active ? 'Active' : 'Inactive'}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex space-x-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setEditingHome(home)}
+                        >
+                          <edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => toggleActive(home.id, home.active)}
+                        >
+                          {home.active ? 'Deactivate' : 'Activate'}
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
+
+      <MobileHomeEditDialog
+        mobileHome={editingHome}
+        open={!!editingHome}
+        onClose={() => setEditingHome(null)}
+        onSave={refetch}
+      />
     </div>
   );
 };

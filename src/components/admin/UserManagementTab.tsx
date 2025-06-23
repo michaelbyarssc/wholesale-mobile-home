@@ -7,9 +7,10 @@ import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { UserPlus, Shield, ShieldOff, AlertTriangle } from 'lucide-react';
+import { UserPlus, Shield, ShieldOff, AlertTriangle, Edit } from 'lucide-react';
 
 interface UserProfile {
   user_id: string;
@@ -25,6 +26,12 @@ export const UserManagementTab = () => {
   const [loading, setLoading] = useState(true);
   const [newUserEmail, setNewUserEmail] = useState('');
   const [newUserRole, setNewUserRole] = useState<'admin' | 'user'>('user');
+  const [editingUser, setEditingUser] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({
+    email: '',
+    first_name: '',
+    last_name: ''
+  });
   const { toast } = useToast();
 
   useEffect(() => {
@@ -204,6 +211,59 @@ export const UserManagementTab = () => {
     }
   };
 
+  const startEditingUser = (profile: UserProfile) => {
+    setEditingUser(profile.user_id);
+    setEditForm({
+      email: profile.email || '',
+      first_name: profile.first_name || '',
+      last_name: profile.last_name || ''
+    });
+  };
+
+  const cancelEditing = () => {
+    setEditingUser(null);
+    setEditForm({ email: '', first_name: '', last_name: '' });
+  };
+
+  const updateUserProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!editingUser) return;
+
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          email: editForm.email,
+          first_name: editForm.first_name,
+          last_name: editForm.last_name,
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', editingUser);
+
+      if (error) throw error;
+
+      toast({
+        title: "Profile updated",
+        description: "User profile has been updated successfully",
+      });
+
+      // Reset editing state
+      setEditingUser(null);
+      setEditForm({ email: '', first_name: '', last_name: '' });
+
+      // Refresh the users list
+      fetchUserProfiles();
+    } catch (error: any) {
+      console.error('Error updating user profile:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update user profile",
+        variant: "destructive",
+      });
+    }
+  };
+
   const getDisplayName = (profile: UserProfile) => {
     if (profile.first_name || profile.last_name) {
       return `${profile.first_name || ''} ${profile.last_name || ''}`.trim();
@@ -344,6 +404,66 @@ export const UserManagementTab = () => {
                         {new Date(profile.created_at).toLocaleDateString()}
                       </TableCell>
                       <TableCell className="text-right space-x-2">
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => startEditingUser(profile)}
+                            >
+                              <Edit className="h-3 w-3 mr-1" />
+                              Edit
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent>
+                            <DialogHeader>
+                              <DialogTitle>Edit User Profile</DialogTitle>
+                            </DialogHeader>
+                            <form onSubmit={updateUserProfile} className="space-y-4">
+                              <div>
+                                <Label htmlFor="edit-email">Email Address</Label>
+                                <Input
+                                  id="edit-email"
+                                  type="email"
+                                  value={editForm.email}
+                                  onChange={(e) => setEditForm(prev => ({ ...prev, email: e.target.value }))}
+                                  required
+                                />
+                              </div>
+                              <div>
+                                <Label htmlFor="edit-first-name">First Name</Label>
+                                <Input
+                                  id="edit-first-name"
+                                  type="text"
+                                  value={editForm.first_name}
+                                  onChange={(e) => setEditForm(prev => ({ ...prev, first_name: e.target.value }))}
+                                />
+                              </div>
+                              <div>
+                                <Label htmlFor="edit-last-name">Last Name</Label>
+                                <Input
+                                  id="edit-last-name"
+                                  type="text"
+                                  value={editForm.last_name}
+                                  onChange={(e) => setEditForm(prev => ({ ...prev, last_name: e.target.value }))}
+                                />
+                              </div>
+                              <div className="flex justify-end space-x-2">
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  onClick={cancelEditing}
+                                >
+                                  Cancel
+                                </Button>
+                                <Button type="submit">
+                                  Save Changes
+                                </Button>
+                              </div>
+                            </form>
+                          </DialogContent>
+                        </Dialog>
+                        
                         <Select
                           value={profile.role || 'user'}
                           onValueChange={(newRole: 'admin' | 'user') => 
@@ -381,6 +501,7 @@ export const UserManagementTab = () => {
               <li>• <strong>Role Assignment:</strong> Admins can assign roles to registered users</li>
               <li>• <strong>Invitations:</strong> Send registration invitations with pre-assigned roles</li>
               <li>• <strong>Role Changes:</strong> Modify user roles as needed</li>
+              <li>• <strong>Profile Editing:</strong> Edit user names and email addresses as needed</li>
             </ul>
           </div>
         </CardContent>

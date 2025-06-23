@@ -49,6 +49,7 @@ export type Database = {
           timeline: string | null
           total_amount: number
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           additional_requirements?: string | null
@@ -65,6 +66,7 @@ export type Database = {
           timeline?: string | null
           total_amount: number
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           additional_requirements?: string | null
@@ -81,6 +83,7 @@ export type Database = {
           timeline?: string | null
           total_amount?: number
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: [
           {

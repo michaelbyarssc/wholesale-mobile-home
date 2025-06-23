@@ -10,6 +10,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
+import { User } from '@supabase/supabase-js';
+import { Link } from 'react-router-dom';
 
 interface MobileHome {
   id: string;
@@ -28,6 +30,7 @@ interface Service {
 
 const EstimateForm = () => {
   const { toast } = useToast();
+  const [user, setUser] = useState<User | null>(null);
   
   const [selectedHome, setSelectedHome] = useState<string>('');
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
@@ -40,6 +43,37 @@ const EstimateForm = () => {
     timeline: '',
     requirements: ''
   });
+
+  // Check for authenticated user
+  useEffect(() => {
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
+      
+      // Pre-fill customer info if user is logged in
+      if (user) {
+        setCustomerInfo(prev => ({
+          ...prev,
+          email: user.email || ''
+        }));
+      }
+    };
+    
+    getUser();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user || null);
+      if (session?.user) {
+        setCustomerInfo(prev => ({
+          ...prev,
+          email: session.user.email || ''
+        }));
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   // Fetch mobile homes from database
   const { data: mobileHomes = [], isLoading: homesLoading } = useQuery({
@@ -115,6 +149,7 @@ const EstimateForm = () => {
           mobile_home_id: selectedHome,
           selected_services: selectedServices,
           total_amount: calculateTotal(),
+          user_id: user?.id || null, // Link to user if logged in
         })
         .select()
         .single();
@@ -128,7 +163,9 @@ const EstimateForm = () => {
 
       toast({
         title: "Estimate Submitted!",
-        description: "We'll send your estimate via email and text shortly.",
+        description: user 
+          ? "Your estimate has been saved to your account and we'll send you a copy via email and text."
+          : "We'll send your estimate via email and text shortly.",
       });
 
       // Reset form
@@ -137,7 +174,7 @@ const EstimateForm = () => {
       setCustomerInfo({
         name: '',
         phone: '',
-        email: '',
+        email: user?.email || '',
         address: '',
         preferredContact: '',
         timeline: '',
@@ -173,11 +210,34 @@ const EstimateForm = () => {
             Wholesale Homes of the Carolinas
           </h1>
           <p className="text-lg text-green-700">Get Your Mobile Home Estimate</p>
-          <div className="mt-4">
+          <div className="mt-4 flex justify-center gap-4">
+            {user ? (
+              <div className="flex items-center gap-4">
+                <p className="text-blue-600">Welcome, {user.email}</p>
+                <Link to="/my-estimates">
+                  <Button variant="outline">
+                    My Estimates
+                  </Button>
+                </Link>
+                <Button 
+                  onClick={() => supabase.auth.signOut()} 
+                  variant="outline"
+                >
+                  Sign Out
+                </Button>
+              </div>
+            ) : (
+              <div className="flex gap-4">
+                <Link to="/auth">
+                  <Button variant="outline">
+                    Sign In / Sign Up
+                  </Button>
+                </Link>
+              </div>
+            )}
             <Button 
               onClick={() => window.location.href = '/auth'} 
               variant="outline"
-              className="mr-4"
             >
               Admin Login
             </Button>
@@ -351,6 +411,13 @@ const EstimateForm = () => {
               >
                 Get My Estimate
               </Button>
+              {!user && (
+                <p className="text-sm text-gray-600 mt-2 text-center">
+                  <Link to="/auth" className="text-blue-600 hover:underline">
+                    Sign in or create an account
+                  </Link> to save your estimates for future reference.
+                </p>
+              )}
             </CardContent>
           </Card>
         </form>

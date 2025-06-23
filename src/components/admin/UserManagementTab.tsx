@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,54 +11,67 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { UserPlus, Shield, ShieldOff, AlertTriangle } from 'lucide-react';
 
-interface UserWithRole {
-  id: string;
+interface UserProfile {
+  user_id: string;
   email: string;
-  created_at: string;
+  first_name: string | null;
+  last_name: string | null;
   role: 'admin' | 'user' | null;
+  created_at: string;
 }
 
 export const UserManagementTab = () => {
-  const [userRoles, setUserRoles] = useState<UserWithRole[]>([]);
+  const [userProfiles, setUserProfiles] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [newUserEmail, setNewUserEmail] = useState('');
   const [newUserRole, setNewUserRole] = useState<'admin' | 'user'>('user');
   const { toast } = useToast();
 
   useEffect(() => {
-    fetchUserRoles();
+    fetchUserProfiles();
   }, []);
 
-  const fetchUserRoles = async () => {
+  const fetchUserProfiles = async () => {
     try {
       setLoading(true);
       
-      // Only fetch user roles since we can't access auth.users with anon key
+      // Fetch user roles and join with profiles to get user information
       const { data: roleData, error } = await supabase
         .from('user_roles')
-        .select('user_id, role, created_at');
+        .select(`
+          user_id,
+          role,
+          created_at,
+          profiles!inner (
+            email,
+            first_name,
+            last_name
+          )
+        `);
 
       if (error) {
-        console.error('Error fetching user roles:', error);
+        console.error('Error fetching user profiles:', error);
         toast({
           title: "Error",
-          description: "Failed to fetch user roles",
+          description: "Failed to fetch user profiles",
           variant: "destructive",
         });
         return;
       }
 
       // Transform the data to match our interface
-      const usersWithRoles: UserWithRole[] = roleData.map(role => ({
-        id: role.user_id,
-        email: `User ${role.user_id.slice(0, 8)}...`, // We can't get email with anon key
-        created_at: role.created_at,
-        role: role.role
+      const usersWithProfiles: UserProfile[] = roleData.map(role => ({
+        user_id: role.user_id,
+        email: role.profiles.email || '',
+        first_name: role.profiles.first_name,
+        last_name: role.profiles.last_name,
+        role: role.role,
+        created_at: role.created_at
       }));
 
-      setUserRoles(usersWithRoles);
+      setUserProfiles(usersWithProfiles);
     } catch (error) {
-      console.error('Error in fetchUserRoles:', error);
+      console.error('Error in fetchUserProfiles:', error);
       toast({
         title: "Error",
         description: "An unexpected error occurred",
@@ -118,7 +132,7 @@ export const UserManagementTab = () => {
       setNewUserRole('user');
 
       // Refresh the users list
-      fetchUserRoles();
+      fetchUserProfiles();
     } catch (error: any) {
       console.error('Error inviting user:', error);
       toast({
@@ -145,7 +159,7 @@ export const UserManagementTab = () => {
       });
 
       // Refresh the users list
-      fetchUserRoles();
+      fetchUserProfiles();
     } catch (error: any) {
       console.error('Error updating user role:', error);
       toast({
@@ -171,7 +185,7 @@ export const UserManagementTab = () => {
       });
 
       // Refresh the users list
-      fetchUserRoles();
+      fetchUserProfiles();
     } catch (error: any) {
       console.error('Error removing user role:', error);
       toast({
@@ -180,6 +194,13 @@ export const UserManagementTab = () => {
         variant: "destructive",
       });
     }
+  };
+
+  const getDisplayName = (profile: UserProfile) => {
+    if (profile.first_name || profile.last_name) {
+      return `${profile.first_name || ''} ${profile.last_name || ''}`.trim();
+    }
+    return profile.email || 'Unknown User';
   };
 
   if (loading) {
@@ -273,28 +294,32 @@ export const UserManagementTab = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>User ID</TableHead>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Email</TableHead>
                   <TableHead>Role</TableHead>
                   <TableHead>Assigned</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {userRoles.length === 0 ? (
+                {userProfiles.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={4} className="text-center py-8 text-gray-500">
-                      No user roles found
+                    <TableCell colSpan={5} className="text-center py-8 text-gray-500">
+                      No users with assigned roles found
                     </TableCell>
                   </TableRow>
                 ) : (
-                  userRoles.map((user) => (
-                    <TableRow key={user.id}>
-                      <TableCell className="font-mono text-xs">
-                        {user.id.slice(0, 8)}...
+                  userProfiles.map((profile) => (
+                    <TableRow key={profile.user_id}>
+                      <TableCell className="font-medium">
+                        {getDisplayName(profile)}
                       </TableCell>
                       <TableCell>
-                        <Badge variant={user.role === 'admin' ? "default" : "secondary"}>
-                          {user.role === 'admin' ? (
+                        {profile.email}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={profile.role === 'admin' ? "default" : "secondary"}>
+                          {profile.role === 'admin' ? (
                             <>
                               <Shield className="h-3 w-3 mr-1" />
                               Admin
@@ -308,13 +333,13 @@ export const UserManagementTab = () => {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        {new Date(user.created_at).toLocaleDateString()}
+                        {new Date(profile.created_at).toLocaleDateString()}
                       </TableCell>
                       <TableCell className="text-right space-x-2">
                         <Select
-                          value={user.role || 'user'}
+                          value={profile.role || 'user'}
                           onValueChange={(newRole: 'admin' | 'user') => 
-                            updateUserRole(user.id, newRole)
+                            updateUserRole(profile.user_id, newRole)
                           }
                         >
                           <SelectTrigger className="w-24">
@@ -328,7 +353,7 @@ export const UserManagementTab = () => {
                         <Button
                           size="sm"
                           variant="destructive"
-                          onClick={() => removeUserRole(user.id)}
+                          onClick={() => removeUserRole(profile.user_id)}
                         >
                           Remove
                         </Button>
@@ -344,6 +369,7 @@ export const UserManagementTab = () => {
             <h4 className="font-medium text-blue-900 mb-2">How User Management Works:</h4>
             <ul className="text-sm text-blue-700 space-y-1">
               <li>• <strong>User Registration:</strong> Users sign up through the normal registration flow</li>
+              <li>• <strong>Profile Creation:</strong> User profiles are automatically created with name and email</li>
               <li>• <strong>Role Assignment:</strong> Admins can assign roles to registered users</li>
               <li>• <strong>Invitations:</strong> Send registration invitations with pre-assigned roles</li>
               <li>• <strong>Role Changes:</strong> Modify user roles as needed</li>

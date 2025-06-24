@@ -18,11 +18,6 @@ export const EstimateHeader = ({ user, displayName, customerMarkup }: EstimateHe
         Wholesale Homes of the Carolinas
       </h1>
       <p className="text-lg text-green-700">Get Your Mobile Home Estimate</p>
-      {user && (
-        <div className="mt-2 text-sm text-blue-600">
-          Your markup: {customerMarkup}%
-        </div>
-      )}
       <div className="mt-4 flex justify-center gap-4">
         {user ? (
           <div className="flex items-center gap-4">

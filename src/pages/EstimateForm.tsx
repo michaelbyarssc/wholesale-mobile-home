@@ -94,6 +94,16 @@ const EstimateForm = () => {
   const [additionalRequirements, setAdditionalRequirements] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // Debug logging
+  console.log('EstimateForm render state:', {
+    selectedHome: selectedHome?.id,
+    selectedHomeName: selectedHome?.display_name || selectedHome?.model,
+    customerAddress: customerInfo.address,
+    bedrooms: selectedHome?.bedrooms,
+    bathrooms: selectedHome?.bathrooms,
+    shouldShowComps: !!(selectedHome && customerInfo.address)
+  });
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedHome) {
@@ -161,6 +171,7 @@ const EstimateForm = () => {
 
   const handleMobileHomeSelect = (homeId: string) => {
     const home = mobileHomes.find(h => h.id === homeId);
+    console.log('Selected mobile home:', home);
     setSelectedHome(home);
   };
 
@@ -199,6 +210,9 @@ const EstimateForm = () => {
     return dependencies.filter(depId => !selectedServices.includes(depId));
   };
 
+  const showComparables = selectedHome && customerInfo.address && customerInfo.address.trim().length > 0;
+  console.log('Should show comparable homes:', showComparables);
+
   return (
     <div className="min-h-screen bg-gray-50">
       <EstimateHeader 
@@ -232,13 +246,26 @@ const EstimateForm = () => {
             getMissingDependencies={getMissingDependencies}
           />
 
-          {/* Add Comparable Homes Card */}
-          {selectedHome && customerInfo.address && (
-            <ComparableHomesCard 
-              deliveryAddress={customerInfo.address}
-              mobileHomeBedrooms={selectedHome.bedrooms || 0}
-              mobileHomeBathrooms={selectedHome.bathrooms || 0}
-            />
+          {/* Comparable Homes Card - with debug info */}
+          {showComparables ? (
+            <div>
+              <div className="mb-2 p-2 bg-blue-100 text-blue-800 text-sm rounded">
+                Debug: Showing comps for {selectedHome.display_name || selectedHome.model} at {customerInfo.address}
+              </div>
+              <ComparableHomesCard 
+                deliveryAddress={customerInfo.address}
+                mobileHomeBedrooms={selectedHome.bedrooms || 2}
+                mobileHomeBathrooms={selectedHome.bathrooms || 1}
+              />
+            </div>
+          ) : (
+            <div className="p-4 bg-yellow-100 text-yellow-800 rounded">
+              <p className="font-medium">Comparable Homes will show here when:</p>
+              <ul className="list-disc list-inside mt-2 text-sm">
+                <li>Mobile home is selected: {selectedHome ? '✓' : '✗'}</li>
+                <li>Delivery address is entered: {customerInfo.address ? '✓' : '✗'}</li>
+              </ul>
+            </div>
           )}
           
           <Card>
@@ -259,6 +286,14 @@ const EstimateForm = () => {
             total={calculateTotal()}
             user={null}
           />
+
+          <Button 
+            type="submit" 
+            disabled={loading || !selectedHome}
+            className="w-full"
+          >
+            {loading ? 'Submitting...' : 'Submit Estimate'}
+          </Button>
         </form>
       </div>
     </div>

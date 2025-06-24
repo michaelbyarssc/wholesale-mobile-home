@@ -1,423 +1,184 @@
 import React, { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { useQuery } from '@tanstack/react-query';
-import { User } from '@supabase/supabase-js';
-import { Link } from 'react-router-dom';
-import { useConditionalServices } from '@/hooks/useConditionalServices';
-import { useCustomerPricing } from '@/hooks/useCustomerPricing';
+import { EstimateHeader } from '@/components/estimate/EstimateHeader';
+import { CustomerInformation } from '@/components/estimate/CustomerInformation';
 import { MobileHomeSelection } from '@/components/estimate/MobileHomeSelection';
 import { ServicesSelection } from '@/components/estimate/ServicesSelection';
-import { CustomerInformation } from '@/components/estimate/CustomerInformation';
 import { EstimateTotal } from '@/components/estimate/EstimateTotal';
-import { EstimateHeader } from '@/components/estimate/EstimateHeader';
-import { Badge } from '@/components/ui/badge';
-import type { Database } from '@/integrations/supabase/types';
-import { CartItem } from '@/hooks/useShoppingCart';
-
-type MobileHome = Database['public']['Tables']['mobile_homes']['Row'];
-type Service = Database['public']['Tables']['services']['Row'];
+import { ComparableHomesCard } from '@/components/estimate-approval/ComparableHomesCard';
+import { useShoppingCart } from '@/hooks/useShoppingCart';
+import { useCustomerPricing } from '@/hooks/useCustomerPricing';
 
 const EstimateForm = () => {
+  const navigate = useNavigate();
   const { toast } = useToast();
-  const [user, setUser] = useState<User | null>(null);
-  const [userProfile, setUserProfile] = useState<{first_name: string, last_name: string} | null>(null);
+  const { cart, clearCart } = useShoppingCart();
+  const { customerPricing } = useCustomerPricing();
   
-  const [selectedHome, setSelectedHome] = useState<string>('');
-  const [selectedServices, setSelectedServices] = useState<string[]>([]);
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
-  const [customerInfo, setCustomerInfo] = useState({
-    name: '',
-    phone: '',
-    email: '',
-    address: '',
-    preferredContact: '',
-    timeline: '',
-    requirements: ''
-  });
+  const [services, setServices] = useState<any[]>([]);
 
-  // Get customer pricing
-  const { markupPercentage, calculatePrice, loading: pricingLoading } = useCustomerPricing(user);
-
-  // Check for authenticated user and load cart data
   useEffect(() => {
-    const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
-      
-      // Get user profile if user is logged in
-      if (user) {
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('first_name, last_name')
-          .eq('user_id', user.id)
-          .single();
+    fetchServices();
+  }, []);
 
-        if (profileData) {
-          setUserProfile(profileData);
-          
-          // Populate customer info with profile data
-          const fullName = `${profileData.first_name || ''} ${profileData.last_name || ''}`.trim();
-          setCustomerInfo(prev => ({
-            ...prev,
-            name: fullName || prev.name,
-            email: user.email || prev.email
-          }));
-        } else {
-          // If no profile data, just set email
-          setCustomerInfo(prev => ({
-            ...prev,
-            email: user.email || prev.email
-          }));
-        }
-      }
-    };
-    
-    getUser();
-
-    // Check for cart data from localStorage
-    const cartData = localStorage.getItem('cart_for_estimate');
-    if (cartData) {
-      try {
-        const parsedCartItems: CartItem[] = JSON.parse(cartData);
-        setCartItems(parsedCartItems);
-        
-        // Pre-select the first mobile home from cart
-        if (parsedCartItems.length > 0) {
-          setSelectedHome(parsedCartItems[0].mobileHome.id);
-          setSelectedServices(parsedCartItems[0].selectedServices);
-        }
-        
-        // Clear the cart data from localStorage after loading
-        localStorage.removeItem('cart_for_estimate');
-        
-        toast({
-          title: "Cart Items Loaded",
-          description: `Loaded ${parsedCartItems.length} item(s) from your cart.`,
-        });
-      } catch (error) {
-        console.error('Error parsing cart data:', error);
-        localStorage.removeItem('cart_for_estimate');
-      }
-    }
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      setUser(session?.user || null);
-      if (session?.user) {
-        // Get user profile when auth state changes
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('first_name, last_name')
-          .eq('user_id', session.user.id)
-          .single();
-
-        if (profileData) {
-          setUserProfile(profileData);
-          
-          // Populate customer info with profile data
-          const fullName = `${profileData.first_name || ''} ${profileData.last_name || ''}`.trim();
-          setCustomerInfo(prev => ({
-            ...prev,
-            name: fullName || prev.name,
-            email: session.user.email || prev.email
-          }));
-        } else {
-          // If no profile data, just set email
-          setCustomerInfo(prev => ({
-            ...prev,
-            email: session.user.email || prev.email
-          }));
-        }
-      } else {
-        setUserProfile(null);
-        // Clear customer info when user logs out
-        setCustomerInfo({
-          name: '',
-          phone: '',
-          email: '',
-          address: '',
-          preferredContact: '',
-          timeline: '',
-          requirements: ''
-        });
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, [toast]);
-
-  const getUserDisplayName = () => {
-    if (userProfile?.first_name && userProfile?.last_name) {
-      return `${userProfile.first_name} ${userProfile.last_name}`;
-    } else if (userProfile?.first_name) {
-      return userProfile.first_name;
-    }
-    return null;
-  };
-
-  // Fetch mobile homes from database
-  const { data: mobileHomes = [], isLoading: homesLoading } = useQuery({
-    queryKey: ['mobile-homes'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('mobile_homes')
-        .select('*')
-        .eq('active', true)
-        .order('series', { ascending: true });
-      
-      if (error) throw error;
-      return data;
-    }
-  });
-
-  const { data: services = [], isLoading: servicesLoading } = useQuery({
-    queryKey: ['services'],
-    queryFn: async () => {
+  const fetchServices = async () => {
+    try {
       const { data, error } = await supabase
         .from('services')
-        .select('*')
-        .eq('active', true)
-        .order('name', { ascending: true });
-      
-      if (error) throw error;
-      return data;
+        .select('*');
+
+      if (error) {
+        console.error('Error fetching services:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load services. Please try again.",
+          variant: "destructive",
+        });
+      } else {
+        setServices(data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching services:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load services. Please try again.",
+        variant: "destructive",
+      });
     }
+  };
+  
+  const [customerInfo, setCustomerInfo] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    deliveryAddress: ''
   });
-
-  const {
-    availableServices,
-    getServicePrice,
-    getDependencies,
-    getMissingDependencies,
-    getServicesByDependency
-  } = useConditionalServices(services, selectedHome, mobileHomes, selectedServices);
-
-  const handleServiceToggle = (serviceId: string) => {
-    const service = services.find(s => s.id === serviceId);
-    if (!service) return;
-
-    if (selectedServices.includes(serviceId)) {
-      // Removing service - check if other services depend on it
-      const dependentServices = getServicesByDependency(serviceId);
-      const selectedDependentServices = dependentServices.filter(s => 
-        selectedServices.includes(s.id)
-      );
-
-      if (selectedDependentServices.length > 0) {
-        toast({
-          title: "Cannot Remove Service",
-          description: `This service is required by: ${selectedDependentServices.map(s => s.name).join(', ')}`,
-          variant: "destructive",
-        });
-        return;
-      }
-
-      setSelectedServices(prev => prev.filter(id => id !== serviceId));
-    } else {
-      // Adding service - check dependencies
-      const missingDeps = getMissingDependencies(serviceId);
-      if (missingDeps.length > 0) {
-        const missingServiceNames = missingDeps.map(depId => 
-          services.find(s => s.id === depId)?.name
-        ).filter(Boolean);
-
-        toast({
-          title: "Missing Dependencies",
-          description: `Please select these services first: ${missingServiceNames.join(', ')}`,
-          variant: "destructive",
-        });
-        return;
-      }
-
-      setSelectedServices(prev => [...prev, serviceId]);
-    }
-  };
-
-  const calculateTotal = () => {
-    if (pricingLoading) {
-      return 0; // Return 0 while loading
-    }
-
-    const selectedMobileHome = selectedHome ? mobileHomes.find(h => h.id === selectedHome) : null;
-    const homePrice = selectedMobileHome ? calculatePrice(selectedMobileHome.cost || selectedMobileHome.price) : 0;
-    
-    const servicesPrice = selectedServices.reduce((total, serviceId) => {
-      const service = services.find(s => s.id === serviceId);
-      if (!service) return total;
-      
-      const serviceCost = service.cost || service.price;
-      return total + calculatePrice(serviceCost);
-    }, 0);
-    
-    console.log('Calculating total:', { homePrice, servicesPrice, total: homePrice + servicesPrice });
-    return homePrice + servicesPrice;
-  };
+  const [selectedHome, setSelectedHome] = useState<any>(null);
+  const [selectedServices, setSelectedServices] = useState<string[]>([]);
+  const [additionalRequirements, setAdditionalRequirements] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!selectedHome || !customerInfo.name || !customerInfo.phone || !customerInfo.email) {
+    if (!selectedHome) {
       toast({
-        title: "Missing Information",
-        description: "Please fill in all required fields and select a mobile home.",
+        title: "Error",
+        description: "Please select a mobile home",
         variant: "destructive",
       });
       return;
     }
 
+    setLoading(true);
     try {
-      // Save estimate to database
-      const { data, error } = await supabase
-        .from('estimates')
-        .insert({
+      const { data, error } = await supabase.functions.invoke('send-estimate-notifications', {
+        body: {
           customer_name: customerInfo.name,
-          customer_phone: customerInfo.phone,
           customer_email: customerInfo.email,
-          delivery_address: customerInfo.address,
-          preferred_contact: customerInfo.preferredContact,
-          timeline: customerInfo.timeline,
-          additional_requirements: customerInfo.requirements,
-          mobile_home_id: selectedHome,
+          customer_phone: customerInfo.phone,
+          delivery_address: customerInfo.deliveryAddress,
+          mobile_home_id: selectedHome.id,
           selected_services: selectedServices,
-          total_amount: calculateTotal(),
-          user_id: user?.id || null, // Link to user if logged in
-        })
-        .select()
-        .single();
+          additional_requirements: additionalRequirements,
+          total_amount: calculateTotal()
+        }
+      });
 
       if (error) throw error;
 
-      // Send email and SMS notifications
-      await supabase.functions.invoke('send-estimate-notifications', {
-        body: { estimateId: data.id }
-      });
-
+      clearCart();
       toast({
         title: "Estimate Submitted!",
-        description: user 
-          ? "Your estimate has been saved to your account and we'll send you a copy via email and text."
-          : "We'll send your estimate via email and text shortly.",
+        description: "Your estimate has been submitted. You'll receive an email with details and approval link shortly.",
       });
-
-      // Reset form
-      setSelectedHome('');
-      setSelectedServices([]);
-      setCartItems([]);
-      
-      // Reset customer info but keep user data if logged in
-      if (user && userProfile) {
-        const fullName = `${userProfile.first_name || ''} ${userProfile.last_name || ''}`.trim();
-        setCustomerInfo({
-          name: fullName,
-          phone: '',
-          email: user.email || '',
-          address: '',
-          preferredContact: '',
-          timeline: '',
-          requirements: ''
-        });
-      } else {
-        setCustomerInfo({
-          name: '',
-          phone: '',
-          email: user?.email || '',
-          address: '',
-          preferredContact: '',
-          timeline: '',
-          requirements: ''
-        });
-      }
-
+      navigate('/');
     } catch (error) {
       console.error('Error submitting estimate:', error);
       toast({
         title: "Error",
-        description: "There was a problem submitting your estimate. Please try again.",
+        description: "Failed to submit estimate. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setLoading(false);
     }
   };
 
-  if (homesLoading || servicesLoading || pricingLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-green-50 to-yellow-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-lg text-blue-900">Loading mobile homes and services...</p>
-        </div>
-      </div>
-    );
-  }
+  const calculateTotal = () => {
+    let total = selectedHome?.price || 0;
+    
+    // Add selected services
+    selectedServices.forEach(serviceId => {
+      const service = services.find(s => s.id === serviceId);
+      if (service) {
+        total += service.price;
+      }
+    });
 
-  const displayName = getUserDisplayName();
+    // Apply customer pricing if available
+    if (customerPricing?.markup_percentage) {
+      total = total * (1 + customerPricing.markup_percentage / 100);
+    }
+
+    return total;
+  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-green-50 to-yellow-50 py-8">
-      <div className="container mx-auto px-4 max-w-4xl">
-        <EstimateHeader 
-          user={user}
-          displayName={displayName}
-          customerMarkup={markupPercentage}
-        />
+    <div className="min-h-screen bg-gray-50">
+      <EstimateHeader />
+      
+      <div className="max-w-4xl mx-auto py-8 px-4">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <CustomerInformation 
+            customerInfo={customerInfo}
+            setCustomerInfo={setCustomerInfo}
+          />
+          
+          <MobileHomeSelection 
+            selectedHome={selectedHome}
+            setSelectedHome={setSelectedHome}
+          />
+          
+          <ServicesSelection 
+            selectedServices={selectedServices}
+            setSelectedServices={setSelectedServices}
+            services={services}
+          />
 
-        {cartItems.length > 0 && (
-          <Card className="mb-8">
+          {/* Add Comparable Homes Card */}
+          {selectedHome && customerInfo.deliveryAddress && (
+            <ComparableHomesCard 
+              deliveryAddress={customerInfo.deliveryAddress}
+              mobileHomeBedrooms={selectedHome.bedrooms || 0}
+              mobileHomeBathrooms={selectedHome.bathrooms || 0}
+            />
+          )}
+          
+          <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                Cart Items Loaded
-                <Badge variant="secondary">{cartItems.length} item(s)</Badge>
-              </CardTitle>
+              <CardTitle>Additional Requirements</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-gray-600">
-                Your cart items have been loaded into this estimate form. You can modify the selection below.
-              </p>
+              <textarea
+                value={additionalRequirements}
+                onChange={(e) => setAdditionalRequirements(e.target.value)}
+                placeholder="Any special requirements or notes..."
+                className="w-full p-3 border border-gray-300 rounded-lg resize-vertical min-h-[100px]"
+              />
             </CardContent>
           </Card>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-8">
-          <MobileHomeSelection
-            mobileHomes={mobileHomes}
-            selectedMobileHome={selectedHome ? mobileHomes.find(h => h.id === selectedHome) || null : null}
-            onMobileHomeSelect={setSelectedHome}
-            user={user}
-          />
-
-          <ServicesSelection
+          
+          <EstimateTotal 
             selectedHome={selectedHome}
-            availableServices={availableServices}
             selectedServices={selectedServices}
-            services={services}
-            onServiceToggle={handleServiceToggle}
-            calculatePrice={calculatePrice}
-            getDependencies={getDependencies}
-            getMissingDependencies={getMissingDependencies}
-          />
-
-          <CustomerInformation
-            customerInfo={customerInfo}
-            onCustomerInfoChange={setCustomerInfo}
-          />
-
-          <EstimateTotal
+            loading={loading}
             total={calculateTotal()}
-            user={user}
           />
         </form>
-
-        {/* Business Contact Info */}
-        <div className="mt-8 text-center text-gray-600">
-          <p className="mb-2">Questions? Contact us:</p>
-          <p>Phone: (555) 123-4567 | Email: info@wholesalehomescarolinas.com</p>
-        </div>
       </div>
     </div>
   );

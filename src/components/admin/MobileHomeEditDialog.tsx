@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Upload, X, Image, Edit2 } from 'lucide-react';
+import { formatPrice } from '@/lib/utils';
 import type { Database } from '@/integrations/supabase/types';
 
 type MobileHome = Database['public']['Tables']['mobile_homes']['Row'];
@@ -39,7 +40,6 @@ export const MobileHomeEditDialog = ({ mobileHome, open, onClose, onSave }: Mobi
   useEffect(() => {
     if (mobileHome) {
       setFormData(mobileHome);
-      // Handle features - convert from Json to string array, then join
       if (mobileHome.features) {
         if (Array.isArray(mobileHome.features)) {
           setFeatures(mobileHome.features.join('\n'));
@@ -90,7 +90,6 @@ export const MobileHomeEditDialog = ({ mobileHome, open, onClose, onSave }: Mobi
       throw error;
     }
 
-    // Get the public URL for the uploaded file
     const { data: { publicUrl } } = supabase.storage
       .from('mobile-home-images')
       .getPublicUrl(fileName);
@@ -102,7 +101,6 @@ export const MobileHomeEditDialog = ({ mobileHome, open, onClose, onSave }: Mobi
     const files = event.target.files;
     if (!files || !mobileHome) return;
 
-    // Check if adding these files would exceed the limit
     if (images.length + files.length > 15) {
       toast({
         title: "Upload Limit Exceeded",
@@ -116,7 +114,6 @@ export const MobileHomeEditDialog = ({ mobileHome, open, onClose, onSave }: Mobi
     
     for (const file of Array.from(files)) {
       try {
-        // Upload to Supabase Storage and get permanent URL
         const imageUrl = await uploadImageToStorage(file);
         
         const { error } = await supabase
@@ -126,7 +123,7 @@ export const MobileHomeEditDialog = ({ mobileHome, open, onClose, onSave }: Mobi
             image_url: imageUrl,
             image_type: 'general',
             display_order: images.length,
-            alt_text: file.name.replace(/\.[^/.]+$/, '') // Remove file extension
+            alt_text: file.name.replace(/\.[^/.]+$/, '')
           });
 
         if (error) throw error;
@@ -148,12 +145,10 @@ export const MobileHomeEditDialog = ({ mobileHome, open, onClose, onSave }: Mobi
     }
     
     setUploading(false);
-    // Reset the input
     event.target.value = '';
   };
 
   const deleteImageFromStorage = async (imageUrl: string) => {
-    // Extract the file path from the public URL
     const urlParts = imageUrl.split('/');
     const bucketIndex = urlParts.findIndex(part => part === 'mobile-home-images');
     if (bucketIndex !== -1 && bucketIndex < urlParts.length - 1) {
@@ -165,17 +160,14 @@ export const MobileHomeEditDialog = ({ mobileHome, open, onClose, onSave }: Mobi
       
       if (error) {
         console.error('Error deleting file from storage:', error);
-        // Don't throw error here as we still want to remove from database
       }
     }
   };
 
   const handleDeleteImage = async (imageId: string) => {
     try {
-      // Find the image to get its URL for storage deletion
       const imageToDelete = images.find(img => img.id === imageId);
       
-      // Delete from database first
       const { error } = await supabase
         .from('mobile_home_images')
         .delete()
@@ -183,7 +175,6 @@ export const MobileHomeEditDialog = ({ mobileHome, open, onClose, onSave }: Mobi
 
       if (error) throw error;
       
-      // Then delete from storage if it's a storage URL
       if (imageToDelete && imageToDelete.image_url.includes('supabase')) {
         await deleteImageFromStorage(imageToDelete.image_url);
       }
@@ -262,7 +253,6 @@ export const MobileHomeEditDialog = ({ mobileHome, open, onClose, onSave }: Mobi
         description: "Mobile home updated successfully.",
       });
 
-      // Call onSave to refresh the parent component's data
       onSave();
       onClose();
     } catch (error) {
@@ -329,12 +319,20 @@ export const MobileHomeEditDialog = ({ mobileHome, open, onClose, onSave }: Mobi
 
             <div>
               <Label htmlFor="price">Price</Label>
-              <Input
-                id="price"
-                type="number"
-                value={formData.price || ''}
-                onChange={(e) => handleInputChange('price', parseFloat(e.target.value))}
-              />
+              <div className="space-y-2">
+                {formData.price && (
+                  <div className="text-sm text-gray-600 font-medium">
+                    Current Price: {formatPrice(formData.price)}
+                  </div>
+                )}
+                <Input
+                  id="price"
+                  type="number"
+                  value={formData.price || ''}
+                  onChange={(e) => handleInputChange('price', parseFloat(e.target.value))}
+                  placeholder="Enter price without $ or commas"
+                />
+              </div>
             </div>
 
             <div>
@@ -447,7 +445,6 @@ export const MobileHomeEditDialog = ({ mobileHome, open, onClose, onSave }: Mobi
                     className="w-full h-24 object-cover rounded mb-2"
                   />
                   
-                  {/* Image controls */}
                   <div className="absolute top-1 right-1 flex gap-1">
                     <button
                       onClick={() => handleStartEditLabel(image.id, image.alt_text)}
@@ -465,7 +462,6 @@ export const MobileHomeEditDialog = ({ mobileHome, open, onClose, onSave }: Mobi
                     </button>
                   </div>
                   
-                  {/* Label editing */}
                   {editingLabel === image.id ? (
                     <div className="space-y-2">
                       <Input

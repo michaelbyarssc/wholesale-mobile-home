@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { MobileHomeEditDialog } from './MobileHomeEditDialog';
 import { Edit, Trash2 } from 'lucide-react';
+import { formatPrice } from '@/lib/utils';
 import type { Database } from '@/integrations/supabase/types';
 
 type MobileHome = Database['public']['Tables']['mobile_homes']['Row'];
@@ -40,7 +40,6 @@ export const MobileHomesTab = () => {
     }
   });
 
-  // Get unique series for the dropdown
   const { data: existingSeries = [] } = useQuery({
     queryKey: ['mobile-home-series'],
     queryFn: async () => {
@@ -174,7 +173,6 @@ export const MobileHomesTab = () => {
     }
 
     try {
-      // First, get all images associated with this home
       const { data: images, error: imagesError } = await supabase
         .from('mobile_home_images')
         .select('image_url')
@@ -184,14 +182,12 @@ export const MobileHomesTab = () => {
         console.error('Error fetching images:', imagesError);
       }
 
-      // Delete all associated images from storage
       if (images && images.length > 0) {
         for (const image of images) {
           await deleteImageFromStorage(image.image_url);
         }
       }
 
-      // Delete all mobile_home_images records
       const { error: deleteImagesError } = await supabase
         .from('mobile_home_images')
         .delete()
@@ -201,7 +197,6 @@ export const MobileHomesTab = () => {
         console.error('Error deleting image records:', deleteImagesError);
       }
 
-      // Set mobile_home_id to null in estimates that reference this home
       const { error: updateEstimatesError } = await supabase
         .from('estimates')
         .update({ mobile_home_id: null })
@@ -217,7 +212,6 @@ export const MobileHomesTab = () => {
         return;
       }
 
-      // Finally, delete the mobile home
       const { error } = await supabase
         .from('mobile_homes')
         .delete()
@@ -347,12 +341,16 @@ export const MobileHomesTab = () => {
                     <TableCell>{home.series}</TableCell>
                     <TableCell>{home.model}</TableCell>
                     <TableCell>
-                      <Input
-                        type="number"
-                        defaultValue={home.price}
-                        onBlur={(e) => updatePrice(home.id, parseFloat(e.target.value))}
-                        className="w-24"
-                      />
+                      <div className="flex items-center space-x-1">
+                        <span className="text-sm font-medium">{formatPrice(home.price)}</span>
+                        <Input
+                          type="number"
+                          defaultValue={home.price || 0}
+                          onBlur={(e) => updatePrice(home.id, parseFloat(e.target.value))}
+                          className="w-24 text-xs"
+                          placeholder="Price"
+                        />
+                      </div>
                     </TableCell>
                     <TableCell>{home.square_footage || 'N/A'}</TableCell>
                     <TableCell>

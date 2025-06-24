@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Home, Bed, Bath, Maximize, Ruler } from 'lucide-react';
 import { MobileHomeImageCarousel } from './MobileHomeImageCarousel';
+import { formatPrice } from '@/lib/utils';
 
 interface MobileHome {
   id: string;
@@ -23,6 +24,7 @@ interface MobileHome {
   floor_plan_image_url: string | null;
   exterior_image_url: string | null;
   active: boolean;
+  price: number | null;
 }
 
 interface MobileHomeImage {
@@ -120,6 +122,11 @@ export const MobileHomesShowcase = () => {
           </div>
           {home.description && (
             <p className="text-gray-600 text-sm mt-2">{home.description}</p>
+          )}
+          {home.price && (
+            <div className="mt-2">
+              <span className="text-2xl font-bold text-green-600">{formatPrice(home.price)}</span>
+            </div>
           )}
         </CardHeader>
         

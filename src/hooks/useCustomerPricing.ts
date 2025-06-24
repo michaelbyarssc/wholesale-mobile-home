@@ -2,13 +2,14 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { User } from '@supabase/supabase-js';
+import { formatPrice } from '@/lib/utils';
 
 interface CustomerMarkup {
   markup_percentage: number;
 }
 
 export const useCustomerPricing = (user: User | null) => {
-  const [customerMarkup, setCustomerMarkup] = useState<number>(30); // Default to 30%
+  const [customerMarkup, setCustomerMarkup] = useState<number>(30);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -25,11 +26,10 @@ export const useCustomerPricing = (user: User | null) => {
           .eq('user_id', user.id)
           .single();
 
-        if (error && error.code !== 'PGRST116') { // PGRST116 is "not found" error
+        if (error && error.code !== 'PGRST116') {
           console.error('Error fetching customer markup:', error);
         }
 
-        // If no markup found, create one with 30% default
         if (!data || error?.code === 'PGRST116') {
           const { error: insertError } = await supabase
             .from('customer_markups')
@@ -59,9 +59,15 @@ export const useCustomerPricing = (user: User | null) => {
     return cost * (1 + customerMarkup / 100);
   };
 
+  const formatCalculatedPrice = (cost: number): string => {
+    const price = calculatePrice(cost);
+    return formatPrice(price);
+  };
+
   return {
     customerMarkup,
     calculatePrice,
+    formatCalculatedPrice,
     loading
   };
 };

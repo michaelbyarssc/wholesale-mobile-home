@@ -143,7 +143,6 @@ const Auth = () => {
           <h1 className="text-3xl font-bold text-blue-900 mb-2">
             Wholesale Homes of the Carolinas
           </h1>
-          <p className="text-lg text-green-700">Admin Portal</p>
         </div>
 
         <Card>
@@ -151,8 +150,8 @@ const Auth = () => {
             <CardTitle>{isSignUp ? 'Create Account' : 'Sign In'}</CardTitle>
             <CardDescription>
               {isSignUp 
-                ? 'Create an admin account to access the dashboard'
-                : 'Sign in to access the admin dashboard'
+                ? 'Create an account to access the platform'
+                : 'Sign in to access the platform'
               }
             </CardDescription>
           </CardHeader>

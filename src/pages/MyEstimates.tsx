@@ -105,6 +105,26 @@ const MyEstimates = () => {
     }
   });
 
+  // Fetch business info for contact details
+  const { data: businessInfo } = useQuery({
+    queryKey: ['business-info'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('admin_settings')
+        .select('setting_key, setting_value')
+        .in('setting_key', ['business_phone', 'business_email', 'business_name']);
+      
+      if (error) throw error;
+      
+      const info: Record<string, string> = {};
+      data?.forEach((setting) => {
+        info[setting.setting_key] = setting.setting_value;
+      });
+      
+      return info;
+    }
+  });
+
   const getSelectedServices = (serviceIds: string[] | null) => {
     if (!serviceIds || !services.length) return [];
     return services.filter(service => serviceIds.includes(service.id));
@@ -274,7 +294,17 @@ const MyEstimates = () => {
         {/* Business Contact Info */}
         <div className="mt-8 text-center text-gray-600">
           <p className="mb-2">Questions about your estimates? Contact us:</p>
-          <p>Phone: (555) 123-4567 | Email: info@wholesalehomescarolinas.com</p>
+          <div className="flex justify-center items-center gap-4 flex-wrap">
+            {businessInfo?.business_phone && (
+              <span>Phone: {businessInfo.business_phone}</span>
+            )}
+            {businessInfo?.business_email && (
+              <span>Email: {businessInfo.business_email}</span>
+            )}
+            {!businessInfo?.business_phone && !businessInfo?.business_email && (
+              <span>Phone: (555) 123-4567 | Email: info@wholesalehomescarolinas.com</span>
+            )}
+          </div>
         </div>
       </div>
     </div>

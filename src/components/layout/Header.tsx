@@ -3,10 +3,11 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
-import { ShoppingCart as CartIcon, LogOut, User, Lock, Menu } from 'lucide-react';
+import { ShoppingCart as CartIcon, LogOut, User, Lock, Menu, Phone, Mail } from 'lucide-react';
 import { User as SupabaseUser } from '@supabase/supabase-js';
 import { CartItem } from '@/hooks/useShoppingCart';
 import { PasswordChangeDialog } from '@/components/auth/PasswordChangeDialog';
+import { useBusinessInfo } from '@/hooks/useBusinessInfo';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,6 +36,7 @@ export const Header = ({
 }: HeaderProps) => {
   const navigate = useNavigate();
   const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
+  const { data: businessInfo } = useBusinessInfo();
 
   const displayName = userProfile?.first_name || 'User';
 
@@ -45,11 +47,33 @@ export const Header = ({
   return (
     <>
       <header className="bg-white shadow-sm">
+        {/* Business Contact Bar */}
+        {(businessInfo?.business_phone || businessInfo?.business_email) && (
+          <div className="bg-blue-50 border-b border-blue-100">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="flex flex-col sm:flex-row justify-center items-center py-2 gap-2 sm:gap-6 text-sm">
+                {businessInfo.business_phone && (
+                  <div className="flex items-center gap-1 text-blue-700">
+                    <Phone className="h-3 w-3" />
+                    <span>{businessInfo.business_phone}</span>
+                  </div>
+                )}
+                {businessInfo.business_email && (
+                  <div className="flex items-center gap-1 text-blue-700">
+                    <Mail className="h-3 w-3" />
+                    <span>{businessInfo.business_email}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center py-3 sm:py-4 lg:py-6 gap-3 sm:gap-4">
             <div className="flex items-center w-full sm:w-auto">
               <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-blue-900 leading-tight">
-                Wholesale Homes of the Carolinas
+                {businessInfo?.business_name || 'Wholesale Homes of the Carolinas'}
               </h1>
             </div>
             {!user ? (

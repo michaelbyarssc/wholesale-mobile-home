@@ -40,8 +40,8 @@ export const useShoppingCart = () => {
     }
   }, [cartItems]);
 
-  const addToCart = useCallback((mobileHome: Database['public']['Tables']['mobile_homes']['Row']) => {
-    console.log('addToCart called with:', mobileHome.id, mobileHome.model);
+  const addToCart = useCallback((mobileHome: Database['public']['Tables']['mobile_homes']['Row'], selectedServices: string[] = []) => {
+    console.log('addToCart called with:', mobileHome.id, mobileHome.model, 'services:', selectedServices);
     
     setCartItems(prevItems => {
       console.log('Current cart items before update:', prevItems.length);
@@ -49,17 +49,22 @@ export const useShoppingCart = () => {
       console.log('Existing item index:', existingIndex);
       
       if (existingIndex >= 0) {
-        // Item already exists, keep existing services
-        console.log('Item already in cart, keeping existing');
-        return prevItems;
+        // Item already exists, update services
+        console.log('Item already in cart, updating services');
+        const updatedItems = [...prevItems];
+        updatedItems[existingIndex] = {
+          ...updatedItems[existingIndex],
+          selectedServices
+        };
+        return updatedItems;
       } else {
         // Add new item
         const newItem: CartItem = {
           id: mobileHome.id,
           mobileHome,
-          selectedServices: []
+          selectedServices
         };
-        console.log('Adding new item to cart:', newItem.id);
+        console.log('Adding new item to cart:', newItem.id, 'with services:', selectedServices);
         const newCart = [...prevItems, newItem];
         console.log('New cart length after adding:', newCart.length);
         

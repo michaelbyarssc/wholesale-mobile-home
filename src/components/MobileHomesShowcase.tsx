@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Home, Bed, Bath, Maximize, Ruler } from 'lucide-react';
 import { MobileHomeImageCarousel } from './MobileHomeImageCarousel';
+import { MobileHomeServicesDialog } from './MobileHomeServicesDialog';
 import { ShoppingCart } from './ShoppingCart';
 import { useCustomerPricing } from '@/hooks/useCustomerPricing';
 import { useShoppingCart } from '@/hooks/useShoppingCart';
@@ -30,6 +31,7 @@ interface MobileHomesShowcaseProps {
 
 export const MobileHomesShowcase = ({ user = null }: MobileHomesShowcaseProps) => {
   const [activeTab, setActiveTab] = useState('');
+  const [selectedHomeForServices, setSelectedHomeForServices] = useState<MobileHome | null>(null);
   const { formatCalculatedPrice, loading: pricingLoading } = useCustomerPricing(user);
   
   const {
@@ -120,11 +122,14 @@ export const MobileHomesShowcase = ({ user = null }: MobileHomesShowcaseProps) =
 
   const handleAddToCart = useCallback((home: MobileHome) => {
     console.log('Add to cart button clicked for:', home.id, home.model);
-    console.log('Cart items before adding:', cartItems.length);
-    addToCart(home);
-    // Note: cartItems.length here will still show the old value due to React's async state updates
-    console.log('Add to cart function called - state will update on next render');
-  }, [addToCart, cartItems.length]);
+    setSelectedHomeForServices(home);
+  }, []);
+
+  const handleAddToCartWithServices = useCallback((home: MobileHome, selectedServices: string[]) => {
+    console.log('Adding to cart with services:', home.id, selectedServices);
+    addToCart(home, selectedServices);
+    setSelectedHomeForServices(null);
+  }, [addToCart]);
 
   const renderHomeCard = (home: MobileHome, index: number) => {
     const homeImageList = getHomeImages(home.id);
@@ -350,15 +355,25 @@ export const MobileHomesShowcase = ({ user = null }: MobileHomesShowcaseProps) =
 
         {/* Shopping Cart - Only show for logged in users */}
         {user && (
-          <ShoppingCart
-            isOpen={isCartOpen}
-            onClose={() => setIsCartOpen(false)}
-            cartItems={cartItems}
-            onRemoveItem={removeFromCart}
-            onUpdateServices={updateServices}
-            onClearCart={clearCart}
-            user={user}
-          />
+          <>
+            <ShoppingCart
+              isOpen={isCartOpen}
+              onClose={() => setIsCartOpen(false)}
+              cartItems={cartItems}
+              onRemoveItem={removeFromCart}
+              onUpdateServices={updateServices}
+              onClearCart={clearCart}
+              user={user}
+            />
+            
+            <MobileHomeServicesDialog
+              isOpen={!!selectedHomeForServices}
+              onClose={() => setSelectedHomeForServices(null)}
+              mobileHome={selectedHomeForServices!}
+              onAddToCart={handleAddToCartWithServices}
+              user={user}
+            />
+          </>
         )}
       </div>
     </section>

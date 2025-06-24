@@ -175,7 +175,7 @@ async function searchProperties(latitude: number, longitude: number, radius: num
         searchLocation: { latitude, longitude }
       }),
       { 
-        headers: { corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,
       },
     )

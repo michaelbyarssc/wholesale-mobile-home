@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -61,8 +62,20 @@ const Index = () => {
   }, [user]);
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    navigate('/');
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('Error signing out:', error);
+      } else {
+        // Clear local state
+        setUser(null);
+        setUserProfile(null);
+        // Navigate to home page after successful logout
+        navigate('/');
+      }
+    } catch (error) {
+      console.error('Error during logout:', error);
+    }
   };
 
   const features = [

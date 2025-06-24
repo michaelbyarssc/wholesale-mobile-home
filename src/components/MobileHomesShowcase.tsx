@@ -136,7 +136,7 @@ export const MobileHomesShowcase = ({ user = null }: MobileHomesShowcaseProps) =
               <Badge variant="secondary" className="bg-blue-100 text-blue-800">
                 {home.series} Series
               </Badge>
-              {isInCart && (
+              {user && isInCart && (
                 <Badge variant="default" className="bg-green-100 text-green-800">
                   In Cart
                 </Badge>
@@ -149,6 +149,11 @@ export const MobileHomesShowcase = ({ user = null }: MobileHomesShowcaseProps) =
           {user && home.price && (
             <div className="mt-2">
               <span className="text-2xl font-bold text-green-600">{formatCalculatedPrice(home.price)}</span>
+            </div>
+          )}
+          {!user && (
+            <div className="mt-2">
+              <span className="text-lg text-gray-500 italic">Login to view pricing</span>
             </div>
           )}
         </CardHeader>
@@ -209,14 +214,24 @@ export const MobileHomesShowcase = ({ user = null }: MobileHomesShowcaseProps) =
             </div>
           )}
 
-          {/* Add to Cart Button */}
-          <Button 
-            onClick={() => addToCart(home)}
-            className="w-full"
-            variant={isInCart ? "outline" : "default"}
-          >
-            {isInCart ? 'Update in Cart' : 'Add to Cart'}
-          </Button>
+          {/* Add to Cart Button - Only show for logged in users */}
+          {user ? (
+            <Button 
+              onClick={() => addToCart(home)}
+              className="w-full"
+              variant={isInCart ? "outline" : "default"}
+            >
+              {isInCart ? 'Update in Cart' : 'Add to Cart'}
+            </Button>
+          ) : (
+            <Button 
+              onClick={() => window.location.href = '/auth'}
+              className="w-full"
+              variant="outline"
+            >
+              Login to Add to Cart
+            </Button>
+          )}
         </CardContent>
       </Card>
     );
@@ -272,26 +287,34 @@ export const MobileHomesShowcase = ({ user = null }: MobileHomesShowcaseProps) =
             <h3 className="text-3xl font-bold text-gray-900">
               Our Mobile Home Models
             </h3>
-            <Button
-              onClick={toggleCart}
-              variant="outline"
-              className="relative"
-            >
-              <CartIcon className="h-5 w-5 mr-2" />
-              Cart ({cartItems.length})
-              {cartItems.length > 0 && (
-                <Badge 
-                  variant="destructive" 
-                  className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0 flex items-center justify-center text-xs"
-                >
-                  {cartItems.length}
-                </Badge>
-              )}
-            </Button>
+            {/* Cart button - Only show for logged in users */}
+            {user && (
+              <Button
+                onClick={toggleCart}
+                variant="outline"
+                className="relative"
+              >
+                <CartIcon className="h-5 w-5 mr-2" />
+                Cart ({cartItems.length})
+                {cartItems.length > 0 && (
+                  <Badge 
+                    variant="destructive" 
+                    className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0 flex items-center justify-center text-xs"
+                  >
+                    {cartItems.length}
+                  </Badge>
+                )}
+              </Button>
+            )}
           </div>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
             Explore our premium collection of mobile homes featuring modern designs, 
             quality construction, and thoughtful amenities for comfortable living.
+            {!user && (
+              <span className="block mt-2 text-blue-600 font-medium">
+                Login to view pricing and add items to your cart.
+              </span>
+            )}
           </p>
         </div>
 
@@ -325,15 +348,18 @@ export const MobileHomesShowcase = ({ user = null }: MobileHomesShowcaseProps) =
           })}
         </Tabs>
 
-        <ShoppingCart
-          isOpen={isCartOpen}
-          onClose={() => setIsCartOpen(false)}
-          cartItems={cartItems}
-          onRemoveItem={removeFromCart}
-          onUpdateServices={updateServices}
-          onClearCart={clearCart}
-          user={user}
-        />
+        {/* Shopping Cart - Only show for logged in users */}
+        {user && (
+          <ShoppingCart
+            isOpen={isCartOpen}
+            onClose={() => setIsCartOpen(false)}
+            cartItems={cartItems}
+            onRemoveItem={removeFromCart}
+            onUpdateServices={updateServices}
+            onClearCart={clearCart}
+            user={user}
+          />
+        )}
       </div>
     </section>
   );

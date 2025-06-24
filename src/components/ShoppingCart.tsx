@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -109,11 +108,10 @@ export const ShoppingCart = ({
                     Clear Cart
                   </Button>
                   <Button onClick={() => {
-                    // Here you could navigate to checkout or estimate form
-                    // For now, just close the cart
+                    // Cart contains all the pricing information the user needs
                     onClose();
                   }}>
-                    Proceed to Estimate
+                    Close Cart
                   </Button>
                 </div>
               </div>

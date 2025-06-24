@@ -153,8 +153,7 @@ const Index = () => {
             <span className="block text-blue-600">sales to Investors</span>
           </h2>
           <p className="text-lg sm:text-xl text-gray-600 mb-6 sm:mb-8 max-w-2xl mx-auto">
-            Get accurate, professional estimates for your mobile home projects. 
-            Our expert team provides detailed assessments tailored to your specific needs.
+            Browse our selection of mobile and modular homes. Add items to your cart and get detailed pricing for your investment projects.
           </p>
           <div className="space-y-4 sm:space-y-0 sm:space-x-4 sm:flex sm:justify-center">
             {!user ? (
@@ -178,25 +177,16 @@ const Index = () => {
                 </Button>
               </>
             ) : (
-              <>
-                <Button 
-                  onClick={() => navigate('/estimate')}
-                  size="lg"
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg w-full sm:w-auto"
-                >
-                  Get Your Estimate
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="lg"
-                  className="border-blue-600 text-blue-600 hover:bg-blue-50 px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg w-full sm:w-auto"
-                  onClick={() => {
-                    document.getElementById('mobile-homes')?.scrollIntoView({ behavior: 'smooth' });
-                  }}
-                >
-                  View Models & Pricing
-                </Button>
-              </>
+              <Button 
+                variant="outline" 
+                size="lg"
+                className="border-blue-600 text-blue-600 hover:bg-blue-50 px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg w-full sm:w-auto"
+                onClick={() => {
+                  document.getElementById('mobile-homes')?.scrollIntoView({ behavior: 'smooth' });
+                }}
+              >
+                View Models & Pricing
+              </Button>
             )}
           </div>
         </div>
@@ -242,21 +232,21 @@ const Index = () => {
       <section className="py-20 bg-blue-600">
         <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
           <h3 className="text-3xl font-bold text-white mb-6">
-            Ready to Get Your Estimate?
+            Ready to Explore Our Inventory?
           </h3>
           <p className="text-xl text-blue-100 mb-8">
             {!user 
-              ? "Join our platform to access professional mobile home estimation services with transparent pricing and expert guidance."
-              : "Access professional mobile home estimation services with your personalized pricing and expert guidance."
+              ? "Join our platform to access wholesale pricing on mobile and modular homes for your investment projects."
+              : "Browse our selection and add items to your cart to see personalized pricing for your investment needs."
             }
           </p>
           <Button 
-            onClick={() => user ? navigate('/estimate') : navigate('/auth')}
+            onClick={() => user ? document.getElementById('mobile-homes')?.scrollIntoView({ behavior: 'smooth' }) : navigate('/auth')}
             size="lg"
             variant="secondary"
             className="bg-white text-blue-600 hover:bg-gray-100 px-8 py-4 text-lg"
           >
-            {user ? 'Get Your Estimate' : 'Login to View Pricing'}
+            {user ? 'Browse Our Inventory' : 'Login to View Pricing'}
           </Button>
         </div>
       </section>

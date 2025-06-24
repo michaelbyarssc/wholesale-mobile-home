@@ -17,7 +17,7 @@ export const EstimateHeader = ({ user, displayName, customerMarkup }: EstimateHe
       <h1 className="text-4xl font-bold text-blue-900 mb-2">
         Wholesale Homes of the Carolinas
       </h1>
-      <p className="text-lg text-green-700">Get Your Mobile Home Estimate</p>
+      <p className="text-lg text-green-700">Browse Our Mobile Home Selection</p>
       <div className="mt-4 flex justify-center gap-4">
         {user ? (
           <div className="flex items-center gap-4">
@@ -44,7 +44,7 @@ export const EstimateHeader = ({ user, displayName, customerMarkup }: EstimateHe
           </div>
         )}
         <Button 
-          onClick={() => window.location.href = '/auth'} 
+          onClick={() => window.location.href = '/admin'} 
           variant="outline"
         >
           Admin Login

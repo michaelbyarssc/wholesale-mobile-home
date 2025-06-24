@@ -5,7 +5,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
-import EstimateForm from "./pages/EstimateForm";
 import Auth from "./pages/Auth";
 import Admin from "./pages/Admin";
 import MyEstimates from "./pages/MyEstimates";
@@ -23,14 +22,6 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<Auth />} />
-          <Route 
-            path="/estimate" 
-            element={
-              <ProtectedRoute>
-                <EstimateForm />
-              </ProtectedRoute>
-            } 
-          />
           <Route 
             path="/my-estimates" 
             element={

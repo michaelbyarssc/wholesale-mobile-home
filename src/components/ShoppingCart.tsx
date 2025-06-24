@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -6,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Trash2, ShoppingCart as CartIcon } from 'lucide-react';
+import { Trash2, ShoppingCart as CartIcon, Receipt } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useConditionalServices } from '@/hooks/useConditionalServices';
@@ -14,6 +13,7 @@ import { useCustomerPricing } from '@/hooks/useCustomerPricing';
 import { CartItem } from '@/hooks/useShoppingCart';
 import { formatPrice } from '@/lib/utils';
 import { User } from '@supabase/supabase-js';
+import { useNavigate } from 'react-router-dom';
 
 interface ShoppingCartProps {
   isOpen: boolean;
@@ -34,6 +34,7 @@ export const ShoppingCart = ({
   onClearCart,
   user
 }: ShoppingCartProps) => {
+  const navigate = useNavigate();
   const { calculatePrice } = useCustomerPricing(user);
 
   // Fetch services
@@ -67,6 +68,13 @@ export const ShoppingCart = ({
 
   const getHomeName = (home: any) => {
     return home.display_name || `${home.series} ${home.model}`;
+  };
+
+  const handleConvertToEstimate = () => {
+    // Store cart data in localStorage for the estimate form to pick up
+    localStorage.setItem('cart_for_estimate', JSON.stringify(cartItems));
+    onClose();
+    navigate('/estimate');
   };
 
   return (
@@ -107,6 +115,13 @@ export const ShoppingCart = ({
                 <div className="space-x-2">
                   <Button variant="outline" onClick={onClearCart}>
                     Clear Cart
+                  </Button>
+                  <Button 
+                    onClick={handleConvertToEstimate}
+                    className="bg-green-600 hover:bg-green-700"
+                  >
+                    <Receipt className="h-4 w-4 mr-2" />
+                    Convert to Estimate
                   </Button>
                   <Button onClick={() => {
                     // Cart contains all the pricing information the user needs

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,7 +18,9 @@ import { ServicesSelection } from '@/components/estimate/ServicesSelection';
 import { CustomerInformation } from '@/components/estimate/CustomerInformation';
 import { EstimateTotal } from '@/components/estimate/EstimateTotal';
 import { EstimateHeader } from '@/components/estimate/EstimateHeader';
+import { Badge } from '@/components/ui/badge';
 import type { Database } from '@/integrations/supabase/types';
+import { CartItem } from '@/hooks/useShoppingCart';
 
 type MobileHome = Database['public']['Tables']['mobile_homes']['Row'];
 type Service = Database['public']['Tables']['services']['Row'];
@@ -29,6 +32,7 @@ const EstimateForm = () => {
   
   const [selectedHome, setSelectedHome] = useState<string>('');
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [customerInfo, setCustomerInfo] = useState({
     name: '',
     phone: '',
@@ -42,7 +46,7 @@ const EstimateForm = () => {
   // Get customer pricing
   const { markupPercentage, calculatePrice, loading: pricingLoading } = useCustomerPricing(user);
 
-  // Check for authenticated user
+  // Check for authenticated user and load cart data
   useEffect(() => {
     const getUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -70,6 +74,32 @@ const EstimateForm = () => {
     
     getUser();
 
+    // Check for cart data from localStorage
+    const cartData = localStorage.getItem('cart_for_estimate');
+    if (cartData) {
+      try {
+        const parsedCartItems: CartItem[] = JSON.parse(cartData);
+        setCartItems(parsedCartItems);
+        
+        // Pre-select the first mobile home from cart
+        if (parsedCartItems.length > 0) {
+          setSelectedHome(parsedCartItems[0].mobileHome.id);
+          setSelectedServices(parsedCartItems[0].selectedServices);
+        }
+        
+        // Clear the cart data from localStorage after loading
+        localStorage.removeItem('cart_for_estimate');
+        
+        toast({
+          title: "Cart Items Loaded",
+          description: `Loaded ${parsedCartItems.length} item(s) from your cart.`,
+        });
+      } catch (error) {
+        console.error('Error parsing cart data:', error);
+        localStorage.removeItem('cart_for_estimate');
+      }
+    }
+
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       setUser(session?.user || null);
@@ -95,7 +125,7 @@ const EstimateForm = () => {
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [toast]);
 
   const getUserDisplayName = () => {
     if (userProfile?.first_name && userProfile?.last_name) {
@@ -121,7 +151,6 @@ const EstimateForm = () => {
     }
   });
 
-  // Fetch services from database
   const { data: services = [], isLoading: servicesLoading } = useQuery({
     queryKey: ['services'],
     queryFn: async () => {
@@ -254,6 +283,7 @@ const EstimateForm = () => {
       // Reset form
       setSelectedHome('');
       setSelectedServices([]);
+      setCartItems([]);
       setCustomerInfo({
         name: '',
         phone: '',
@@ -295,6 +325,22 @@ const EstimateForm = () => {
           displayName={displayName}
           customerMarkup={markupPercentage}
         />
+
+        {cartItems.length > 0 && (
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                Cart Items Loaded
+                <Badge variant="secondary">{cartItems.length} item(s)</Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-gray-600">
+                Your cart items have been loaded into this estimate form. You can modify the selection below.
+              </p>
+            </CardContent>
+          </Card>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-8">
           <MobileHomeSelection

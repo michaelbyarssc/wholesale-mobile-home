@@ -11,6 +11,7 @@ import { CustomerInformationCard } from '@/components/estimate-approval/Customer
 import { MobileHomeDetailsCard } from '@/components/estimate-approval/MobileHomeDetailsCard';
 import { ServicesCard } from '@/components/estimate-approval/ServicesCard';
 import { AdditionalRequirementsCard } from '@/components/estimate-approval/AdditionalRequirementsCard';
+import { ComparableHomesCard } from '@/components/estimate-approval/ComparableHomesCard';
 import { TotalAndApprovalCard } from '@/components/estimate-approval/TotalAndApprovalCard';
 import { EstimateFooter } from '@/components/estimate-approval/EstimateFooter';
 
@@ -153,6 +154,11 @@ const ApproveEstimate = () => {
         <MobileHomeDetailsCard mobileHome={mobileHome} homeDisplayName={homeDisplayName} />
         <ServicesCard services={services} />
         <AdditionalRequirementsCard additionalRequirements={estimate.additional_requirements} />
+        <ComparableHomesCard 
+          deliveryAddress={estimate.delivery_address || ''} 
+          mobileHomeBedrooms={mobileHome?.bedrooms || 0}
+          mobileHomeBathrooms={mobileHome?.bathrooms || 0}
+        />
         <TotalAndApprovalCard 
           totalAmount={estimate.total_amount} 
           approving={approving} 

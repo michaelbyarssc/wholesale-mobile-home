@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -93,44 +94,47 @@ const Index = () => {
       {/* Header */}
       <header className="bg-white shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center py-4 sm:py-6 gap-4 sm:gap-0">
             <div className="flex items-center">
-              <h1 className="text-2xl font-bold text-blue-900">
+              <h1 className="text-xl sm:text-2xl font-bold text-blue-900">
                 Wholesale Homes of the Carolinas
               </h1>
             </div>
             {!user ? (
               <Button 
                 onClick={() => navigate('/auth')}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2"
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 sm:px-6 py-2 w-full sm:w-auto"
               >
                 Login
               </Button>
             ) : (
-              <div className="flex items-center space-x-4">
-                <span className="text-gray-700">
-                  Welcome back{userProfile?.first_name ? `, ${userProfile.first_name}` : ''}!
-                </span>
-                <Button
-                  onClick={handleLogout}
-                  variant="ghost"
-                  size="sm"
-                  className="text-gray-600 hover:text-gray-800"
-                >
-                  <LogOut className="h-4 w-4 mr-1" />
-                  Logout
-                </Button>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4 w-full sm:w-auto">
+                <div className="flex items-center gap-2 text-sm sm:text-base">
+                  <span className="text-gray-700">
+                    Welcome back{userProfile?.first_name ? `, ${userProfile.first_name}` : ''}!
+                  </span>
+                  <Button
+                    onClick={handleLogout}
+                    variant="ghost"
+                    size="sm"
+                    className="text-gray-600 hover:text-gray-800 p-1 sm:p-2"
+                  >
+                    <LogOut className="h-3 w-3 sm:h-4 sm:w-4" />
+                    <span className="sr-only sm:not-sr-only sm:ml-1">Logout</span>
+                  </Button>
+                </div>
                 <Button
                   onClick={toggleCart}
                   variant="outline"
-                  className="relative"
+                  className="relative w-full sm:w-auto"
+                  size="sm"
                 >
-                  <CartIcon className="h-5 w-5 mr-2" />
-                  Cart ({cartItems.length})
+                  <CartIcon className="h-4 w-4 sm:h-5 sm:w-5 mr-1 sm:mr-2" />
+                  <span className="text-sm">Cart ({cartItems.length})</span>
                   {cartItems.length > 0 && (
                     <Badge 
                       variant="destructive" 
-                      className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0 flex items-center justify-center text-xs"
+                      className="absolute -top-1 -right-1 sm:-top-2 sm:-right-2 h-5 w-5 sm:h-6 sm:w-6 rounded-full p-0 flex items-center justify-center text-xs"
                     >
                       {cartItems.length}
                     </Badge>
@@ -143,13 +147,13 @@ const Index = () => {
       </header>
 
       {/* Hero Section */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8">
+      <section className="py-12 sm:py-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-5xl font-bold text-gray-900 mb-6">
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 mb-4 sm:mb-6">
             Professional Mobile Home
             <span className="block text-blue-600">Estimation Services</span>
           </h2>
-          <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
+          <p className="text-lg sm:text-xl text-gray-600 mb-6 sm:mb-8 max-w-2xl mx-auto">
             Get accurate, professional estimates for your mobile home projects. 
             Our expert team provides detailed assessments tailored to your specific needs.
           </p>
@@ -159,14 +163,14 @@ const Index = () => {
                 <Button 
                   onClick={() => navigate('/auth')}
                   size="lg"
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 text-lg w-full sm:w-auto"
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg w-full sm:w-auto"
                 >
                   Get Started - Login Required
                 </Button>
                 <Button 
                   variant="outline" 
                   size="lg"
-                  className="border-blue-600 text-blue-600 hover:bg-blue-50 px-8 py-4 text-lg w-full sm:w-auto"
+                  className="border-blue-600 text-blue-600 hover:bg-blue-50 px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg w-full sm:w-auto"
                   onClick={() => {
                     document.getElementById('mobile-homes')?.scrollIntoView({ behavior: 'smooth' });
                   }}
@@ -179,14 +183,14 @@ const Index = () => {
                 <Button 
                   onClick={() => navigate('/estimate')}
                   size="lg"
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 text-lg w-full sm:w-auto"
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg w-full sm:w-auto"
                 >
                   Get Your Estimate
                 </Button>
                 <Button 
                   variant="outline" 
                   size="lg"
-                  className="border-blue-600 text-blue-600 hover:bg-blue-50 px-8 py-4 text-lg w-full sm:w-auto"
+                  className="border-blue-600 text-blue-600 hover:bg-blue-50 px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg w-full sm:w-auto"
                   onClick={() => {
                     document.getElementById('mobile-homes')?.scrollIntoView({ behavior: 'smooth' });
                   }}

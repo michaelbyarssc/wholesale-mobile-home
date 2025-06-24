@@ -99,12 +99,15 @@ export type Database = {
       estimates: {
         Row: {
           additional_requirements: string | null
+          approval_token: string | null
+          approved_at: string | null
           created_at: string
           customer_email: string
           customer_name: string
           customer_phone: string
           delivery_address: string | null
           id: string
+          invoice_id: string | null
           mobile_home_id: string | null
           preferred_contact: string | null
           selected_services: string[] | null
@@ -116,12 +119,15 @@ export type Database = {
         }
         Insert: {
           additional_requirements?: string | null
+          approval_token?: string | null
+          approved_at?: string | null
           created_at?: string
           customer_email: string
           customer_name: string
           customer_phone: string
           delivery_address?: string | null
           id?: string
+          invoice_id?: string | null
           mobile_home_id?: string | null
           preferred_contact?: string | null
           selected_services?: string[] | null
@@ -133,12 +139,15 @@ export type Database = {
         }
         Update: {
           additional_requirements?: string | null
+          approval_token?: string | null
+          approved_at?: string | null
           created_at?: string
           customer_email?: string
           customer_name?: string
           customer_phone?: string
           delivery_address?: string | null
           id?: string
+          invoice_id?: string | null
           mobile_home_id?: string | null
           preferred_contact?: string | null
           selected_services?: string[] | null
@@ -150,10 +159,76 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "estimates_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "estimates_mobile_home_id_fkey"
             columns: ["mobile_home_id"]
             isOneToOne: false
             referencedRelation: "mobile_homes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invoices: {
+        Row: {
+          created_at: string
+          customer_email: string
+          customer_name: string
+          customer_phone: string
+          delivery_address: string | null
+          due_date: string
+          estimate_id: string | null
+          id: string
+          invoice_number: string
+          paid_at: string | null
+          status: string
+          total_amount: number
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          customer_email: string
+          customer_name: string
+          customer_phone: string
+          delivery_address?: string | null
+          due_date?: string
+          estimate_id?: string | null
+          id?: string
+          invoice_number: string
+          paid_at?: string | null
+          status?: string
+          total_amount: number
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          customer_email?: string
+          customer_name?: string
+          customer_phone?: string
+          delivery_address?: string | null
+          due_date?: string
+          estimate_id?: string | null
+          id?: string
+          invoice_number?: string
+          paid_at?: string | null
+          status?: string
+          total_amount?: number
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoices_estimate_id_fkey"
+            columns: ["estimate_id"]
+            isOneToOne: false
+            referencedRelation: "estimates"
             referencedColumns: ["id"]
           },
         ]
@@ -372,9 +447,17 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      approve_estimate: {
+        Args: { estimate_uuid: string }
+        Returns: string
+      }
       check_password_strength: {
         Args: { password: string }
         Returns: Json
+      }
+      generate_invoice_number: {
+        Args: Record<PropertyKey, never>
+        Returns: string
       }
       is_admin: {
         Args: Record<PropertyKey, never> | { user_id: string }

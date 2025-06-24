@@ -51,8 +51,10 @@ export const EstimateTableRow: React.FC<EstimateTableRowProps> = ({
         return 'bg-yellow-100 text-yellow-800';
       case 'contacted':
         return 'bg-blue-100 text-blue-800';
-      case 'converted':
+      case 'approved':
         return 'bg-green-100 text-green-800';
+      case 'converted':
+        return 'bg-purple-100 text-purple-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
@@ -78,36 +80,47 @@ export const EstimateTableRow: React.FC<EstimateTableRowProps> = ({
         ${estimate.total_amount?.toLocaleString()}
       </TableCell>
       <TableCell>
-        <span className={`px-2 py-1 rounded-full text-xs ${getStatusBadgeClass(estimate.status)}`}>
-          {estimate.status}
-        </span>
+        <div className="flex flex-col gap-1">
+          <span className={`px-2 py-1 rounded-full text-xs ${getStatusBadgeClass(estimate.status)}`}>
+            {estimate.status}
+          </span>
+          {estimate.approved_at && (
+            <span className="text-xs text-green-600">
+              Approved: {format(new Date(estimate.approved_at), 'MMM dd')}
+            </span>
+          )}
+        </div>
       </TableCell>
       <TableCell>
         {format(new Date(estimate.created_at), 'MMM dd, yyyy')}
       </TableCell>
       <TableCell>
-        <div className="flex gap-2">
-          <Button 
-            size="sm" 
-            variant="outline"
-            onClick={() => onStatusUpdate(estimate.id, 'contacted')}
-          >
-            Mark Contacted
-          </Button>
-          <Button 
-            size="sm" 
-            variant="outline"
-            onClick={() => onStatusUpdate(estimate.id, 'converted')}
-          >
-            Mark Converted
-          </Button>
+        <div className="flex gap-2 flex-wrap">
+          {estimate.status !== 'approved' && (
+            <>
+              <Button 
+                size="sm" 
+                variant="outline"
+                onClick={() => onStatusUpdate(estimate.id, 'contacted')}
+              >
+                Mark Contacted
+              </Button>
+              <Button 
+                size="sm" 
+                variant="outline"
+                onClick={() => onStatusUpdate(estimate.id, 'converted')}
+              >
+                Mark Converted
+              </Button>
+            </>
+          )}
           <Button 
             size="sm" 
             variant="outline"
             onClick={() => onResend(estimate.id)}
           >
             <Mail className="h-3 w-3 mr-1" />
-            Resend
+            {estimate.approved_at ? 'Resend' : 'Send Approval'}
           </Button>
           <AlertDialog>
             <AlertDialogTrigger asChild>

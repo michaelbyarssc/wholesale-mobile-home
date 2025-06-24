@@ -51,8 +51,10 @@ export const EstimateCard: React.FC<EstimateCardProps> = ({
         return 'bg-yellow-100 text-yellow-800';
       case 'contacted':
         return 'bg-blue-100 text-blue-800';
-      case 'converted':
+      case 'approved':
         return 'bg-green-100 text-green-800';
+      case 'converted':
+        return 'bg-purple-100 text-purple-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
@@ -65,9 +67,16 @@ export const EstimateCard: React.FC<EstimateCardProps> = ({
           <div className="font-mono text-xs">
             #{estimate.id.slice(-8)}
           </div>
-          <span className={`px-2 py-1 rounded-full text-xs ${getStatusBadgeClass(estimate.status)}`}>
-            {estimate.status}
-          </span>
+          <div className="text-right">
+            <span className={`px-2 py-1 rounded-full text-xs ${getStatusBadgeClass(estimate.status)}`}>
+              {estimate.status}
+            </span>
+            {estimate.approved_at && (
+              <div className="text-xs text-green-600 mt-1">
+                Approved: {format(new Date(estimate.approved_at), 'MMM dd')}
+              </div>
+            )}
+          </div>
         </div>
         
         <div className="text-sm">
@@ -90,24 +99,26 @@ export const EstimateCard: React.FC<EstimateCardProps> = ({
         </div>
         
         <div className="flex flex-col gap-2 pt-2">
-          <div className="flex gap-2">
-            <Button 
-              size="sm" 
-              variant="outline"
-              className="flex-1"
-              onClick={() => onStatusUpdate(estimate.id, 'contacted')}
-            >
-              Mark Contacted
-            </Button>
-            <Button 
-              size="sm" 
-              variant="outline"
-              className="flex-1"
-              onClick={() => onStatusUpdate(estimate.id, 'converted')}
-            >
-              Mark Converted
-            </Button>
-          </div>
+          {estimate.status !== 'approved' && (
+            <div className="flex gap-2">
+              <Button 
+                size="sm" 
+                variant="outline"
+                className="flex-1"
+                onClick={() => onStatusUpdate(estimate.id, 'contacted')}
+              >
+                Mark Contacted
+              </Button>
+              <Button 
+                size="sm" 
+                variant="outline"
+                className="flex-1"
+                onClick={() => onStatusUpdate(estimate.id, 'converted')}
+              >
+                Mark Converted
+              </Button>
+            </div>
+          )}
           <div className="flex gap-2">
             <Button 
               size="sm" 
@@ -116,7 +127,7 @@ export const EstimateCard: React.FC<EstimateCardProps> = ({
               onClick={() => onResend(estimate.id)}
             >
               <Mail className="h-3 w-3 mr-1" />
-              Resend Estimate
+              {estimate.approved_at ? 'Resend Email' : 'Send Approval Link'}
             </Button>
             <AlertDialog>
               <AlertDialogTrigger asChild>

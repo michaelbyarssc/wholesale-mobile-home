@@ -24,6 +24,19 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const supabase = createClient(supabaseUrl, supabaseKey)
 
+    // Generate approval token
+    const approvalToken = crypto.randomUUID()
+    
+    // Update estimate with approval token
+    const { error: updateError } = await supabase
+      .from('estimates')
+      .update({ approval_token: approvalToken })
+      .eq('id', estimateId)
+
+    if (updateError) {
+      throw new Error(`Failed to update estimate with approval token: ${updateError.message}`)
+    }
+
     // Fetch the estimate details with related data
     const { data: estimate, error: estimateError } = await supabase
       .from('estimates')
@@ -114,27 +127,40 @@ Status: ${estimate.status}
 Created: ${new Date(estimate.created_at).toLocaleDateString()}
     `
 
+    const approvalUrl = `${supabaseUrl.replace('.supabase.co', '.app')}/approve?token=${approvalToken}`
+
     console.log('Estimate details prepared for notifications:', {
       estimateId,
       customerEmail: estimate.customer_email,
       adminCount: adminUsers?.length || 0,
-      adminUsers: adminUsers?.map(u => u.email)
+      adminUsers: adminUsers?.map(u => u.email),
+      approvalUrl
     })
 
     let emailsSent = 0
     const emailResults = []
 
     try {
-      // Send email to customer
+      // Send email to customer with approval link
       const customerEmailResult = await resend.emails.send({
         from: 'Wholesale Homes of the Carolinas <onboarding@resend.dev>',
         to: [estimate.customer_email],
-        subject: `Your Mobile Home Estimate #${estimate.id}`,
+        subject: `Your Mobile Home Estimate #${estimate.id} - Action Required`,
         html: `
           <h2>Thank you for your interest!</h2>
           <p>Here are your estimate details:</p>
           <pre style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; font-family: monospace;">${estimateDetails}</pre>
-          <p>We will contact you soon to discuss your mobile home purchase.</p>
+          
+          <div style="background-color: #3b82f6; color: white; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center;">
+            <h3>Ready to Proceed?</h3>
+            <p>Click the button below to approve your estimate and convert it to an invoice:</p>
+            <a href="${approvalUrl}" style="display: inline-block; background-color: #1d4ed8; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 10px;">
+              Approve Estimate
+            </a>
+          </div>
+          
+          <p><strong>Important:</strong> Once approved, this estimate will become an invoice due on receipt.</p>
+          <p>If you have any questions, please contact us directly.</p>
           <p>Best regards,<br>Wholesale Homes of the Carolinas</p>
         `,
       })
@@ -160,6 +186,7 @@ Created: ${new Date(estimate.created_at).toLocaleDateString()}
                 <h2>New Estimate Submitted</h2>
                 <p>A new estimate has been submitted and requires your attention:</p>
                 <pre style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; font-family: monospace;">${estimateDetails}</pre>
+                <p><strong>Customer Approval Link:</strong> <a href="${approvalUrl}">${approvalUrl}</a></p>
                 <p>Please review this estimate in the admin dashboard.</p>
               `,
             })
@@ -186,7 +213,8 @@ Created: ${new Date(estimate.created_at).toLocaleDateString()}
         adminEmailsSent: adminUsers?.length || 0,
         adminEmails: adminUsers?.map(u => u.email) || [],
         totalEmailsSent: emailsSent,
-        emailResults
+        emailResults,
+        approvalUrl
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

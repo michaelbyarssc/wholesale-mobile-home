@@ -11,25 +11,9 @@ import { ShoppingCart } from './ShoppingCart';
 import { useCustomerPricing } from '@/hooks/useCustomerPricing';
 import { useShoppingCart } from '@/hooks/useShoppingCart';
 import { User } from '@supabase/supabase-js';
+import type { Database } from '@/integrations/supabase/types';
 
-interface MobileHome {
-  id: string;
-  manufacturer: string;
-  series: string;
-  model: string;
-  display_name: string | null;
-  square_footage: number | null;
-  bedrooms: number | null;
-  bathrooms: number | null;
-  length_feet: number | null;
-  width_feet: number | null;
-  features: string[] | null;
-  description: string | null;
-  floor_plan_image_url: string | null;
-  exterior_image_url: string | null;
-  active: boolean;
-  price: number | null;
-}
+type MobileHome = Database['public']['Tables']['mobile_homes']['Row'];
 
 interface MobileHomeImage {
   id: string;
@@ -198,7 +182,7 @@ export const MobileHomesShowcase = ({ user = null }: MobileHomesShowcaseProps) =
           </div>
 
           {/* Features */}
-          {home.features && home.features.length > 0 && (
+          {home.features && Array.isArray(home.features) && home.features.length > 0 && (
             <div>
               <h4 className="font-semibold text-gray-900 mb-2 flex items-center">
                 <Home className="h-4 w-4 mr-2 text-blue-600" />

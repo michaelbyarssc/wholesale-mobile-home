@@ -37,47 +37,7 @@ serve(async (req) => {
     const rentcastApiKey = Deno.env.get('RENTCAST_API_KEY')
     
     if (!rentcastApiKey) {
-      console.log('No Rentcast API key found, using mock data')
-      
-      // Return mock data for development/testing
-      const mockComps: ComparableHome[] = [
-        {
-          address: "123 Mobile Home Dr, Sample County, NC",
-          price: 45000,
-          bedrooms: bedrooms,
-          bathrooms: bathrooms,
-          squareFootage: 1200,
-          listingDate: "2024-12-15"
-        },
-        {
-          address: "456 Manufactured Ln, Sample County, NC",
-          price: 52000,
-          bedrooms: bedrooms + 1,
-          bathrooms: bathrooms,
-          squareFootage: 1350,
-          listingDate: "2024-12-10"
-        },
-        {
-          address: "789 Trailer Park Ave, Sample County, NC",
-          price: 38000,
-          bedrooms: bedrooms - 1,
-          bathrooms: bathrooms - 1,
-          squareFootage: 950,
-          listingDate: "2024-12-20"
-        }
-      ]
-
-      return new Response(
-        JSON.stringify({ 
-          success: true, 
-          comparables: mockComps,
-          source: 'mock_data'
-        }),
-        { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 200,
-        },
-      )
+      throw new Error('Rentcast API key not configured')
     }
 
     // First, get coordinates for the address using Rentcast's geocoding

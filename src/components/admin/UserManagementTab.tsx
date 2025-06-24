@@ -46,26 +46,10 @@ export const UserManagementTab = () => {
       setLoading(true);
       console.log('Fetching user profiles...');
       
-      // Fetch user roles and profiles separately
-      const { data: roleData, error: roleError } = await supabase
-        .from('user_roles')
-        .select('user_id, role, created_at');
-
-      if (roleError) {
-        console.error('Error fetching user roles:', roleError);
-        toast({
-          title: "Error",
-          description: "Failed to fetch user roles",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      console.log('User roles data:', roleData);
-
+      // First, fetch all user profiles
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
-        .select('user_id, email, first_name, last_name');
+        .select('user_id, email, first_name, last_name, created_at');
 
       if (profileError) {
         console.error('Error fetching profiles:', profileError);
@@ -79,6 +63,17 @@ export const UserManagementTab = () => {
 
       console.log('Profiles data:', profileData);
 
+      // Fetch user roles
+      const { data: roleData, error: roleError } = await supabase
+        .from('user_roles')
+        .select('user_id, role, created_at');
+
+      if (roleError) {
+        console.error('Error fetching user roles:', roleError);
+      }
+
+      console.log('User roles data:', roleData);
+
       // Fetch customer markups
       const { data: markupData, error: markupError } = await supabase
         .from('customer_markups')
@@ -90,19 +85,19 @@ export const UserManagementTab = () => {
 
       console.log('Markup data:', markupData);
 
-      // Combine the data
-      const combinedData: UserProfile[] = roleData?.map(role => {
-        const profile = profileData?.find(p => p.user_id === role.user_id);
-        const markup = markupData?.find(m => m.user_id === role.user_id);
-        console.log(`Combining user ${role.user_id}:`, { role, profile, markup });
+      // Combine the data - start with all profiles, then add role and markup info
+      const combinedData: UserProfile[] = profileData?.map(profile => {
+        const role = roleData?.find(r => r.user_id === profile.user_id);
+        const markup = markupData?.find(m => m.user_id === profile.user_id);
+        console.log(`Combining user ${profile.user_id}:`, { profile, role, markup });
         
         return {
-          user_id: role.user_id,
-          email: profile?.email || 'No email',
-          first_name: profile?.first_name || null,
-          last_name: profile?.last_name || null,
-          role: role.role,
-          created_at: role.created_at,
+          user_id: profile.user_id,
+          email: profile.email || 'No email',
+          first_name: profile.first_name || null,
+          last_name: profile.last_name || null,
+          role: role?.role || null,
+          created_at: profile.created_at || role?.created_at || new Date().toISOString(),
           markup_percentage: markup?.markup_percentage || 0
         };
       }) || [];
@@ -317,13 +312,29 @@ export const UserManagementTab = () => {
 
   const updateUserRole = async (userId: string, newRole: 'admin' | 'user') => {
     try {
-      // Update the user's role
-      const { error } = await supabase
+      // Check if user already has a role
+      const { data: existingRole } = await supabase
         .from('user_roles')
-        .update({ role: newRole })
-        .eq('user_id', userId);
+        .select('id')
+        .eq('user_id', userId)
+        .single();
 
-      if (error) throw error;
+      if (existingRole) {
+        // Update existing role
+        const { error } = await supabase
+          .from('user_roles')
+          .update({ role: newRole })
+          .eq('user_id', userId);
+
+        if (error) throw error;
+      } else {
+        // Insert new role
+        const { error } = await supabase
+          .from('user_roles')
+          .insert({ user_id: userId, role: newRole });
+
+        if (error) throw error;
+      }
 
       toast({
         title: "Role updated",
@@ -576,12 +587,12 @@ export const UserManagementTab = () => {
         </CardContent>
       </Card>
 
-      {/* Existing User Roles Section */}
+      {/* All Users Section */}
       <Card>
         <CardHeader>
-          <CardTitle>User Roles & Pricing</CardTitle>
+          <CardTitle>All Registered Users</CardTitle>
           <p className="text-sm text-gray-600">
-            Manage roles and markup percentages for users who have already registered.
+            Manage all users who have registered, including role assignments and markup percentages.
           </p>
         </CardHeader>
         <CardContent>
@@ -593,7 +604,7 @@ export const UserManagementTab = () => {
                   <TableHead>Email</TableHead>
                   <TableHead>Role</TableHead>
                   <TableHead>Markup %</TableHead>
-                  <TableHead>Assigned</TableHead>
+                  <TableHead>Registered</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -601,7 +612,7 @@ export const UserManagementTab = () => {
                 {userProfiles.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={6} className="text-center py-8 text-gray-500">
-                      No users with assigned roles found
+                      No registered users found
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -614,19 +625,25 @@ export const UserManagementTab = () => {
                         {profile.email || 'No email'}
                       </TableCell>
                       <TableCell>
-                        <Badge variant={profile.role === 'admin' ? "default" : "secondary"}>
-                          {profile.role === 'admin' ? (
-                            <>
-                              <Shield className="h-3 w-3 mr-1" />
-                              Admin
-                            </>
-                          ) : (
-                            <>
-                              <ShieldOff className="h-3 w-3 mr-1" />
-                              User
-                            </>
-                          )}
-                        </Badge>
+                        {profile.role ? (
+                          <Badge variant={profile.role === 'admin' ? "default" : "secondary"}>
+                            {profile.role === 'admin' ? (
+                              <>
+                                <Shield className="h-3 w-3 mr-1" />
+                                Admin
+                              </>
+                            ) : (
+                              <>
+                                <ShieldOff className="h-3 w-3 mr-1" />
+                                User
+                              </>
+                            )}
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-gray-500">
+                            No Role
+                          </Badge>
+                        )}
                       </TableCell>
                       <TableCell>
                         {editingMarkup === profile.user_id ? (
@@ -733,26 +750,24 @@ export const UserManagementTab = () => {
                         </Dialog>
                         
                         <Select
-                          value={profile.role || 'user'}
-                          onValueChange={(newRole: 'admin' | 'user') => 
-                            updateUserRole(profile.user_id, newRole)
-                          }
+                          value={profile.role || 'none'}
+                          onValueChange={(newRole: 'admin' | 'user' | 'none') => {
+                            if (newRole === 'none') {
+                              removeUserRole(profile.user_id);
+                            } else {
+                              updateUserRole(profile.user_id, newRole);
+                            }
+                          }}
                         >
-                          <SelectTrigger className="w-24">
+                          <SelectTrigger className="w-28">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
+                            <SelectItem value="none">No Role</SelectItem>
                             <SelectItem value="user">User</SelectItem>
                             <SelectItem value="admin">Admin</SelectItem>
                           </SelectContent>
                         </Select>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => removeUserRole(profile.user_id)}
-                        >
-                          Remove
-                        </Button>
                       </TableCell>
                     </TableRow>
                   ))
@@ -766,10 +781,10 @@ export const UserManagementTab = () => {
             <ul className="text-sm text-blue-700 space-y-1">
               <li>• <strong>User Registration:</strong> Users sign up through the normal registration flow</li>
               <li>• <strong>Profile Creation:</strong> User profiles are automatically created with name and email</li>
-              <li>• <strong>Role Assignment:</strong> Admins can assign roles to registered users</li>
+              <li>• <strong>Role Assignment:</strong> Admins can assign roles to any registered user</li>
               <li>• <strong>Markup Percentage:</strong> Set individual markup percentages for each customer</li>
               <li>• <strong>Invitations:</strong> Send registration invitations with pre-assigned roles</li>
-              <li>• <strong>Role Changes:</strong> Modify user roles as needed</li>
+              <li>• <strong>Role Changes:</strong> Modify user roles as needed or remove roles entirely</li>
               <li>• <strong>Profile Editing:</strong> Edit user names and email addresses as needed</li>
             </ul>
           </div>

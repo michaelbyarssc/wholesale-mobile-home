@@ -3,7 +3,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
-import { ShoppingCart as CartIcon, LogOut, User, Lock } from 'lucide-react';
+import { ShoppingCart as CartIcon, LogOut, User, Lock, Menu } from 'lucide-react';
 import { User as SupabaseUser } from '@supabase/supabase-js';
 import { CartItem } from '@/hooks/useShoppingCart';
 import {
@@ -56,14 +56,18 @@ export const Header = ({
           ) : (
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
               <div className="flex items-center justify-between sm:justify-start gap-2 text-xs sm:text-sm">
+                <span className="text-gray-700 flex items-center gap-1">
+                  <User className="h-3 w-3 sm:h-4 sm:w-4" />
+                  <span className="text-xs sm:text-sm">Welcome, {displayName}!</span>
+                </span>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
                       variant="ghost"
-                      className="text-gray-700 hover:text-gray-800 p-1 sm:p-2 h-auto flex items-center gap-1"
+                      size="sm"
+                      className="text-gray-600 hover:text-gray-800 p-1 sm:p-2 h-auto"
                     >
-                      <User className="h-3 w-3 sm:h-4 sm:w-4" />
-                      <span className="text-xs sm:text-sm">Welcome, {displayName}!</span>
+                      <Menu className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">

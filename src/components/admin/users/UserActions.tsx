@@ -1,0 +1,160 @@
+
+import React, { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { KeyRound } from 'lucide-react';
+import { UserProfile } from './UserEditDialog';
+
+interface UserActionsProps {
+  profile: UserProfile;
+  onUserUpdated: () => void;
+}
+
+export const UserActions = ({ profile, onUserUpdated }: UserActionsProps) => {
+  const [resettingPassword, setResettingPassword] = useState<string | null>(null);
+  const { toast } = useToast();
+
+  const resetUserPassword = async (userId: string, userEmail: string) => {
+    try {
+      setResettingPassword(userId);
+      
+      const newPassword = 'Allies123!';
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Not authenticated');
+      }
+
+      const { data, error } = await supabase.functions.invoke('admin-reset-password', {
+        body: {
+          user_id: userId,
+          new_password: newPassword
+        }
+      });
+
+      if (error) throw error;
+
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      toast({
+        title: "Password reset",
+        description: `Password for ${userEmail} has been reset to: Allies123!`,
+      });
+
+    } catch (error: any) {
+      console.error('Error resetting password:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to reset password",
+        variant: "destructive",
+      });
+    } finally {
+      setResettingPassword(null);
+    }
+  };
+
+  const updateUserRole = async (userId: string, newRole: 'admin' | 'user') => {
+    try {
+      const { data: existingRole } = await supabase
+        .from('user_roles')
+        .select('id')
+        .eq('user_id', userId)
+        .single();
+
+      if (existingRole) {
+        const { error } = await supabase
+          .from('user_roles')
+          .update({ role: newRole })
+          .eq('user_id', userId);
+
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('user_roles')
+          .insert({ user_id: userId, role: newRole });
+
+        if (error) throw error;
+      }
+
+      toast({
+        title: "Role updated",
+        description: `User role updated to ${newRole}`,
+      });
+
+      onUserUpdated();
+    } catch (error: any) {
+      console.error('Error updating user role:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update user role",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const removeUserRole = async (userId: string) => {
+    try {
+      const { error } = await supabase
+        .from('user_roles')
+        .delete()
+        .eq('user_id', userId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Role removed",
+        description: "User role has been removed",
+      });
+
+      onUserUpdated();
+    } catch (error: any) {
+      console.error('Error removing user role:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to remove user role",
+        variant: "destructive",
+      });
+    }
+  };
+
+  return (
+    <div className="flex items-center justify-end gap-2">
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={() => resetUserPassword(profile.user_id, profile.email)}
+        disabled={resettingPassword === profile.user_id}
+      >
+        {resettingPassword === profile.user_id ? (
+          <div className="h-3 w-3 animate-spin rounded-full border-b-2 border-current" />
+        ) : (
+          <KeyRound className="h-3 w-3" />
+        )}
+      </Button>
+      
+      <Select
+        value={profile.role || 'none'}
+        onValueChange={(newRole: 'admin' | 'user' | 'none') => {
+          if (newRole === 'none') {
+            removeUserRole(profile.user_id);
+          } else {
+            updateUserRole(profile.user_id, newRole);
+          }
+        }}
+      >
+        <SelectTrigger className="w-24">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="none">None</SelectItem>
+          <SelectItem value="user">User</SelectItem>
+          <SelectItem value="admin">Admin</SelectItem>
+        </SelectContent>
+      </Select>
+    </div>
+  );
+};

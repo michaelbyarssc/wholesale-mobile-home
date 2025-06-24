@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { EstimateGroup } from './estimates/EstimateGroup';
@@ -129,6 +130,39 @@ export const EstimatesTab = () => {
     });
   }, [estimates]);
 
+  // Filter open estimates (pending and contacted)
+  const openEstimates = React.useMemo(() => {
+    return estimates.filter(estimate => 
+      estimate.status === 'pending' || estimate.status === 'contacted'
+    );
+  }, [estimates]);
+
+  const groupedOpenEstimates = React.useMemo(() => {
+    const groups = new Map<string, GroupedEstimate>();
+    
+    openEstimates.forEach((estimate) => {
+      const key = estimate.user_id || 'anonymous';
+      
+      if (!groups.has(key)) {
+        groups.set(key, {
+          user_id: estimate.user_id,
+          customer_name: estimate.customer_name,
+          customer_email: estimate.customer_email,
+          estimates: []
+        });
+      }
+      
+      groups.get(key)!.estimates.push(estimate);
+    });
+    
+    return Array.from(groups.values()).sort((a, b) => {
+      // Sort by most recent estimate
+      const aLatest = Math.max(...a.estimates.map(e => new Date(e.created_at).getTime()));
+      const bLatest = Math.max(...b.estimates.map(e => new Date(e.created_at).getTime()));
+      return bLatest - aLatest;
+    });
+  }, [openEstimates]);
+
   if (isLoading) {
     return (
       <Card>
@@ -145,26 +179,55 @@ export const EstimatesTab = () => {
   return (
     <Card>
       <CardHeader className="p-4 md:p-6">
-        <CardTitle className="text-lg md:text-xl">Customer Estimates ({estimates.length} total)</CardTitle>
+        <CardTitle className="text-lg md:text-xl">Customer Estimates</CardTitle>
       </CardHeader>
       <CardContent className="p-4 md:p-6">
-        <div className="space-y-4">
-          {groupedEstimates.map((group) => (
-            <EstimateGroup
-              key={group.user_id || 'anonymous'}
-              group={group}
-              onStatusUpdate={updateEstimateStatus}
-              onDelete={deleteEstimate}
-              onResend={resendEstimate}
-            />
-          ))}
+        <Tabs defaultValue="all" className="space-y-4">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="all">All Estimates ({estimates.length})</TabsTrigger>
+            <TabsTrigger value="open">Open Estimates ({openEstimates.length})</TabsTrigger>
+          </TabsList>
           
-          {groupedEstimates.length === 0 && (
-            <div className="text-center py-8 text-gray-500">
-              No estimates found.
+          <TabsContent value="all">
+            <div className="space-y-4">
+              {groupedEstimates.map((group) => (
+                <EstimateGroup
+                  key={group.user_id || 'anonymous'}
+                  group={group}
+                  onStatusUpdate={updateEstimateStatus}
+                  onDelete={deleteEstimate}
+                  onResend={resendEstimate}
+                />
+              ))}
+              
+              {groupedEstimates.length === 0 && (
+                <div className="text-center py-8 text-gray-500">
+                  No estimates found.
+                </div>
+              )}
             </div>
-          )}
-        </div>
+          </TabsContent>
+          
+          <TabsContent value="open">
+            <div className="space-y-4">
+              {groupedOpenEstimates.map((group) => (
+                <EstimateGroup
+                  key={group.user_id || 'anonymous'}
+                  group={group}
+                  onStatusUpdate={updateEstimateStatus}
+                  onDelete={deleteEstimate}
+                  onResend={resendEstimate}
+                />
+              ))}
+              
+              {groupedOpenEstimates.length === 0 && (
+                <div className="text-center py-8 text-gray-500">
+                  No open estimates found.
+                </div>
+              )}
+            </div>
+          </TabsContent>
+        </Tabs>
       </CardContent>
     </Card>
   );

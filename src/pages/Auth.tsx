@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -52,7 +53,7 @@ const Auth = () => {
 
     checkAdminStatus();
 
-    // Check if user is already logged in and redirect appropriately
+    // Check if user is already logged in and redirect to estimate page
     const checkUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
@@ -73,7 +74,7 @@ const Auth = () => {
     };
     checkUser();
 
-    // Listen for auth changes
+    // Listen for auth changes and redirect to estimate page
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
         // Check if user is admin
@@ -152,6 +153,7 @@ const Auth = () => {
           title: "Welcome back!",
           description: "You have been successfully signed in.",
         });
+        // Navigation will be handled by the auth state change listener
       }
     } catch (error: any) {
       console.error('Auth error:', error);
@@ -302,7 +304,7 @@ const Auth = () => {
                 onClick={() => navigate('/')}
                 className="w-full"
               >
-                Back to Estimate Form
+                Back to Home
               </Button>
             </div>
 

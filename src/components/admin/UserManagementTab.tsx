@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { UserPlus, Shield, ShieldOff, AlertTriangle, Edit, Percent, KeyRound } from 'lucide-react';
+import { UserPlus, Shield, ShieldOff, Edit, KeyRound } from 'lucide-react';
 
 interface UserProfile {
   user_id: string;
@@ -158,7 +158,7 @@ export const UserManagementTab = () => {
 
   const startEditingMarkup = (userId: string, currentMarkup: number) => {
     setEditingMarkup(userId);
-    setMarkupValue(currentMarkup || 30); // Default to 30% when editing
+    setMarkupValue(currentMarkup || 30);
   };
 
   const cancelMarkupEdit = () => {
@@ -170,7 +170,6 @@ export const UserManagementTab = () => {
     try {
       setResettingPassword(userId);
       
-      // Use the fixed password: Allies123!
       const newPassword = 'Allies123!';
 
       const { data: { session } } = await supabase.auth.getSession();
@@ -178,7 +177,6 @@ export const UserManagementTab = () => {
         throw new Error('Not authenticated');
       }
 
-      // Call the admin function to reset password
       const { data, error } = await supabase.functions.invoke('admin-reset-password', {
         body: {
           user_id: userId,
@@ -193,7 +191,7 @@ export const UserManagementTab = () => {
       }
 
       toast({
-        title: "Password reset successful",
+        title: "Password reset",
         description: `Password for ${userEmail} has been reset to: Allies123!`,
       });
 
@@ -224,7 +222,6 @@ export const UserManagementTab = () => {
     try {
       setCreatingUser(true);
       
-      // Use the fixed password: Allies123!
       const tempPassword = 'Allies123!';
 
       const { data: { session } } = await supabase.auth.getSession();
@@ -248,15 +245,12 @@ export const UserManagementTab = () => {
       }
 
       toast({
-        title: "User created successfully",
-        description: `User ${newUserEmail} has been created with ${newUserRole} role and 30% markup. Password: Allies123!`,
+        title: "User created",
+        description: `User ${newUserEmail} created with ${newUserRole} role. Password: Allies123!`,
       });
 
-      // Clear the form
       setNewUserEmail('');
       setNewUserRole('user');
-
-      // Refresh the users list
       fetchUserProfiles();
     } catch (error: any) {
       console.error('Error creating user:', error);
@@ -270,94 +264,8 @@ export const UserManagementTab = () => {
     }
   };
 
-  const inviteUser = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!newUserEmail) {
-      toast({
-        title: "Error",
-        description: "Please enter an email address",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      // Send invitation using the standard sign-up flow with fixed password
-      const { data, error } = await supabase.auth.signUp({
-        email: newUserEmail,
-        password: 'Allies123!', // Use fixed password
-        options: {
-          emailRedirectTo: window.location.origin + '/auth'
-        }
-      });
-
-      if (error) throw error;
-
-      if (data.user) {
-        // Assign the selected role to the new user
-        const { error: roleError } = await supabase
-          .from('user_roles')
-          .insert([{ user_id: data.user.id, role: newUserRole }]);
-
-        // Create default markup for new user (30%)
-        const { error: markupError } = await supabase
-          .from('customer_markups')
-          .insert([{ user_id: data.user.id, markup_percentage: 30 }]);
-
-        if (roleError) {
-          console.error('Error assigning role:', roleError);
-        }
-        
-        if (markupError) {
-          console.error('Error creating default markup:', markupError);
-        }
-
-        if (roleError && !markupError) {
-          toast({
-            title: "Invitation sent but role assignment failed",
-            description: `Invitation sent to ${newUserEmail} but couldn't assign the ${newUserRole} role`,
-            variant: "destructive",
-          });
-        } else if (!roleError && markupError) {
-          toast({
-            title: "Invitation sent but markup creation failed",
-            description: `Invitation sent to ${newUserEmail} but couldn't create default markup`,
-            variant: "destructive",
-          });
-        } else if (roleError && markupError) {
-          toast({
-            title: "Invitation sent with issues",
-            description: `Invitation sent to ${newUserEmail} but couldn't assign role or create markup`,
-            variant: "destructive",
-          });
-        } else {
-          toast({
-            title: "User invitation sent",
-            description: `Invitation sent to ${newUserEmail} with ${newUserRole} role and 30% default markup. Password: Allies123!`,
-          });
-        }
-      }
-
-      // Clear the form
-      setNewUserEmail('');
-      setNewUserRole('user');
-
-      // Refresh the users list
-      fetchUserProfiles();
-    } catch (error: any) {
-      console.error('Error inviting user:', error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to send invitation",
-        variant: "destructive",
-      });
-    }
-  };
-
   const updateUserRole = async (userId: string, newRole: 'admin' | 'user') => {
     try {
-      // Check if user already has a role
       const { data: existingRole } = await supabase
         .from('user_roles')
         .select('id')
@@ -365,7 +273,6 @@ export const UserManagementTab = () => {
         .single();
 
       if (existingRole) {
-        // Update existing role
         const { error } = await supabase
           .from('user_roles')
           .update({ role: newRole })
@@ -373,7 +280,6 @@ export const UserManagementTab = () => {
 
         if (error) throw error;
       } else {
-        // Insert new role
         const { error } = await supabase
           .from('user_roles')
           .insert({ user_id: userId, role: newRole });
@@ -383,10 +289,9 @@ export const UserManagementTab = () => {
 
       toast({
         title: "Role updated",
-        description: `User role has been updated to ${newRole}`,
+        description: `User role updated to ${newRole}`,
       });
 
-      // Refresh the users list
       fetchUserProfiles();
     } catch (error: any) {
       console.error('Error updating user role:', error);
@@ -408,11 +313,10 @@ export const UserManagementTab = () => {
       if (error) throw error;
 
       toast({
-        title: "User role removed",
+        title: "Role removed",
         description: "User role has been removed",
       });
 
-      // Refresh the users list
       fetchUserProfiles();
     } catch (error: any) {
       console.error('Error removing user role:', error);
@@ -447,7 +351,6 @@ export const UserManagementTab = () => {
       console.log('Updating profile for user:', editingUser);
       console.log('Update data:', editForm);
 
-      // First, try to update existing profile
       const { data: updateData, error: updateError } = await supabase
         .from('profiles')
         .update({
@@ -461,7 +364,6 @@ export const UserManagementTab = () => {
 
       console.log('Update result:', { updateData, updateError });
 
-      // If no rows were updated (profile doesn't exist), create a new one
       if (updateData && updateData.length === 0) {
         console.log('No existing profile found, creating new one...');
         const { data: insertData, error: insertError } = await supabase
@@ -486,11 +388,8 @@ export const UserManagementTab = () => {
         description: "User profile has been updated successfully",
       });
 
-      // Reset editing state
       setEditingUser(null);
       setEditForm({ email: '', first_name: '', last_name: '' });
-
-      // Refresh the users list
       fetchUserProfiles();
     } catch (error: any) {
       console.error('Error updating user profile:', error);
@@ -512,10 +411,7 @@ export const UserManagementTab = () => {
   if (loading) {
     return (
       <Card>
-        <CardHeader>
-          <CardTitle>User Management</CardTitle>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           <div className="flex items-center justify-center h-32">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
           </div>
@@ -526,34 +422,18 @@ export const UserManagementTab = () => {
 
   return (
     <div className="space-y-6">
-      {/* Warning about limitations */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex items-start gap-3 p-4 bg-yellow-50 rounded-lg">
-            <AlertTriangle className="h-5 w-5 text-yellow-600 mt-0.5" />
-            <div>
-              <h4 className="font-medium text-yellow-800">User Management Limitations</h4>
-              <p className="text-sm text-yellow-700 mt-1">
-                Due to security restrictions, this interface can only manage user roles, not create users directly. 
-                Users must sign up through the normal registration process, then you can assign roles here.
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Create User Section */}
+      {/* Add New User Section */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <UserPlus className="h-5 w-5" />
-            Create New User
+            Add New User
           </CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={createUserDirectly} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="md:col-span-2">
                 <Label htmlFor="email">Email Address</Label>
                 <Input
                   id="email"
@@ -577,76 +457,29 @@ export const UserManagementTab = () => {
                 </Select>
               </div>
             </div>
-            <Button type="submit" className="w-full md:w-auto" disabled={creatingUser}>
-              {creatingUser ? "Creating User..." : "Create User"}
-            </Button>
-            <p className="text-sm text-gray-600">
-              User will be created with password: Allies123! (they can change it after logging in)
-            </p>
-          </form>
-        </CardContent>
-      </Card>
-
-      {/* Invite User Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <UserPlus className="h-5 w-5" />
-            Invite New User (Alternative)
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={inviteUser} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="invite-email">Email Address</Label>
-                <Input
-                  id="invite-email"
-                  type="email"
-                  value={newUserEmail}
-                  onChange={(e) => setNewUserEmail(e.target.value)}
-                  placeholder="user@example.com"
-                  required
-                />
-              </div>
-              <div>
-                <Label htmlFor="invite-role">Role</Label>
-                <Select value={newUserRole} onValueChange={(value: 'admin' | 'user') => setNewUserRole(value)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="user">User</SelectItem>
-                    <SelectItem value="admin">Admin</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-gray-600">
+                User will be created with password: <strong>Allies123!</strong>
+              </p>
+              <Button type="submit" disabled={creatingUser}>
+                {creatingUser ? "Creating..." : "Create User"}
+              </Button>
             </div>
-            <Button type="submit" className="w-full md:w-auto" variant="outline">
-              Send Invitation
-            </Button>
-            <p className="text-sm text-gray-600">
-              Invitation will be sent with password: Allies123! (user can change it after logging in)
-            </p>
           </form>
         </CardContent>
       </Card>
 
-      {/* All Users Section */}
+      {/* Users Table */}
       <Card>
         <CardHeader>
-          <CardTitle>All Registered Users</CardTitle>
-          <p className="text-sm text-gray-600">
-            Manage all users who have registered, including role assignments and markup percentages.
-          </p>
+          <CardTitle>Registered Users</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="rounded-md border">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
+                  <TableHead>User</TableHead>
                   <TableHead>Role</TableHead>
                   <TableHead>Markup %</TableHead>
                   <TableHead>Registered</TableHead>
@@ -656,18 +489,18 @@ export const UserManagementTab = () => {
               <TableBody>
                 {userProfiles.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                    <TableCell colSpan={5} className="text-center py-8 text-gray-500">
                       No registered users found
                     </TableCell>
                   </TableRow>
                 ) : (
                   userProfiles.map((profile) => (
                     <TableRow key={profile.user_id}>
-                      <TableCell className="font-medium">
-                        {getDisplayName(profile)}
-                      </TableCell>
                       <TableCell>
-                        {profile.email || 'No email'}
+                        <div>
+                          <div className="font-medium">{getDisplayName(profile)}</div>
+                          <div className="text-sm text-gray-500">{profile.email}</div>
+                        </div>
                       </TableCell>
                       <TableCell>
                         {profile.role ? (
@@ -717,9 +550,7 @@ export const UserManagementTab = () => {
                           </div>
                         ) : (
                           <div className="flex items-center gap-2">
-                            <Badge variant="outline" className="flex items-center gap-1">
-                              {profile.markup_percentage || 0}%
-                            </Badge>
+                            <span className="text-sm">{profile.markup_percentage || 0}%</span>
                             <Button
                               size="sm"
                               variant="ghost"
@@ -733,121 +564,106 @@ export const UserManagementTab = () => {
                       <TableCell>
                         {new Date(profile.created_at).toLocaleDateString()}
                       </TableCell>
-                      <TableCell className="text-right space-x-2">
-                        <Dialog>
-                          <DialogTrigger asChild>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => startEditingUser(profile)}
-                            >
-                              <Edit className="h-3 w-3 mr-1" />
-                              Edit
-                            </Button>
-                          </DialogTrigger>
-                          <DialogContent>
-                            <DialogHeader>
-                              <DialogTitle>Edit User Profile</DialogTitle>
-                            </DialogHeader>
-                            <form onSubmit={updateUserProfile} className="space-y-4">
-                              <div>
-                                <Label htmlFor="edit-email">Email Address</Label>
-                                <Input
-                                  id="edit-email"
-                                  type="email"
-                                  value={editForm.email}
-                                  onChange={(e) => setEditForm(prev => ({ ...prev, email: e.target.value }))}
-                                  required
-                                />
-                              </div>
-                              <div>
-                                <Label htmlFor="edit-first-name">First Name</Label>
-                                <Input
-                                  id="edit-first-name"
-                                  type="text"
-                                  value={editForm.first_name}
-                                  onChange={(e) => setEditForm(prev => ({ ...prev, first_name: e.target.value }))}
-                                />
-                              </div>
-                              <div>
-                                <Label htmlFor="edit-last-name">Last Name</Label>
-                                <Input
-                                  id="edit-last-name"
-                                  type="text"
-                                  value={editForm.last_name}
-                                  onChange={(e) => setEditForm(prev => ({ ...prev, last_name: e.target.value }))}
-                                />
-                              </div>
-                              <div className="flex justify-end space-x-2">
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  onClick={cancelEditing}
-                                >
-                                  Cancel
-                                </Button>
-                                <Button type="submit">
-                                  Save Changes
-                                </Button>
-                              </div>
-                            </form>
-                          </DialogContent>
-                        </Dialog>
-                        
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => resetUserPassword(profile.user_id, profile.email)}
-                          disabled={resettingPassword === profile.user_id}
-                          className="text-orange-600 hover:text-orange-700"
-                        >
-                          {resettingPassword === profile.user_id ? (
-                            <div className="h-3 w-3 animate-spin rounded-full border-b-2 border-current mr-1" />
-                          ) : (
-                            <KeyRound className="h-3 w-3 mr-1" />
-                          )}
-                          Reset Password
-                        </Button>
-                        
-                        <Select
-                          value={profile.role || 'none'}
-                          onValueChange={(newRole: 'admin' | 'user' | 'none') => {
-                            if (newRole === 'none') {
-                              removeUserRole(profile.user_id);
-                            } else {
-                              updateUserRole(profile.user_id, newRole);
-                            }
-                          }}
-                        >
-                          <SelectTrigger className="w-28">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">No Role</SelectItem>
-                            <SelectItem value="user">User</SelectItem>
-                            <SelectItem value="admin">Admin</SelectItem>
-                          </SelectContent>
-                        </Select>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => startEditingUser(profile)}
+                              >
+                                <Edit className="h-3 w-3" />
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                              <DialogHeader>
+                                <DialogTitle>Edit User Profile</DialogTitle>
+                              </DialogHeader>
+                              <form onSubmit={updateUserProfile} className="space-y-4">
+                                <div>
+                                  <Label htmlFor="edit-email">Email Address</Label>
+                                  <Input
+                                    id="edit-email"
+                                    type="email"
+                                    value={editForm.email}
+                                    onChange={(e) => setEditForm(prev => ({ ...prev, email: e.target.value }))}
+                                    required
+                                  />
+                                </div>
+                                <div>
+                                  <Label htmlFor="edit-first-name">First Name</Label>
+                                  <Input
+                                    id="edit-first-name"
+                                    type="text"
+                                    value={editForm.first_name}
+                                    onChange={(e) => setEditForm(prev => ({ ...prev, first_name: e.target.value }))}
+                                  />
+                                </div>
+                                <div>
+                                  <Label htmlFor="edit-last-name">Last Name</Label>
+                                  <Input
+                                    id="edit-last-name"
+                                    type="text"
+                                    value={editForm.last_name}
+                                    onChange={(e) => setEditForm(prev => ({ ...prev, last_name: e.target.value }))}
+                                  />
+                                </div>
+                                <div className="flex justify-end space-x-2">
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={cancelEditing}
+                                  >
+                                    Cancel
+                                  </Button>
+                                  <Button type="submit">
+                                    Save Changes
+                                  </Button>
+                                </div>
+                              </form>
+                            </DialogContent>
+                          </Dialog>
+                          
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => resetUserPassword(profile.user_id, profile.email)}
+                            disabled={resettingPassword === profile.user_id}
+                          >
+                            {resettingPassword === profile.user_id ? (
+                              <div className="h-3 w-3 animate-spin rounded-full border-b-2 border-current" />
+                            ) : (
+                              <KeyRound className="h-3 w-3" />
+                            )}
+                          </Button>
+                          
+                          <Select
+                            value={profile.role || 'none'}
+                            onValueChange={(newRole: 'admin' | 'user' | 'none') => {
+                              if (newRole === 'none') {
+                                removeUserRole(profile.user_id);
+                              } else {
+                                updateUserRole(profile.user_id, newRole);
+                              }
+                            }}
+                          >
+                            <SelectTrigger className="w-24">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">None</SelectItem>
+                              <SelectItem value="user">User</SelectItem>
+                              <SelectItem value="admin">Admin</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))
                 )}
               </TableBody>
             </Table>
-          </div>
-          
-          <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-            <h4 className="font-medium text-blue-900 mb-2">How User Management Works:</h4>
-            <ul className="text-sm text-blue-700 space-y-1">
-              <li>• <strong>User Registration:</strong> Users sign up through the normal registration flow</li>
-              <li>• <strong>Profile Creation:</strong> User profiles are automatically created with name and email</li>
-              <li>• <strong>Role Assignment:</strong> Admins can assign roles to any registered user</li>
-              <li>• <strong>Markup Percentage:</strong> Set individual markup percentages for each customer</li>
-              <li>• <strong>Invitations:</strong> Send registration invitations with pre-assigned roles</li>
-              <li>• <strong>Role Changes:</strong> Modify user roles as needed or remove roles entirely</li>
-              <li>• <strong>Profile Editing:</strong> Edit user names and email addresses as needed</li>
-              <li>• <strong>Password Reset:</strong> Reset user passwords to: Allies123!</li>
-            </ul>
           </div>
         </CardContent>
       </Card>

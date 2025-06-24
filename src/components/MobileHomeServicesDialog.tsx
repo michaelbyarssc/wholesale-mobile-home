@@ -49,19 +49,21 @@ export const MobileHomeServicesDialog = ({
     }
   });
 
-  // Don't render anything if mobileHome is null
-  if (!mobileHome) {
-    return null;
-  }
-
-  const mobileHomes = [mobileHome];
+  // Handle null mobileHome case by providing safe defaults to the hook
+  const mobileHomes = mobileHome ? [mobileHome] : [];
+  const selectedHomeId = mobileHome?.id || null;
   
   const {
     availableServices,
     getDependencies,
     getMissingDependencies,
     getServicesByDependency
-  } = useConditionalServices(services, mobileHome.id, mobileHomes, selectedServices);
+  } = useConditionalServices(services, selectedHomeId, mobileHomes, selectedServices);
+
+  // Don't render dialog content if mobileHome is null
+  if (!mobileHome) {
+    return null;
+  }
 
   const handleServiceToggle = (serviceId: string) => {
     const service = services.find(s => s.id === serviceId);

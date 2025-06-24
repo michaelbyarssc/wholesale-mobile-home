@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 
 interface MobileHomeImage {
@@ -17,6 +17,13 @@ interface MobileHomeImageCarouselProps {
 
 export const MobileHomeImageCarousel = ({ images, homeModel }: MobileHomeImageCarouselProps) => {
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
+  const [loadedImages, setLoadedImages] = useState<Set<string>>(new Set());
+
+  // Reset failed/loaded images when images prop changes
+  useEffect(() => {
+    setFailedImages(new Set());
+    setLoadedImages(new Set());
+  }, [images]);
 
   if (!images || images.length === 0) {
     return (
@@ -30,22 +37,28 @@ export const MobileHomeImageCarousel = ({ images, homeModel }: MobileHomeImageCa
   }
 
   // Sort images by display_order and filter out failed ones
-  const sortedImages = [...images]
-    .sort((a, b) => a.display_order - b.display_order)
-    .filter(image => !failedImages.has(image.id));
+  const sortedImages = [...images].sort((a, b) => a.display_order - b.display_order);
+  const validImages = sortedImages.filter(image => !failedImages.has(image.id));
 
-  const handleImageError = (imageId: string) => {
-    console.log(`Image failed to load: ${imageId}`);
+  const handleImageError = (imageId: string, imageUrl: string) => {
+    console.log(`Image failed to load: ${imageId}, URL: ${imageUrl}`);
+    console.log(`URL type: ${imageUrl.startsWith('blob:') ? 'blob' : 'regular'}`);
     setFailedImages(prev => new Set([...prev, imageId]));
   };
 
+  const handleImageLoad = (imageId: string) => {
+    console.log(`Image loaded successfully: ${imageId}`);
+    setLoadedImages(prev => new Set([...prev, imageId]));
+  };
+
   // If all images fail to load, show fallback
-  if (sortedImages.length === 0) {
+  if (validImages.length === 0 && failedImages.size > 0) {
     return (
       <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center">
         <div className="text-center text-gray-400">
           <div className="text-4xl mb-2">🏠</div>
           <p className="text-sm">Images temporarily unavailable</p>
+          <p className="text-xs mt-1">{failedImages.size} images failed to load</p>
         </div>
       </div>
     );
@@ -54,15 +67,15 @@ export const MobileHomeImageCarousel = ({ images, homeModel }: MobileHomeImageCa
   return (
     <Carousel className="w-full">
       <CarouselContent>
-        {sortedImages.map((image, index) => (
+        {validImages.map((image, index) => (
           <CarouselItem key={image.id}>
             <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden relative">
               <img 
                 src={image.image_url} 
                 alt={image.alt_text || `${homeModel} ${image.image_type}`}
                 className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
-                onError={() => handleImageError(image.id)}
-                onLoad={() => console.log(`Image loaded successfully: ${image.id}`)}
+                onError={() => handleImageError(image.id, image.image_url)}
+                onLoad={() => handleImageLoad(image.id)}
               />
               {/* Image type badge */}
               <div className="absolute top-2 right-2 bg-black bg-opacity-70 text-white px-2 py-1 rounded text-xs capitalize">
@@ -70,13 +83,13 @@ export const MobileHomeImageCarousel = ({ images, homeModel }: MobileHomeImageCa
               </div>
               {/* Image counter */}
               <div className="absolute bottom-2 right-2 bg-black bg-opacity-70 text-white px-2 py-1 rounded text-xs">
-                {index + 1} / {sortedImages.length}
+                {index + 1} / {validImages.length}
               </div>
             </div>
           </CarouselItem>
         ))}
       </CarouselContent>
-      {sortedImages.length > 1 && (
+      {validImages.length > 1 && (
         <>
           <CarouselPrevious className="left-2" />
           <CarouselNext className="right-2" />

@@ -12,7 +12,7 @@ interface CreateUserRequest {
   password: string;
   first_name?: string;
   last_name?: string;
-  role: 'admin' | 'user';
+  role?: 'admin' | 'user';
   markup_percentage?: number;
 }
 
@@ -71,7 +71,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     const { email, password, first_name, last_name, role, markup_percentage }: CreateUserRequest = await req.json();
 
-    console.log('Creating user:', { email, role, markup_percentage });
+    console.log('Creating user:', { email, role: role || 'user', markup_percentage: markup_percentage || 30 });
 
     // Create user using admin API
     const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
@@ -115,19 +115,19 @@ const handler = async (req: Request): Promise<Response> => {
       console.error('Error creating profile:', profileError);
     }
 
-    // Assign role
+    // Assign role - default to 'user' if not specified
     const { error: roleError } = await supabaseAdmin
       .from('user_roles')
       .insert({
         user_id: newUser.user.id,
-        role: role
+        role: role || 'user'
       });
 
     if (roleError) {
       console.error('Error assigning role:', roleError);
     }
 
-    // Create customer markup
+    // Create customer markup - default to 30% if not specified
     const { error: markupError } = await supabaseAdmin
       .from('customer_markups')
       .insert({
@@ -146,7 +146,9 @@ const handler = async (req: Request): Promise<Response> => {
         success: true, 
         user: {
           id: newUser.user.id,
-          email: newUser.user.email
+          email: newUser.user.email,
+          role: role || 'user',
+          markup_percentage: markup_percentage || 30
         }
       }),
       {

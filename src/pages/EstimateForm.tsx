@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -117,7 +118,7 @@ const EstimateForm = () => {
         .order('series', { ascending: true });
       
       if (error) throw error;
-      return data as MobileHome[];
+      return data;
     }
   });
 
@@ -132,7 +133,7 @@ const EstimateForm = () => {
         .order('name', { ascending: true });
       
       if (error) throw error;
-      return data as Service[];
+      return data;
     }
   });
 

@@ -64,33 +64,43 @@ export const useCustomerPricing = (user: User | null) => {
   useEffect(() => {
     if (!user) return;
 
-    const channel = supabase
-      .channel('customer-markup-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'customer_markups',
-          filter: `user_id=eq.${user.id}`
-        },
-        (payload) => {
-          console.log('Markup change detected:', payload);
-          if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
-            const newMarkup = payload.new?.markup_percentage;
-            if (newMarkup !== undefined) {
-              console.log('Updating markup to:', newMarkup);
-              setCustomerMarkup(newMarkup);
+    let channel: any = null;
+
+    const setupSubscription = () => {
+      channel = supabase
+        .channel(`customer-markup-${user.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'customer_markups',
+            filter: `user_id=eq.${user.id}`
+          },
+          (payload) => {
+            console.log('Markup change detected:', payload);
+            if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
+              const newMarkup = payload.new?.markup_percentage;
+              if (newMarkup !== undefined) {
+                console.log('Updating markup to:', newMarkup);
+                setCustomerMarkup(newMarkup);
+              }
             }
           }
-        }
-      )
-      .subscribe();
+        )
+        .subscribe();
+    };
+
+    setupSubscription();
 
     return () => {
-      supabase.removeChannel(channel);
+      if (channel) {
+        console.log('Cleaning up channel subscription');
+        supabase.removeChannel(channel);
+        channel = null;
+      }
     };
-  }, [user]);
+  }, [user?.id]); // Only depend on user.id to prevent unnecessary re-subscriptions
 
   const calculatePrice = (cost: number): number => {
     if (!cost || cost <= 0) return 0;

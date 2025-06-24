@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,13 +17,15 @@ import { useCustomerPricing } from '@/hooks/useCustomerPricing';
 const EstimateForm = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { cart, clearCart } = useShoppingCart();
-  const { customerPricing } = useCustomerPricing();
+  const { cartItems, clearCart } = useShoppingCart();
+  const { markupPercentage } = useCustomerPricing();
   
   const [services, setServices] = useState<any[]>([]);
+  const [mobileHomes, setMobileHomes] = useState<any[]>([]);
 
   useEffect(() => {
     fetchServices();
+    fetchMobileHomes();
   }, []);
 
   const fetchServices = async () => {
@@ -50,12 +53,42 @@ const EstimateForm = () => {
       });
     }
   };
+
+  const fetchMobileHomes = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('mobile_homes')
+        .select('*')
+        .eq('active', true);
+
+      if (error) {
+        console.error('Error fetching mobile homes:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load mobile homes. Please try again.",
+          variant: "destructive",
+        });
+      } else {
+        setMobileHomes(data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching mobile homes:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load mobile homes. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
   
   const [customerInfo, setCustomerInfo] = useState({
     name: '',
     email: '',
     phone: '',
-    deliveryAddress: ''
+    address: '',
+    preferredContact: '',
+    timeline: '',
+    requirements: ''
   });
   const [selectedHome, setSelectedHome] = useState<any>(null);
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
@@ -80,7 +113,7 @@ const EstimateForm = () => {
           customer_name: customerInfo.name,
           customer_email: customerInfo.email,
           customer_phone: customerInfo.phone,
-          delivery_address: customerInfo.deliveryAddress,
+          delivery_address: customerInfo.address,
           mobile_home_id: selectedHome.id,
           selected_services: selectedServices,
           additional_requirements: additionalRequirements,
@@ -120,39 +153,54 @@ const EstimateForm = () => {
     });
 
     // Apply customer pricing if available
-    if (customerPricing?.markup_percentage) {
-      total = total * (1 + customerPricing.markup_percentage / 100);
+    if (markupPercentage) {
+      total = total * (1 + markupPercentage / 100);
     }
 
     return total;
   };
 
+  const handleMobileHomeSelect = (homeId: string) => {
+    const home = mobileHomes.find(h => h.id === homeId);
+    setSelectedHome(home);
+  };
+
+  const handleServicesChange = (serviceIds: string[]) => {
+    setSelectedServices(serviceIds);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
-      <EstimateHeader />
+      <EstimateHeader 
+        user={null}
+        displayName="Guest"
+        customerMarkup={markupPercentage}
+      />
       
       <div className="max-w-4xl mx-auto py-8 px-4">
         <form onSubmit={handleSubmit} className="space-y-6">
           <CustomerInformation 
             customerInfo={customerInfo}
-            setCustomerInfo={setCustomerInfo}
+            onCustomerInfoChange={setCustomerInfo}
           />
           
           <MobileHomeSelection 
-            selectedHome={selectedHome}
-            setSelectedHome={setSelectedHome}
+            mobileHomes={mobileHomes}
+            selectedMobileHome={selectedHome}
+            onMobileHomeSelect={handleMobileHomeSelect}
+            user={null}
           />
           
           <ServicesSelection 
             selectedServices={selectedServices}
-            setSelectedServices={setSelectedServices}
+            onServicesChange={handleServicesChange}
             services={services}
           />
 
           {/* Add Comparable Homes Card */}
-          {selectedHome && customerInfo.deliveryAddress && (
+          {selectedHome && customerInfo.address && (
             <ComparableHomesCard 
-              deliveryAddress={customerInfo.deliveryAddress}
+              deliveryAddress={customerInfo.address}
               mobileHomeBedrooms={selectedHome.bedrooms || 0}
               mobileHomeBathrooms={selectedHome.bathrooms || 0}
             />
@@ -173,8 +221,8 @@ const EstimateForm = () => {
           </Card>
           
           <EstimateTotal 
-            selectedHome={selectedHome}
-            selectedServices={selectedServices}
+            mobileHome={selectedHome}
+            services={services.filter(s => selectedServices.includes(s.id))}
             loading={loading}
             total={calculateTotal()}
           />

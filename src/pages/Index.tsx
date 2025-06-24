@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
-import { CheckCircle, Shield, Users, Zap, ShoppingCart as CartIcon } from 'lucide-react';
+import { CheckCircle, Shield, Users, Zap, ShoppingCart as CartIcon, LogOut } from 'lucide-react';
 import { MobileHomesShowcase } from '@/components/MobileHomesShowcase';
 import { supabase } from '@/integrations/supabase/client';
 import { User } from '@supabase/supabase-js';
@@ -60,6 +60,11 @@ const Index = () => {
     fetchUserProfile();
   }, [user]);
 
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate('/');
+  };
+
   const features = [
     {
       icon: <CheckCircle className="h-8 w-8 text-green-600" />,
@@ -106,6 +111,15 @@ const Index = () => {
                 <span className="text-gray-700">
                   Welcome back{userProfile?.first_name ? `, ${userProfile.first_name}` : ''}!
                 </span>
+                <Button
+                  onClick={handleLogout}
+                  variant="ghost"
+                  size="sm"
+                  className="text-gray-600 hover:text-gray-800"
+                >
+                  <LogOut className="h-4 w-4 mr-1" />
+                  Logout
+                </Button>
                 <Button
                   onClick={toggleCart}
                   variant="outline"

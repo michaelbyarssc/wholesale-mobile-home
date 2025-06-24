@@ -3,7 +3,7 @@ import React from 'react';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Mail } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -36,12 +36,14 @@ interface EstimateTableRowProps {
   estimate: Estimate;
   onStatusUpdate: (id: string, status: string) => void;
   onDelete: (id: string) => void;
+  onResend: (id: string) => void;
 }
 
 export const EstimateTableRow: React.FC<EstimateTableRowProps> = ({
   estimate,
   onStatusUpdate,
   onDelete,
+  onResend,
 }) => {
   const getStatusBadgeClass = (status: string) => {
     switch (status) {
@@ -98,6 +100,14 @@ export const EstimateTableRow: React.FC<EstimateTableRowProps> = ({
             onClick={() => onStatusUpdate(estimate.id, 'converted')}
           >
             Mark Converted
+          </Button>
+          <Button 
+            size="sm" 
+            variant="outline"
+            onClick={() => onResend(estimate.id)}
+          >
+            <Mail className="h-3 w-3 mr-1" />
+            Resend
           </Button>
           <AlertDialog>
             <AlertDialogTrigger asChild>

@@ -3,7 +3,7 @@ import React from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Mail } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -36,12 +36,14 @@ interface EstimateCardProps {
   estimate: Estimate;
   onStatusUpdate: (id: string, status: string) => void;
   onDelete: (id: string) => void;
+  onResend: (id: string) => void;
 }
 
 export const EstimateCard: React.FC<EstimateCardProps> = ({
   estimate,
   onStatusUpdate,
   onDelete,
+  onResend,
 }) => {
   const getStatusBadgeClass = (status: string) => {
     switch (status) {
@@ -104,6 +106,17 @@ export const EstimateCard: React.FC<EstimateCardProps> = ({
               onClick={() => onStatusUpdate(estimate.id, 'converted')}
             >
               Mark Converted
+            </Button>
+          </div>
+          <div className="flex gap-2">
+            <Button 
+              size="sm" 
+              variant="outline"
+              className="flex-1"
+              onClick={() => onResend(estimate.id)}
+            >
+              <Mail className="h-3 w-3 mr-1" />
+              Resend Estimate
             </Button>
             <AlertDialog>
               <AlertDialogTrigger asChild>

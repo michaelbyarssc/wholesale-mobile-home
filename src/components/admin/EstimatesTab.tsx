@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { EstimateGroup } from './estimates/EstimateGroup';
+import { useToast } from '@/hooks/use-toast';
 
 interface Estimate {
   id: string;
@@ -29,6 +30,8 @@ interface GroupedEstimate {
 }
 
 export const EstimatesTab = () => {
+  const { toast } = useToast();
+  
   const { data: estimates = [], isLoading, refetch } = useQuery({
     queryKey: ['estimates'],
     queryFn: async () => {
@@ -72,6 +75,30 @@ export const EstimatesTab = () => {
       console.error('Error deleting estimate:', error);
     } else {
       refetch();
+    }
+  };
+
+  const resendEstimate = async (id: string) => {
+    try {
+      const { error } = await supabase.functions.invoke('send-estimate-notifications', {
+        body: { estimateId: id }
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      toast({
+        title: "Estimate Resent",
+        description: "The estimate has been sent to the customer and admins again.",
+      });
+    } catch (error) {
+      console.error('Error resending estimate:', error);
+      toast({
+        title: "Error",
+        description: "Failed to resend the estimate. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -128,6 +155,7 @@ export const EstimatesTab = () => {
               group={group}
               onStatusUpdate={updateEstimateStatus}
               onDelete={deleteEstimate}
+              onResend={resendEstimate}
             />
           ))}
           

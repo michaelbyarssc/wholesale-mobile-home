@@ -34,12 +34,14 @@ interface EstimateGroupProps {
   group: GroupedEstimate;
   onStatusUpdate: (id: string, status: string) => void;
   onDelete: (id: string) => void;
+  onResend: (id: string) => void;
 }
 
 export const EstimateGroup: React.FC<EstimateGroupProps> = ({
   group,
   onStatusUpdate,
   onDelete,
+  onResend,
 }) => {
   return (
     <Collapsible key={group.user_id || 'anonymous'} defaultOpen>
@@ -74,6 +76,7 @@ export const EstimateGroup: React.FC<EstimateGroupProps> = ({
                 estimate={estimate}
                 onStatusUpdate={onStatusUpdate}
                 onDelete={onDelete}
+                onResend={onResend}
               />
             ))}
           </div>
@@ -99,6 +102,7 @@ export const EstimateGroup: React.FC<EstimateGroupProps> = ({
                     estimate={estimate}
                     onStatusUpdate={onStatusUpdate}
                     onDelete={onDelete}
+                    onResend={onResend}
                   />
                 ))}
               </TableBody>

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,11 +16,31 @@ const Auth = () => {
   const [lastName, setLastName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [checkingAdminStatus, setCheckingAdminStatus] = useState(true);
   const { toast } = useToast();
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Check if user is already logged in
+    // Check if current user is admin
+    const checkAdminStatus = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: roleData } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', user.id)
+          .eq('role', 'admin')
+          .single();
+
+        setIsAdmin(!!roleData);
+      }
+      setCheckingAdminStatus(false);
+    };
+
+    checkAdminStatus();
+
+    // Check if user is already logged in and redirect appropriately
     const checkUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
@@ -136,6 +157,17 @@ const Auth = () => {
     resetForm();
   };
 
+  if (checkingAdminStatus) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-green-50 to-yellow-50 flex items-center justify-center p-4">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-green-50 to-yellow-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
@@ -247,6 +279,19 @@ const Auth = () => {
                 Back to Estimate Form
               </Button>
             </div>
+
+            {/* Only show admin login button if user is admin */}
+            {isAdmin && (
+              <div className="mt-4 text-center">
+                <Button
+                  variant="outline"
+                  onClick={() => navigate('/admin')}
+                  className="w-full bg-red-50 border-red-200 text-red-700 hover:bg-red-100"
+                >
+                  Access Admin Dashboard
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

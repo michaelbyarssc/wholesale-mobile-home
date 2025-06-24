@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -115,7 +116,7 @@ const EstimateForm = () => {
     customerAddress: fullAddress,
     bedrooms: selectedHome?.bedrooms,
     bathrooms: selectedHome?.bathrooms,
-    shouldShowComps: !!(selectedHome && fullAddress)
+    shouldShowComps: !!(selectedHome && fullAddress && customerInfo.city)
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -224,7 +225,8 @@ const EstimateForm = () => {
     return dependencies.filter(depId => !selectedServices.includes(depId));
   };
 
-  const showComparables = selectedHome && fullAddress && fullAddress.trim().length > 0;
+  // Show comparables only if we have a selected home AND a complete address (including city)
+  const showComparables = selectedHome && fullAddress && customerInfo.city && customerInfo.city.trim().length > 0;
   console.log('Should show comparable homes:', showComparables);
 
   return (
@@ -277,7 +279,9 @@ const EstimateForm = () => {
               <p className="font-medium">Comparable Homes will show here when:</p>
               <ul className="list-disc list-inside mt-2 text-sm">
                 <li>Mobile home is selected: {selectedHome ? '✓' : '✗'}</li>
-                <li>Delivery address is entered: {fullAddress ? '✓' : '✗'}</li>
+                <li>Street address is entered: {customerInfo.address ? '✓' : '✗'}</li>
+                <li>City is entered: {customerInfo.city ? '✓' : '✗'}</li>
+                <li>State is selected: {customerInfo.state ? '✓' : '✗'}</li>
               </ul>
             </div>
           )}

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,6 +19,11 @@ const Auth = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [checkingAdminStatus, setCheckingAdminStatus] = useState(true);
   const [userProfile, setUserProfile] = useState<{first_name: string, last_name: string} | null>(null);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [showPasswordChange, setShowPasswordChange] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordChangeLoading, setPasswordChangeLoading] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -26,6 +32,7 @@ const Auth = () => {
     const checkAdminStatus = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
+        setCurrentUser(user);
         // Get user profile
         const { data: profileData } = await supabase
           .from('profiles')
@@ -166,6 +173,59 @@ const Auth = () => {
     }
   };
 
+  const handlePasswordChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordChangeLoading(true);
+
+    try {
+      if (newPassword !== confirmPassword) {
+        toast({
+          title: "Password Mismatch",
+          description: "New password and confirmation password do not match.",
+          variant: "destructive",
+        });
+        setPasswordChangeLoading(false);
+        return;
+      }
+
+      if (newPassword.length < 6) {
+        toast({
+          title: "Password Too Short",
+          description: "Password must be at least 6 characters long.",
+          variant: "destructive",
+        });
+        setPasswordChangeLoading(false);
+        return;
+      }
+
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Password Updated",
+        description: "Your password has been successfully changed.",
+      });
+
+      // Reset form
+      setNewPassword('');
+      setConfirmPassword('');
+      setShowPasswordChange(false);
+
+    } catch (error: any) {
+      console.error('Password change error:', error);
+      toast({
+        title: "Password Change Error",
+        description: error.message || "An error occurred while changing your password.",
+        variant: "destructive",
+      });
+    } finally {
+      setPasswordChangeLoading(false);
+    }
+  };
+
   const resetForm = () => {
     setEmail('');
     setPassword('');
@@ -204,123 +264,194 @@ const Auth = () => {
           )}
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>{isSignUp ? 'Create Account' : 'Sign In'}</CardTitle>
-            <CardDescription>
-              {isSignUp 
-                ? 'Create an account to access the platform'
-                : 'Sign in to access the platform'
-              }
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleAuth} className="space-y-4">
-              {isSignUp && (
-                <>
-                  <div>
-                    <Label htmlFor="firstName">First Name *</Label>
-                    <Input
-                      id="firstName"
-                      type="text"
-                      value={firstName}
-                      onChange={(e) => setFirstName(e.target.value)}
-                      required
-                      placeholder="Enter your first name"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="lastName">Last Name *</Label>
-                    <Input
-                      id="lastName"
-                      type="text"
-                      value={lastName}
-                      onChange={(e) => setLastName(e.target.value)}
-                      required
-                      placeholder="Enter your last name"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="phoneNumber">Phone Number *</Label>
-                    <Input
-                      id="phoneNumber"
-                      type="tel"
-                      value={phoneNumber}
-                      onChange={(e) => setPhoneNumber(e.target.value)}
-                      required
-                      placeholder="Enter your phone number"
-                    />
-                  </div>
-                </>
-              )}
-              <div>
-                <Label htmlFor="email">Email *</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  placeholder="Enter your email address"
-                />
-              </div>
-              <div>
-                <Label htmlFor="password">Password *</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  placeholder="Enter your password"
-                />
-              </div>
-              <Button 
-                type="submit" 
-                className="w-full bg-blue-600 hover:bg-blue-700"
-                disabled={loading}
-              >
-                {loading ? 'Processing...' : (isSignUp ? 'Create Account' : 'Sign In')}
-              </Button>
-            </form>
-            
-            <div className="mt-4 text-center">
-              <Button
-                variant="link"
-                onClick={toggleAuthMode}
-                className="text-blue-600"
-              >
+        {/* Show password change form if user is logged in and wants to change password */}
+        {currentUser && showPasswordChange ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>Change Password</CardTitle>
+              <CardDescription>
+                Enter your new password below
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handlePasswordChange} className="space-y-4">
+                <div>
+                  <Label htmlFor="newPassword">New Password *</Label>
+                  <Input
+                    id="newPassword"
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    required
+                    placeholder="Enter your new password"
+                    minLength={6}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="confirmPassword">Confirm New Password *</Label>
+                  <Input
+                    id="confirmPassword"
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    required
+                    placeholder="Confirm your new password"
+                    minLength={6}
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button 
+                    type="submit" 
+                    className="flex-1 bg-blue-600 hover:bg-blue-700"
+                    disabled={passwordChangeLoading}
+                  >
+                    {passwordChangeLoading ? 'Updating...' : 'Update Password'}
+                  </Button>
+                  <Button 
+                    type="button" 
+                    variant="outline"
+                    onClick={() => setShowPasswordChange(false)}
+                    disabled={passwordChangeLoading}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        ) : (
+          // Regular auth form
+          <Card>
+            <CardHeader>
+              <CardTitle>{isSignUp ? 'Create Account' : 'Sign In'}</CardTitle>
+              <CardDescription>
                 {isSignUp 
-                  ? 'Already have an account? Sign in'
-                  : "Don't have an account? Create one"
+                  ? 'Create an account to access the platform'
+                  : 'Sign in to access the platform'
                 }
-              </Button>
-            </div>
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleAuth} className="space-y-4">
+                {isSignUp && (
+                  <>
+                    <div>
+                      <Label htmlFor="firstName">First Name *</Label>
+                      <Input
+                        id="firstName"
+                        type="text"
+                        value={firstName}
+                        onChange={(e) => setFirstName(e.target.value)}
+                        required
+                        placeholder="Enter your first name"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="lastName">Last Name *</Label>
+                      <Input
+                        id="lastName"
+                        type="text"
+                        value={lastName}
+                        onChange={(e) => setLastName(e.target.value)}
+                        required
+                        placeholder="Enter your last name"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="phoneNumber">Phone Number *</Label>
+                      <Input
+                        id="phoneNumber"
+                        type="tel"
+                        value={phoneNumber}
+                        onChange={(e) => setPhoneNumber(e.target.value)}
+                        required
+                        placeholder="Enter your phone number"
+                      />
+                    </div>
+                  </>
+                )}
+                <div>
+                  <Label htmlFor="email">Email *</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    placeholder="Enter your email address"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="password">Password *</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    placeholder="Enter your password"
+                  />
+                </div>
+                <Button 
+                  type="submit" 
+                  className="w-full bg-blue-600 hover:bg-blue-700"
+                  disabled={loading}
+                >
+                  {loading ? 'Processing...' : (isSignUp ? 'Create Account' : 'Sign In')}
+                </Button>
+              </form>
+              
+              <div className="mt-4 text-center">
+                <Button
+                  variant="link"
+                  onClick={toggleAuthMode}
+                  className="text-blue-600"
+                >
+                  {isSignUp 
+                    ? 'Already have an account? Sign in'
+                    : "Don't have an account? Create one"
+                  }
+                </Button>
+              </div>
 
-            <div className="mt-4 text-center">
-              <Button
-                variant="outline"
-                onClick={() => navigate('/')}
-                className="w-full"
-              >
-                Back to Home
-              </Button>
-            </div>
-
-            {/* Only show admin login button if user is admin */}
-            {isAdmin && (
               <div className="mt-4 text-center">
                 <Button
                   variant="outline"
-                  onClick={() => navigate('/admin')}
-                  className="w-full bg-red-50 border-red-200 text-red-700 hover:bg-red-100"
+                  onClick={() => navigate('/')}
+                  className="w-full"
                 >
-                  Access Admin Dashboard
+                  Back to Home
                 </Button>
               </div>
-            )}
-          </CardContent>
-        </Card>
+
+              {/* Show change password button if user is logged in */}
+              {currentUser && (
+                <div className="mt-4 text-center">
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowPasswordChange(true)}
+                    className="w-full bg-yellow-50 border-yellow-200 text-yellow-700 hover:bg-yellow-100"
+                  >
+                    Change Password
+                  </Button>
+                </div>
+              )}
+
+              {/* Only show admin login button if user is admin */}
+              {isAdmin && (
+                <div className="mt-4 text-center">
+                  <Button
+                    variant="outline"
+                    onClick={() => navigate('/admin')}
+                    className="w-full bg-red-50 border-red-200 text-red-700 hover:bg-red-100"
+                  >
+                    Access Admin Dashboard
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );

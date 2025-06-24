@@ -4,19 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import type { Database } from '@/integrations/supabase/types';
 
-interface Service {
-  id: string;
-  name: string;
-  description?: string;
-  price: number;
-  cost?: number;
-  dependencies?: string[];
-  applicable_manufacturers?: string[];
-  applicable_series?: string[];
-  requires_admin?: boolean;
-  conditional_pricing?: any;
-}
+type Service = Database['public']['Tables']['services']['Row'];
 
 interface ServicesSelectionProps {
   selectedHome: string;

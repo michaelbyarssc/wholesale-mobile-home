@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -150,8 +149,8 @@ const Index = () => {
       <section className="py-12 sm:py-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 mb-4 sm:mb-6">
-            Professional Mobile Home
-            <span className="block text-blue-600">Estimation Services</span>
+            Wholesale Mobile and Modular Home
+            <span className="block text-blue-600">sales to Investors</span>
           </h2>
           <p className="text-lg sm:text-xl text-gray-600 mb-6 sm:mb-8 max-w-2xl mx-auto">
             Get accurate, professional estimates for your mobile home projects. 

@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
@@ -64,7 +63,6 @@ export const useShoppingCart = () => {
         const newCart = [...prevItems, newItem];
         console.log('New cart length after adding:', newCart.length);
         
-        // Force a re-render by returning a new array reference
         return newCart;
       }
     });
@@ -90,13 +88,13 @@ export const useShoppingCart = () => {
   }, []);
 
   const toggleCart = useCallback(() => {
-    console.log('Toggling cart, current state:', isCartOpen);
+    console.log('toggleCart called, current isCartOpen:', isCartOpen);
     setIsCartOpen(prev => {
       const newState = !prev;
-      console.log('Cart will be:', newState ? 'open' : 'closed');
+      console.log('Setting cart state to:', newState);
       return newState;
     });
-  }, [isCartOpen]);
+  }, []);
 
   const closeCart = useCallback(() => {
     console.log('Closing cart');

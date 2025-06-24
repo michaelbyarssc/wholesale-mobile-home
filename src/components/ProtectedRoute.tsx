@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { User } from '@supabase/supabase-js';
+import { LoadingSpinner } from '@/components/layout/LoadingSpinner';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -18,50 +19,64 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   const navigate = useNavigate();
 
   useEffect(() => {
+    let mounted = true;
+
+    // Set up auth state listener first
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (!mounted) return;
+        
+        console.log('ProtectedRoute: Auth state changed:', event, session?.user?.id);
+        setUser(session?.user ?? null);
+        
+        if (requireAuth && !session?.user && event !== 'INITIAL_SESSION') {
+          navigate('/auth');
+        }
+        
+        setLoading(false);
+      }
+    );
+
     // Check current session
     const checkAuth = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        setUser(session?.user ?? null);
+        const { data: { session }, error } = await supabase.auth.getSession();
         
-        if (requireAuth && !session?.user) {
-          navigate('/auth');
+        if (error) {
+          console.error('ProtectedRoute: Error getting session:', error);
+          if (requireAuth) {
+            navigate('/auth');
+          }
+        } else {
+          if (!mounted) return;
+          setUser(session?.user ?? null);
+          
+          if (requireAuth && !session?.user) {
+            navigate('/auth');
+          }
         }
       } catch (error) {
-        console.error('Auth check error:', error);
-        if (requireAuth) {
+        console.error('ProtectedRoute: Auth check error:', error);
+        if (requireAuth && mounted) {
           navigate('/auth');
         }
       } finally {
-        setLoading(false);
+        if (mounted) {
+          setLoading(false);
+        }
       }
     };
 
     checkAuth();
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setUser(session?.user ?? null);
-        
-        if (requireAuth && !session?.user) {
-          navigate('/auth');
-        }
-      }
-    );
-
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, [navigate, requireAuth]);
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-green-50 to-yellow-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
-        </div>
-      </div>
-    );
+    return <LoadingSpinner />;
   }
 
   if (requireAuth && !user) {

@@ -25,7 +25,14 @@ serve(async (req) => {
     )
 
     // Verify admin authorization
-    const authHeader = req.headers.get('Authorization')!
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: 'Authorization header required' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
     const token = authHeader.replace('Bearer ', '')
     
     const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token)
@@ -36,9 +43,9 @@ serve(async (req) => {
       })
     }
 
-    // Check if user is admin
-    const { data: isAdmin } = await supabaseClient.rpc('is_admin', { user_id: user.id })
-    if (!isAdmin) {
+    // Check if user is admin using the is_admin function
+    const { data: isAdmin, error: adminError } = await supabaseClient.rpc('is_admin', { user_id: user.id })
+    if (adminError || !isAdmin) {
       return new Response(JSON.stringify({ error: 'Admin access required' }), {
         status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -46,6 +53,13 @@ serve(async (req) => {
     }
 
     const { email, temporaryPassword } = await req.json()
+
+    if (!email) {
+      return new Response(JSON.stringify({ error: 'Email is required' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
 
     // Validate email format
     const emailRegex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/
@@ -56,12 +70,33 @@ serve(async (req) => {
       })
     }
 
+    // First, find the user by email from profiles table
+    const { data: profileData, error: profileError } = await supabaseClient
+      .from('profiles')
+      .select('user_id')
+      .eq('email', email)
+      .maybeSingle()
+
+    if (profileError) {
+      return new Response(JSON.stringify({ error: 'Error finding user: ' + profileError.message }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
+    if (!profileData) {
+      return new Response(JSON.stringify({ error: 'User not found' }), {
+        status: 404,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
     // Generate secure random password if not provided
     const password = temporaryPassword || generateSecurePassword()
 
     // Update user password using admin client
     const { data, error } = await supabaseClient.auth.admin.updateUserById(
-      (await supabaseClient.from('profiles').select('user_id').eq('email', email).single()).data?.user_id,
+      profileData.user_id,
       { password }
     )
 
@@ -73,13 +108,18 @@ serve(async (req) => {
     }
 
     // Log admin action
-    await supabaseClient.from('admin_audit_log').insert({
-      admin_user_id: user.id,
-      action: 'PASSWORD_RESET',
-      table_name: 'auth.users',
-      record_id: data.user.id,
-      new_values: { email, password_reset: true }
-    })
+    try {
+      await supabaseClient.from('admin_audit_log').insert({
+        admin_user_id: user.id,
+        action: 'PASSWORD_RESET',
+        table_name: 'auth.users',
+        record_id: data.user.id,
+        new_values: { email, password_reset: true }
+      })
+    } catch (auditError) {
+      console.error('Failed to log admin action:', auditError)
+      // Don't fail the request if audit logging fails
+    }
 
     return new Response(JSON.stringify({ 
       success: true, 
@@ -90,7 +130,8 @@ serve(async (req) => {
     })
 
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
+    console.error('Admin reset password error:', error)
+    return new Response(JSON.stringify({ error: 'Internal server error' }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     })

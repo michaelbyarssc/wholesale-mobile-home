@@ -1,47 +1,58 @@
 
-import { useState, useCallback } from 'react';
-import type { Database } from '@/integrations/supabase/types';
+import { useState, useEffect, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { Database } from '@/integrations/supabase/types';
 
-type MobileHome = Database['public']['Tables']['mobile_homes']['Row'];
-type Service = Database['public']['Tables']['services']['Row'];
-
-export interface CartItem {
-  mobileHome: MobileHome;
-  selectedServices: string[];
-}
+export type CartItem = Database['public']['Tables']['mobile_homes']['Row'] & {
+  selectedServices?: Database['public']['Tables']['services']['Row'][];
+};
 
 export const useShoppingCart = () => {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
 
-  const addToCart = useCallback((mobileHome: MobileHome, selectedServices: string[] = []) => {
+  // Load cart items from localStorage on mount
+  useEffect(() => {
+    try {
+      const savedItems = localStorage.getItem('cart_items');
+      if (savedItems) {
+        const parsed = JSON.parse(savedItems);
+        if (Array.isArray(parsed)) {
+          setCartItems(parsed);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading cart from localStorage:', error);
+      localStorage.removeItem('cart_items'); // Clear corrupted data
+    }
+  }, []);
+
+  // Save cart items to localStorage whenever cartItems changes
+  useEffect(() => {
+    try {
+      localStorage.setItem('cart_items', JSON.stringify(cartItems));
+    } catch (error) {
+      console.error('Error saving cart to localStorage:', error);
+    }
+  }, [cartItems]);
+
+  const addToCart = useCallback((item: CartItem) => {
     setCartItems(prev => {
-      const existingIndex = prev.findIndex(item => item.mobileHome.id === mobileHome.id);
+      const existingIndex = prev.findIndex(cartItem => cartItem.id === item.id);
       if (existingIndex >= 0) {
-        // Update existing item
-        const newItems = [...prev];
-        newItems[existingIndex] = { mobileHome, selectedServices };
-        return newItems;
+        // Item already exists, update it
+        const updated = [...prev];
+        updated[existingIndex] = item;
+        return updated;
       } else {
         // Add new item
-        return [...prev, { mobileHome, selectedServices }];
+        return [...prev, item];
       }
     });
-    setIsCartOpen(true);
   }, []);
 
-  const removeFromCart = useCallback((homeId: string) => {
-    setCartItems(prev => prev.filter(item => item.mobileHome.id !== homeId));
-  }, []);
-
-  const updateServices = useCallback((homeId: string, selectedServices: string[]) => {
-    setCartItems(prev => 
-      prev.map(item => 
-        item.mobileHome.id === homeId 
-          ? { ...item, selectedServices }
-          : item
-      )
-    );
+  const removeFromCart = useCallback((itemId: string) => {
+    setCartItems(prev => prev.filter(item => item.id !== itemId));
   }, []);
 
   const clearCart = useCallback(() => {
@@ -52,14 +63,17 @@ export const useShoppingCart = () => {
     setIsCartOpen(prev => !prev);
   }, []);
 
+  const closeCart = useCallback(() => {
+    setIsCartOpen(false);
+  }, []);
+
   return {
     cartItems,
     isCartOpen,
     addToCart,
     removeFromCart,
-    updateServices,
     clearCart,
     toggleCart,
-    setIsCartOpen
+    closeCart,
   };
 };

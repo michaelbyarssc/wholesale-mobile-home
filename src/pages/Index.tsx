@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MobileHomesShowcase } from '@/components/MobileHomesShowcase';
@@ -20,10 +21,14 @@ const Index = () => {
   const { cartItems, toggleCart } = useShoppingCart();
 
   useEffect(() => {
+    let mounted = true;
+
     // Set up auth state listener first
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('Auth state changed:', event, session?.user?.id);
+        if (!mounted) return;
+        
+        console.log('Index: Auth state changed:', event, session?.user?.id);
         setSession(session);
         setUser(session?.user ?? null);
         
@@ -39,27 +44,34 @@ const Index = () => {
     const checkAuth = async () => {
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
+        
         if (error) {
-          console.error('Error getting session:', error);
+          console.error('Index: Error getting session:', error);
+        }
+        
+        if (!mounted) return;
+        
+        setSession(session);
+        setUser(session?.user ?? null);
+      } catch (error) {
+        console.error('Index: Auth check error:', error);
+        if (mounted) {
           setSession(null);
           setUser(null);
-        } else {
-          console.log('Current session:', session?.user?.id);
-          setSession(session);
-          setUser(session?.user ?? null);
         }
-      } catch (error) {
-        console.error('Auth check error:', error);
-        setSession(null);
-        setUser(null);
       } finally {
-        setIsLoading(false);
+        if (mounted) {
+          setIsLoading(false);
+        }
       }
     };
 
     checkAuth();
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
@@ -74,15 +86,15 @@ const Index = () => {
           .from('profiles')
           .select('first_name')
           .eq('user_id', user.id)
-          .single();
+          .maybeSingle();
 
         if (error && error.code !== 'PGRST116') {
-          console.error('Error fetching user profile:', error);
+          console.error('Index: Error fetching user profile:', error);
         } else {
           setUserProfile(data);
         }
       } catch (error) {
-        console.error('Error fetching user profile:', error);
+        console.error('Index: Error fetching user profile:', error);
       }
     };
 
@@ -91,7 +103,7 @@ const Index = () => {
 
   const handleLogout = async () => {
     try {
-      console.log('Attempting logout...');
+      console.log('Index: Attempting logout...');
       
       // Clear local state immediately
       setUser(null);
@@ -102,16 +114,15 @@ const Index = () => {
       const { error } = await supabase.auth.signOut();
       
       if (error) {
-        console.error('Logout error:', error);
-        // Even if there's an error, we've cleared local state
+        console.error('Index: Logout error:', error);
       } else {
-        console.log('Logout successful');
+        console.log('Index: Logout successful');
       }
       
       // Navigate to home page
       navigate('/');
     } catch (error) {
-      console.error('Error during logout:', error);
+      console.error('Index: Error during logout:', error);
       // Even if there's an error, clear local state and navigate
       setUser(null);
       setSession(null);

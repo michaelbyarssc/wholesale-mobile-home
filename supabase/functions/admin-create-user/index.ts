@@ -54,13 +54,8 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Check if requesting user is admin
-    const { data: adminCheck, error: adminError } = await supabaseAdmin
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', user.id)
-      .eq('role', 'admin')
-      .single();
+    // Check if requesting user is admin using the is_admin function
+    const { data: adminCheck, error: adminError } = await supabaseAdmin.rpc('is_admin', { user_id: user.id });
 
     if (adminError || !adminCheck) {
       return new Response(
@@ -70,6 +65,13 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const { email, password, first_name, last_name, role, markup_percentage }: CreateUserRequest = await req.json();
+
+    if (!email || !password) {
+      return new Response(
+        JSON.stringify({ error: 'Email and password are required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     console.log('Creating user:', { email, role: role || 'user', markup_percentage: markup_percentage || 30 });
 
@@ -139,6 +141,20 @@ const handler = async (req: Request): Promise<Response> => {
       console.error('Error creating markup:', markupError);
     }
 
+    // Log admin action
+    try {
+      await supabaseAdmin.from('admin_audit_log').insert({
+        admin_user_id: user.id,
+        action: 'USER_CREATED',
+        table_name: 'auth.users',
+        record_id: newUser.user.id,
+        new_values: { email, role: role || 'user', markup_percentage: markup_percentage || 30 }
+      });
+    } catch (auditError) {
+      console.error('Failed to log admin action:', auditError);
+      // Don't fail the request if audit logging fails
+    }
+
     console.log('User setup completed successfully');
 
     return new Response(
@@ -160,7 +176,7 @@ const handler = async (req: Request): Promise<Response> => {
   } catch (error: any) {
     console.error('Error in admin-create-user function:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: 'Internal server error' }),
       {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }

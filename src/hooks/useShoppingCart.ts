@@ -91,7 +91,11 @@ export const useShoppingCart = () => {
 
   const toggleCart = useCallback(() => {
     console.log('Toggling cart, current state:', isCartOpen);
-    setIsCartOpen(prev => !prev);
+    setIsCartOpen(prev => {
+      const newState = !prev;
+      console.log('Cart will be:', newState ? 'open' : 'closed');
+      return newState;
+    });
   }, [isCartOpen]);
 
   const closeCart = useCallback(() => {

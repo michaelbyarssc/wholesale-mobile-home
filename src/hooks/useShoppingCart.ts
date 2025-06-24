@@ -1,10 +1,11 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
 
-export type CartItem = Database['public']['Tables']['mobile_homes']['Row'] & {
-  selectedServices?: Database['public']['Tables']['services']['Row'][];
+export type CartItem = {
+  id: string;
+  mobileHome: Database['public']['Tables']['mobile_homes']['Row'];
+  selectedServices: string[];
 };
 
 export const useShoppingCart = () => {
@@ -36,23 +37,34 @@ export const useShoppingCart = () => {
     }
   }, [cartItems]);
 
-  const addToCart = useCallback((item: CartItem) => {
+  const addToCart = useCallback((mobileHome: Database['public']['Tables']['mobile_homes']['Row']) => {
     setCartItems(prev => {
-      const existingIndex = prev.findIndex(cartItem => cartItem.id === item.id);
+      const existingIndex = prev.findIndex(cartItem => cartItem.mobileHome.id === mobileHome.id);
       if (existingIndex >= 0) {
-        // Item already exists, update it
-        const updated = [...prev];
-        updated[existingIndex] = item;
-        return updated;
+        // Item already exists, keep existing services
+        return prev;
       } else {
         // Add new item
-        return [...prev, item];
+        const newItem: CartItem = {
+          id: mobileHome.id,
+          mobileHome,
+          selectedServices: []
+        };
+        return [...prev, newItem];
       }
     });
   }, []);
 
   const removeFromCart = useCallback((itemId: string) => {
-    setCartItems(prev => prev.filter(item => item.id !== itemId));
+    setCartItems(prev => prev.filter(item => item.mobileHome.id !== itemId));
+  }, []);
+
+  const updateServices = useCallback((homeId: string, selectedServices: string[]) => {
+    setCartItems(prev => prev.map(item => 
+      item.mobileHome.id === homeId 
+        ? { ...item, selectedServices }
+        : item
+    ));
   }, []);
 
   const clearCart = useCallback(() => {
@@ -72,8 +84,10 @@ export const useShoppingCart = () => {
     isCartOpen,
     addToCart,
     removeFromCart,
+    updateServices,
     clearCart,
     toggleCart,
     closeCart,
+    setIsCartOpen,
   };
 };

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -41,7 +40,7 @@ const EstimateForm = () => {
   });
 
   // Get customer pricing
-  const { customerMarkup, calculatePrice, loading: pricingLoading } = useCustomerPricing(user);
+  const { markupPercentage, calculatePrice, loading: pricingLoading } = useCustomerPricing(user);
 
   // Check for authenticated user
   useEffect(() => {
@@ -294,7 +293,7 @@ const EstimateForm = () => {
         <EstimateHeader 
           user={user}
           displayName={displayName}
-          customerMarkup={customerMarkup}
+          customerMarkup={markupPercentage}
         />
 
         <form onSubmit={handleSubmit} className="space-y-8">

@@ -1,18 +1,20 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
+import { formatPrice } from '@/lib/utils';
+import { User } from '@supabase/supabase-js';
 
 type MobileHome = Database['public']['Tables']['mobile_homes']['Row'];
 type Service = Database['public']['Tables']['services']['Row'];
 
-export const useCustomerPricing = (userId?: string) => {
+export const useCustomerPricing = (user?: User | null) => {
   const [markupPercentage, setMarkupPercentage] = useState<number>(30); // Default 30%
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchMarkup = async () => {
-      if (!userId) {
+      if (!user?.id) {
         setLoading(false);
         return;
       }
@@ -22,7 +24,7 @@ export const useCustomerPricing = (userId?: string) => {
         const { data, error: fetchError } = await supabase
           .from('customer_markups')
           .select('markup_percentage')
-          .eq('user_id', userId)
+          .eq('user_id', user.id)
           .maybeSingle();
 
         if (fetchError) {
@@ -42,7 +44,7 @@ export const useCustomerPricing = (userId?: string) => {
     };
 
     fetchMarkup();
-  }, [userId]);
+  }, [user?.id]);
 
   const calculatePrice = (baseCost: number): number => {
     if (typeof baseCost !== 'number' || baseCost < 0) {
@@ -52,6 +54,10 @@ export const useCustomerPricing = (userId?: string) => {
     
     const markup = markupPercentage / 100;
     return Math.round(baseCost * (1 + markup) * 100) / 100; // Round to 2 decimal places
+  };
+
+  const formatCalculatedPrice = (baseCost: number): string => {
+    return formatPrice(calculatePrice(baseCost));
   };
 
   const calculateMobileHomePrice = (mobileHome: MobileHome): number => {
@@ -78,9 +84,11 @@ export const useCustomerPricing = (userId?: string) => {
 
   return {
     markupPercentage,
+    customerMarkup: markupPercentage, // Add alias for backward compatibility
     loading,
     error,
     calculatePrice,
+    formatCalculatedPrice,
     calculateMobileHomePrice,
     calculateServicePrice,
     calculateTotalPrice,

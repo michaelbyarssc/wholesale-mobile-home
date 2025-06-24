@@ -1,10 +1,8 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -264,24 +262,13 @@ export const MobileHomesTab = () => {
               </div>
               <div>
                 <Label htmlFor="series">Series</Label>
-                <div className="space-y-2">
-                  <Select value={formData.series} onValueChange={(value) => setFormData({...formData, series: value})}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select existing series or type new one below" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {existingSeries.map((series) => (
-                        <SelectItem key={series} value={series}>{series}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Input
-                    placeholder="Or enter new series name"
-                    value={formData.series}
-                    onChange={(e) => setFormData({...formData, series: e.target.value})}
-                    required
-                  />
-                </div>
+                <Input
+                  id="series"
+                  value={formData.series}
+                  onChange={(e) => setFormData({...formData, series: e.target.value})}
+                  placeholder="Enter series name (e.g., Tru, Epic, Classic)"
+                  required
+                />
               </div>
               <div>
                 <Label htmlFor="model">Model</Label>

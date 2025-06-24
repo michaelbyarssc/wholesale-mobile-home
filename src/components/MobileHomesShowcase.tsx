@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -10,7 +11,7 @@ import { MobileHomeImageCarousel } from './MobileHomeImageCarousel';
 interface MobileHome {
   id: string;
   manufacturer: string;
-  series: 'Tru' | 'Epic';
+  series: string;
   model: string;
   display_name: string | null;
   square_footage: number | null;
@@ -35,7 +36,7 @@ interface MobileHomeImage {
 }
 
 export const MobileHomesShowcase = () => {
-  const [activeTab, setActiveTab] = useState('Tru');
+  const [activeTab, setActiveTab] = useState('');
 
   const { data: mobileHomes = [], isLoading } = useQuery({
     queryKey: ['public-mobile-homes'],
@@ -78,8 +79,15 @@ export const MobileHomesShowcase = () => {
     }
   });
 
-  const truHomes = mobileHomes.filter(home => home.series === 'Tru');
-  const epicHomes = mobileHomes.filter(home => home.series === 'Epic');
+  // Get unique series from the mobile homes data
+  const uniqueSeries = [...new Set(mobileHomes.map(home => home.series))].sort();
+  
+  // Set the first series as active tab if not already set
+  React.useEffect(() => {
+    if (uniqueSeries.length > 0 && !activeTab) {
+      setActiveTab(uniqueSeries[0]);
+    }
+  }, [uniqueSeries, activeTab]);
 
   const getHomeImages = (homeId: string) => {
     const images = homeImages.filter(image => image.mobile_home_id === homeId);
@@ -176,8 +184,8 @@ export const MobileHomesShowcase = () => {
     imagesLoading, 
     homeCount: mobileHomes.length, 
     imageCount: homeImages.length,
-    truHomesCount: truHomes.length,
-    epicHomesCount: epicHomes.length
+    uniqueSeries,
+    activeTab
   });
 
   if (isLoading) {
@@ -198,6 +206,21 @@ export const MobileHomesShowcase = () => {
     );
   }
 
+  if (uniqueSeries.length === 0) {
+    return (
+      <section className="py-20 bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h3 className="text-3xl font-bold text-gray-900 mb-4">
+              Our Mobile Home Models
+            </h3>
+            <p className="text-lg text-gray-600">No mobile homes available at this time.</p>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="py-20 bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -212,38 +235,33 @@ export const MobileHomesShowcase = () => {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-8">
-            <TabsTrigger value="Tru" className="text-lg py-3">
-              Tru Series ({truHomes.length} Models)
-            </TabsTrigger>
-            <TabsTrigger value="Epic" className="text-lg py-3">
-              Epic Series ({epicHomes.length} Models)
-            </TabsTrigger>
+          <TabsList className={`grid w-full mb-8 ${uniqueSeries.length <= 2 ? 'grid-cols-2' : uniqueSeries.length <= 3 ? 'grid-cols-3' : 'grid-cols-4'}`}>
+            {uniqueSeries.map((series) => {
+              const seriesHomes = mobileHomes.filter(home => home.series === series);
+              return (
+                <TabsTrigger key={series} value={series} className="text-lg py-3">
+                  {series} Series ({seriesHomes.length})
+                </TabsTrigger>
+              );
+            })}
           </TabsList>
 
-          <TabsContent value="Tru">
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {truHomes.length > 0 ? (
-                truHomes.map((home, index) => renderHomeCard(home, index))
-              ) : (
-                <div className="col-span-full text-center py-8">
-                  <p className="text-gray-500">No Tru series models available.</p>
+          {uniqueSeries.map((series) => {
+            const seriesHomes = mobileHomes.filter(home => home.series === series);
+            return (
+              <TabsContent key={series} value={series}>
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                  {seriesHomes.length > 0 ? (
+                    seriesHomes.map((home, index) => renderHomeCard(home, index))
+                  ) : (
+                    <div className="col-span-full text-center py-8">
+                      <p className="text-gray-500">No {series} series models available.</p>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          </TabsContent>
-
-          <TabsContent value="Epic">
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {epicHomes.length > 0 ? (
-                epicHomes.map((home, index) => renderHomeCard(home, index))
-              ) : (
-                <div className="col-span-full text-center py-8">
-                  <p className="text-gray-500">No Epic series models available.</p>
-                </div>
-              )}
-            </div>
-          </TabsContent>
+              </TabsContent>
+            );
+          })}
         </Tabs>
       </div>
     </section>

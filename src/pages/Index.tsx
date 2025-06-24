@@ -1,15 +1,17 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
-import { CheckCircle, Shield, Users, Zap } from 'lucide-react';
+import { CheckCircle, Shield, Users, Zap, ShoppingCart as CartIcon } from 'lucide-react';
 import { MobileHomesShowcase } from '@/components/MobileHomesShowcase';
 import { supabase } from '@/integrations/supabase/client';
 import { User } from '@supabase/supabase-js';
+import { useShoppingCart } from '@/hooks/useShoppingCart';
 
 const Index = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
+  const { cartItems, toggleCart } = useShoppingCart();
 
   useEffect(() => {
     // Check current session
@@ -74,11 +76,21 @@ const Index = () => {
             ) : (
               <div className="flex items-center space-x-4">
                 <span className="text-gray-700">Welcome back!</span>
-                <Button 
-                  onClick={() => navigate('/estimate')}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2"
+                <Button
+                  onClick={toggleCart}
+                  variant="outline"
+                  className="relative"
                 >
-                  Get Estimate
+                  <CartIcon className="h-5 w-5 mr-2" />
+                  Cart ({cartItems.length})
+                  {cartItems.length > 0 && (
+                    <Badge 
+                      variant="destructive" 
+                      className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0 flex items-center justify-center text-xs"
+                    >
+                      {cartItems.length}
+                    </Badge>
+                  )}
                 </Button>
               </div>
             )}

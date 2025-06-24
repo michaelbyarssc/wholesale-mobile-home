@@ -93,7 +93,7 @@ export const EstimateTableRow: React.FC<EstimateTableRowProps> = ({
               <Button 
                 size="sm" 
                 variant="outline"
-                className="text-xs px-2 py-1 h-6"
+                className="text-xs px-3 py-2 h-8"
                 onClick={() => onStatusUpdate(estimate.id, 'contacted')}
               >
                 Contact
@@ -101,7 +101,7 @@ export const EstimateTableRow: React.FC<EstimateTableRowProps> = ({
               <Button 
                 size="sm" 
                 variant="outline"
-                className="text-xs px-2 py-1 h-6"
+                className="text-xs px-3 py-2 h-8"
                 onClick={() => onStatusUpdate(estimate.id, 'converted')}
               >
                 Convert
@@ -111,27 +111,27 @@ export const EstimateTableRow: React.FC<EstimateTableRowProps> = ({
           <Button 
             size="sm" 
             variant="outline"
-            className="text-xs px-2 py-1 h-6"
+            className="text-xs px-3 py-2 h-8"
             onClick={() => onResend(estimate.id)}
           >
-            <Mail className="h-3 w-3" />
+            <Mail className="h-4 w-4" />
           </Button>
           <Button 
             size="sm" 
             variant="outline"
-            className="text-xs px-2 py-1 h-6"
+            className="text-xs px-3 py-2 h-8"
             onClick={() => onResend(estimate.id)}
           >
-            <RefreshCw className="h-3 w-3" />
+            <RefreshCw className="h-4 w-4" />
           </Button>
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button 
                 size="sm" 
                 variant="destructive"
-                className="text-xs px-2 py-1 h-6"
+                className="text-xs px-3 py-2 h-8"
               >
-                <Trash2 className="h-3 w-3" />
+                <Trash2 className="h-4 w-4" />
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>

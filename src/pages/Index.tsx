@@ -11,6 +11,7 @@ import { useShoppingCart } from '@/hooks/useShoppingCart';
 const Index = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
+  const [userProfile, setUserProfile] = useState<{ first_name?: string } | null>(null);
   const { cartItems, toggleCart } = useShoppingCart();
 
   useEffect(() => {
@@ -31,6 +32,33 @@ const Index = () => {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      if (!user) {
+        setUserProfile(null);
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('first_name')
+          .eq('user_id', user.id)
+          .single();
+
+        if (error && error.code !== 'PGRST116') {
+          console.error('Error fetching user profile:', error);
+        } else {
+          setUserProfile(data);
+        }
+      } catch (error) {
+        console.error('Error fetching user profile:', error);
+      }
+    };
+
+    fetchUserProfile();
+  }, [user]);
 
   const features = [
     {
@@ -75,7 +103,9 @@ const Index = () => {
               </Button>
             ) : (
               <div className="flex items-center space-x-4">
-                <span className="text-gray-700">Welcome back!</span>
+                <span className="text-gray-700">
+                  Welcome back{userProfile?.first_name ? `, ${userProfile.first_name}` : ''}!
+                </span>
                 <Button
                   onClick={toggleCart}
                   variant="outline"

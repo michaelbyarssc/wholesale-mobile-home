@@ -71,15 +71,11 @@ export const Header = ({
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    {onChangePassword && (
-                      <>
-                        <DropdownMenuItem onClick={onChangePassword}>
-                          <Lock className="h-4 w-4 mr-2" />
-                          Change Password
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                      </>
-                    )}
+                    <DropdownMenuItem onClick={onChangePassword}>
+                      <Lock className="h-4 w-4 mr-2" />
+                      Change Password
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={onLogout} disabled={isLoading}>
                       <LogOut className="h-4 w-4 mr-2" />
                       Logout

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -79,13 +78,18 @@ export const MobileHomesShowcase = () => {
     }
   });
 
-  // Get unique series from the mobile homes data
-  const uniqueSeries = [...new Set(mobileHomes.map(home => home.series))].sort();
+  // Get unique series from the mobile homes data and sort with Tru first
+  const uniqueSeries = [...new Set(mobileHomes.map(home => home.series))].sort((a, b) => {
+    if (a === 'Tru') return -1;
+    if (b === 'Tru') return 1;
+    return a.localeCompare(b);
+  });
   
-  // Set the first series as active tab if not already set
+  // Set Tru as the default active tab, or the first series if Tru doesn't exist
   React.useEffect(() => {
     if (uniqueSeries.length > 0 && !activeTab) {
-      setActiveTab(uniqueSeries[0]);
+      const defaultTab = uniqueSeries.includes('Tru') ? 'Tru' : uniqueSeries[0];
+      setActiveTab(defaultTab);
     }
   }, [uniqueSeries, activeTab]);
 

@@ -8,7 +8,6 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { MobileHomeEditDialog } from './MobileHomeEditDialog';
-import { PDFUploadComponent } from './PDFUploadComponent';
 import { Edit, Trash2 } from 'lucide-react';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -225,49 +224,6 @@ export const MobileHomesTab = () => {
     }
   };
 
-  const handleBulkInsert = async (extractedData: any[]) => {
-    try {
-      const insertPromises = extractedData.map(async (homeData) => {
-        const insertData: MobileHomeInsert = {
-          manufacturer: homeData.manufacturer,
-          series: homeData.series,
-          model: homeData.model,
-          display_name: homeData.display_name,
-          square_footage: homeData.square_footage,
-          bedrooms: homeData.bedrooms,
-          bathrooms: homeData.bathrooms,
-          length_feet: homeData.length_feet,
-          width_feet: homeData.width_feet,
-          features: homeData.features,
-          description: homeData.description,
-          price: homeData.price
-        };
-
-        const { error } = await supabase
-          .from('mobile_homes')
-          .insert(insertData);
-
-        if (error) throw error;
-      });
-
-      await Promise.all(insertPromises);
-
-      toast({
-        title: "Success",
-        description: `Successfully added ${extractedData.length} mobile homes from PDF.`,
-      });
-
-      refetch();
-    } catch (error) {
-      console.error('Error bulk inserting mobile homes:', error);
-      toast({
-        title: "Error",
-        description: "Failed to add some mobile homes from PDF.",
-        variant: "destructive",
-      });
-    }
-  };
-
   if (isLoading) {
     return (
       <Card>
@@ -283,9 +239,6 @@ export const MobileHomesTab = () => {
 
   return (
     <div className="space-y-6">
-      {/* PDF Upload Component */}
-      <PDFUploadComponent onDataExtracted={handleBulkInsert} />
-
       <Card>
         <CardHeader>
           <div className="flex justify-between items-center">

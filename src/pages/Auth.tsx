@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -53,7 +52,7 @@ const Auth = () => {
 
     checkAdminStatus();
 
-    // Check if user is already logged in and redirect to estimate page
+    // Check if user is already logged in and redirect to allies-wholesale.lovable.app
     const checkUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
@@ -68,13 +67,13 @@ const Auth = () => {
         if (roleData) {
           navigate('/admin');
         } else {
-          navigate('/estimate');
+          window.location.href = 'https://allies-wholesale.lovable.app/';
         }
       }
     };
     checkUser();
 
-    // Listen for auth changes and redirect to estimate page
+    // Listen for auth changes and redirect to allies-wholesale.lovable.app
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
         // Check if user is admin
@@ -88,7 +87,7 @@ const Auth = () => {
         if (roleData) {
           navigate('/admin');
         } else {
-          navigate('/estimate');
+          window.location.href = 'https://allies-wholesale.lovable.app/';
         }
       }
     });

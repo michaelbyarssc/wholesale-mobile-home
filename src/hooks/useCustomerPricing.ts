@@ -8,6 +8,69 @@ interface CustomerMarkup {
   markup_percentage: number;
 }
 
+// Global subscription manager to prevent multiple subscriptions for the same user
+const subscriptionManager = {
+  activeChannels: new Map<string, any>(),
+  subscribers: new Map<string, Set<(markup: number) => void>>(),
+  
+  subscribe(userId: string, callback: (markup: number) => void) {
+    if (!this.subscribers.has(userId)) {
+      this.subscribers.set(userId, new Set());
+    }
+    this.subscribers.get(userId)!.add(callback);
+    
+    // Only create channel if it doesn't exist
+    if (!this.activeChannels.has(userId)) {
+      console.log('Creating new channel subscription for user:', userId);
+      const channel = supabase
+        .channel(`customer-markup-${userId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'customer_markups',
+            filter: `user_id=eq.${userId}`
+          },
+          (payload) => {
+            console.log('Markup change detected:', payload);
+            if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
+              const newMarkup = payload.new?.markup_percentage;
+              if (newMarkup !== undefined) {
+                console.log('Broadcasting markup update to subscribers:', newMarkup);
+                // Notify all subscribers for this user
+                this.subscribers.get(userId)?.forEach(cb => cb(newMarkup));
+              }
+            }
+          }
+        )
+        .subscribe();
+      
+      this.activeChannels.set(userId, channel);
+    }
+    
+    return () => this.unsubscribe(userId, callback);
+  },
+  
+  unsubscribe(userId: string, callback: (markup: number) => void) {
+    const userSubscribers = this.subscribers.get(userId);
+    if (userSubscribers) {
+      userSubscribers.delete(callback);
+      
+      // If no more subscribers, clean up the channel
+      if (userSubscribers.size === 0) {
+        console.log('No more subscribers, cleaning up channel for user:', userId);
+        const channel = this.activeChannels.get(userId);
+        if (channel) {
+          supabase.removeChannel(channel);
+          this.activeChannels.delete(userId);
+        }
+        this.subscribers.delete(userId);
+      }
+    }
+  }
+};
+
 export const useCustomerPricing = (user: User | null) => {
   const [customerMarkup, setCustomerMarkup] = useState<number>(30);
   const [loading, setLoading] = useState(true);
@@ -60,47 +123,16 @@ export const useCustomerPricing = (user: User | null) => {
     fetchCustomerMarkup();
   }, [fetchCustomerMarkup]);
 
-  // Set up real-time subscription to markup changes
+  // Set up real-time subscription through the manager
   useEffect(() => {
     if (!user) return;
 
-    let channel: any = null;
+    const unsubscribe = subscriptionManager.subscribe(user.id, (newMarkup) => {
+      setCustomerMarkup(newMarkup);
+    });
 
-    const setupSubscription = () => {
-      channel = supabase
-        .channel(`customer-markup-${user.id}`)
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'customer_markups',
-            filter: `user_id=eq.${user.id}`
-          },
-          (payload) => {
-            console.log('Markup change detected:', payload);
-            if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
-              const newMarkup = payload.new?.markup_percentage;
-              if (newMarkup !== undefined) {
-                console.log('Updating markup to:', newMarkup);
-                setCustomerMarkup(newMarkup);
-              }
-            }
-          }
-        )
-        .subscribe();
-    };
-
-    setupSubscription();
-
-    return () => {
-      if (channel) {
-        console.log('Cleaning up channel subscription');
-        supabase.removeChannel(channel);
-        channel = null;
-      }
-    };
-  }, [user?.id]); // Only depend on user.id to prevent unnecessary re-subscriptions
+    return unsubscribe;
+  }, [user?.id]);
 
   const calculatePrice = (cost: number): number => {
     if (!cost || cost <= 0) return 0;

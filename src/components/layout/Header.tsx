@@ -117,16 +117,16 @@ export const Header = ({
         {(businessInfo?.business_phone || businessInfo?.business_email) && (
           <div className="bg-blue-50 border-t border-blue-100">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="flex flex-col sm:flex-row justify-center items-center py-2 gap-2 sm:gap-6 text-sm">
+              <div className="flex flex-col sm:flex-row justify-center items-center py-2 gap-2 sm:gap-6 text-lg">
                 {businessInfo.business_phone && (
                   <div className="flex items-center gap-1 text-blue-700">
-                    <Phone className="h-3 w-3" />
+                    <Phone className="h-4 w-4" />
                     <span>{businessInfo.business_phone}</span>
                   </div>
                 )}
                 {businessInfo.business_email && (
                   <div className="flex items-center gap-1 text-blue-700">
-                    <Mail className="h-3 w-3" />
+                    <Mail className="h-4 w-4" />
                     <span>{businessInfo.business_email}</span>
                   </div>
                 )}

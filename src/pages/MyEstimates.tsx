@@ -9,6 +9,7 @@ import { useQuery } from '@tanstack/react-query';
 import { User } from '@supabase/supabase-js';
 import { Link, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
+import { Home, LogOut, Phone, Mail } from 'lucide-react';
 
 interface Estimate {
   id: string;
@@ -145,11 +146,11 @@ const MyEstimates = () => {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-green-50 to-yellow-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-green-50 to-yellow-50 flex items-center justify-center p-4">
         <div className="text-center">
-          <p className="text-lg text-blue-900">Please sign in to view your estimates.</p>
+          <p className="text-lg text-blue-900 mb-4">Please sign in to view your estimates.</p>
           <Link to="/auth">
-            <Button className="mt-4">Sign In</Button>
+            <Button>Sign In</Button>
           </Link>
         </div>
       </div>
@@ -158,57 +159,80 @@ const MyEstimates = () => {
 
   if (estimatesLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-green-50 to-yellow-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-green-50 to-yellow-50 flex items-center justify-center p-4">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-lg text-blue-900">Loading your estimates...</p>
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-blue-900">Loading your estimates...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-green-50 to-yellow-50 py-8">
-      <div className="container mx-auto px-4 max-w-6xl">
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-blue-900 mb-2">
-            My Estimates
-          </h1>
-          <p className="text-lg text-green-700">View and manage your mobile home estimates</p>
-          <div className="mt-4 flex justify-center gap-4">
-            <Link to="/">
-              <Button variant="outline">
-                Create New Estimate
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-green-50 to-yellow-50">
+      {/* Header */}
+      <div className="bg-white shadow-sm border-b">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-xl md:text-2xl font-bold text-blue-900">My Estimates</h1>
+              <p className="text-sm text-gray-600 hidden sm:block">View and manage your mobile home estimates</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Link to="/">
+                <Button variant="outline" size="sm" className="hidden sm:flex">
+                  <Home className="h-4 w-4 mr-2" />
+                  New Estimate
+                </Button>
+                <Button variant="outline" size="sm" className="sm:hidden">
+                  <Home className="h-4 w-4" />
+                </Button>
+              </Link>
+              <Button 
+                onClick={() => supabase.auth.signOut()} 
+                variant="outline"
+                size="sm"
+                className="hidden sm:flex"
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                Sign Out
               </Button>
-            </Link>
-            <Button 
-              onClick={() => supabase.auth.signOut()} 
-              variant="outline"
-            >
-              Sign Out
-            </Button>
+              <Button 
+                onClick={() => supabase.auth.signOut()} 
+                variant="outline"
+                size="sm"
+                className="sm:hidden"
+              >
+                <LogOut className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </div>
+      </div>
 
+      {/* Content */}
+      <div className="container mx-auto px-4 py-6 max-w-4xl">
         {estimates.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-lg text-gray-600 mb-4">You haven't created any estimates yet.</p>
-            <Link to="/">
-              <Button>Create Your First Estimate</Button>
-            </Link>
+            <div className="bg-white rounded-lg shadow-sm p-8">
+              <p className="text-gray-600 mb-4">You haven't created any estimates yet.</p>
+              <Link to="/">
+                <Button>Create Your First Estimate</Button>
+              </Link>
+            </div>
           </div>
         ) : (
-          <div className="grid gap-6">
+          <div className="space-y-4">
             {estimates.map((estimate) => (
-              <Card key={estimate.id} className="hover:shadow-lg transition-shadow">
-                <CardHeader>
-                  <div className="flex justify-between items-start">
+              <Card key={estimate.id} className="bg-white shadow-sm hover:shadow-md transition-shadow">
+                <CardHeader className="pb-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <div>
-                      <CardTitle className="text-xl text-blue-900">
-                        Estimate #{estimate.id.slice(-8)}
+                      <CardTitle className="text-lg text-blue-900">
+                        #{estimate.id.slice(-8)}
                       </CardTitle>
-                      <p className="text-gray-600">
-                        Created on {format(new Date(estimate.created_at), 'MMM dd, yyyy')}
+                      <p className="text-sm text-gray-500">
+                        {format(new Date(estimate.created_at), 'MMM dd, yyyy')}
                       </p>
                     </div>
                     <Badge className={getStatusColor(estimate.status)}>
@@ -216,72 +240,85 @@ const MyEstimates = () => {
                     </Badge>
                   </div>
                 </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <CardContent className="pt-0">
+                  <div className="space-y-4">
+                    {/* Mobile Home Info */}
                     <div>
-                      <h4 className="font-semibold text-gray-900 mb-2">Mobile Home</h4>
+                      <h4 className="font-medium text-gray-900 mb-2">Mobile Home</h4>
                       {estimate.mobile_homes ? (
                         <div className="bg-gray-50 p-3 rounded-lg">
-                          <p className="font-medium">
+                          <p className="font-medium text-sm">
                             {estimate.mobile_homes.manufacturer} {estimate.mobile_homes.series}
                           </p>
-                          <p className="text-gray-600">{estimate.mobile_homes.model}</p>
-                          <p className="text-green-600 font-semibold">
+                          <p className="text-gray-600 text-sm">{estimate.mobile_homes.model}</p>
+                          <p className="text-green-600 font-semibold text-sm">
                             ${estimate.mobile_homes.price.toLocaleString()}
                           </p>
                         </div>
                       ) : (
-                        <p className="text-gray-500">Mobile home details not available</p>
+                        <p className="text-gray-500 text-sm">Mobile home details not available</p>
                       )}
+                    </div>
 
-                      {getSelectedServices(estimate.selected_services).length > 0 && (
-                        <div className="mt-4">
-                          <h4 className="font-semibold text-gray-900 mb-2">Additional Services</h4>
-                          <div className="space-y-1">
-                            {getSelectedServices(estimate.selected_services).map((service) => (
-                              <div key={service.id} className="flex justify-between text-sm">
-                                <span>{service.name}</span>
-                                <span className="text-green-600">${service.price.toLocaleString()}</span>
-                              </div>
-                            ))}
+                    {/* Additional Services */}
+                    {getSelectedServices(estimate.selected_services).length > 0 && (
+                      <div>
+                        <h4 className="font-medium text-gray-900 mb-2">Additional Services</h4>
+                        <div className="bg-gray-50 p-3 rounded-lg space-y-1">
+                          {getSelectedServices(estimate.selected_services).map((service) => (
+                            <div key={service.id} className="flex justify-between text-sm">
+                              <span>{service.name}</span>
+                              <span className="text-green-600">${service.price.toLocaleString()}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Contact & Details */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <h4 className="font-medium text-gray-900 mb-2">Contact</h4>
+                        <div className="space-y-1 text-sm">
+                          <p><strong>Name:</strong> {estimate.customer_name}</p>
+                          <p><strong>Phone:</strong> {estimate.customer_phone}</p>
+                          <p><strong>Email:</strong> {estimate.customer_email}</p>
+                        </div>
+                      </div>
+                      {(estimate.delivery_address || estimate.timeline) && (
+                        <div>
+                          <h4 className="font-medium text-gray-900 mb-2">Details</h4>
+                          <div className="space-y-1 text-sm">
+                            {estimate.delivery_address && (
+                              <p><strong>Address:</strong> {estimate.delivery_address}</p>
+                            )}
+                            {estimate.timeline && (
+                              <p><strong>Timeline:</strong> {estimate.timeline}</p>
+                            )}
                           </div>
                         </div>
                       )}
                     </div>
 
-                    <div>
-                      <h4 className="font-semibold text-gray-900 mb-2">Contact Information</h4>
-                      <div className="space-y-1 text-sm">
-                        <p><strong>Name:</strong> {estimate.customer_name}</p>
-                        <p><strong>Email:</strong> {estimate.customer_email}</p>
-                        <p><strong>Phone:</strong> {estimate.customer_phone}</p>
-                        {estimate.delivery_address && (
-                          <p><strong>Delivery Address:</strong> {estimate.delivery_address}</p>
-                        )}
-                        {estimate.preferred_contact && (
-                          <p><strong>Preferred Contact:</strong> {estimate.preferred_contact}</p>
-                        )}
-                        {estimate.timeline && (
-                          <p><strong>Timeline:</strong> {estimate.timeline}</p>
-                        )}
-                      </div>
-
-                      {estimate.additional_requirements && (
-                        <div className="mt-4">
-                          <h4 className="font-semibold text-gray-900 mb-2">Additional Requirements</h4>
-                          <p className="text-sm text-gray-600">{estimate.additional_requirements}</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="mt-6 pt-4 border-t border-gray-200">
-                    <div className="flex justify-between items-center">
+                    {/* Additional Requirements */}
+                    {estimate.additional_requirements && (
                       <div>
-                        <p className="text-2xl font-bold text-green-600">
-                          Total: ${estimate.total_amount.toLocaleString()}
+                        <h4 className="font-medium text-gray-900 mb-2">Additional Requirements</h4>
+                        <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
+                          {estimate.additional_requirements}
                         </p>
-                        <p className="text-xs text-gray-500">*Final pricing may vary based on site conditions</p>
+                      </div>
+                    )}
+
+                    {/* Total */}
+                    <div className="pt-2 border-t border-gray-200">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div>
+                          <p className="text-xl font-bold text-green-600">
+                            Total: ${estimate.total_amount.toLocaleString()}
+                          </p>
+                          <p className="text-xs text-gray-500">*Final pricing may vary based on site conditions</p>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -291,19 +328,36 @@ const MyEstimates = () => {
           </div>
         )}
 
-        {/* Business Contact Info */}
-        <div className="mt-8 text-center text-gray-600">
-          <p className="mb-2">Questions about your estimates? Contact us:</p>
-          <div className="flex justify-center items-center gap-4 flex-wrap">
-            {businessInfo?.business_phone && (
-              <span>Phone: {businessInfo.business_phone}</span>
-            )}
-            {businessInfo?.business_email && (
-              <span>Email: {businessInfo.business_email}</span>
-            )}
-            {!businessInfo?.business_phone && !businessInfo?.business_email && (
-              <span>Phone: (555) 123-4567 | Email: info@wholesalehomescarolinas.com</span>
-            )}
+        {/* Contact Footer */}
+        <div className="mt-8 text-center">
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <p className="text-gray-600 mb-3">Questions about your estimates?</p>
+            <div className="flex flex-col sm:flex-row justify-center items-center gap-4">
+              {businessInfo?.business_phone && (
+                <div className="flex items-center gap-2 text-sm">
+                  <Phone className="h-4 w-4" />
+                  <span>{businessInfo.business_phone}</span>
+                </div>
+              )}
+              {businessInfo?.business_email && (
+                <div className="flex items-center gap-2 text-sm">
+                  <Mail className="h-4 w-4" />
+                  <span>{businessInfo.business_email}</span>
+                </div>
+              )}
+              {!businessInfo?.business_phone && !businessInfo?.business_email && (
+                <div className="flex flex-col sm:flex-row gap-4 text-sm">
+                  <div className="flex items-center gap-2">
+                    <Phone className="h-4 w-4" />
+                    <span>(555) 123-4567</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Mail className="h-4 w-4" />
+                    <span>info@wholesalehomescarolinas.com</span>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

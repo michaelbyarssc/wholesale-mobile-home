@@ -10,7 +10,7 @@ import { MobileHomeImageCarousel } from './MobileHomeImageCarousel';
 import { MobileHomeServicesDialog } from './MobileHomeServicesDialog';
 import { ShoppingCart } from './ShoppingCart';
 import { useCustomerPricing } from '@/hooks/useCustomerPricing';
-import { useShoppingCart } from '@/hooks/useShoppingCart';
+import { CartItem } from '@/hooks/useShoppingCart';
 import { User } from '@supabase/supabase-js';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -27,24 +27,30 @@ interface MobileHomeImage {
 
 interface MobileHomesShowcaseProps {
   user?: User | null;
+  cartItems: CartItem[];
+  isCartOpen: boolean;
+  addToCart: (home: MobileHome, selectedServices: string[]) => void;
+  removeFromCart: (itemId: string) => void;
+  updateServices: (homeId: string, selectedServices: string[]) => void;
+  clearCart: () => void;
+  setIsCartOpen: (open: boolean) => void;
 }
 
-export const MobileHomesShowcase = ({ user = null }: MobileHomesShowcaseProps) => {
+export const MobileHomesShowcase = ({ 
+  user = null, 
+  cartItems,
+  isCartOpen,
+  addToCart,
+  removeFromCart,
+  updateServices,
+  clearCart,
+  setIsCartOpen
+}: MobileHomesShowcaseProps) => {
   const [activeTab, setActiveTab] = useState('');
   const [selectedHomeForServices, setSelectedHomeForServices] = useState<MobileHome | null>(null);
   const { formatCalculatedPrice, loading: pricingLoading } = useCustomerPricing(user);
   
-  const {
-    cartItems,
-    isCartOpen,
-    addToCart,
-    removeFromCart,
-    updateServices,
-    clearCart,
-    setIsCartOpen
-  } = useShoppingCart();
-
-  console.log('MobileHomesShowcase render - cart items from hook:', cartItems.length);
+  console.log('MobileHomesShowcase render - cart items from props:', cartItems.length);
 
   const { data: mobileHomes = [], isLoading } = useQuery({
     queryKey: ['public-mobile-homes'],

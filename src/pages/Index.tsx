@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MobileHomesShowcase } from '@/components/MobileHomesShowcase';
@@ -18,7 +17,19 @@ const Index = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [userProfile, setUserProfile] = useState<{ first_name?: string } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const { cartItems, toggleCart } = useShoppingCart();
+  
+  // Use the shopping cart hook at the top level
+  const {
+    cartItems,
+    isCartOpen,
+    addToCart,
+    removeFromCart,
+    updateServices,
+    clearCart,
+    toggleCart,
+    closeCart,
+    setIsCartOpen,
+  } = useShoppingCart();
 
   useEffect(() => {
     let mounted = true;
@@ -149,7 +160,16 @@ const Index = () => {
       <HeroSection user={user} />
 
       <div id="mobile-homes">
-        <MobileHomesShowcase user={user} />
+        <MobileHomesShowcase 
+          user={user}
+          cartItems={cartItems}
+          isCartOpen={isCartOpen}
+          addToCart={addToCart}
+          removeFromCart={removeFromCart}
+          updateServices={updateServices}
+          clearCart={clearCart}
+          setIsCartOpen={setIsCartOpen}
+        />
       </div>
 
       <FeaturesSection />

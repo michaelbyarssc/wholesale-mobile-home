@@ -4,9 +4,12 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Home, Bed, Bath, Maximize, Ruler } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Home, Bed, Bath, Maximize, Ruler, ShoppingCart as CartIcon } from 'lucide-react';
 import { MobileHomeImageCarousel } from './MobileHomeImageCarousel';
+import { ShoppingCart } from './ShoppingCart';
 import { useCustomerPricing } from '@/hooks/useCustomerPricing';
+import { useShoppingCart } from '@/hooks/useShoppingCart';
 import { User } from '@supabase/supabase-js';
 
 interface MobileHome {
@@ -44,6 +47,17 @@ interface MobileHomesShowcaseProps {
 export const MobileHomesShowcase = ({ user = null }: MobileHomesShowcaseProps) => {
   const [activeTab, setActiveTab] = useState('');
   const { formatCalculatedPrice } = useCustomerPricing(user);
+  
+  const {
+    cartItems,
+    isCartOpen,
+    addToCart,
+    removeFromCart,
+    updateServices,
+    clearCart,
+    toggleCart,
+    setIsCartOpen
+  } = useShoppingCart();
 
   const { data: mobileHomes = [], isLoading } = useQuery({
     queryKey: ['public-mobile-homes'],
@@ -115,6 +129,8 @@ export const MobileHomesShowcase = ({ user = null }: MobileHomesShowcaseProps) =
     const homeImageList = getHomeImages(home.id);
     console.log(`Rendering card for ${home.model} with ${homeImageList.length} images`);
     
+    const isInCart = cartItems.some(item => item.mobileHome.id === home.id);
+    
     return (
       <Card key={home.id} className="overflow-hidden hover:shadow-lg transition-shadow">
         <CardHeader className="pb-4">
@@ -122,9 +138,16 @@ export const MobileHomesShowcase = ({ user = null }: MobileHomesShowcaseProps) =
             <CardTitle className="text-xl font-bold text-gray-900">
               {getHomeName(home)}
             </CardTitle>
-            <Badge variant="secondary" className="bg-blue-100 text-blue-800">
-              {home.series} Series
-            </Badge>
+            <div className="flex items-center gap-2">
+              <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                {home.series} Series
+              </Badge>
+              {isInCart && (
+                <Badge variant="default" className="bg-green-100 text-green-800">
+                  In Cart
+                </Badge>
+              )}
+            </div>
           </div>
           {home.description && (
             <p className="text-gray-600 text-sm mt-2">{home.description}</p>
@@ -191,6 +214,15 @@ export const MobileHomesShowcase = ({ user = null }: MobileHomesShowcaseProps) =
               </div>
             </div>
           )}
+
+          {/* Add to Cart Button */}
+          <Button 
+            onClick={() => addToCart(home)}
+            className="w-full"
+            variant={isInCart ? "outline" : "default"}
+          >
+            {isInCart ? 'Update in Cart' : 'Add to Cart'}
+          </Button>
         </CardContent>
       </Card>
     );
@@ -242,9 +274,27 @@ export const MobileHomesShowcase = ({ user = null }: MobileHomesShowcaseProps) =
     <section className="py-20 bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
-          <h3 className="text-3xl font-bold text-gray-900 mb-4">
-            Our Mobile Home Models
-          </h3>
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-3xl font-bold text-gray-900">
+              Our Mobile Home Models
+            </h3>
+            <Button
+              onClick={toggleCart}
+              variant="outline"
+              className="relative"
+            >
+              <CartIcon className="h-5 w-5 mr-2" />
+              Cart ({cartItems.length})
+              {cartItems.length > 0 && (
+                <Badge 
+                  variant="destructive" 
+                  className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0 flex items-center justify-center text-xs"
+                >
+                  {cartItems.length}
+                </Badge>
+              )}
+            </Button>
+          </div>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
             Explore our premium collection of mobile homes featuring modern designs, 
             quality construction, and thoughtful amenities for comfortable living.
@@ -280,6 +330,16 @@ export const MobileHomesShowcase = ({ user = null }: MobileHomesShowcaseProps) =
             );
           })}
         </Tabs>
+
+        <ShoppingCart
+          isOpen={isCartOpen}
+          onClose={() => setIsCartOpen(false)}
+          cartItems={cartItems}
+          onRemoveItem={removeFromCart}
+          onUpdateServices={updateServices}
+          onClearCart={clearCart}
+          user={user}
+        />
       </div>
     </section>
   );

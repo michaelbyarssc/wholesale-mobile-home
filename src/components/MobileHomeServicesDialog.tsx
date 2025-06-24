@@ -19,7 +19,7 @@ type Service = Database['public']['Tables']['services']['Row'];
 interface MobileHomeServicesDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  mobileHome: MobileHome;
+  mobileHome: MobileHome | null;
   onAddToCart: (home: MobileHome, selectedServices: string[]) => void;
   user: any;
 }
@@ -48,6 +48,11 @@ export const MobileHomeServicesDialog = ({
       return data as Service[];
     }
   });
+
+  // Don't render anything if mobileHome is null
+  if (!mobileHome) {
+    return null;
+  }
 
   const mobileHomes = [mobileHome];
   

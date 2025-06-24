@@ -1,63 +1,96 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
+import { formatPrice } from '@/lib/utils';
+import { useCustomerPricing } from '@/hooks/useCustomerPricing';
+import type { Database } from '@/integrations/supabase/types';
 
-interface MobileHome {
-  id: string;
-  manufacturer: string;
-  series: string;
-  model: string;
-  price: number;
-  cost: number;
-}
+type MobileHome = Database['public']['Tables']['mobile_homes']['Row'];
 
 interface MobileHomeSelectionProps {
   mobileHomes: MobileHome[];
-  selectedHome: string;
-  onSelectHome: (homeId: string) => void;
-  calculatePrice: (cost: number) => number;
+  selectedMobileHome: MobileHome | null;
+  onMobileHomeSelect: (homeId: string) => void;
+  user: any;
 }
 
-export const MobileHomeSelection = ({ 
-  mobileHomes, 
-  selectedHome, 
-  onSelectHome, 
-  calculatePrice 
-}: MobileHomeSelectionProps) => {
+export const MobileHomeSelection: React.FC<MobileHomeSelectionProps> = ({
+  mobileHomes,
+  selectedMobileHome,
+  onMobileHomeSelect,
+  user
+}) => {
+  const { calculatePrice } = useCustomerPricing(user);
+
+  const getHomeName = (home: MobileHome) => {
+    return home.display_name || `${home.series} ${home.model}`;
+  };
+
+  const formatSize = (home: MobileHome) => {
+    if (home.length_feet && home.width_feet) {
+      return `${home.width_feet}x${home.length_feet}`;
+    }
+    return 'N/A';
+  };
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-blue-900">Select Your Mobile Home</CardTitle>
+        <CardTitle>Select Mobile Home</CardTitle>
       </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {mobileHomes.map((home) => {
-            const displayPrice = calculatePrice(home.cost || home.price);
-            return (
-              <div
-                key={home.id}
-                className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                  selectedHome === home.id
-                    ? 'border-blue-500 bg-blue-50'
-                    : 'border-gray-200 hover:border-blue-300'
-                }`}
-                onClick={() => onSelectHome(home.id)}
-              >
-                <div className="flex justify-between items-center">
-                  <div>
-                    <h3 className="font-semibold text-lg">{home.manufacturer} {home.series}</h3>
-                    <p className="text-gray-600">{home.model}</p>
+      <CardContent className="space-y-4">
+        <Select onValueChange={onMobileHomeSelect} value={selectedMobileHome?.id || ""}>
+          <SelectTrigger>
+            <SelectValue placeholder="Choose a mobile home model" />
+          </SelectTrigger>
+          <SelectContent>
+            {mobileHomes.map((home) => {
+              const customerPrice = calculatePrice(home.cost || home.price);
+              return (
+                <SelectItem key={home.id} value={home.id}>
+                  <div className="flex justify-between items-center w-full">
+                    <span>{getHomeName(home)} - {formatSize(home)}</span>
+                    <span className="font-medium text-green-600 ml-4">
+                      {formatPrice(customerPrice)}
+                    </span>
                   </div>
-                  <div className="text-right">
-                    <p className="text-2xl font-bold text-green-600">
-                      ${displayPrice.toLocaleString()}
-                    </p>
-                  </div>
-                </div>
+                </SelectItem>
+              );
+            })}
+          </SelectContent>
+        </Select>
+
+        {selectedMobileHome && (
+          <div className="p-4 bg-blue-50 rounded-lg">
+            <h3 className="font-semibold text-lg mb-2">{getHomeName(selectedMobileHome)}</h3>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="text-gray-600">Size:</span> {formatSize(selectedMobileHome)}
               </div>
-            );
-          })}
-        </div>
+              <div>
+                <span className="text-gray-600">Price:</span> 
+                <span className="font-medium text-green-600 ml-1">
+                  {formatPrice(calculatePrice(selectedMobileHome.cost || selectedMobileHome.price))}
+                </span>
+              </div>
+              {selectedMobileHome.square_footage && (
+                <div>
+                  <span className="text-gray-600">Sq Ft:</span> {selectedMobileHome.square_footage}
+                </div>
+              )}
+              {selectedMobileHome.bedrooms && selectedMobileHome.bathrooms && (
+                <div>
+                  <span className="text-gray-600">Bed/Bath:</span> {selectedMobileHome.bedrooms}/{selectedMobileHome.bathrooms}
+                </div>
+              )}
+            </div>
+            {selectedMobileHome.description && (
+              <p className="text-gray-700 mt-2">{selectedMobileHome.description}</p>
+            )}
+          </div>
+        )}
       </CardContent>
     </Card>
   );

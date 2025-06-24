@@ -10,7 +10,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { validateEmail, validatePhone, sanitizeInput } from '@/utils/security';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Save } from 'lucide-react';
 
 interface AdminSetting {
   id: string;
@@ -23,6 +23,7 @@ export const SettingsTab = () => {
   const { toast } = useToast();
   const [settings, setSettings] = useState<Record<string, string>>({});
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const [isSaving, setIsSaving] = useState(false);
 
   const { data: adminSettings = [], isLoading, refetch } = useQuery({
     queryKey: ['admin-settings'],
@@ -69,6 +70,71 @@ export const SettingsTab = () => {
     }
     
     return null;
+  };
+
+  const validateAllSettings = (): boolean => {
+    const errors: Record<string, string> = {};
+    let hasErrors = false;
+
+    Object.entries(settings).forEach(([key, value]) => {
+      const error = validateSetting(key, value);
+      if (error) {
+        errors[key] = error;
+        hasErrors = true;
+      }
+    });
+
+    setValidationErrors(errors);
+    return !hasErrors;
+  };
+
+  const saveAllSettings = async () => {
+    if (!validateAllSettings()) {
+      toast({
+        title: "Validation Error",
+        description: "Please fix the validation errors before saving.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      // Update all settings
+      for (const [key, value] of Object.entries(settings)) {
+        const sanitizedValue = sanitizeInput(value);
+        
+        const { error } = await supabase
+          .from('admin_settings')
+          .update({ setting_value: sanitizedValue })
+          .eq('setting_key', key);
+
+        if (error) throw error;
+
+        // Log admin action
+        await supabase.from('admin_audit_log').insert({
+          action: 'UPDATE_SETTING',
+          table_name: 'admin_settings',
+          new_values: { setting_key: key, setting_value: sanitizedValue }
+        });
+      }
+
+      toast({
+        title: "Success",
+        description: "All settings saved successfully.",
+      });
+
+      refetch();
+    } catch (error) {
+      console.error('Error saving settings:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save settings.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const updateSetting = async (key: string, value: string) => {
@@ -160,6 +226,18 @@ export const SettingsTab = () => {
 
   return (
     <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold">Settings</h2>
+        <Button 
+          onClick={saveAllSettings}
+          disabled={isSaving}
+          className="flex items-center gap-2"
+        >
+          <Save className="h-4 w-4" />
+          {isSaving ? 'Saving...' : 'Save All Settings'}
+        </Button>
+      </div>
+
       <Card>
         <CardHeader>
           <CardTitle>Business Settings</CardTitle>

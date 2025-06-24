@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { MobileHomeEditDialog } from './MobileHomeEditDialog';
 import { Edit, Trash2 } from 'lucide-react';
 import { formatPrice } from '@/lib/utils';
+import { useCustomerPricing } from '@/hooks/useCustomerPricing';
 import type { Database } from '@/integrations/supabase/types';
 
 type MobileHome = Database['public']['Tables']['mobile_homes']['Row'];
@@ -27,6 +27,9 @@ export const MobileHomesTab = () => {
     display_name: '',
     price: ''
   });
+
+  // Get customer pricing for markup calculations
+  const { calculatePrice } = useCustomerPricing(null); // null for admin view
 
   const { data: mobileHomes = [], isLoading, refetch } = useQuery({
     queryKey: ['admin-mobile-homes'],
@@ -288,7 +291,7 @@ export const MobileHomesTab = () => {
                 />
               </div>
               <div>
-                <Label htmlFor="price">Price</Label>
+                <Label htmlFor="price">Cost (Internal Price)</Label>
                 <Input
                   id="price"
                   type="number"
@@ -312,7 +315,8 @@ export const MobileHomesTab = () => {
                   <TableHead>Manufacturer</TableHead>
                   <TableHead>Series</TableHead>
                   <TableHead>Model</TableHead>
-                  <TableHead>Price</TableHead>
+                  <TableHead>Cost (Internal)</TableHead>
+                  <TableHead>Customer Price (30% markup)</TableHead>
                   <TableHead>Sq Ft</TableHead>
                   <TableHead>Bed/Bath</TableHead>
                   <TableHead>Status</TableHead>
@@ -320,54 +324,60 @@ export const MobileHomesTab = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {mobileHomes.map((home) => (
-                  <TableRow key={home.id}>
-                    <TableCell className="font-medium">{getHomeName(home)}</TableCell>
-                    <TableCell>{formatSize(home)}</TableCell>
-                    <TableCell>{home.manufacturer}</TableCell>
-                    <TableCell>{home.series}</TableCell>
-                    <TableCell>{home.model}</TableCell>
-                    <TableCell>
-                      <span className="text-sm font-medium">{formatPrice(home.price)}</span>
-                    </TableCell>
-                    <TableCell>{home.square_footage || 'N/A'}</TableCell>
-                    <TableCell>
-                      {home.bedrooms || 'N/A'}/{home.bathrooms || 'N/A'}
-                    </TableCell>
-                    <TableCell>
-                      <span className={`px-2 py-1 rounded-full text-xs ${
-                        home.active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                      }`}>
-                        {home.active ? 'Active' : 'Inactive'}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex space-x-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => setEditingHome(home)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => toggleActive(home.id, home.active)}
-                        >
-                          {home.active ? 'Deactivate' : 'Activate'}
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => deleteMobileHome(home.id, getHomeName(home))}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {mobileHomes.map((home) => {
+                  const customerPrice = calculatePrice(home.cost || home.price);
+                  return (
+                    <TableRow key={home.id}>
+                      <TableCell className="font-medium">{getHomeName(home)}</TableCell>
+                      <TableCell>{formatSize(home)}</TableCell>
+                      <TableCell>{home.manufacturer}</TableCell>
+                      <TableCell>{home.series}</TableCell>
+                      <TableCell>{home.model}</TableCell>
+                      <TableCell>
+                        <span className="text-sm font-medium text-gray-600">{formatPrice(home.cost || home.price)}</span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm font-medium text-green-600">{formatPrice(customerPrice)}</span>
+                      </TableCell>
+                      <TableCell>{home.square_footage || 'N/A'}</TableCell>
+                      <TableCell>
+                        {home.bedrooms || 'N/A'}/{home.bathrooms || 'N/A'}
+                      </TableCell>
+                      <TableCell>
+                        <span className={`px-2 py-1 rounded-full text-xs ${
+                          home.active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                        }`}>
+                          {home.active ? 'Active' : 'Inactive'}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex space-x-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setEditingHome(home)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => toggleActive(home.id, home.active)}
+                          >
+                            {home.active ? 'Deactivate' : 'Activate'}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => deleteMobileHome(home.id, getHomeName(home))}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </div>

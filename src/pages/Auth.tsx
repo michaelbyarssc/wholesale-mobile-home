@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,14 +17,27 @@ const Auth = () => {
   const [loading, setLoading] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [checkingAdminStatus, setCheckingAdminStatus] = useState(true);
+  const [userProfile, setUserProfile] = useState<{first_name: string, last_name: string} | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Check if current user is admin
+    // Check if current user is admin and get their profile
     const checkAdminStatus = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
+        // Get user profile
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('first_name, last_name')
+          .eq('user_id', user.id)
+          .single();
+
+        if (profileData) {
+          setUserProfile(profileData);
+        }
+
+        // Check admin role
         const { data: roleData } = await supabase
           .from('user_roles')
           .select('role')
@@ -82,6 +94,15 @@ const Auth = () => {
 
     return () => subscription.unsubscribe();
   }, [navigate]);
+
+  const getUserDisplayName = () => {
+    if (userProfile?.first_name && userProfile?.last_name) {
+      return `${userProfile.first_name} ${userProfile.last_name}`;
+    } else if (userProfile?.first_name) {
+      return userProfile.first_name;
+    }
+    return null;
+  };
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -168,6 +189,8 @@ const Auth = () => {
     );
   }
 
+  const displayName = getUserDisplayName();
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-green-50 to-yellow-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
@@ -175,6 +198,9 @@ const Auth = () => {
           <h1 className="text-3xl font-bold text-blue-900 mb-2">
             Wholesale Homes of the Carolinas
           </h1>
+          {displayName && (
+            <p className="text-lg text-blue-600 mb-2">Welcome, {displayName}!</p>
+          )}
         </div>
 
         <Card>

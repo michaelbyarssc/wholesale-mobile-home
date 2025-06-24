@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Home, Bed, Bath, Maximize, Ruler, ShoppingCart as CartIcon } from 'lucide-react';
+import { Home, Bed, Bath, Maximize, Ruler } from 'lucide-react';
 import { MobileHomeImageCarousel } from './MobileHomeImageCarousel';
 import { ShoppingCart } from './ShoppingCart';
 import { useCustomerPricing } from '@/hooks/useCustomerPricing';
@@ -39,7 +39,6 @@ export const MobileHomesShowcase = ({ user = null }: MobileHomesShowcaseProps) =
     removeFromCart,
     updateServices,
     clearCart,
-    toggleCart,
     setIsCartOpen
   } = useShoppingCart();
 
@@ -288,30 +287,9 @@ export const MobileHomesShowcase = ({ user = null }: MobileHomesShowcaseProps) =
     <section className="py-20 bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-3xl font-bold text-gray-900">
-              Our Mobile Home Models
-            </h3>
-            {/* Cart button - Only show for logged in users */}
-            {user && (
-              <Button
-                onClick={toggleCart}
-                variant="outline"
-                className="relative"
-              >
-                <CartIcon className="h-5 w-5 mr-2" />
-                Cart ({cartItems.length})
-                {cartItems.length > 0 && (
-                  <Badge 
-                    variant="destructive" 
-                    className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0 flex items-center justify-center text-xs"
-                  >
-                    {cartItems.length}
-                  </Badge>
-                )}
-              </Button>
-            )}
-          </div>
+          <h3 className="text-3xl font-bold text-gray-900 mb-4">
+            Our Mobile Home Models
+          </h3>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
             Explore our premium collection of mobile homes featuring modern designs, 
             quality construction, and thoughtful amenities for comfortable living.

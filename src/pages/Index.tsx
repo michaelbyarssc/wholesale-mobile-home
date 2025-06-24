@@ -1,12 +1,34 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle, Shield, Users, Zap } from 'lucide-react';
 import { MobileHomesShowcase } from '@/components/MobileHomesShowcase';
+import { supabase } from '@/integrations/supabase/client';
+import { User } from '@supabase/supabase-js';
 
 const Index = () => {
   const navigate = useNavigate();
+  const [user, setUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    // Check current session
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setUser(session?.user ?? null);
+    };
+
+    checkAuth();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setUser(session?.user ?? null);
+      }
+    );
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const features = [
     {
@@ -42,12 +64,24 @@ const Index = () => {
                 Wholesale Homes of the Carolinas
               </h1>
             </div>
-            <Button 
-              onClick={() => navigate('/auth')}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2"
-            >
-              Login
-            </Button>
+            {!user ? (
+              <Button 
+                onClick={() => navigate('/auth')}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2"
+              >
+                Login
+              </Button>
+            ) : (
+              <div className="flex items-center space-x-4">
+                <span className="text-gray-700">Welcome back!</span>
+                <Button 
+                  onClick={() => navigate('/estimate')}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2"
+                >
+                  Get Estimate
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       </header>
@@ -64,30 +98,54 @@ const Index = () => {
             Our expert team provides detailed assessments tailored to your specific needs.
           </p>
           <div className="space-y-4 sm:space-y-0 sm:space-x-4 sm:flex sm:justify-center">
-            <Button 
-              onClick={() => navigate('/auth')}
-              size="lg"
-              className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 text-lg w-full sm:w-auto"
-            >
-              Get Started - Login Required
-            </Button>
-            <Button 
-              variant="outline" 
-              size="lg"
-              className="border-blue-600 text-blue-600 hover:bg-blue-50 px-8 py-4 text-lg w-full sm:w-auto"
-              onClick={() => {
-                document.getElementById('mobile-homes')?.scrollIntoView({ behavior: 'smooth' });
-              }}
-            >
-              View Our Models
-            </Button>
+            {!user ? (
+              <>
+                <Button 
+                  onClick={() => navigate('/auth')}
+                  size="lg"
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 text-lg w-full sm:w-auto"
+                >
+                  Get Started - Login Required
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="lg"
+                  className="border-blue-600 text-blue-600 hover:bg-blue-50 px-8 py-4 text-lg w-full sm:w-auto"
+                  onClick={() => {
+                    document.getElementById('mobile-homes')?.scrollIntoView({ behavior: 'smooth' });
+                  }}
+                >
+                  View Our Models
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button 
+                  onClick={() => navigate('/estimate')}
+                  size="lg"
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 text-lg w-full sm:w-auto"
+                >
+                  Get Your Estimate
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="lg"
+                  className="border-blue-600 text-blue-600 hover:bg-blue-50 px-8 py-4 text-lg w-full sm:w-auto"
+                  onClick={() => {
+                    document.getElementById('mobile-homes')?.scrollIntoView({ behavior: 'smooth' });
+                  }}
+                >
+                  View Models & Pricing
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </section>
 
       {/* Mobile Homes Showcase */}
       <div id="mobile-homes">
-        <MobileHomesShowcase />
+        <MobileHomesShowcase user={user} />
       </div>
 
       {/* Features Section */}
@@ -128,16 +186,18 @@ const Index = () => {
             Ready to Get Your Estimate?
           </h3>
           <p className="text-xl text-blue-100 mb-8">
-            Join our platform to access professional mobile home estimation services 
-            with transparent pricing and expert guidance.
+            {!user 
+              ? "Join our platform to access professional mobile home estimation services with transparent pricing and expert guidance."
+              : "Access professional mobile home estimation services with your personalized pricing and expert guidance."
+            }
           </p>
           <Button 
-            onClick={() => navigate('/auth')}
+            onClick={() => user ? navigate('/estimate') : navigate('/auth')}
             size="lg"
             variant="secondary"
             className="bg-white text-blue-600 hover:bg-gray-100 px-8 py-4 text-lg"
           >
-            Login to View Pricing
+            {user ? 'Get Your Estimate' : 'Login to View Pricing'}
           </Button>
         </div>
       </section>

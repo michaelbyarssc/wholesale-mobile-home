@@ -6,7 +6,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Home, Bed, Bath, Maximize, Ruler } from 'lucide-react';
 import { MobileHomeImageCarousel } from './MobileHomeImageCarousel';
-import { formatPrice } from '@/lib/utils';
+import { useCustomerPricing } from '@/hooks/useCustomerPricing';
+import { User } from '@supabase/supabase-js';
 
 interface MobileHome {
   id: string;
@@ -36,8 +37,13 @@ interface MobileHomeImage {
   alt_text: string | null;
 }
 
-export const MobileHomesShowcase = () => {
+interface MobileHomesShowcaseProps {
+  user?: User | null;
+}
+
+export const MobileHomesShowcase = ({ user = null }: MobileHomesShowcaseProps) => {
   const [activeTab, setActiveTab] = useState('');
+  const { formatCalculatedPrice } = useCustomerPricing(user);
 
   const { data: mobileHomes = [], isLoading } = useQuery({
     queryKey: ['public-mobile-homes'],
@@ -123,9 +129,9 @@ export const MobileHomesShowcase = () => {
           {home.description && (
             <p className="text-gray-600 text-sm mt-2">{home.description}</p>
           )}
-          {home.price && (
+          {user && home.price && (
             <div className="mt-2">
-              <span className="text-2xl font-bold text-green-600">{formatPrice(home.price)}</span>
+              <span className="text-2xl font-bold text-green-600">{formatCalculatedPrice(home.price)}</span>
             </div>
           )}
         </CardHeader>

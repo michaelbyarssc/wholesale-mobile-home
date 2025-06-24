@@ -37,6 +37,7 @@ interface Service {
 const EstimateForm = () => {
   const { toast } = useToast();
   const [user, setUser] = useState<User | null>(null);
+  const [userProfile, setUserProfile] = useState<{first_name: string, last_name: string} | null>(null);
   
   const [selectedHome, setSelectedHome] = useState<string>('');
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
@@ -56,8 +57,19 @@ const EstimateForm = () => {
       const { data: { user } } = await supabase.auth.getUser();
       setUser(user);
       
-      // Pre-fill customer info if user is logged in
+      // Get user profile if user is logged in
       if (user) {
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('first_name, last_name')
+          .eq('user_id', user.id)
+          .single();
+
+        if (profileData) {
+          setUserProfile(profileData);
+        }
+
+        // Pre-fill customer info if user is logged in
         setCustomerInfo(prev => ({
           ...prev,
           email: user.email || ''
@@ -68,18 +80,40 @@ const EstimateForm = () => {
     getUser();
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       setUser(session?.user || null);
       if (session?.user) {
+        // Get user profile when auth state changes
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('first_name, last_name')
+          .eq('user_id', session.user.id)
+          .single();
+
+        if (profileData) {
+          setUserProfile(profileData);
+        }
+
         setCustomerInfo(prev => ({
           ...prev,
           email: session.user.email || ''
         }));
+      } else {
+        setUserProfile(null);
       }
     });
 
     return () => subscription.unsubscribe();
   }, []);
+
+  const getUserDisplayName = () => {
+    if (userProfile?.first_name && userProfile?.last_name) {
+      return `${userProfile.first_name} ${userProfile.last_name}`;
+    } else if (userProfile?.first_name) {
+      return userProfile.first_name;
+    }
+    return null;
+  };
 
   // Fetch mobile homes from database
   const { data: mobileHomes = [], isLoading: homesLoading } = useQuery({
@@ -275,6 +309,8 @@ const EstimateForm = () => {
     );
   }
 
+  const displayName = getUserDisplayName();
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-green-50 to-yellow-50 py-8">
       <div className="container mx-auto px-4 max-w-4xl">
@@ -286,7 +322,7 @@ const EstimateForm = () => {
           <div className="mt-4 flex justify-center gap-4">
             {user ? (
               <div className="flex items-center gap-4">
-                <p className="text-blue-600">Welcome, {user.email}</p>
+                <p className="text-blue-600">Welcome, {displayName || user.email}</p>
                 <Link to="/my-estimates">
                   <Button variant="outline">
                     My Estimates

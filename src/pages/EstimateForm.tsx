@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -62,13 +61,21 @@ const EstimateForm = () => {
 
         if (profileData) {
           setUserProfile(profileData);
+          
+          // Populate customer info with profile data
+          const fullName = `${profileData.first_name || ''} ${profileData.last_name || ''}`.trim();
+          setCustomerInfo(prev => ({
+            ...prev,
+            name: fullName || prev.name,
+            email: user.email || prev.email
+          }));
+        } else {
+          // If no profile data, just set email
+          setCustomerInfo(prev => ({
+            ...prev,
+            email: user.email || prev.email
+          }));
         }
-
-        // Pre-fill customer info if user is logged in
-        setCustomerInfo(prev => ({
-          ...prev,
-          email: user.email || ''
-        }));
       }
     };
     
@@ -113,14 +120,33 @@ const EstimateForm = () => {
 
         if (profileData) {
           setUserProfile(profileData);
+          
+          // Populate customer info with profile data
+          const fullName = `${profileData.first_name || ''} ${profileData.last_name || ''}`.trim();
+          setCustomerInfo(prev => ({
+            ...prev,
+            name: fullName || prev.name,
+            email: session.user.email || prev.email
+          }));
+        } else {
+          // If no profile data, just set email
+          setCustomerInfo(prev => ({
+            ...prev,
+            email: session.user.email || prev.email
+          }));
         }
-
-        setCustomerInfo(prev => ({
-          ...prev,
-          email: session.user.email || ''
-        }));
       } else {
         setUserProfile(null);
+        // Clear customer info when user logs out
+        setCustomerInfo({
+          name: '',
+          phone: '',
+          email: '',
+          address: '',
+          preferredContact: '',
+          timeline: '',
+          requirements: ''
+        });
       }
     });
 
@@ -284,15 +310,30 @@ const EstimateForm = () => {
       setSelectedHome('');
       setSelectedServices([]);
       setCartItems([]);
-      setCustomerInfo({
-        name: '',
-        phone: '',
-        email: user?.email || '',
-        address: '',
-        preferredContact: '',
-        timeline: '',
-        requirements: ''
-      });
+      
+      // Reset customer info but keep user data if logged in
+      if (user && userProfile) {
+        const fullName = `${userProfile.first_name || ''} ${userProfile.last_name || ''}`.trim();
+        setCustomerInfo({
+          name: fullName,
+          phone: '',
+          email: user.email || '',
+          address: '',
+          preferredContact: '',
+          timeline: '',
+          requirements: ''
+        });
+      } else {
+        setCustomerInfo({
+          name: '',
+          phone: '',
+          email: user?.email || '',
+          address: '',
+          preferredContact: '',
+          timeline: '',
+          requirements: ''
+        });
+      }
 
     } catch (error) {
       console.error('Error submitting estimate:', error);

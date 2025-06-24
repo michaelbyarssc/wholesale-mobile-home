@@ -23,7 +23,14 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<Auth />} />
-          <Route path="/estimate" element={<EstimateForm />} />
+          <Route 
+            path="/estimate" 
+            element={
+              <ProtectedRoute>
+                <EstimateForm />
+              </ProtectedRoute>
+            } 
+          />
           <Route 
             path="/my-estimates" 
             element={

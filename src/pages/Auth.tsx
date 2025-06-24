@@ -302,7 +302,7 @@ const Auth = () => {
                 onClick={() => navigate('/')}
                 className="w-full"
               >
-                Back to Home
+                Back to Estimate Form
               </Button>
             </div>
 

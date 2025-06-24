@@ -25,16 +25,31 @@ export const PasswordChangeDialog = ({ isOpen, onClose, isFirstLogin = false }: 
   const [errors, setErrors] = useState<string[]>([]);
   const { toast } = useToast();
 
-  const validateForm = (): boolean => {
+  const validateForm = async (): Promise<boolean> => {
     const newErrors: string[] = [];
 
     if (!isFirstLogin && !currentPassword.trim()) {
       newErrors.push('Current password is required');
     }
 
+    // Use our enhanced password validation
     const passwordValidation = validatePasswordComplexity(newPassword);
     if (!passwordValidation.isValid) {
       newErrors.push(...passwordValidation.errors);
+    }
+
+    // Additional check using our Supabase function
+    try {
+      const { data: strengthCheck } = await supabase.rpc('check_password_strength', {
+        password: newPassword
+      });
+
+      if (strengthCheck && !strengthCheck.valid) {
+        newErrors.push(...strengthCheck.errors);
+      }
+    } catch (error) {
+      console.error('Password strength check error:', error);
+      // Fall back to client-side validation if server check fails
     }
 
     if (newPassword !== confirmPassword) {
@@ -52,7 +67,8 @@ export const PasswordChangeDialog = ({ isOpen, onClose, isFirstLogin = false }: 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!validateForm()) {
+    const isValid = await validateForm();
+    if (!isValid) {
       return;
     }
 
@@ -164,7 +180,7 @@ export const PasswordChangeDialog = ({ isOpen, onClose, isFirstLogin = false }: 
               </Button>
             </div>
 
-            {/* Password strength indicator */}
+            {/* Enhanced password strength indicator */}
             {newPassword && (
               <div className="mt-2 space-y-1">
                 <div className="text-sm font-medium">Password Requirements:</div>

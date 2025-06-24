@@ -372,6 +372,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_password_strength: {
+        Args: { password: string }
+        Returns: Json
+      }
       is_admin: {
         Args: Record<PropertyKey, never> | { user_id: string }
         Returns: boolean

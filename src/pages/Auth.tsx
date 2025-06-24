@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -162,7 +163,7 @@ const Auth = () => {
           email,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/estimate`,
+            emailRedirectTo: `${window.location.origin}/`,
             data: {
               first_name: firstName.trim(),
               last_name: lastName.trim(),

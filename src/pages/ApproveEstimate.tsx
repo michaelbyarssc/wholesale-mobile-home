@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -86,8 +85,11 @@ const ApproveEstimate = () => {
     
     setApproving(true);
     try {
-      const { error } = await supabase.functions.invoke('approve-estimate', {
-        body: { token }
+      const { data, error } = await supabase.functions.invoke('approve-estimate', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
       });
 
       if (error) {

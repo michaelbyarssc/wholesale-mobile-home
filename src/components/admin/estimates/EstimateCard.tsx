@@ -3,7 +3,7 @@ import React from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
-import { Trash2, Mail } from 'lucide-react';
+import { Trash2, Mail, RefreshCw } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -128,15 +128,28 @@ export const EstimateCard: React.FC<EstimateCardProps> = ({
               onClick={() => onResend(estimate.id)}
             >
               <Mail className="h-3 w-3 mr-1" />
-              {estimate.approved_at ? 'Resend Email' : 'Send Approval Link'}
+              Send Approval
             </Button>
+            <Button 
+              size="sm" 
+              variant="outline"
+              className="flex-1"
+              onClick={() => onResend(estimate.id)}
+            >
+              <RefreshCw className="h-3 w-3 mr-1" />
+              Resend Estimate
+            </Button>
+          </div>
+          <div className="flex gap-2">
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button 
                   size="sm" 
                   variant="destructive"
+                  className="flex-1"
                 >
-                  <Trash2 className="h-3 w-3" />
+                  <Trash2 className="h-3 w-3 mr-1" />
+                  Delete
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>

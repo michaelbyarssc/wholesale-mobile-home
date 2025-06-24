@@ -3,7 +3,7 @@ import React from 'react';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
-import { Trash2, Mail } from 'lucide-react';
+import { Trash2, Mail, RefreshCw } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -121,7 +121,15 @@ export const EstimateTableRow: React.FC<EstimateTableRowProps> = ({
             onClick={() => onResend(estimate.id)}
           >
             <Mail className="h-3 w-3 mr-1" />
-            {estimate.approved_at ? 'Resend' : 'Send Approval'}
+            {estimate.approved_at ? 'Send Approval' : 'Send Approval'}
+          </Button>
+          <Button 
+            size="sm" 
+            variant="outline"
+            onClick={() => onResend(estimate.id)}
+          >
+            <RefreshCw className="h-3 w-3 mr-1" />
+            Resend Estimate
           </Button>
           <AlertDialog>
             <AlertDialogTrigger asChild>

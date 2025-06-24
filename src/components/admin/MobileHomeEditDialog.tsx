@@ -78,6 +78,26 @@ export const MobileHomeEditDialog = ({ mobileHome, open, onClose, onSave }: Mobi
     }));
   };
 
+  const uploadImageToStorage = async (file: File): Promise<string> => {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${mobileHome!.id}/${Date.now()}.${fileExt}`;
+    
+    const { data, error } = await supabase.storage
+      .from('mobile-home-images')
+      .upload(fileName, file);
+
+    if (error) {
+      throw error;
+    }
+
+    // Get the public URL for the uploaded file
+    const { data: { publicUrl } } = supabase.storage
+      .from('mobile-home-images')
+      .getPublicUrl(fileName);
+
+    return publicUrl;
+  };
+
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files || !mobileHome) return;
@@ -96,9 +116,8 @@ export const MobileHomeEditDialog = ({ mobileHome, open, onClose, onSave }: Mobi
     
     for (const file of Array.from(files)) {
       try {
-        // For now, we'll use a placeholder URL since we don't have storage bucket set up
-        // In a real implementation, you'd upload to Supabase Storage
-        const imageUrl = URL.createObjectURL(file);
+        // Upload to Supabase Storage and get permanent URL
+        const imageUrl = await uploadImageToStorage(file);
         
         const { error } = await supabase
           .from('mobile_home_images')
@@ -107,7 +126,7 @@ export const MobileHomeEditDialog = ({ mobileHome, open, onClose, onSave }: Mobi
             image_url: imageUrl,
             image_type: 'general',
             display_order: images.length,
-            alt_text: file.name
+            alt_text: file.name.replace(/\.[^/.]+$/, '') // Remove file extension
           });
 
         if (error) throw error;
@@ -133,14 +152,41 @@ export const MobileHomeEditDialog = ({ mobileHome, open, onClose, onSave }: Mobi
     event.target.value = '';
   };
 
+  const deleteImageFromStorage = async (imageUrl: string) => {
+    // Extract the file path from the public URL
+    const urlParts = imageUrl.split('/');
+    const bucketIndex = urlParts.findIndex(part => part === 'mobile-home-images');
+    if (bucketIndex !== -1 && bucketIndex < urlParts.length - 1) {
+      const filePath = urlParts.slice(bucketIndex + 1).join('/');
+      
+      const { error } = await supabase.storage
+        .from('mobile-home-images')
+        .remove([filePath]);
+      
+      if (error) {
+        console.error('Error deleting file from storage:', error);
+        // Don't throw error here as we still want to remove from database
+      }
+    }
+  };
+
   const handleDeleteImage = async (imageId: string) => {
     try {
+      // Find the image to get its URL for storage deletion
+      const imageToDelete = images.find(img => img.id === imageId);
+      
+      // Delete from database first
       const { error } = await supabase
         .from('mobile_home_images')
         .delete()
         .eq('id', imageId);
 
       if (error) throw error;
+      
+      // Then delete from storage if it's a storage URL
+      if (imageToDelete && imageToDelete.image_url.includes('supabase')) {
+        await deleteImageFromStorage(imageToDelete.image_url);
+      }
       
       toast({
         title: "Success",

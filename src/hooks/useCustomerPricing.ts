@@ -15,11 +15,14 @@ export const useCustomerPricing = (user: User | null) => {
   useEffect(() => {
     const fetchCustomerMarkup = async () => {
       if (!user) {
+        setCustomerMarkup(30); // Default for anonymous users
         setLoading(false);
         return;
       }
 
       try {
+        console.log('Fetching markup for user:', user.id);
+        
         const { data, error } = await supabase
           .from('customer_markups')
           .select('markup_percentage')
@@ -28,9 +31,11 @@ export const useCustomerPricing = (user: User | null) => {
 
         if (error && error.code !== 'PGRST116') {
           console.error('Error fetching customer markup:', error);
-        }
-
-        if (!data || error?.code === 'PGRST116') {
+          setCustomerMarkup(30);
+        } else if (!data || error?.code === 'PGRST116') {
+          // No markup found, create default
+          console.log('No markup found, creating default 30%');
+          
           const { error: insertError } = await supabase
             .from('customer_markups')
             .insert({ user_id: user.id, markup_percentage: 30 });
@@ -41,6 +46,7 @@ export const useCustomerPricing = (user: User | null) => {
           
           setCustomerMarkup(30);
         } else {
+          console.log('Found markup:', data.markup_percentage);
           setCustomerMarkup(data.markup_percentage || 30);
         }
       } catch (error) {
@@ -56,7 +62,9 @@ export const useCustomerPricing = (user: User | null) => {
 
   const calculatePrice = (cost: number): number => {
     if (!cost || cost <= 0) return 0;
-    return cost * (1 + customerMarkup / 100);
+    const price = cost * (1 + customerMarkup / 100);
+    console.log(`Calculating price: cost=${cost}, markup=${customerMarkup}%, final=${price}`);
+    return price;
   };
 
   const formatCalculatedPrice = (cost: number): string => {

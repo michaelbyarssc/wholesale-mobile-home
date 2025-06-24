@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,6 +14,7 @@ import { useQuery } from '@tanstack/react-query';
 import { User } from '@supabase/supabase-js';
 import { Link } from 'react-router-dom';
 import { useConditionalServices } from '@/hooks/useConditionalServices';
+import { useCustomerPricing } from '@/hooks/useCustomerPricing';
 
 interface MobileHome {
   id: string;
@@ -20,6 +22,7 @@ interface MobileHome {
   series: string;
   model: string;
   price: number;
+  cost: number;
 }
 
 interface Service {
@@ -27,6 +30,7 @@ interface Service {
   name: string;
   description?: string;
   price: number;
+  cost: number;
   dependencies?: string[];
   applicable_manufacturers?: string[];
   applicable_series?: string[];
@@ -50,6 +54,9 @@ const EstimateForm = () => {
     timeline: '',
     requirements: ''
   });
+
+  // Get customer pricing
+  const { customerMarkup, calculatePrice, loading: pricingLoading } = useCustomerPricing(user);
 
   // Check for authenticated user
   useEffect(() => {
@@ -195,10 +202,22 @@ const EstimateForm = () => {
   };
 
   const calculateTotal = () => {
-    const homePrice = selectedHome ? mobileHomes.find(h => h.id === selectedHome)?.price || 0 : 0;
+    if (pricingLoading) {
+      return 0; // Return 0 while loading
+    }
+
+    const selectedMobileHome = selectedHome ? mobileHomes.find(h => h.id === selectedHome) : null;
+    const homePrice = selectedMobileHome ? calculatePrice(selectedMobileHome.cost || selectedMobileHome.price) : 0;
+    
     const servicesPrice = selectedServices.reduce((total, serviceId) => {
-      return total + getServicePrice(serviceId);
+      const service = services.find(s => s.id === serviceId);
+      if (!service) return total;
+      
+      const serviceCost = service.cost || service.price;
+      return total + calculatePrice(serviceCost);
     }, 0);
+    
+    console.log('Calculating total:', { homePrice, servicesPrice, total: homePrice + servicesPrice });
     return homePrice + servicesPrice;
   };
 
@@ -298,7 +317,7 @@ const EstimateForm = () => {
     }
   };
 
-  if (homesLoading || servicesLoading) {
+  if (homesLoading || servicesLoading || pricingLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-green-50 to-yellow-50 flex items-center justify-center">
         <div className="text-center">
@@ -319,6 +338,11 @@ const EstimateForm = () => {
             Wholesale Homes of the Carolinas
           </h1>
           <p className="text-lg text-green-700">Get Your Mobile Home Estimate</p>
+          {user && (
+            <div className="mt-2 text-sm text-blue-600">
+              Your markup: {customerMarkup}%
+            </div>
+          )}
           <div className="mt-4 flex justify-center gap-4">
             {user ? (
               <div className="flex items-center gap-4">
@@ -361,29 +385,32 @@ const EstimateForm = () => {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {mobileHomes.map((home) => (
-                  <div
-                    key={home.id}
-                    className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                      selectedHome === home.id
-                        ? 'border-blue-500 bg-blue-50'
-                        : 'border-gray-200 hover:border-blue-300'
-                    }`}
-                    onClick={() => setSelectedHome(home.id)}
-                  >
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <h3 className="font-semibold text-lg">{home.manufacturer} {home.series}</h3>
-                        <p className="text-gray-600">{home.model}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-2xl font-bold text-green-600">
-                          ${home.price.toLocaleString()}
-                        </p>
+                {mobileHomes.map((home) => {
+                  const displayPrice = calculatePrice(home.cost || home.price);
+                  return (
+                    <div
+                      key={home.id}
+                      className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                        selectedHome === home.id
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-gray-200 hover:border-blue-300'
+                      }`}
+                      onClick={() => setSelectedHome(home.id)}
+                    >
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <h3 className="font-semibold text-lg">{home.manufacturer} {home.series}</h3>
+                          <p className="text-gray-600">{home.model}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-2xl font-bold text-green-600">
+                            ${displayPrice.toLocaleString()}
+                          </p>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
@@ -407,6 +434,9 @@ const EstimateForm = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {availableServices.map((service) => {
                     const isDisabled = isServiceDisabled(service);
+                    const serviceCost = service.cost || service.price;
+                    const displayPrice = calculatePrice(serviceCost);
+                    
                     return (
                       <div 
                         key={service.id} 
@@ -434,7 +464,7 @@ const EstimateForm = () => {
                               <p className="text-xs text-gray-500 mt-1">{service.description}</p>
                             )}
                             <p className="text-sm text-gray-600 mt-1">
-                              ${getServicePrice(service.id).toLocaleString()}
+                              ${displayPrice.toLocaleString()}
                             </p>
                             <div className="flex flex-wrap gap-1 mt-2">
                               {getServiceStatusBadges(service)}

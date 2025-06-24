@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -6,30 +5,56 @@ import { useNavigate } from 'react-router-dom';
 import { CheckCircle, Shield, Users, Zap, ShoppingCart as CartIcon, LogOut } from 'lucide-react';
 import { MobileHomesShowcase } from '@/components/MobileHomesShowcase';
 import { supabase } from '@/integrations/supabase/client';
-import { User } from '@supabase/supabase-js';
+import { User, Session } from '@supabase/supabase-js';
 import { useShoppingCart } from '@/hooks/useShoppingCart';
 
 const Index = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [userProfile, setUserProfile] = useState<{ first_name?: string } | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const { cartItems, toggleCart } = useShoppingCart();
 
   useEffect(() => {
-    // Check current session
+    // Set up auth state listener first
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log('Auth state changed:', event, session?.user?.id);
+        setSession(session);
+        setUser(session?.user ?? null);
+        
+        if (event === 'SIGNED_OUT') {
+          setUserProfile(null);
+        }
+        
+        setIsLoading(false);
+      }
+    );
+
+    // Then check current session
     const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setUser(session?.user ?? null);
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error) {
+          console.error('Error getting session:', error);
+          setSession(null);
+          setUser(null);
+        } else {
+          console.log('Current session:', session?.user?.id);
+          setSession(session);
+          setUser(session?.user ?? null);
+        }
+      } catch (error) {
+        console.error('Auth check error:', error);
+        setSession(null);
+        setUser(null);
+      } finally {
+        setIsLoading(false);
+      }
     };
 
     checkAuth();
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setUser(session?.user ?? null);
-      }
-    );
 
     return () => subscription.unsubscribe();
   }, []);
@@ -63,18 +88,32 @@ const Index = () => {
 
   const handleLogout = async () => {
     try {
+      console.log('Attempting logout...');
+      
+      // Clear local state immediately
+      setUser(null);
+      setSession(null);
+      setUserProfile(null);
+      
+      // Attempt to sign out from Supabase
       const { error } = await supabase.auth.signOut();
+      
       if (error) {
-        console.error('Error signing out:', error);
+        console.error('Logout error:', error);
+        // Even if there's an error, we've cleared local state
       } else {
-        // Clear local state
-        setUser(null);
-        setUserProfile(null);
-        // Navigate to home page after successful logout
-        navigate('/');
+        console.log('Logout successful');
       }
+      
+      // Navigate to home page
+      navigate('/');
     } catch (error) {
       console.error('Error during logout:', error);
+      // Even if there's an error, clear local state and navigate
+      setUser(null);
+      setSession(null);
+      setUserProfile(null);
+      navigate('/');
     }
   };
 
@@ -100,6 +139,17 @@ const Index = () => {
       description: "Streamlined estimation process that saves you time while ensuring accuracy and completeness."
     }
   ];
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-green-50 to-yellow-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-green-50 to-yellow-50">
@@ -130,6 +180,7 @@ const Index = () => {
                     variant="ghost"
                     size="sm"
                     className="text-gray-600 hover:text-gray-800 p-1 sm:p-2"
+                    disabled={isLoading}
                   >
                     <LogOut className="h-3 w-3 sm:h-4 sm:w-4" />
                     <span className="sr-only sm:not-sr-only sm:ml-1">Logout</span>

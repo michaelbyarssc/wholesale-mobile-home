@@ -40,67 +40,37 @@ serve(async (req) => {
       throw new Error('Rentcast API key not configured')
     }
 
-    // Clean and format the address for better geocoding success
-    const cleanAddress = address.trim()
-      .replace(/\s+/g, ' ') // Replace multiple spaces with single space
-      .replace(/,?\s*SC\s*/i, ', SC ') // Ensure proper SC formatting
-      .replace(/,?\s*South Carolina\s*/i, ', SC ') // Replace South Carolina with SC
+    // Try multiple address formats for better geocoding success
+    const addressVariations = [
+      address.trim(),
+      // Remove specific address number and try just street + city
+      address.replace(/^\d+\s+/, '').trim(),
+      // Try just city and state
+      extractCityState(address),
+    ].filter(Boolean)
 
-    console.log('Cleaned address for geocoding:', cleanAddress)
+    console.log('Trying address variations:', addressVariations)
 
-    // First, get coordinates for the address using Rentcast's geocoding
-    const geocodeUrl = `https://api.rentcast.io/v1/geocode?query=${encodeURIComponent(cleanAddress)}`
-    
-    const geocodeResponse = await fetch(geocodeUrl, {
-      headers: {
-        'X-API-Key': rentcastApiKey,
-        'accept': 'application/json'
-      }
-    })
+    let latitude: number | null = null
+    let longitude: number | null = null
 
-    console.log('Geocoding response status:', geocodeResponse.status)
-
-    if (!geocodeResponse.ok) {
-      // Try with just city, state if full address fails
-      const addressParts = cleanAddress.split(',')
-      if (addressParts.length >= 2) {
-        const cityState = addressParts.slice(-2).join(',').trim()
-        console.log('Trying with city/state only:', cityState)
-        
-        const fallbackGeocodeUrl = `https://api.rentcast.io/v1/geocode?query=${encodeURIComponent(cityState)}`
-        const fallbackResponse = await fetch(fallbackGeocodeUrl, {
-          headers: {
-            'X-API-Key': rentcastApiKey,
-            'accept': 'application/json'
-          }
-        })
-        
-        if (!fallbackResponse.ok) {
-          throw new Error(`Unable to geocode address. Please try a different format (e.g., "City, State" or "City, State ZIP").`)
-        }
-        
-        const fallbackData = await fallbackResponse.json()
-        console.log('Fallback geocoding response:', fallbackData)
-        
-        if (!fallbackData.latitude || !fallbackData.longitude) {
-          throw new Error('Could not find coordinates for the provided location')
-        }
-        
-        const { latitude, longitude } = fallbackData
-        return await searchProperties(latitude, longitude, radius, bedrooms, bathrooms, rentcastApiKey)
-      } else {
-        throw new Error(`Unable to geocode address: ${cleanAddress}. Please check the address format.`)
+    // Try each address variation until one works
+    for (const addressVariation of addressVariations) {
+      console.log('Trying geocoding for:', addressVariation)
+      
+      const coords = await tryGeocode(addressVariation, rentcastApiKey)
+      if (coords) {
+        latitude = coords.latitude
+        longitude = coords.longitude
+        console.log('Successfully geocoded:', addressVariation, coords)
+        break
       }
     }
 
-    const geocodeData = await geocodeResponse.json()
-    console.log('Geocoding response:', geocodeData)
-
-    if (!geocodeData.latitude || !geocodeData.longitude) {
-      throw new Error('Could not find coordinates for the provided address')
+    if (!latitude || !longitude) {
+      throw new Error('Unable to find location coordinates. Please try entering just the city and state (e.g., "Spartanburg, SC")')
     }
 
-    const { latitude, longitude } = geocodeData
     return await searchProperties(latitude, longitude, radius, bedrooms, bathrooms, rentcastApiKey)
 
   } catch (error) {
@@ -117,6 +87,63 @@ serve(async (req) => {
     )
   }
 })
+
+async function tryGeocode(address: string, apiKey: string): Promise<{latitude: number, longitude: number} | null> {
+  try {
+    // Clean and format the address
+    const cleanAddress = address.trim()
+      .replace(/\s+/g, ' ') // Replace multiple spaces with single space
+      .replace(/,?\s*SC\s*/i, ', SC ') // Ensure proper SC formatting
+      .replace(/,?\s*South Carolina\s*/i, ', SC ') // Replace South Carolina with SC
+
+    const geocodeUrl = `https://api.rentcast.io/v1/geocode?query=${encodeURIComponent(cleanAddress)}`
+    
+    const geocodeResponse = await fetch(geocodeUrl, {
+      headers: {
+        'X-API-Key': apiKey,
+        'accept': 'application/json'
+      }
+    })
+
+    console.log(`Geocoding "${cleanAddress}" - Status: ${geocodeResponse.status}`)
+
+    if (!geocodeResponse.ok) {
+      return null
+    }
+
+    const geocodeData = await geocodeResponse.json()
+    console.log('Geocoding response:', geocodeData)
+
+    if (geocodeData.latitude && geocodeData.longitude) {
+      return {
+        latitude: geocodeData.latitude,
+        longitude: geocodeData.longitude
+      }
+    }
+
+    return null
+  } catch (error) {
+    console.error('Geocoding error:', error)
+    return null
+  }
+}
+
+function extractCityState(address: string): string {
+  // Extract city and state from address
+  const parts = address.split(',')
+  if (parts.length >= 2) {
+    // Take the last two parts (city, state)
+    return parts.slice(-2).join(',').trim()
+  }
+  
+  // If no comma, try to extract city and state pattern
+  const match = address.match(/([A-Za-z\s]+),?\s+(SC|South Carolina)\s*\d*/i)
+  if (match) {
+    return `${match[1].trim()}, SC`
+  }
+  
+  return address
+}
 
 async function searchProperties(latitude: number, longitude: number, radius: number, bedrooms: number, bathrooms: number, rentcastApiKey: string) {
   try {
@@ -140,6 +167,8 @@ async function searchProperties(latitude: number, longitude: number, radius: num
     console.log('Property search response status:', searchResponse.status)
 
     if (!searchResponse.ok) {
+      const errorText = await searchResponse.text()
+      console.error('Property search failed:', errorText)
       throw new Error(`Property search failed with status: ${searchResponse.status}`)
     }
 

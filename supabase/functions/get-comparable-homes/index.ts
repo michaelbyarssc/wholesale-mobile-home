@@ -40,9 +40,16 @@ serve(async (req) => {
       throw new Error('Rentcast API key not configured')
     }
 
+    // Clean and format the address for better geocoding success
+    const cleanAddress = address.trim()
+      .replace(/\s+/g, ' ') // Replace multiple spaces with single space
+      .replace(/,?\s*SC\s*/i, ', SC ') // Ensure proper SC formatting
+      .replace(/,?\s*South Carolina\s*/i, ', SC ') // Replace South Carolina with SC
+
+    console.log('Cleaned address for geocoding:', cleanAddress)
+
     // First, get coordinates for the address using Rentcast's geocoding
-    console.log('Getting coordinates for address:', address)
-    const geocodeUrl = `https://api.rentcast.io/v1/geocode?query=${encodeURIComponent(address)}`
+    const geocodeUrl = `https://api.rentcast.io/v1/geocode?query=${encodeURIComponent(cleanAddress)}`
     
     const geocodeResponse = await fetch(geocodeUrl, {
       headers: {
@@ -51,19 +58,68 @@ serve(async (req) => {
       }
     })
 
+    console.log('Geocoding response status:', geocodeResponse.status)
+
     if (!geocodeResponse.ok) {
-      throw new Error(`Rentcast geocoding error: ${geocodeResponse.status}`)
+      // Try with just city, state if full address fails
+      const addressParts = cleanAddress.split(',')
+      if (addressParts.length >= 2) {
+        const cityState = addressParts.slice(-2).join(',').trim()
+        console.log('Trying with city/state only:', cityState)
+        
+        const fallbackGeocodeUrl = `https://api.rentcast.io/v1/geocode?query=${encodeURIComponent(cityState)}`
+        const fallbackResponse = await fetch(fallbackGeocodeUrl, {
+          headers: {
+            'X-API-Key': rentcastApiKey,
+            'accept': 'application/json'
+          }
+        })
+        
+        if (!fallbackResponse.ok) {
+          throw new Error(`Unable to geocode address. Please try a different format (e.g., "City, State" or "City, State ZIP").`)
+        }
+        
+        const fallbackData = await fallbackResponse.json()
+        console.log('Fallback geocoding response:', fallbackData)
+        
+        if (!fallbackData.latitude || !fallbackData.longitude) {
+          throw new Error('Could not find coordinates for the provided location')
+        }
+        
+        const { latitude, longitude } = fallbackData
+        return await searchProperties(latitude, longitude, radius, bedrooms, bathrooms, rentcastApiKey)
+      } else {
+        throw new Error(`Unable to geocode address: ${cleanAddress}. Please check the address format.`)
+      }
     }
 
     const geocodeData = await geocodeResponse.json()
     console.log('Geocoding response:', geocodeData)
 
     if (!geocodeData.latitude || !geocodeData.longitude) {
-      throw new Error('Could not geocode the provided address')
+      throw new Error('Could not find coordinates for the provided address')
     }
 
     const { latitude, longitude } = geocodeData
+    return await searchProperties(latitude, longitude, radius, bedrooms, bathrooms, rentcastApiKey)
 
+  } catch (error) {
+    console.error('Error fetching comparable homes:', error)
+    return new Response(
+      JSON.stringify({ 
+        error: error.message,
+        success: false
+      }),
+      { 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 500,
+      },
+    )
+  }
+})
+
+async function searchProperties(latitude: number, longitude: number, radius: number, bedrooms: number, bathrooms: number, rentcastApiKey: string) {
+  try {
     // Search for properties using Rentcast's property search API
     console.log('Searching for properties near coordinates:', { latitude, longitude, radius })
     
@@ -81,8 +137,10 @@ serve(async (req) => {
       }
     })
 
+    console.log('Property search response status:', searchResponse.status)
+
     if (!searchResponse.ok) {
-      throw new Error(`Rentcast search error: ${searchResponse.status}`)
+      throw new Error(`Property search failed with status: ${searchResponse.status}`)
     }
 
     const searchData = await searchResponse.json()
@@ -113,25 +171,17 @@ serve(async (req) => {
       JSON.stringify({ 
         success: true, 
         comparables,
-        source: 'rentcast'
+        source: 'rentcast',
+        searchLocation: { latitude, longitude }
       }),
       { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { corsHeaders, 'Content-Type': 'application/json' },
         status: 200,
       },
     )
 
   } catch (error) {
-    console.error('Error fetching comparable homes:', error)
-    return new Response(
-      JSON.stringify({ 
-        error: error.message,
-        success: false
-      }),
-      { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500,
-      },
-    )
+    console.error('Error in property search:', error)
+    throw error
   }
-})
+}

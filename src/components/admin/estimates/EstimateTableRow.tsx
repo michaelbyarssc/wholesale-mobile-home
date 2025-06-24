@@ -38,7 +38,6 @@ interface EstimateTableRowProps {
   onStatusUpdate: (id: string, status: string) => void;
   onDelete: (id: string) => void;
   onResend: (id: string) => void;
-  onSendApproval: (id: string) => void;
 }
 
 export const EstimateTableRow: React.FC<EstimateTableRowProps> = ({
@@ -46,7 +45,6 @@ export const EstimateTableRow: React.FC<EstimateTableRowProps> = ({
   onStatusUpdate,
   onDelete,
   onResend,
-  onSendApproval,
 }) => {
   const getStatusBadgeClass = (status: string) => {
     switch (status) {
@@ -95,7 +93,7 @@ export const EstimateTableRow: React.FC<EstimateTableRowProps> = ({
               <Button 
                 size="sm" 
                 variant="outline"
-                className="text-xs px-3 py-2 h-8"
+                className="text-xs px-2 py-1 h-6"
                 onClick={() => onStatusUpdate(estimate.id, 'contacted')}
               >
                 Contact
@@ -103,7 +101,7 @@ export const EstimateTableRow: React.FC<EstimateTableRowProps> = ({
               <Button 
                 size="sm" 
                 variant="outline"
-                className="text-xs px-3 py-2 h-8"
+                className="text-xs px-2 py-1 h-6"
                 onClick={() => onStatusUpdate(estimate.id, 'converted')}
               >
                 Convert
@@ -113,29 +111,27 @@ export const EstimateTableRow: React.FC<EstimateTableRowProps> = ({
           <Button 
             size="sm" 
             variant="outline"
-            className="text-xs px-3 py-2 h-8"
-            onClick={() => onSendApproval(estimate.id)}
-            title="Send Approval Email"
+            className="text-xs px-2 py-1 h-6"
+            onClick={() => onResend(estimate.id)}
           >
-            <Mail className="h-4 w-4" />
+            <Mail className="h-3 w-3" />
           </Button>
           <Button 
             size="sm" 
             variant="outline"
-            className="text-xs px-3 py-2 h-8"
+            className="text-xs px-2 py-1 h-6"
             onClick={() => onResend(estimate.id)}
-            title="Resend Estimate"
           >
-            <RefreshCw className="h-4 w-4" />
+            <RefreshCw className="h-3 w-3" />
           </Button>
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button 
                 size="sm" 
                 variant="destructive"
-                className="text-xs px-3 py-2 h-8"
+                className="text-xs px-2 py-1 h-6"
               >
-                <Trash2 className="h-4 w-4" />
+                <Trash2 className="h-3 w-3" />
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>

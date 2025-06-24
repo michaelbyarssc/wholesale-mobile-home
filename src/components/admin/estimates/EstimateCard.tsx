@@ -38,7 +38,6 @@ interface EstimateCardProps {
   onStatusUpdate: (id: string, status: string) => void;
   onDelete: (id: string) => void;
   onResend: (id: string) => void;
-  onSendApproval: (id: string) => void;
 }
 
 export const EstimateCard: React.FC<EstimateCardProps> = ({
@@ -46,7 +45,6 @@ export const EstimateCard: React.FC<EstimateCardProps> = ({
   onStatusUpdate,
   onDelete,
   onResend,
-  onSendApproval,
 }) => {
   const getStatusBadgeClass = (status: string) => {
     switch (status) {
@@ -127,7 +125,7 @@ export const EstimateCard: React.FC<EstimateCardProps> = ({
               size="sm" 
               variant="outline"
               className="flex-1"
-              onClick={() => onSendApproval(estimate.id)}
+              onClick={() => onResend(estimate.id)}
             >
               <Mail className="h-3 w-3 mr-1" />
               Send Approval

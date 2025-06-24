@@ -40,7 +40,7 @@ serve(async (req) => {
     }
 
     console.log('API Key configured:', !!rentcastApiKey)
-    console.log('API Key preview:', rentcastApiKey.substring(0, 8) + '...')
+    console.log('API Key length:', rentcastApiKey.length)
 
     // Try different address formats for geocoding
     const addressVariations = generateAddressVariations(address)
@@ -162,37 +162,20 @@ function getAreaFallbackCoords(address: string): {latitude: number, longitude: n
 
 async function tryGeocode(address: string, apiKey: string): Promise<{latitude: number, longitude: number} | null> {
   try {
-    // Try the newer /avm/geocode endpoint first
-    let geocodeUrl = `https://api.rentcast.io/v1/avm/geocode?address=${encodeURIComponent(address)}`
+    // Try the current Rentcast geocoding endpoint
+    const geocodeUrl = `https://api.rentcast.io/v1/geocode?query=${encodeURIComponent(address)}`
     
-    console.log('Making geocode request to AVM endpoint:', geocodeUrl)
+    console.log('Making geocode request to:', geocodeUrl)
     
-    let geocodeResponse = await fetch(geocodeUrl, {
+    const geocodeResponse = await fetch(geocodeUrl, {
       headers: {
         'X-API-Key': apiKey,
-        'Accept': 'application/json'
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
       }
     })
 
-    console.log(`Geocoding "${address}" via AVM - Status: ${geocodeResponse.status}`)
-
-    if (!geocodeResponse.ok) {
-      console.log('AVM geocoding failed, trying legacy endpoint...')
-      
-      // Try legacy endpoint as fallback
-      geocodeUrl = `https://api.rentcast.io/v1/properties/geocode?address=${encodeURIComponent(address)}`
-      
-      console.log('Making geocode request to legacy endpoint:', geocodeUrl)
-      
-      geocodeResponse = await fetch(geocodeUrl, {
-        headers: {
-          'X-API-Key': apiKey,
-          'Accept': 'application/json'
-        }
-      })
-
-      console.log(`Geocoding "${address}" via legacy - Status: ${geocodeResponse.status}`)
-    }
+    console.log(`Geocoding "${address}" - Status: ${geocodeResponse.status}`)
 
     if (!geocodeResponse.ok) {
       const errorText = await geocodeResponse.text()
@@ -203,19 +186,11 @@ async function tryGeocode(address: string, apiKey: string): Promise<{latitude: n
     const geocodeData = await geocodeResponse.json()
     console.log('Geocoding response data:', JSON.stringify(geocodeData, null, 2))
 
-    // Handle different response formats
-    if (geocodeData.latitude && geocodeData.longitude) {
+    // Handle the response format from Rentcast
+    if (geocodeData && geocodeData.latitude && geocodeData.longitude) {
       return {
         latitude: geocodeData.latitude,
         longitude: geocodeData.longitude
-      }
-    } else if (geocodeData.results && geocodeData.results.length > 0) {
-      const result = geocodeData.results[0]
-      if (result.latitude && result.longitude) {
-        return {
-          latitude: result.latitude,
-          longitude: result.longitude
-        }
       }
     }
 
@@ -230,47 +205,27 @@ async function searchProperties(latitude: number, longitude: number, radius: num
   try {
     console.log('Searching for properties near coordinates:', { latitude, longitude, radius })
     
-    // Try the newer /avm/search endpoint first
-    let searchUrl = new URL('https://api.rentcast.io/v1/avm/search')
+    // Use the current Rentcast property search endpoint
+    const searchUrl = new URL('https://api.rentcast.io/v1/listings/sale')
     searchUrl.searchParams.append('latitude', latitude.toString())
     searchUrl.searchParams.append('longitude', longitude.toString())
     searchUrl.searchParams.append('radius', (radius * 1609.34).toString()) // Convert miles to meters
     searchUrl.searchParams.append('limit', '20')
     searchUrl.searchParams.append('bedrooms', bedrooms.toString())
     searchUrl.searchParams.append('bathrooms', bathrooms.toString())
+    searchUrl.searchParams.append('propertyType', 'Single Family')
     
-    console.log('Making property search request to AVM endpoint:', searchUrl.toString())
+    console.log('Making property search request to:', searchUrl.toString())
 
-    let searchResponse = await fetch(searchUrl, {
+    const searchResponse = await fetch(searchUrl, {
       headers: {
         'X-API-Key': rentcastApiKey,
-        'Accept': 'application/json'
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
       }
     })
 
-    console.log('AVM property search response status:', searchResponse.status)
-
-    if (!searchResponse.ok) {
-      console.log('AVM search failed, trying legacy properties endpoint...')
-      
-      // Try legacy properties endpoint
-      searchUrl = new URL('https://api.rentcast.io/v1/properties')
-      searchUrl.searchParams.append('latitude', latitude.toString())
-      searchUrl.searchParams.append('longitude', longitude.toString())
-      searchUrl.searchParams.append('radius', (radius * 1609.34).toString())
-      searchUrl.searchParams.append('limit', '20')
-      
-      console.log('Making property search request to legacy endpoint:', searchUrl.toString())
-      
-      searchResponse = await fetch(searchUrl, {
-        headers: {
-          'X-API-Key': rentcastApiKey,
-          'Accept': 'application/json'
-        }
-      })
-      
-      console.log('Legacy property search response status:', searchResponse.status)
-    }
+    console.log('Property search response status:', searchResponse.status)
 
     if (!searchResponse.ok) {
       const errorText = await searchResponse.text()
@@ -321,7 +276,9 @@ async function searchProperties(latitude: number, longitude: number, radius: num
 
 function formatSearchResults(searchData: any, targetBedrooms: number, targetBathrooms: number, latitude: number, longitude: number) {
   // Handle different response formats
-  const properties = searchData.properties || searchData.results || searchData || []
+  const properties = searchData.listings || searchData.properties || searchData.results || searchData || []
+  
+  console.log('Raw properties data:', properties)
   
   // Filter and format the results
   const comparables: ComparableHome[] = properties
@@ -332,17 +289,19 @@ function formatSearchResults(searchData: any, targetBedrooms: number, targetBath
       // Match bedrooms +/- 1 and bathrooms +/- 1
       return Math.abs(propBeds - targetBedrooms) <= 1 && 
              Math.abs(propBaths - targetBathrooms) <= 1 &&
-             (property.price > 0 || property.salePrice > 0 || property.value > 0) // Only include properties with valid prices
+             (property.price > 0 || property.salePrice > 0 || property.value > 0 || property.listPrice > 0) // Only include properties with valid prices
     })
     .slice(0, 5) // Top 5 results
     .map((property: any) => ({
       address: property.formattedAddress || property.address || `${property.streetAddress || ''}, ${property.city || ''}, ${property.state || ''}`.replace(/^,\s*|,\s*$/g, ''),
-      price: property.price || property.salePrice || property.value || 0,
+      price: property.price || property.salePrice || property.value || property.listPrice || 0,
       bedrooms: property.bedrooms || 0,
       bathrooms: property.bathrooms || 0,
       squareFootage: property.squareFootage || property.livingArea || property.squareFeet,
       listingDate: property.lastSaleDate || property.createdDate || property.listDate || property.saleDate
     }))
+
+  console.log('Formatted comparables:', comparables)
 
   return new Response(
     JSON.stringify({ 

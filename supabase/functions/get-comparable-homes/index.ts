@@ -41,14 +41,7 @@ serve(async (req) => {
     }
 
     // Try multiple address formats for better geocoding success
-    const addressVariations = [
-      address.trim(),
-      // Remove specific address number and try just street + city
-      address.replace(/^\d+\s+/, '').trim(),
-      // Try just city and state
-      extractCityState(address),
-    ].filter(Boolean)
-
+    const addressVariations = generateAddressVariations(address)
     console.log('Trying address variations:', addressVariations)
 
     let latitude: number | null = null
@@ -68,7 +61,16 @@ serve(async (req) => {
     }
 
     if (!latitude || !longitude) {
-      throw new Error('Unable to find location coordinates. Please try entering just the city and state (e.g., "Spartanburg, SC")')
+      // If geocoding fails, try using a default location for the area and search broadly
+      console.log('All geocoding attempts failed, trying area-based search')
+      const areaCoords = await tryAreaSearch(address, rentcastApiKey)
+      if (areaCoords) {
+        latitude = areaCoords.latitude
+        longitude = areaCoords.longitude
+        console.log('Using area coordinates:', areaCoords)
+      } else {
+        throw new Error('Unable to find location coordinates. Please try entering just the city and state (e.g., "Spartanburg, SC") or a nearby ZIP code.')
+      }
     }
 
     return await searchProperties(latitude, longitude, radius, bedrooms, bathrooms, rentcastApiKey)
@@ -88,13 +90,59 @@ serve(async (req) => {
   }
 })
 
+function generateAddressVariations(address: string): string[] {
+  const variations: string[] = []
+  
+  // Original address
+  variations.push(address.trim())
+  
+  // Normalize common abbreviations and formatting
+  let normalized = address.trim()
+    .replace(/\brd\b/gi, 'Road')
+    .replace(/\bst\b/gi, 'Street')
+    .replace(/\bave\b/gi, 'Avenue')
+    .replace(/\bdr\b/gi, 'Drive')
+    .replace(/\bln\b/gi, 'Lane')
+    .replace(/\bct\b/gi, 'Court')
+    .replace(/\s+/g, ' ')
+  
+  if (normalized !== address.trim()) {
+    variations.push(normalized)
+  }
+  
+  // Remove house number and try just street + city
+  const withoutNumber = address.replace(/^\d+\s+/, '').trim()
+  if (withoutNumber !== address.trim()) {
+    variations.push(withoutNumber)
+  }
+  
+  // Extract city and state
+  const cityState = extractCityState(address)
+  if (cityState && cityState !== address.trim()) {
+    variations.push(cityState)
+  }
+  
+  // Try just the ZIP code if present
+  const zipMatch = address.match(/\b\d{5}(?:-\d{4})?\b/)
+  if (zipMatch) {
+    variations.push(zipMatch[0])
+  }
+  
+  // Try major city in the area (for Spartanburg area)
+  if (address.toLowerCase().includes('spartanburg')) {
+    variations.push('Spartanburg, SC')
+    variations.push('29301') // Main Spartanburg ZIP
+  }
+  
+  return [...new Set(variations)] // Remove duplicates
+}
+
 async function tryGeocode(address: string, apiKey: string): Promise<{latitude: number, longitude: number} | null> {
   try {
-    // Clean and format the address
     const cleanAddress = address.trim()
-      .replace(/\s+/g, ' ') // Replace multiple spaces with single space
-      .replace(/,?\s*SC\s*/i, ', SC ') // Ensure proper SC formatting
-      .replace(/,?\s*South Carolina\s*/i, ', SC ') // Replace South Carolina with SC
+      .replace(/\s+/g, ' ')
+      .replace(/,?\s*SC\s*/i, ', SC ')
+      .replace(/,?\s*South Carolina\s*/i, ', SC ')
 
     const geocodeUrl = `https://api.rentcast.io/v1/geocode?query=${encodeURIComponent(cleanAddress)}`
     
@@ -128,6 +176,27 @@ async function tryGeocode(address: string, apiKey: string): Promise<{latitude: n
   }
 }
 
+async function tryAreaSearch(address: string, apiKey: string): Promise<{latitude: number, longitude: number} | null> {
+  // Known coordinates for major SC cities
+  const knownAreas = {
+    'spartanburg': { latitude: 34.9496, longitude: -81.9320 },
+    'greenville': { latitude: 34.8526, longitude: -82.3940 },
+    'columbia': { latitude: 34.0007, longitude: -81.0348 },
+    'charleston': { latitude: 32.7765, longitude: -79.9311 },
+  }
+  
+  const lowerAddress = address.toLowerCase()
+  
+  for (const [city, coords] of Object.entries(knownAreas)) {
+    if (lowerAddress.includes(city)) {
+      console.log(`Using known coordinates for ${city}:`, coords)
+      return coords
+    }
+  }
+  
+  return null
+}
+
 function extractCityState(address: string): string {
   // Extract city and state from address
   const parts = address.split(',')
@@ -147,14 +216,13 @@ function extractCityState(address: string): string {
 
 async function searchProperties(latitude: number, longitude: number, radius: number, bedrooms: number, bathrooms: number, rentcastApiKey: string) {
   try {
-    // Search for properties using Rentcast's property search API
     console.log('Searching for properties near coordinates:', { latitude, longitude, radius })
     
     const searchUrl = new URL('https://api.rentcast.io/v1/properties/search')
     searchUrl.searchParams.append('latitude', latitude.toString())
     searchUrl.searchParams.append('longitude', longitude.toString())
     searchUrl.searchParams.append('radius', (radius * 1609.34).toString()) // Convert miles to meters
-    searchUrl.searchParams.append('limit', '20') // Get more results to filter from
+    searchUrl.searchParams.append('limit', '20')
     searchUrl.searchParams.append('propertyType', 'Manufactured')
     
     const searchResponse = await fetch(searchUrl, {

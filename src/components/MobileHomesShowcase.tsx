@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -31,7 +30,7 @@ interface MobileHomesShowcaseProps {
 
 export const MobileHomesShowcase = ({ user = null }: MobileHomesShowcaseProps) => {
   const [activeTab, setActiveTab] = useState('');
-  const { formatCalculatedPrice } = useCustomerPricing(user);
+  const { formatCalculatedPrice, loading: pricingLoading } = useCustomerPricing(user);
   
   const {
     cartItems,
@@ -146,9 +145,14 @@ export const MobileHomesShowcase = ({ user = null }: MobileHomesShowcaseProps) =
           {home.description && (
             <p className="text-gray-600 text-sm mt-2">{home.description}</p>
           )}
-          {user && home.price && (
+          {user && home.price && !pricingLoading && (
             <div className="mt-2">
               <span className="text-2xl font-bold text-green-600">{formatCalculatedPrice(home.price)}</span>
+            </div>
+          )}
+          {user && pricingLoading && (
+            <div className="mt-2">
+              <span className="text-lg text-gray-500 italic">Loading pricing...</span>
             </div>
           )}
           {!user && (
@@ -240,6 +244,7 @@ export const MobileHomesShowcase = ({ user = null }: MobileHomesShowcaseProps) =
   console.log('Render state:', { 
     isLoading, 
     imagesLoading, 
+    pricingLoading,
     homeCount: mobileHomes.length, 
     imageCount: homeImages.length,
     uniqueSeries,

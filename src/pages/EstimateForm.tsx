@@ -17,7 +17,7 @@ const EstimateForm = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { cartItems, clearCart } = useShoppingCart();
-  const { markupPercentage } = useCustomerPricing();
+  const { markupPercentage, calculatePrice } = useCustomerPricing();
   
   const [services, setServices] = useState<any[]>([]);
   const [mobileHomes, setMobileHomes] = useState<any[]>([]);
@@ -164,8 +164,39 @@ const EstimateForm = () => {
     setSelectedHome(home);
   };
 
-  const handleServicesChange = (serviceIds: string[]) => {
-    setSelectedServices(serviceIds);
+  const handleServiceToggle = (serviceId: string) => {
+    setSelectedServices(prev => 
+      prev.includes(serviceId) 
+        ? prev.filter(id => id !== serviceId)
+        : [...prev, serviceId]
+    );
+  };
+
+  const getAvailableServices = () => {
+    if (!selectedHome) return [];
+    
+    return services.filter(service => {
+      // Check if service is applicable to this mobile home
+      const applicableManufacturers = service.applicable_manufacturers || [];
+      const applicableSeries = service.applicable_series || [];
+      
+      const isManufacturerMatch = applicableManufacturers.length === 0 || 
+        applicableManufacturers.includes(selectedHome.manufacturer);
+      const isSeriesMatch = applicableSeries.length === 0 || 
+        applicableSeries.includes(selectedHome.series);
+      
+      return isManufacturerMatch && isSeriesMatch && service.active;
+    });
+  };
+
+  const getDependencies = (serviceId: string) => {
+    const service = services.find(s => s.id === serviceId);
+    return service?.dependencies || [];
+  };
+
+  const getMissingDependencies = (serviceId: string) => {
+    const dependencies = getDependencies(serviceId);
+    return dependencies.filter(depId => !selectedServices.includes(depId));
   };
 
   return (
@@ -191,9 +222,14 @@ const EstimateForm = () => {
           />
           
           <ServicesSelection 
+            selectedHome={selectedHome?.id || ''}
+            availableServices={getAvailableServices()}
             selectedServices={selectedServices}
-            onServicesChange={handleServicesChange}
             services={services}
+            onServiceToggle={handleServiceToggle}
+            calculatePrice={calculatePrice}
+            getDependencies={getDependencies}
+            getMissingDependencies={getMissingDependencies}
           />
 
           {/* Add Comparable Homes Card */}

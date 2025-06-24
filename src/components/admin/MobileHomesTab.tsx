@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -168,7 +169,7 @@ export const MobileHomesTab = () => {
   };
 
   const deleteMobileHome = async (homeId: string, homeName: string) => {
-    if (!confirm(`Are you sure you want to delete "${homeName}"? This action cannot be undone.`)) {
+    if (!confirm(`Are you sure you want to delete "${homeName}"? This action cannot be undone and will also remove any estimates associated with this mobile home.`)) {
       return;
     }
 
@@ -198,6 +199,22 @@ export const MobileHomesTab = () => {
 
       if (deleteImagesError) {
         console.error('Error deleting image records:', deleteImagesError);
+      }
+
+      // Set mobile_home_id to null in estimates that reference this home
+      const { error: updateEstimatesError } = await supabase
+        .from('estimates')
+        .update({ mobile_home_id: null })
+        .eq('mobile_home_id', homeId);
+
+      if (updateEstimatesError) {
+        console.error('Error updating estimates:', updateEstimatesError);
+        toast({
+          title: "Error",
+          description: "Failed to update related estimates.",
+          variant: "destructive",
+        });
+        return;
       }
 
       // Finally, delete the mobile home

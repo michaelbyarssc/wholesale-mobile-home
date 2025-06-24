@@ -36,6 +36,7 @@ interface EstimateGroupProps {
   onStatusUpdate: (id: string, status: string) => void;
   onDelete: (id: string) => void;
   onResend: (id: string) => void;
+  onSendApproval: (id: string) => void;
 }
 
 export const EstimateGroup: React.FC<EstimateGroupProps> = ({
@@ -43,6 +44,7 @@ export const EstimateGroup: React.FC<EstimateGroupProps> = ({
   onStatusUpdate,
   onDelete,
   onResend,
+  onSendApproval,
 }) => {
   const [isExpanded, setIsExpanded] = useState(true);
 
@@ -94,6 +96,7 @@ export const EstimateGroup: React.FC<EstimateGroupProps> = ({
                     onStatusUpdate={onStatusUpdate}
                     onDelete={onDelete}
                     onResend={onResend}
+                    onSendApproval={onSendApproval}
                   />
                 ))}
               </TableBody>
@@ -109,6 +112,7 @@ export const EstimateGroup: React.FC<EstimateGroupProps> = ({
                 onStatusUpdate={onStatusUpdate}
                 onDelete={onDelete}
                 onResend={onResend}
+                onSendApproval={onSendApproval}
               />
             ))}
           </div>

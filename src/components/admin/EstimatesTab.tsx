@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -103,6 +104,30 @@ export const EstimatesTab = () => {
     }
   };
 
+  const sendApprovalEmail = async (id: string) => {
+    try {
+      const { error } = await supabase.functions.invoke('send-estimate-notifications', {
+        body: { estimateId: id, type: 'approval' }
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      toast({
+        title: "Approval Email Sent",
+        description: "The approval email has been sent to the customer.",
+      });
+    } catch (error) {
+      console.error('Error sending approval email:', error);
+      toast({
+        title: "Error",
+        description: "Failed to send the approval email. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   // Group estimates by user
   const groupedEstimates = React.useMemo(() => {
     const groups = new Map<string, GroupedEstimate>();
@@ -197,6 +222,7 @@ export const EstimatesTab = () => {
                   onStatusUpdate={updateEstimateStatus}
                   onDelete={deleteEstimate}
                   onResend={resendEstimate}
+                  onSendApproval={sendApprovalEmail}
                 />
               ))}
               
@@ -217,6 +243,7 @@ export const EstimatesTab = () => {
                   onStatusUpdate={updateEstimateStatus}
                   onDelete={deleteEstimate}
                   onResend={resendEstimate}
+                  onSendApproval={sendApprovalEmail}
                 />
               ))}
               

@@ -38,6 +38,7 @@ interface EstimateTableRowProps {
   onStatusUpdate: (id: string, status: string) => void;
   onDelete: (id: string) => void;
   onResend: (id: string) => void;
+  onSendApproval: (id: string) => void;
 }
 
 export const EstimateTableRow: React.FC<EstimateTableRowProps> = ({
@@ -45,6 +46,7 @@ export const EstimateTableRow: React.FC<EstimateTableRowProps> = ({
   onStatusUpdate,
   onDelete,
   onResend,
+  onSendApproval,
 }) => {
   const getStatusBadgeClass = (status: string) => {
     switch (status) {
@@ -112,7 +114,8 @@ export const EstimateTableRow: React.FC<EstimateTableRowProps> = ({
             size="sm" 
             variant="outline"
             className="text-xs px-3 py-2 h-8"
-            onClick={() => onResend(estimate.id)}
+            onClick={() => onSendApproval(estimate.id)}
+            title="Send Approval Email"
           >
             <Mail className="h-4 w-4" />
           </Button>
@@ -121,6 +124,7 @@ export const EstimateTableRow: React.FC<EstimateTableRowProps> = ({
             variant="outline"
             className="text-xs px-3 py-2 h-8"
             onClick={() => onResend(estimate.id)}
+            title="Resend Estimate"
           >
             <RefreshCw className="h-4 w-4" />
           </Button>

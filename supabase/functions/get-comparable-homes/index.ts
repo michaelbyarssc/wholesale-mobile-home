@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 
 const corsHeaders = {
@@ -21,6 +20,19 @@ interface ComparableHome {
   squareFootage?: number;
   listingDate?: string;
   zpid?: string;
+  distance?: number;
+}
+
+// Calculate distance between two points using Haversine formula
+function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 3959; // Earth's radius in miles
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
 }
 
 serve(async (req) => {
@@ -205,12 +217,15 @@ async function searchProperties(latitude: number, longitude: number, radius: num
   try {
     console.log('Searching for properties near coordinates:', { latitude, longitude, radius })
     
+    // Use a larger search radius for the API call (1.5x the requested radius to ensure coverage)
+    const searchRadiusMeters = Math.round(radius * 1.5 * 1609.34)
+    
     // Use the current Rentcast property search endpoint
     const searchUrl = new URL('https://api.rentcast.io/v1/listings/sale')
     searchUrl.searchParams.append('latitude', latitude.toString())
     searchUrl.searchParams.append('longitude', longitude.toString())
-    searchUrl.searchParams.append('radius', (radius * 1609.34).toString()) // Convert miles to meters
-    searchUrl.searchParams.append('limit', '20')
+    searchUrl.searchParams.append('radius', searchRadiusMeters.toString())
+    searchUrl.searchParams.append('limit', '50') // Get more results to filter
     searchUrl.searchParams.append('bedrooms', bedrooms.toString())
     searchUrl.searchParams.append('bathrooms', bathrooms.toString())
     searchUrl.searchParams.append('propertyType', 'Single Family')
@@ -251,7 +266,7 @@ async function searchProperties(latitude: number, longitude: number, radius: num
     const searchData = await searchResponse.json()
     console.log('Property search response:', JSON.stringify(searchData, null, 2))
 
-    return formatSearchResults(searchData, bedrooms, bathrooms, latitude, longitude)
+    return formatSearchResults(searchData, bedrooms, bathrooms, latitude, longitude, radius)
 
   } catch (error) {
     console.error('Error in property search:', error)
@@ -274,42 +289,68 @@ async function searchProperties(latitude: number, longitude: number, radius: num
   }
 }
 
-function formatSearchResults(searchData: any, targetBedrooms: number, targetBathrooms: number, latitude: number, longitude: number) {
+function formatSearchResults(searchData: any, targetBedrooms: number, targetBathrooms: number, searchLat: number, searchLon: number, maxRadius: number) {
   // Handle different response formats
   const properties = searchData.listings || searchData.properties || searchData.results || searchData || []
   
   console.log('Raw properties data:', properties)
   
-  // Filter and format the results
+  // Filter and format the results with distance checking
   const comparables: ComparableHome[] = properties
+    .map((property: any) => {
+      // Calculate distance from search center
+      const propLat = property.latitude
+      const propLon = property.longitude
+      
+      if (!propLat || !propLon) {
+        return null; // Skip properties without coordinates
+      }
+      
+      const distance = calculateDistance(searchLat, searchLon, propLat, propLon)
+      
+      return {
+        address: property.formattedAddress || property.address || `${property.streetAddress || ''}, ${property.city || ''}, ${property.state || ''}`.replace(/^,\s*|,\s*$/g, ''),
+        price: property.price || property.salePrice || property.value || property.listPrice || 0,
+        bedrooms: property.bedrooms || 0,
+        bathrooms: property.bathrooms || 0,
+        squareFootage: property.squareFootage || property.livingArea || property.squareFeet,
+        listingDate: property.lastSaleDate || property.createdDate || property.listDate || property.saleDate,
+        distance: Math.round(distance * 10) / 10 // Round to 1 decimal place
+      }
+    })
     .filter((property: any) => {
+      if (!property) return false;
+      
       const propBeds = property.bedrooms || 0
       const propBaths = property.bathrooms || 0
       
+      // Check distance constraint
+      if (property.distance > maxRadius) {
+        console.log(`Filtering out property at ${property.address} - distance: ${property.distance} miles > ${maxRadius} miles`)
+        return false;
+      }
+      
       // Match bedrooms +/- 1 and bathrooms +/- 1
-      return Math.abs(propBeds - targetBedrooms) <= 1 && 
-             Math.abs(propBaths - targetBathrooms) <= 1 &&
-             (property.price > 0 || property.salePrice > 0 || property.value > 0 || property.listPrice > 0) // Only include properties with valid prices
+      const bedroomMatch = Math.abs(propBeds - targetBedrooms) <= 1
+      const bathroomMatch = Math.abs(propBaths - targetBathrooms) <= 1
+      const hasPrice = property.price > 0
+      
+      return bedroomMatch && bathroomMatch && hasPrice
     })
-    .slice(0, 5) // Top 5 results
-    .map((property: any) => ({
-      address: property.formattedAddress || property.address || `${property.streetAddress || ''}, ${property.city || ''}, ${property.state || ''}`.replace(/^,\s*|,\s*$/g, ''),
-      price: property.price || property.salePrice || property.value || property.listPrice || 0,
-      bedrooms: property.bedrooms || 0,
-      bathrooms: property.bathrooms || 0,
-      squareFootage: property.squareFootage || property.livingArea || property.squareFeet,
-      listingDate: property.lastSaleDate || property.createdDate || property.listDate || property.saleDate
-    }))
+    .sort((a: ComparableHome, b: ComparableHome) => (a.distance || 0) - (b.distance || 0)) // Sort by distance
+    .slice(0, 10) // Top 10 closest results
 
   console.log('Formatted comparables:', comparables)
+  console.log(`Found ${comparables.length} properties within ${maxRadius} miles`)
 
   return new Response(
     JSON.stringify({ 
       success: true, 
       comparables,
       source: 'rentcast',
-      searchLocation: { latitude, longitude },
-      totalFound: properties.length || 0
+      searchLocation: { latitude: searchLat, longitude: searchLon },
+      totalFound: properties.length || 0,
+      radiusUsed: maxRadius
     }),
     { 
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

@@ -85,6 +85,9 @@ const EstimateForm = () => {
     email: '',
     phone: '',
     address: '',
+    city: '',
+    state: '',
+    zipCode: '',
     preferredContact: '',
     timeline: '',
     requirements: ''
@@ -94,14 +97,25 @@ const EstimateForm = () => {
   const [additionalRequirements, setAdditionalRequirements] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // Combine address fields for delivery and comparable homes search
+  const getFullAddress = () => {
+    const parts = [];
+    if (customerInfo.address) parts.push(customerInfo.address);
+    if (customerInfo.city) parts.push(customerInfo.city);
+    if (customerInfo.state) parts.push(customerInfo.state);
+    if (customerInfo.zipCode) parts.push(customerInfo.zipCode);
+    return parts.join(', ');
+  };
+
   // Debug logging
+  const fullAddress = getFullAddress();
   console.log('EstimateForm render state:', {
     selectedHome: selectedHome?.id,
     selectedHomeName: selectedHome?.display_name || selectedHome?.model,
-    customerAddress: customerInfo.address,
+    customerAddress: fullAddress,
     bedrooms: selectedHome?.bedrooms,
     bathrooms: selectedHome?.bathrooms,
-    shouldShowComps: !!(selectedHome && customerInfo.address)
+    shouldShowComps: !!(selectedHome && fullAddress)
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -122,7 +136,7 @@ const EstimateForm = () => {
           customer_name: customerInfo.name,
           customer_email: customerInfo.email,
           customer_phone: customerInfo.phone,
-          delivery_address: customerInfo.address,
+          delivery_address: fullAddress,
           mobile_home_id: selectedHome.id,
           selected_services: selectedServices,
           additional_requirements: additionalRequirements,
@@ -210,7 +224,7 @@ const EstimateForm = () => {
     return dependencies.filter(depId => !selectedServices.includes(depId));
   };
 
-  const showComparables = selectedHome && customerInfo.address && customerInfo.address.trim().length > 0;
+  const showComparables = selectedHome && fullAddress && fullAddress.trim().length > 0;
   console.log('Should show comparable homes:', showComparables);
 
   return (
@@ -250,10 +264,10 @@ const EstimateForm = () => {
           {showComparables ? (
             <div>
               <div className="mb-2 p-2 bg-blue-100 text-blue-800 text-sm rounded">
-                Debug: Showing comps for {selectedHome.display_name || selectedHome.model} at {customerInfo.address}
+                Debug: Showing comps for {selectedHome.display_name || selectedHome.model} at {fullAddress}
               </div>
               <ComparableHomesCard 
-                deliveryAddress={customerInfo.address}
+                deliveryAddress={fullAddress}
                 mobileHomeBedrooms={selectedHome.bedrooms || 2}
                 mobileHomeBathrooms={selectedHome.bathrooms || 1}
               />
@@ -263,7 +277,7 @@ const EstimateForm = () => {
               <p className="font-medium">Comparable Homes will show here when:</p>
               <ul className="list-disc list-inside mt-2 text-sm">
                 <li>Mobile home is selected: {selectedHome ? '✓' : '✗'}</li>
-                <li>Delivery address is entered: {customerInfo.address ? '✓' : '✗'}</li>
+                <li>Delivery address is entered: {fullAddress ? '✓' : '✗'}</li>
               </ul>
             </div>
           )}

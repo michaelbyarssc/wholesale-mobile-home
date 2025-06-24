@@ -11,6 +11,9 @@ interface CustomerInfo {
   phone: string;
   email: string;
   address: string;
+  city: string;
+  state: string;
+  zipCode: string;
   preferredContact: string;
   timeline: string;
   requirements: string;
@@ -61,15 +64,58 @@ export const CustomerInformation = ({ customerInfo, onCustomerInfoChange }: Cust
             required
           />
         </div>
+        
+        {/* Delivery Address Section */}
         <div className="md:col-span-2">
-          <Label htmlFor="address">Delivery Address</Label>
-          <Textarea
-            id="address"
-            value={customerInfo.address}
-            onChange={(e) => updateCustomerInfo('address', e.target.value)}
-            placeholder="Enter the full delivery address"
-          />
+          <h3 className="font-medium text-gray-900 mb-3">Delivery Address</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="md:col-span-2">
+              <Label htmlFor="address">Street Address</Label>
+              <Input
+                id="address"
+                value={customerInfo.address}
+                onChange={(e) => updateCustomerInfo('address', e.target.value)}
+                placeholder="123 Main Street"
+              />
+            </div>
+            <div>
+              <Label htmlFor="city">City</Label>
+              <Input
+                id="city"
+                value={customerInfo.city}
+                onChange={(e) => updateCustomerInfo('city', e.target.value)}
+                placeholder="Spartanburg"
+              />
+            </div>
+            <div>
+              <Label htmlFor="state">State</Label>
+              <Select value={customerInfo.state} onValueChange={(value) => updateCustomerInfo('state', value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select state" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="AL">Alabama</SelectItem>
+                  <SelectItem value="FL">Florida</SelectItem>
+                  <SelectItem value="GA">Georgia</SelectItem>
+                  <SelectItem value="NC">North Carolina</SelectItem>
+                  <SelectItem value="SC">South Carolina</SelectItem>
+                  <SelectItem value="TN">Tennessee</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="zipCode">ZIP Code</Label>
+              <Input
+                id="zipCode"
+                value={customerInfo.zipCode}
+                onChange={(e) => updateCustomerInfo('zipCode', e.target.value)}
+                placeholder="29301"
+                maxLength={5}
+              />
+            </div>
+          </div>
         </div>
+
         <div>
           <Label htmlFor="contact">Preferred Contact Method</Label>
           <Select value={customerInfo.preferredContact} onValueChange={(value) => updateCustomerInfo('preferredContact', value)}>

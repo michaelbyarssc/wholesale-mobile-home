@@ -3,17 +3,25 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
-import { ShoppingCart as CartIcon, LogOut } from 'lucide-react';
-import { User } from '@supabase/supabase-js';
+import { ShoppingCart as CartIcon, LogOut, User, Lock } from 'lucide-react';
+import { User as SupabaseUser } from '@supabase/supabase-js';
 import { CartItem } from '@/hooks/useShoppingCart';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 interface HeaderProps {
-  user: User | null;
+  user: SupabaseUser | null;
   userProfile: { first_name?: string } | null;
   cartItems: CartItem[];
   isLoading: boolean;
   onLogout: () => void;
   onToggleCart: () => void;
+  onChangePassword?: () => void;
 }
 
 export const Header = ({ 
@@ -22,9 +30,12 @@ export const Header = ({
   cartItems, 
   isLoading, 
   onLogout, 
-  onToggleCart 
+  onToggleCart,
+  onChangePassword
 }: HeaderProps) => {
   const navigate = useNavigate();
+
+  const displayName = userProfile?.first_name || 'User';
 
   return (
     <header className="bg-white shadow-sm">
@@ -45,19 +56,32 @@ export const Header = ({
           ) : (
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
               <div className="flex items-center justify-between sm:justify-start gap-2 text-xs sm:text-sm">
-                <span className="text-gray-700 truncate">
-                  Welcome{userProfile?.first_name ? `, ${userProfile.first_name}` : ''}!
-                </span>
-                <Button
-                  onClick={onLogout}
-                  variant="ghost"
-                  size="sm"
-                  className="text-gray-600 hover:text-gray-800 p-1 sm:p-2 h-auto"
-                  disabled={isLoading}
-                >
-                  <LogOut className="h-3 w-3 sm:h-4 sm:w-4" />
-                  <span className="ml-1 text-xs sm:text-sm">Logout</span>
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      className="text-gray-700 hover:text-gray-800 p-1 sm:p-2 h-auto flex items-center gap-1"
+                    >
+                      <User className="h-3 w-3 sm:h-4 sm:w-4" />
+                      <span className="text-xs sm:text-sm">Welcome, {displayName}!</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {onChangePassword && (
+                      <>
+                        <DropdownMenuItem onClick={onChangePassword}>
+                          <Lock className="h-4 w-4 mr-2" />
+                          Change Password
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                      </>
+                    )}
+                    <DropdownMenuItem onClick={onLogout} disabled={isLoading}>
+                      <LogOut className="h-4 w-4 mr-2" />
+                      Logout
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
               <Button
                 onClick={onToggleCart}

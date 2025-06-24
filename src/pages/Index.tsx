@@ -121,6 +121,10 @@ const Index = () => {
     }
   };
 
+  const handleChangePassword = () => {
+    navigate('/auth');
+  };
+
   if (isLoading) {
     return <LoadingSpinner />;
   }
@@ -134,6 +138,7 @@ const Index = () => {
         isLoading={isLoading}
         onLogout={handleLogout}
         onToggleCart={toggleCart}
+        onChangePassword={handleChangePassword}
       />
 
       <HeroSection user={user} />

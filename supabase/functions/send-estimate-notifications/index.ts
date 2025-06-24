@@ -50,26 +50,36 @@ serve(async (req) => {
       throw new Error(`Failed to fetch services: ${servicesError.message}`)
     }
 
-    // Fetch admin users
-    const { data: adminUsers, error: adminError } = await supabase
+    // Fetch admin users - fix the relationship issue
+    const { data: adminRoles, error: adminRolesError } = await supabase
       .from('user_roles')
-      .select(`
-        user_id,
-        profiles (
-          email,
-          first_name,
-          last_name
-        )
-      `)
+      .select('user_id')
       .eq('role', 'admin')
 
-    if (adminError) {
-      console.error('Failed to fetch admin users:', adminError)
+    if (adminRolesError) {
+      console.error('Failed to fetch admin roles:', adminRolesError)
+    }
+
+    let adminUsers = []
+    if (adminRoles && adminRoles.length > 0) {
+      const adminUserIds = adminRoles.map(role => role.user_id)
+      
+      // Fetch profiles for admin users
+      const { data: adminProfiles, error: adminProfilesError } = await supabase
+        .from('profiles')
+        .select('user_id, email, first_name, last_name')
+        .in('user_id', adminUserIds)
+
+      if (adminProfilesError) {
+        console.error('Failed to fetch admin profiles:', adminProfilesError)
+      } else {
+        adminUsers = adminProfiles || []
+      }
     }
 
     // Format the estimate data for email
     const mobileHome = estimate.mobile_homes
-    const homeDisplayName = mobileHome?.display_name || `${mobileHome?.series} ${mobileHome?.model}`
+    const homeDisplayName = mobileHome?.display_name || `${mobileHome?.manufacturer} ${mobileHome?.series} ${mobileHome?.model}`
     
     const servicesList = services?.map(service => 
       `• ${service.name}: $${service.price}`
@@ -104,7 +114,8 @@ Created: ${new Date(estimate.created_at).toLocaleDateString()}
     console.log('Estimate details prepared for notifications:', {
       estimateId,
       customerEmail: estimate.customer_email,
-      adminCount: adminUsers?.length || 0
+      adminCount: adminUsers?.length || 0,
+      adminUsers: adminUsers?.map(u => u.email)
     })
 
     // In a real implementation, you would send emails here using a service like SendGrid or Resend
@@ -118,12 +129,14 @@ Created: ${new Date(estimate.created_at).toLocaleDateString()}
     if (adminUsers && adminUsers.length > 0) {
       console.log('\nEMAILS TO ADMINS:')
       adminUsers.forEach(admin => {
-        if (admin.profiles?.email) {
-          console.log(`To: ${admin.profiles.email}`)
+        if (admin.email) {
+          console.log(`To: ${admin.email}`)
           console.log(`Subject: New Estimate Submitted #${estimate.id}`)
           console.log(`Body: A new estimate has been submitted:\n${estimateDetails}`)
         }
       })
+    } else {
+      console.log('\nNo admin users found or no emails available')
     }
 
     return new Response(
@@ -132,7 +145,8 @@ Created: ${new Date(estimate.created_at).toLocaleDateString()}
         message: 'Estimate notifications processed',
         estimateId,
         customerEmail: estimate.customer_email,
-        adminEmailsSent: adminUsers?.length || 0
+        adminEmailsSent: adminUsers?.length || 0,
+        adminEmails: adminUsers?.map(u => u.email) || []
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

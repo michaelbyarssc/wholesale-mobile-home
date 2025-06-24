@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -118,11 +118,13 @@ export const MobileHomesShowcase = ({ user = null }: MobileHomesShowcaseProps) =
     return [];
   };
 
-  const handleAddToCart = (home: MobileHome) => {
+  const handleAddToCart = useCallback((home: MobileHome) => {
     console.log('Add to cart button clicked for:', home.id, home.model);
+    console.log('Cart items before adding:', cartItems.length);
     addToCart(home);
-    console.log('After addToCart call, current cart items:', cartItems.length);
-  };
+    // Note: cartItems.length here will still show the old value due to React's async state updates
+    console.log('Add to cart function called - state will update on next render');
+  }, [addToCart, cartItems.length]);
 
   const renderHomeCard = (home: MobileHome, index: number) => {
     const homeImageList = getHomeImages(home.id);

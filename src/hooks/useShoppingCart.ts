@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
@@ -42,15 +43,16 @@ export const useShoppingCart = () => {
 
   const addToCart = useCallback((mobileHome: Database['public']['Tables']['mobile_homes']['Row']) => {
     console.log('addToCart called with:', mobileHome.id, mobileHome.model);
-    setCartItems(prev => {
-      console.log('Current cart items:', prev.length);
-      const existingIndex = prev.findIndex(cartItem => cartItem.mobileHome.id === mobileHome.id);
+    
+    setCartItems(prevItems => {
+      console.log('Current cart items before update:', prevItems.length);
+      const existingIndex = prevItems.findIndex(cartItem => cartItem.mobileHome.id === mobileHome.id);
       console.log('Existing item index:', existingIndex);
       
       if (existingIndex >= 0) {
         // Item already exists, keep existing services
         console.log('Item already in cart, keeping existing');
-        return prev;
+        return prevItems;
       } else {
         // Add new item
         const newItem: CartItem = {
@@ -59,8 +61,10 @@ export const useShoppingCart = () => {
           selectedServices: []
         };
         console.log('Adding new item to cart:', newItem.id);
-        const newCart = [...prev, newItem];
-        console.log('New cart length:', newCart.length);
+        const newCart = [...prevItems, newItem];
+        console.log('New cart length after adding:', newCart.length);
+        
+        // Force a re-render by returning a new array reference
         return newCart;
       }
     });

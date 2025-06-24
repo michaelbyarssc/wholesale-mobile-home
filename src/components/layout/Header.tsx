@@ -47,28 +47,6 @@ export const Header = ({
   return (
     <>
       <header className="bg-white shadow-sm">
-        {/* Business Contact Bar */}
-        {(businessInfo?.business_phone || businessInfo?.business_email) && (
-          <div className="bg-blue-50 border-b border-blue-100">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="flex flex-col sm:flex-row justify-center items-center py-2 gap-2 sm:gap-6 text-sm">
-                {businessInfo.business_phone && (
-                  <div className="flex items-center gap-1 text-blue-700">
-                    <Phone className="h-3 w-3" />
-                    <span>{businessInfo.business_phone}</span>
-                  </div>
-                )}
-                {businessInfo.business_email && (
-                  <div className="flex items-center gap-1 text-blue-700">
-                    <Mail className="h-3 w-3" />
-                    <span>{businessInfo.business_email}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center py-3 sm:py-4 lg:py-6 gap-3 sm:gap-4">
             <div className="flex items-center w-full sm:w-auto">
@@ -134,6 +112,28 @@ export const Header = ({
             )}
           </div>
         </div>
+
+        {/* Business Contact Bar - Moved below the main header */}
+        {(businessInfo?.business_phone || businessInfo?.business_email) && (
+          <div className="bg-blue-50 border-t border-blue-100">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="flex flex-col sm:flex-row justify-center items-center py-2 gap-2 sm:gap-6 text-sm">
+                {businessInfo.business_phone && (
+                  <div className="flex items-center gap-1 text-blue-700">
+                    <Phone className="h-3 w-3" />
+                    <span>{businessInfo.business_phone}</span>
+                  </div>
+                )}
+                {businessInfo.business_email && (
+                  <div className="flex items-center gap-1 text-blue-700">
+                    <Mail className="h-3 w-3" />
+                    <span>{businessInfo.business_email}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </header>
 
       <PasswordChangeDialog

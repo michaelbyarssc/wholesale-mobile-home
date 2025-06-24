@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { UserPlus, Shield, ShieldOff, AlertTriangle, Edit, Percent } from 'lucide-react';
+import { UserPlus, Shield, ShieldOff, AlertTriangle, Edit, Percent, KeyRound } from 'lucide-react';
 
 interface UserProfile {
   user_id: string;
@@ -29,6 +29,7 @@ export const UserManagementTab = () => {
   const [editingUser, setEditingUser] = useState<string | null>(null);
   const [editingMarkup, setEditingMarkup] = useState<string | null>(null);
   const [markupValue, setMarkupValue] = useState<number>(0);
+  const [resettingPassword, setResettingPassword] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({
     email: '',
     first_name: '',
@@ -162,6 +163,49 @@ export const UserManagementTab = () => {
   const cancelMarkupEdit = () => {
     setEditingMarkup(null);
     setMarkupValue(0);
+  };
+
+  const resetUserPassword = async (userId: string, userEmail: string) => {
+    try {
+      setResettingPassword(userId);
+      
+      // Generate a new temporary password
+      const newTempPassword = 'reset-' + Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8);
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Not authenticated');
+      }
+
+      // Call the admin function to reset password
+      const { data, error } = await supabase.functions.invoke('admin-reset-password', {
+        body: {
+          user_id: userId,
+          new_password: newTempPassword
+        }
+      });
+
+      if (error) throw error;
+
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      toast({
+        title: "Password reset successful",
+        description: `Password for ${userEmail} has been reset. New temporary password: ${newTempPassword}`,
+      });
+
+    } catch (error: any) {
+      console.error('Error resetting password:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to reset password",
+        variant: "destructive",
+      });
+    } finally {
+      setResettingPassword(null);
+    }
   };
 
   const createUserDirectly = async (e: React.FormEvent) => {
@@ -749,6 +793,21 @@ export const UserManagementTab = () => {
                           </DialogContent>
                         </Dialog>
                         
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => resetUserPassword(profile.user_id, profile.email)}
+                          disabled={resettingPassword === profile.user_id}
+                          className="text-orange-600 hover:text-orange-700"
+                        >
+                          {resettingPassword === profile.user_id ? (
+                            <div className="h-3 w-3 animate-spin rounded-full border-b-2 border-current mr-1" />
+                          ) : (
+                            <KeyRound className="h-3 w-3 mr-1" />
+                          )}
+                          Reset Password
+                        </Button>
+                        
                         <Select
                           value={profile.role || 'none'}
                           onValueChange={(newRole: 'admin' | 'user' | 'none') => {
@@ -786,6 +845,7 @@ export const UserManagementTab = () => {
               <li>• <strong>Invitations:</strong> Send registration invitations with pre-assigned roles</li>
               <li>• <strong>Role Changes:</strong> Modify user roles as needed or remove roles entirely</li>
               <li>• <strong>Profile Editing:</strong> Edit user names and email addresses as needed</li>
+              <li>• <strong>Password Reset:</strong> Generate new temporary passwords for users</li>
             </ul>
           </div>
         </CardContent>

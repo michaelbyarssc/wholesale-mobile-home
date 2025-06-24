@@ -43,15 +43,20 @@ export const MobileHomeImageCarousel = ({ images, homeModel }: MobileHomeImageCa
                 onError={(e) => {
                   const target = e.target as HTMLImageElement;
                   target.style.display = 'none';
-                  const parent = target.parentElement!;
-                  parent.innerHTML = `
-                    <div class="w-full h-full flex items-center justify-center text-gray-400">
-                      <div class="text-center">
-                        <div class="text-4xl mb-2">🏠</div>
-                        <p class="text-sm">Image Coming Soon</p>
-                      </div>
+                  // Create fallback content for this specific image
+                  const fallback = document.createElement('div');
+                  fallback.className = 'w-full h-full flex items-center justify-center text-gray-400 absolute inset-0';
+                  fallback.innerHTML = `
+                    <div class="text-center">
+                      <div class="text-4xl mb-2">🏠</div>
+                      <p class="text-sm">Image Loading...</p>
                     </div>
                   `;
+                  const parent = target.parentElement!;
+                  if (!parent.querySelector('.fallback-content')) {
+                    fallback.classList.add('fallback-content');
+                    parent.appendChild(fallback);
+                  }
                 }}
               />
               {/* Image type badge */}

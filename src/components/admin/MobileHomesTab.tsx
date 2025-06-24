@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -121,20 +122,6 @@ export const MobileHomesTab = () => {
         description: "Failed to update mobile home status.",
         variant: "destructive",
       });
-    }
-  };
-
-  const updatePrice = async (id: string, newPrice: number) => {
-    try {
-      const { error } = await supabase
-        .from('mobile_homes')
-        .update({ price: newPrice })
-        .eq('id', id);
-
-      if (error) throw error;
-      refetch();
-    } catch (error) {
-      console.error('Error updating price:', error);
     }
   };
 
@@ -341,16 +328,7 @@ export const MobileHomesTab = () => {
                     <TableCell>{home.series}</TableCell>
                     <TableCell>{home.model}</TableCell>
                     <TableCell>
-                      <div className="flex items-center space-x-1">
-                        <span className="text-sm font-medium">{formatPrice(home.price)}</span>
-                        <Input
-                          type="number"
-                          defaultValue={home.price || 0}
-                          onBlur={(e) => updatePrice(home.id, parseFloat(e.target.value))}
-                          className="w-24 text-xs"
-                          placeholder="Price"
-                        />
-                      </div>
+                      <span className="text-sm font-medium">{formatPrice(home.price)}</span>
                     </TableCell>
                     <TableCell>{home.square_footage || 'N/A'}</TableCell>
                     <TableCell>

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -7,7 +6,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Home, Bed, Bath, Maximize, Ruler } from 'lucide-react';
 import { MobileHomeImageCarousel } from './MobileHomeImageCarousel';
-import { ImageDataInitializer } from './ImageDataInitializer';
 
 interface MobileHome {
   id: string;
@@ -202,7 +200,6 @@ export const MobileHomesShowcase = () => {
 
   return (
     <section className="py-20 bg-gray-50">
-      <ImageDataInitializer />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
           <h3 className="text-3xl font-bold text-gray-900 mb-4">
@@ -212,11 +209,6 @@ export const MobileHomesShowcase = () => {
             Explore our premium collection of mobile homes featuring modern designs, 
             quality construction, and thoughtful amenities for comfortable living.
           </p>
-          {/* Debug info */}
-          <div className="mt-4 text-sm text-gray-500">
-            Debug: {mobileHomes.length} homes, {homeImages.length} images
-            {imagesLoading && " (images still loading...)"}
-          </div>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">

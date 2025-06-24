@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -109,11 +110,20 @@ export const MobileHomesShowcase = ({ user = null }: MobileHomesShowcaseProps) =
     return home.display_name || `${home.manufacturer} ${home.model}`;
   };
 
+  const getHomeFeatures = (features: any): string[] => {
+    if (!features) return [];
+    if (Array.isArray(features)) {
+      return features.filter(feature => typeof feature === 'string');
+    }
+    return [];
+  };
+
   const renderHomeCard = (home: MobileHome, index: number) => {
     const homeImageList = getHomeImages(home.id);
     console.log(`Rendering card for ${home.model} with ${homeImageList.length} images`);
     
     const isInCart = cartItems.some(item => item.mobileHome.id === home.id);
+    const homeFeatures = getHomeFeatures(home.features);
     
     return (
       <Card key={home.id} className="overflow-hidden hover:shadow-lg transition-shadow">
@@ -182,14 +192,14 @@ export const MobileHomesShowcase = ({ user = null }: MobileHomesShowcaseProps) =
           </div>
 
           {/* Features */}
-          {home.features && Array.isArray(home.features) && home.features.length > 0 && (
+          {homeFeatures.length > 0 && (
             <div>
               <h4 className="font-semibold text-gray-900 mb-2 flex items-center">
                 <Home className="h-4 w-4 mr-2 text-blue-600" />
                 Key Features
               </h4>
               <div className="grid grid-cols-1 gap-1">
-                {home.features.map((feature, index) => (
+                {homeFeatures.map((feature, index) => (
                   <div key={index} className="flex items-center text-sm text-gray-600">
                     <span className="w-2 h-2 bg-blue-600 rounded-full mr-2"></span>
                     {feature}

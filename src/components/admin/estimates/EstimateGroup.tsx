@@ -1,11 +1,11 @@
 
-import React from 'react';
-import { format } from 'date-fns';
-import { ChevronDown } from 'lucide-react';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import React, { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { EstimateCard } from './EstimateCard';
+import { Badge } from '@/components/ui/badge';
+import { ChevronDown, ChevronRight, User, Mail } from 'lucide-react';
 import { EstimateTableRow } from './EstimateTableRow';
+import { EstimateCard } from './EstimateCard';
 
 interface Estimate {
   id: string;
@@ -15,6 +15,7 @@ interface Estimate {
   total_amount: number;
   status: string;
   created_at: string;
+  approved_at?: string;
   user_id: string | null;
   mobile_homes: {
     manufacturer: string;
@@ -43,56 +44,46 @@ export const EstimateGroup: React.FC<EstimateGroupProps> = ({
   onDelete,
   onResend,
 }) => {
+  const [isExpanded, setIsExpanded] = useState(true);
+
   return (
-    <Collapsible key={group.user_id || 'anonymous'} defaultOpen>
-      <CollapsibleTrigger className="flex items-center justify-between w-full p-3 md:p-4 bg-gray-50 hover:bg-gray-100 rounded-lg">
-        <div className="flex items-center space-x-2 md:space-x-3 min-w-0 flex-1">
-          <ChevronDown className="h-4 w-4 flex-shrink-0 transition-transform ui-state-closed:rotate-[-90deg]" />
-          <div className="text-left min-w-0 flex-1">
-            <h3 className="font-semibold text-sm md:text-lg truncate">{group.customer_name}</h3>
-            <p className="text-xs md:text-sm text-gray-600 truncate">{group.customer_email}</p>
-            <p className="text-xs md:text-sm text-blue-600">
-              {group.estimates.length} estimate{group.estimates.length !== 1 ? 's' : ''}
-            </p>
+    <Card>
+      <CardHeader 
+        className="cursor-pointer p-3"
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+            <div className="flex items-center gap-2">
+              <User className="h-4 w-4" />
+              <span className="font-medium text-sm">{group.customer_name}</span>
+            </div>
+            <div className="flex items-center gap-1 text-xs text-gray-600">
+              <Mail className="h-3 w-3" />
+              <span>{group.customer_email}</span>
+            </div>
           </div>
+          <Badge variant="outline" className="text-xs">
+            {group.estimates.length} estimate{group.estimates.length !== 1 ? 's' : ''}
+          </Badge>
         </div>
-        <div className="text-right flex-shrink-0 ml-2">
-          <p className="text-xs md:text-sm font-medium">
-            ${group.estimates.reduce((sum, est) => sum + est.total_amount, 0).toLocaleString()}
-          </p>
-          <p className="text-xs text-gray-500">
-            {format(new Date(Math.max(...group.estimates.map(e => new Date(e.created_at).getTime()))), 'MMM dd, yyyy')}
-          </p>
-        </div>
-      </CollapsibleTrigger>
+      </CardHeader>
       
-      <CollapsibleContent>
-        <div className="mt-2">
-          {/* Mobile Card View */}
-          <div className="md:hidden space-y-3">
-            {group.estimates.map((estimate) => (
-              <EstimateCard
-                key={estimate.id}
-                estimate={estimate}
-                onStatusUpdate={onStatusUpdate}
-                onDelete={onDelete}
-                onResend={onResend}
-              />
-            ))}
-          </div>
-          
+      {isExpanded && (
+        <CardContent className="p-0">
           {/* Desktop Table View */}
-          <div className="hidden md:block overflow-x-auto">
+          <div className="hidden md:block">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Estimate ID</TableHead>
-                  <TableHead>Contact</TableHead>
-                  <TableHead>Mobile Home</TableHead>
-                  <TableHead>Total</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Actions</TableHead>
+                  <TableHead className="text-xs p-2">ID</TableHead>
+                  <TableHead className="text-xs p-2">Phone</TableHead>
+                  <TableHead className="text-xs p-2">Model</TableHead>
+                  <TableHead className="text-xs p-2">Amount</TableHead>
+                  <TableHead className="text-xs p-2">Status</TableHead>
+                  <TableHead className="text-xs p-2">Date</TableHead>
+                  <TableHead className="text-xs p-2">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -108,8 +99,21 @@ export const EstimateGroup: React.FC<EstimateGroupProps> = ({
               </TableBody>
             </Table>
           </div>
-        </div>
-      </CollapsibleContent>
-    </Collapsible>
+
+          {/* Mobile Card View */}
+          <div className="md:hidden space-y-2 p-3">
+            {group.estimates.map((estimate) => (
+              <EstimateCard
+                key={estimate.id}
+                estimate={estimate}
+                onStatusUpdate={onStatusUpdate}
+                onDelete={onDelete}
+                onResend={onResend}
+              />
+            ))}
+          </div>
+        </CardContent>
+      )}
+    </Card>
   );
 };

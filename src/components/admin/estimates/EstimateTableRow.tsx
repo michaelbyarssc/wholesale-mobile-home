@@ -63,79 +63,73 @@ export const EstimateTableRow: React.FC<EstimateTableRowProps> = ({
 
   return (
     <TableRow>
-      <TableCell className="font-mono text-sm">
-        #{estimate.id.slice(-8)}
+      <TableCell className="font-mono text-xs p-2">
+        #{estimate.id.slice(-6)}
       </TableCell>
-      <TableCell>
-        <div className="text-sm">
-          <div>{estimate.customer_phone}</div>
-        </div>
+      <TableCell className="text-xs p-2">
+        {estimate.customer_phone}
       </TableCell>
-      <TableCell>
+      <TableCell className="text-xs p-2 max-w-32 truncate">
         {estimate.mobile_homes ? 
-          `${estimate.mobile_homes.manufacturer} ${estimate.mobile_homes.series} ${estimate.mobile_homes.model}` 
+          `${estimate.mobile_homes.manufacturer} ${estimate.mobile_homes.model}` 
           : 'N/A'
         }
       </TableCell>
-      <TableCell className="font-semibold">
+      <TableCell className="font-semibold text-xs p-2">
         ${estimate.total_amount?.toLocaleString()}
       </TableCell>
-      <TableCell>
-        <div className="flex flex-col gap-1">
-          <span className={`px-2 py-1 rounded-full text-xs ${getStatusBadgeClass(estimate.status)}`}>
-            {estimate.status}
-          </span>
-          {estimate.approved_at && (
-            <span className="text-xs text-green-600">
-              Approved: {format(new Date(estimate.approved_at), 'MMM dd')}
-            </span>
-          )}
-        </div>
+      <TableCell className="p-2">
+        <span className={`px-1.5 py-0.5 rounded text-xs ${getStatusBadgeClass(estimate.status)}`}>
+          {estimate.status}
+        </span>
       </TableCell>
-      <TableCell>
-        {format(new Date(estimate.created_at), 'MMM dd, yyyy')}
+      <TableCell className="text-xs p-2">
+        {format(new Date(estimate.created_at), 'MM/dd')}
       </TableCell>
-      <TableCell>
-        <div className="flex gap-2 flex-wrap">
+      <TableCell className="p-2">
+        <div className="flex gap-1">
           {estimate.status !== 'approved' && (
             <>
               <Button 
                 size="sm" 
                 variant="outline"
+                className="text-xs px-2 py-1 h-6"
                 onClick={() => onStatusUpdate(estimate.id, 'contacted')}
               >
-                Mark Contacted
+                Contact
               </Button>
               <Button 
                 size="sm" 
                 variant="outline"
+                className="text-xs px-2 py-1 h-6"
                 onClick={() => onStatusUpdate(estimate.id, 'converted')}
               >
-                Mark Converted
+                Convert
               </Button>
             </>
           )}
           <Button 
             size="sm" 
             variant="outline"
+            className="text-xs px-2 py-1 h-6"
             onClick={() => onResend(estimate.id)}
           >
-            <Mail className="h-3 w-3 mr-1" />
-            {estimate.approved_at ? 'Send Approval' : 'Send Approval'}
+            <Mail className="h-3 w-3" />
           </Button>
           <Button 
             size="sm" 
             variant="outline"
+            className="text-xs px-2 py-1 h-6"
             onClick={() => onResend(estimate.id)}
           >
-            <RefreshCw className="h-3 w-3 mr-1" />
-            Resend Estimate
+            <RefreshCw className="h-3 w-3" />
           </Button>
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button 
                 size="sm" 
                 variant="destructive"
+                className="text-xs px-2 py-1 h-6"
               >
                 <Trash2 className="h-3 w-3" />
               </Button>

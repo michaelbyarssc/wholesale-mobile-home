@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,7 +9,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { MobileHomeEditDialog } from './MobileHomeEditDialog';
-import { Edit } from 'lucide-react';
+import { Edit, Trash2 } from 'lucide-react';
 import type { Database } from '@/integrations/supabase/types';
 
 type MobileHome = Database['public']['Tables']['mobile_homes']['Row'];
@@ -124,6 +123,81 @@ export const MobileHomesTab = () => {
 
   const getHomeName = (home: MobileHome) => {
     return home.display_name || `${home.series} ${home.model}`;
+  };
+
+  const deleteImageFromStorage = async (imageUrl: string) => {
+    if (!imageUrl.includes('supabase')) return;
+    
+    const urlParts = imageUrl.split('/');
+    const bucketIndex = urlParts.findIndex(part => part === 'mobile-home-images');
+    if (bucketIndex !== -1 && bucketIndex < urlParts.length - 1) {
+      const filePath = urlParts.slice(bucketIndex + 1).join('/');
+      
+      const { error } = await supabase.storage
+        .from('mobile-home-images')
+        .remove([filePath]);
+      
+      if (error) {
+        console.error('Error deleting file from storage:', error);
+      }
+    }
+  };
+
+  const deleteMobileHome = async (homeId: string, homeName: string) => {
+    if (!confirm(`Are you sure you want to delete "${homeName}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      // First, get all images associated with this home
+      const { data: images, error: imagesError } = await supabase
+        .from('mobile_home_images')
+        .select('image_url')
+        .eq('mobile_home_id', homeId);
+
+      if (imagesError) {
+        console.error('Error fetching images:', imagesError);
+      }
+
+      // Delete all associated images from storage
+      if (images && images.length > 0) {
+        for (const image of images) {
+          await deleteImageFromStorage(image.image_url);
+        }
+      }
+
+      // Delete all mobile_home_images records
+      const { error: deleteImagesError } = await supabase
+        .from('mobile_home_images')
+        .delete()
+        .eq('mobile_home_id', homeId);
+
+      if (deleteImagesError) {
+        console.error('Error deleting image records:', deleteImagesError);
+      }
+
+      // Finally, delete the mobile home
+      const { error } = await supabase
+        .from('mobile_homes')
+        .delete()
+        .eq('id', homeId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: `Mobile home "${homeName}" deleted successfully.`,
+      });
+
+      refetch();
+    } catch (error) {
+      console.error('Error deleting mobile home:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete mobile home.",
+        variant: "destructive",
+      });
+    }
   };
 
   if (isLoading) {
@@ -267,6 +341,13 @@ export const MobileHomesTab = () => {
                           onClick={() => toggleActive(home.id, home.active)}
                         >
                           {home.active ? 'Deactivate' : 'Activate'}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => deleteMobileHome(home.id, getHomeName(home))}
+                        >
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                     </TableCell>

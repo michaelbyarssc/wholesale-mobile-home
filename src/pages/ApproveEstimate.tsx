@@ -69,26 +69,18 @@ const ApproveEstimate = () => {
     
     setApproving(true);
     try {
-      const response = await fetch(
-        `${supabase.supabaseUrl}/functions/v1/approve-estimate?token=${token}`,
-        {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${supabase.supabaseKey}`,
-          },
-        }
-      );
+      const { error } = await supabase.functions.invoke('approve-estimate', {
+        body: { token }
+      });
 
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to approve estimate');
+      if (error) {
+        throw error;
       }
 
       setApproved(true);
       toast({
         title: "Estimate Approved!",
-        description: `Your estimate has been approved and converted to invoice ${result.invoiceNumber}. You should receive an email shortly.`,
+        description: "Your estimate has been approved and converted to an invoice. You should receive an email confirmation shortly.",
       });
     } catch (err) {
       console.error('Approval error:', err);

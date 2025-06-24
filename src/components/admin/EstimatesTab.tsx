@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -15,6 +14,7 @@ interface Estimate {
   total_amount: number;
   status: string;
   created_at: string;
+  approved_at?: string;
   user_id: string | null;
   mobile_homes: {
     manufacturer: string;

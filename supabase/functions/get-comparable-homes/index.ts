@@ -40,7 +40,9 @@ serve(async (req) => {
       throw new Error('Rentcast API key not configured')
     }
 
-    // Try multiple address formats for better geocoding success
+    console.log('API Key configured:', !!rentcastApiKey)
+
+    // Try different address formats for geocoding
     const addressVariations = generateAddressVariations(address)
     console.log('Trying address variations:', addressVariations)
 
@@ -61,13 +63,13 @@ serve(async (req) => {
     }
 
     if (!latitude || !longitude) {
-      // If geocoding fails, try using a default location for the area and search broadly
-      console.log('All geocoding attempts failed, trying area-based search')
-      const areaCoords = await tryAreaSearch(address, rentcastApiKey)
+      // If geocoding fails, try using default coordinates for the area
+      console.log('All geocoding attempts failed, using area fallback')
+      const areaCoords = getAreaFallbackCoords(address)
       if (areaCoords) {
         latitude = areaCoords.latitude
         longitude = areaCoords.longitude
-        console.log('Using area coordinates:', areaCoords)
+        console.log('Using area fallback coordinates:', areaCoords)
       } else {
         throw new Error('Unable to find location coordinates. Please try entering just the city and state (e.g., "Spartanburg, SC") or a nearby ZIP code.')
       }
@@ -96,27 +98,7 @@ function generateAddressVariations(address: string): string[] {
   // Original address
   variations.push(address.trim())
   
-  // Normalize common abbreviations and formatting
-  let normalized = address.trim()
-    .replace(/\brd\b/gi, 'Road')
-    .replace(/\bst\b/gi, 'Street')
-    .replace(/\bave\b/gi, 'Avenue')
-    .replace(/\bdr\b/gi, 'Drive')
-    .replace(/\bln\b/gi, 'Lane')
-    .replace(/\bct\b/gi, 'Court')
-    .replace(/\s+/g, ' ')
-  
-  if (normalized !== address.trim()) {
-    variations.push(normalized)
-  }
-  
-  // Remove house number and try just street + city
-  const withoutNumber = address.replace(/^\d+\s+/, '').trim()
-  if (withoutNumber !== address.trim()) {
-    variations.push(withoutNumber)
-  }
-  
-  // Extract city and state
+  // Try just city and state if we can extract them
   const cityState = extractCityState(address)
   if (cityState && cityState !== address.trim()) {
     variations.push(cityState)
@@ -128,61 +110,37 @@ function generateAddressVariations(address: string): string[] {
     variations.push(zipMatch[0])
   }
   
-  // Try major city in the area (for Spartanburg area)
-  if (address.toLowerCase().includes('spartanburg')) {
-    variations.push('Spartanburg, SC')
-    variations.push('29301') // Main Spartanburg ZIP
-  }
-  
   return [...new Set(variations)] // Remove duplicates
 }
 
-async function tryGeocode(address: string, apiKey: string): Promise<{latitude: number, longitude: number} | null> {
-  try {
-    const cleanAddress = address.trim()
-      .replace(/\s+/g, ' ')
-      .replace(/,?\s*SC\s*/i, ', SC ')
-      .replace(/,?\s*South Carolina\s*/i, ', SC ')
-
-    const geocodeUrl = `https://api.rentcast.io/v1/geocode?query=${encodeURIComponent(cleanAddress)}`
-    
-    const geocodeResponse = await fetch(geocodeUrl, {
-      headers: {
-        'X-API-Key': apiKey,
-        'accept': 'application/json'
-      }
-    })
-
-    console.log(`Geocoding "${cleanAddress}" - Status: ${geocodeResponse.status}`)
-
-    if (!geocodeResponse.ok) {
-      return null
-    }
-
-    const geocodeData = await geocodeResponse.json()
-    console.log('Geocoding response:', geocodeData)
-
-    if (geocodeData.latitude && geocodeData.longitude) {
-      return {
-        latitude: geocodeData.latitude,
-        longitude: geocodeData.longitude
+function extractCityState(address: string): string {
+  // Extract city and state from address
+  const parts = address.split(',').map(p => p.trim())
+  
+  // Look for state abbreviation or full name
+  for (let i = parts.length - 1; i >= 0; i--) {
+    const part = parts[i]
+    // Check if this part looks like a state (2 letters or known state name)
+    if (part.match(/^[A-Z]{2}$/) || ['South Carolina', 'North Carolina', 'Georgia', 'Florida', 'Tennessee', 'Alabama'].includes(part)) {
+      // Found state, get city (previous part)
+      if (i > 0) {
+        return `${parts[i-1]}, ${part.replace('South Carolina', 'SC').replace('North Carolina', 'NC')}`
       }
     }
-
-    return null
-  } catch (error) {
-    console.error('Geocoding error:', error)
-    return null
   }
+  
+  return address
 }
 
-async function tryAreaSearch(address: string, apiKey: string): Promise<{latitude: number, longitude: number} | null> {
-  // Known coordinates for major SC cities
+function getAreaFallbackCoords(address: string): {latitude: number, longitude: number} | null {
+  // Known coordinates for major SC cities and surrounding areas
   const knownAreas = {
     'spartanburg': { latitude: 34.9496, longitude: -81.9320 },
     'greenville': { latitude: 34.8526, longitude: -82.3940 },
     'columbia': { latitude: 34.0007, longitude: -81.0348 },
     'charleston': { latitude: 32.7765, longitude: -79.9311 },
+    'rock hill': { latitude: 34.9249, longitude: -81.0251 },
+    'mount pleasant': { latitude: 32.8323, longitude: -79.8284 },
   }
   
   const lowerAddress = address.toLowerCase()
@@ -194,41 +152,71 @@ async function tryAreaSearch(address: string, apiKey: string): Promise<{latitude
     }
   }
   
+  // Default to Spartanburg area if we can't determine location
+  if (lowerAddress.includes('sc') || lowerAddress.includes('south carolina')) {
+    return knownAreas.spartanburg
+  }
+  
   return null
 }
 
-function extractCityState(address: string): string {
-  // Extract city and state from address
-  const parts = address.split(',')
-  if (parts.length >= 2) {
-    // Take the last two parts (city, state)
-    return parts.slice(-2).join(',').trim()
+async function tryGeocode(address: string, apiKey: string): Promise<{latitude: number, longitude: number} | null> {
+  try {
+    // Use the correct Rentcast geocoding endpoint
+    const geocodeUrl = `https://api.rentcast.io/v1/geocode?query=${encodeURIComponent(address)}`
+    
+    console.log('Making geocode request to:', geocodeUrl)
+    
+    const geocodeResponse = await fetch(geocodeUrl, {
+      headers: {
+        'X-API-Key': apiKey,
+        'Accept': 'application/json'
+      }
+    })
+
+    console.log(`Geocoding "${address}" - Status: ${geocodeResponse.status}`)
+
+    if (!geocodeResponse.ok) {
+      const errorText = await geocodeResponse.text()
+      console.log('Geocoding error response:', errorText)
+      return null
+    }
+
+    const geocodeData = await geocodeResponse.json()
+    console.log('Geocoding response data:', JSON.stringify(geocodeData, null, 2))
+
+    if (geocodeData.latitude && geocodeData.longitude) {
+      return {
+        latitude: geocodeData.latitude,
+        longitude: geocodeData.longitude
+      }
+    }
+
+    return null
+  } catch (error) {
+    console.error('Geocoding request error:', error)
+    return null
   }
-  
-  // If no comma, try to extract city and state pattern
-  const match = address.match(/([A-Za-z\s]+),?\s+(SC|South Carolina)\s*\d*/i)
-  if (match) {
-    return `${match[1].trim()}, SC`
-  }
-  
-  return address
 }
 
 async function searchProperties(latitude: number, longitude: number, radius: number, bedrooms: number, bathrooms: number, rentcastApiKey: string) {
   try {
     console.log('Searching for properties near coordinates:', { latitude, longitude, radius })
     
+    // Use the correct Rentcast property search endpoint
     const searchUrl = new URL('https://api.rentcast.io/v1/properties/search')
     searchUrl.searchParams.append('latitude', latitude.toString())
     searchUrl.searchParams.append('longitude', longitude.toString())
     searchUrl.searchParams.append('radius', (radius * 1609.34).toString()) // Convert miles to meters
     searchUrl.searchParams.append('limit', '20')
-    searchUrl.searchParams.append('propertyType', 'Manufactured')
+    searchUrl.searchParams.append('propertyType', 'Single Family')
     
+    console.log('Making property search request to:', searchUrl.toString())
+
     const searchResponse = await fetch(searchUrl, {
       headers: {
         'X-API-Key': rentcastApiKey,
-        'accept': 'application/json'
+        'Accept': 'application/json'
       }
     })
 
@@ -236,49 +224,77 @@ async function searchProperties(latitude: number, longitude: number, radius: num
 
     if (!searchResponse.ok) {
       const errorText = await searchResponse.text()
-      console.error('Property search failed:', errorText)
-      throw new Error(`Property search failed with status: ${searchResponse.status}`)
+      console.error('Property search error response:', errorText)
+      
+      // Try a simpler search without property type filter
+      console.log('Retrying without property type filter...')
+      const simpleSearchUrl = new URL('https://api.rentcast.io/v1/properties/search')
+      simpleSearchUrl.searchParams.append('latitude', latitude.toString())
+      simpleSearchUrl.searchParams.append('longitude', longitude.toString())
+      simpleSearchUrl.searchParams.append('radius', (radius * 1609.34).toString())
+      simpleSearchUrl.searchParams.append('limit', '20')
+      
+      const retryResponse = await fetch(simpleSearchUrl, {
+        headers: {
+          'X-API-Key': rentcastApiKey,
+          'Accept': 'application/json'
+        }
+      })
+      
+      if (!retryResponse.ok) {
+        throw new Error(`Property search failed with status: ${retryResponse.status}`)
+      }
+      
+      const retryData = await retryResponse.json()
+      console.log('Retry search response:', JSON.stringify(retryData, null, 2))
+      
+      return formatSearchResults(retryData, bedrooms, bathrooms)
     }
 
     const searchData = await searchResponse.json()
-    console.log('Property search response:', searchData)
+    console.log('Property search response:', JSON.stringify(searchData, null, 2))
 
-    // Filter and format the results
-    const comparables: ComparableHome[] = (searchData.properties || [])
-      .filter((property: any) => {
-        const propBeds = property.bedrooms || 0
-        const propBaths = property.bathrooms || 0
-        
-        // Match bedrooms +/- 1 and bathrooms +/- 1
-        return Math.abs(propBeds - bedrooms) <= 1 && 
-               Math.abs(propBaths - bathrooms) <= 1 &&
-               property.price > 0 // Only include properties with valid prices
-      })
-      .slice(0, 5) // Top 5 results
-      .map((property: any) => ({
-        address: property.formattedAddress || `${property.address}, ${property.city}, ${property.state}`,
-        price: property.price || 0,
-        bedrooms: property.bedrooms || 0,
-        bathrooms: property.bathrooms || 0,
-        squareFootage: property.squareFootage,
-        listingDate: property.lastSaleDate || property.createdDate
-      }))
-
-    return new Response(
-      JSON.stringify({ 
-        success: true, 
-        comparables,
-        source: 'rentcast',
-        searchLocation: { latitude, longitude }
-      }),
-      { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200,
-      },
-    )
+    return formatSearchResults(searchData, bedrooms, bathrooms)
 
   } catch (error) {
     console.error('Error in property search:', error)
     throw error
   }
+}
+
+function formatSearchResults(searchData: any, targetBedrooms: number, targetBathrooms: number) {
+  // Filter and format the results
+  const comparables: ComparableHome[] = (searchData.properties || [])
+    .filter((property: any) => {
+      const propBeds = property.bedrooms || 0
+      const propBaths = property.bathrooms || 0
+      
+      // Match bedrooms +/- 1 and bathrooms +/- 1
+      return Math.abs(propBeds - targetBedrooms) <= 1 && 
+             Math.abs(propBaths - targetBathrooms) <= 1 &&
+             property.price > 0 // Only include properties with valid prices
+    })
+    .slice(0, 5) // Top 5 results
+    .map((property: any) => ({
+      address: property.formattedAddress || `${property.address || ''}, ${property.city || ''}, ${property.state || ''}`.replace(/^,\s*|,\s*$/g, ''),
+      price: property.price || property.salePrice || 0,
+      bedrooms: property.bedrooms || 0,
+      bathrooms: property.bathrooms || 0,
+      squareFootage: property.squareFootage || property.livingArea,
+      listingDate: property.lastSaleDate || property.createdDate || property.listDate
+    }))
+
+  return new Response(
+    JSON.stringify({ 
+      success: true, 
+      comparables,
+      source: 'rentcast',
+      searchLocation: { latitude: searchData.latitude, longitude: searchData.longitude },
+      totalFound: searchData.properties?.length || 0
+    }),
+    { 
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 200,
+    },
+  )
 }

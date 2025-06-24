@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -170,16 +171,20 @@ export const MobileHomesShowcase = ({ user = null }: MobileHomesShowcaseProps) =
 
           {/* Specifications Grid */}
           <div className="grid grid-cols-2 gap-4">
-            <div className="flex items-center space-x-2 text-sm">
-              <Maximize className="h-4 w-4 text-blue-600" />
-              <span className="text-gray-600">Square Footage:</span>
-              <span className="font-semibold">{home.square_footage || 'N/A'} sq ft</span>
+            <div className="flex flex-col items-center text-center text-sm">
+              <div className="flex items-center space-x-1 text-gray-600 mb-1">
+                <Maximize className="h-4 w-4 text-blue-600" />
+                <span>Square Footage:</span>
+              </div>
+              <span className="font-semibold text-lg">{home.square_footage || 'N/A'} sq ft</span>
             </div>
             
-            <div className="flex items-center space-x-2 text-sm">
-              <Ruler className="h-4 w-4 text-blue-600" />
-              <span className="text-gray-600">Dimensions:</span>
-              <span className="font-semibold">
+            <div className="flex flex-col items-center text-center text-sm">
+              <div className="flex items-center space-x-1 text-gray-600 mb-1">
+                <Ruler className="h-4 w-4 text-blue-600" />
+                <span>Dimensions:</span>
+              </div>
+              <span className="font-semibold text-lg">
                 {home.length_feet && home.width_feet 
                   ? `${home.width_feet}' × ${home.length_feet}'` 
                   : 'N/A'}

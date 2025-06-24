@@ -11,6 +11,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
+import { formatPrice } from '@/lib/utils';
 
 interface Service {
   id: string;
@@ -345,12 +346,7 @@ export const ServicesTab = () => {
                   <TableCell className="font-medium">{service.name}</TableCell>
                   <TableCell className="max-w-xs truncate">{service.description}</TableCell>
                   <TableCell>
-                    <Input
-                      type="number"
-                      defaultValue={service.price}
-                      onBlur={(e) => updatePrice(service.id, parseFloat(e.target.value))}
-                      className="w-32"
-                    />
+                    <span className="text-sm font-medium">{formatPrice(service.price)}</span>
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-wrap gap-1">

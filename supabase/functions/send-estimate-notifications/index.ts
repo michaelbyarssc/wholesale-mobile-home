@@ -1,11 +1,14 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { Resend } from 'npm:resend@2.0.0'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
+
+const resend = new Resend(Deno.env.get('RESEND_API_KEY'))
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -118,25 +121,60 @@ Created: ${new Date(estimate.created_at).toLocaleDateString()}
       adminUsers: adminUsers?.map(u => u.email)
     })
 
-    // In a real implementation, you would send emails here using a service like SendGrid or Resend
-    // For now, we'll log what would be sent and mark it as successful
-    
-    console.log('EMAIL TO CUSTOMER:')
-    console.log(`To: ${estimate.customer_email}`)
-    console.log(`Subject: Your Mobile Home Estimate #${estimate.id}`)
-    console.log(`Body: Thank you for your interest! Here are your estimate details:\n${estimateDetails}`)
-    
-    if (adminUsers && adminUsers.length > 0) {
-      console.log('\nEMAILS TO ADMINS:')
-      adminUsers.forEach(admin => {
-        if (admin.email) {
-          console.log(`To: ${admin.email}`)
-          console.log(`Subject: New Estimate Submitted #${estimate.id}`)
-          console.log(`Body: A new estimate has been submitted:\n${estimateDetails}`)
-        }
+    let emailsSent = 0
+    const emailResults = []
+
+    try {
+      // Send email to customer
+      const customerEmailResult = await resend.emails.send({
+        from: 'Wholesale Homes of the Carolinas <onboarding@resend.dev>',
+        to: [estimate.customer_email],
+        subject: `Your Mobile Home Estimate #${estimate.id}`,
+        html: `
+          <h2>Thank you for your interest!</h2>
+          <p>Here are your estimate details:</p>
+          <pre style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; font-family: monospace;">${estimateDetails}</pre>
+          <p>We will contact you soon to discuss your mobile home purchase.</p>
+          <p>Best regards,<br>Wholesale Homes of the Carolinas</p>
+        `,
       })
+
+      console.log('Customer email sent:', customerEmailResult)
+      emailsSent++
+      emailResults.push({ to: estimate.customer_email, status: 'sent', id: customerEmailResult.data?.id })
+    } catch (error) {
+      console.error('Failed to send customer email:', error)
+      emailResults.push({ to: estimate.customer_email, status: 'failed', error: error.message })
+    }
+
+    // Send emails to admin users
+    if (adminUsers && adminUsers.length > 0) {
+      for (const admin of adminUsers) {
+        if (admin.email) {
+          try {
+            const adminEmailResult = await resend.emails.send({
+              from: 'Wholesale Homes of the Carolinas <onboarding@resend.dev>',
+              to: [admin.email],
+              subject: `New Estimate Submitted #${estimate.id}`,
+              html: `
+                <h2>New Estimate Submitted</h2>
+                <p>A new estimate has been submitted and requires your attention:</p>
+                <pre style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; font-family: monospace;">${estimateDetails}</pre>
+                <p>Please review this estimate in the admin dashboard.</p>
+              `,
+            })
+
+            console.log(`Admin email sent to ${admin.email}:`, adminEmailResult)
+            emailsSent++
+            emailResults.push({ to: admin.email, status: 'sent', id: adminEmailResult.data?.id })
+          } catch (error) {
+            console.error(`Failed to send admin email to ${admin.email}:`, error)
+            emailResults.push({ to: admin.email, status: 'failed', error: error.message })
+          }
+        }
+      }
     } else {
-      console.log('\nNo admin users found or no emails available')
+      console.log('No admin users found or no emails available')
     }
 
     return new Response(
@@ -146,7 +184,9 @@ Created: ${new Date(estimate.created_at).toLocaleDateString()}
         estimateId,
         customerEmail: estimate.customer_email,
         adminEmailsSent: adminUsers?.length || 0,
-        adminEmails: adminUsers?.map(u => u.email) || []
+        adminEmails: adminUsers?.map(u => u.email) || [],
+        totalEmailsSent: emailsSent,
+        emailResults
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

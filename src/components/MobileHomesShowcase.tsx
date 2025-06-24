@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -42,6 +41,8 @@ export const MobileHomesShowcase = ({ user = null }: MobileHomesShowcaseProps) =
     clearCart,
     setIsCartOpen
   } = useShoppingCart();
+
+  console.log('MobileHomesShowcase render - cart items from hook:', cartItems.length);
 
   const { data: mobileHomes = [], isLoading } = useQuery({
     queryKey: ['public-mobile-homes'],
@@ -117,12 +118,20 @@ export const MobileHomesShowcase = ({ user = null }: MobileHomesShowcaseProps) =
     return [];
   };
 
+  const handleAddToCart = (home: MobileHome) => {
+    console.log('Add to cart button clicked for:', home.id, home.model);
+    addToCart(home);
+    console.log('After addToCart call, current cart items:', cartItems.length);
+  };
+
   const renderHomeCard = (home: MobileHome, index: number) => {
     const homeImageList = getHomeImages(home.id);
     console.log(`Rendering card for ${home.model} with ${homeImageList.length} images`);
     
     const isInCart = cartItems.some(item => item.mobileHome.id === home.id);
     const homeFeatures = getHomeFeatures(home.features);
+    
+    console.log(`Home ${home.model} is in cart:`, isInCart);
     
     return (
       <Card key={home.id} className="overflow-hidden hover:shadow-lg transition-shadow">
@@ -225,7 +234,7 @@ export const MobileHomesShowcase = ({ user = null }: MobileHomesShowcaseProps) =
           {/* Add to Cart Button - Only show for logged in users */}
           {user ? (
             <Button 
-              onClick={() => addToCart(home)}
+              onClick={() => handleAddToCart(home)}
               className="w-full"
               variant={isInCart ? "outline" : "default"}
             >
@@ -252,7 +261,8 @@ export const MobileHomesShowcase = ({ user = null }: MobileHomesShowcaseProps) =
     homeCount: mobileHomes.length, 
     imageCount: homeImages.length,
     uniqueSeries,
-    activeTab
+    activeTab,
+    cartItemsCount: cartItems.length
   });
 
   if (isLoading) {

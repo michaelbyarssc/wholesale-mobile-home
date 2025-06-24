@@ -16,9 +16,11 @@ export const useShoppingCart = () => {
   useEffect(() => {
     try {
       const savedItems = localStorage.getItem('cart_items');
+      console.log('Loading cart from localStorage:', savedItems);
       if (savedItems) {
         const parsed = JSON.parse(savedItems);
         if (Array.isArray(parsed)) {
+          console.log('Loaded cart items:', parsed.length);
           setCartItems(parsed);
         }
       }
@@ -31,6 +33,7 @@ export const useShoppingCart = () => {
   // Save cart items to localStorage whenever cartItems changes
   useEffect(() => {
     try {
+      console.log('Saving cart to localStorage:', cartItems.length, 'items');
       localStorage.setItem('cart_items', JSON.stringify(cartItems));
     } catch (error) {
       console.error('Error saving cart to localStorage:', error);
@@ -38,10 +41,15 @@ export const useShoppingCart = () => {
   }, [cartItems]);
 
   const addToCart = useCallback((mobileHome: Database['public']['Tables']['mobile_homes']['Row']) => {
+    console.log('addToCart called with:', mobileHome.id, mobileHome.model);
     setCartItems(prev => {
+      console.log('Current cart items:', prev.length);
       const existingIndex = prev.findIndex(cartItem => cartItem.mobileHome.id === mobileHome.id);
+      console.log('Existing item index:', existingIndex);
+      
       if (existingIndex >= 0) {
         // Item already exists, keep existing services
+        console.log('Item already in cart, keeping existing');
         return prev;
       } else {
         // Add new item
@@ -50,16 +58,21 @@ export const useShoppingCart = () => {
           mobileHome,
           selectedServices: []
         };
-        return [...prev, newItem];
+        console.log('Adding new item to cart:', newItem.id);
+        const newCart = [...prev, newItem];
+        console.log('New cart length:', newCart.length);
+        return newCart;
       }
     });
   }, []);
 
   const removeFromCart = useCallback((itemId: string) => {
+    console.log('Removing item from cart:', itemId);
     setCartItems(prev => prev.filter(item => item.mobileHome.id !== itemId));
   }, []);
 
   const updateServices = useCallback((homeId: string, selectedServices: string[]) => {
+    console.log('Updating services for home:', homeId, selectedServices);
     setCartItems(prev => prev.map(item => 
       item.mobileHome.id === homeId 
         ? { ...item, selectedServices }
@@ -68,16 +81,21 @@ export const useShoppingCart = () => {
   }, []);
 
   const clearCart = useCallback(() => {
+    console.log('Clearing cart');
     setCartItems([]);
   }, []);
 
   const toggleCart = useCallback(() => {
+    console.log('Toggling cart, current state:', isCartOpen);
     setIsCartOpen(prev => !prev);
-  }, []);
+  }, [isCartOpen]);
 
   const closeCart = useCallback(() => {
+    console.log('Closing cart');
     setIsCartOpen(false);
   }, []);
+
+  console.log('useShoppingCart render - cart items:', cartItems.length, 'isOpen:', isCartOpen);
 
   return {
     cartItems,

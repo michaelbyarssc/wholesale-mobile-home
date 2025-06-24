@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { validatePasswordComplexity } from '@/utils/security';
+import { validatePasswordComplexity, isPasswordStrengthResponse } from '@/utils/security';
 import { Eye, EyeOff, AlertTriangle, CheckCircle } from 'lucide-react';
 
 interface PasswordChangeDialogProps {
@@ -44,7 +44,7 @@ export const PasswordChangeDialog = ({ isOpen, onClose, isFirstLogin = false }: 
         password: newPassword
       });
 
-      if (strengthCheck && !strengthCheck.valid) {
+      if (strengthCheck && isPasswordStrengthResponse(strengthCheck) && !strengthCheck.valid) {
         newErrors.push(...strengthCheck.errors);
       }
     } catch (error) {

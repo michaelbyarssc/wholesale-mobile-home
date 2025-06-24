@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
-import { validatePasswordComplexity } from '@/utils/security';
+import { validatePasswordComplexity, isPasswordStrengthResponse } from '@/utils/security';
 import { PasswordChangeDialog } from '@/components/auth/PasswordChangeDialog';
 
 const Auth = () => {
@@ -144,7 +144,7 @@ const Auth = () => {
             password: password
           });
 
-          if (strengthCheck && !strengthCheck.valid) {
+          if (strengthCheck && isPasswordStrengthResponse(strengthCheck) && !strengthCheck.valid) {
             toast({
               title: "Password Security Check Failed",
               description: strengthCheck.errors.join(', '),

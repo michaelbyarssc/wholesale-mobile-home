@@ -42,6 +42,20 @@ export const validatePasswordComplexity = (password: string): {
   };
 };
 
+// Type definition for password strength check response
+export interface PasswordStrengthResponse {
+  valid: boolean;
+  errors: string[];
+}
+
+// Type guard to check if the response matches our expected structure
+export const isPasswordStrengthResponse = (data: any): data is PasswordStrengthResponse => {
+  return data && 
+         typeof data === 'object' && 
+         typeof data.valid === 'boolean' && 
+         Array.isArray(data.errors);
+};
+
 export const sanitizeInput = (input: string): string => {
   // Remove potential XSS characters and trim whitespace
   return input

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,28 +17,10 @@ import { ServicesSelection } from '@/components/estimate/ServicesSelection';
 import { CustomerInformation } from '@/components/estimate/CustomerInformation';
 import { EstimateTotal } from '@/components/estimate/EstimateTotal';
 import { EstimateHeader } from '@/components/estimate/EstimateHeader';
+import type { Database } from '@/integrations/supabase/types';
 
-interface MobileHome {
-  id: string;
-  manufacturer: string;
-  series: string;
-  model: string;
-  price: number;
-  cost: number;
-}
-
-interface Service {
-  id: string;
-  name: string;
-  description?: string;
-  price: number;
-  cost?: number;
-  dependencies?: string[];
-  applicable_manufacturers?: string[];
-  applicable_series?: string[];
-  requires_admin?: boolean;
-  conditional_pricing?: any;
-}
+type MobileHome = Database['public']['Tables']['mobile_homes']['Row'];
+type Service = Database['public']['Tables']['services']['Row'];
 
 const EstimateForm = () => {
   const { toast } = useToast();
@@ -318,9 +299,9 @@ const EstimateForm = () => {
         <form onSubmit={handleSubmit} className="space-y-8">
           <MobileHomeSelection
             mobileHomes={mobileHomes}
-            selectedHome={selectedHome}
-            onSelectHome={setSelectedHome}
-            calculatePrice={calculatePrice}
+            selectedMobileHome={selectedHome ? mobileHomes.find(h => h.id === selectedHome) || null : null}
+            onMobileHomeSelect={setSelectedHome}
+            user={user}
           />
 
           <ServicesSelection

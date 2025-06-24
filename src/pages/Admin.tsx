@@ -11,6 +11,7 @@ import { MobileHomesTab } from '@/components/admin/MobileHomesTab';
 import { ServicesTab } from '@/components/admin/ServicesTab';
 import { SettingsTab } from '@/components/admin/SettingsTab';
 import { UserManagementTab } from '@/components/admin/UserManagementTab';
+import { AuditLogTab } from '@/components/admin/AuditLogTab';
 import { Menu, X } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 
@@ -150,6 +151,13 @@ const Admin = () => {
           >
             Settings
           </Button>
+          <Button
+            variant={activeTab === 'audit' ? 'default' : 'ghost'}
+            className="justify-start"
+            onClick={() => setActiveTab('audit')}
+          >
+            Audit Log
+          </Button>
         </div>
       </SheetContent>
     </Sheet>
@@ -238,12 +246,13 @@ const Admin = () => {
 
       <div className="container mx-auto px-4 py-4 md:py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="hidden md:grid w-full grid-cols-5">
+          <TabsList className="hidden md:grid w-full grid-cols-6">
             <TabsTrigger value="estimates">Estimates</TabsTrigger>
             <TabsTrigger value="mobile-homes">Mobile Homes</TabsTrigger>
             <TabsTrigger value="services">Services</TabsTrigger>
             <TabsTrigger value="users">Users</TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>
+            <TabsTrigger value="audit">Audit Log</TabsTrigger>
           </TabsList>
 
           <TabsContent value="estimates">
@@ -264,6 +273,10 @@ const Admin = () => {
 
           <TabsContent value="settings">
             <SettingsTab />
+          </TabsContent>
+
+          <TabsContent value="audit">
+            <AuditLogTab />
           </TabsContent>
         </Tabs>
       </div>

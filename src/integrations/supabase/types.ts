@@ -9,6 +9,45 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      admin_audit_log: {
+        Row: {
+          action: string
+          admin_user_id: string | null
+          created_at: string
+          id: string
+          ip_address: unknown | null
+          new_values: Json | null
+          old_values: Json | null
+          record_id: string | null
+          table_name: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          admin_user_id?: string | null
+          created_at?: string
+          id?: string
+          ip_address?: unknown | null
+          new_values?: Json | null
+          old_values?: Json | null
+          record_id?: string | null
+          table_name?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          admin_user_id?: string | null
+          created_at?: string
+          id?: string
+          ip_address?: unknown | null
+          new_values?: Json | null
+          old_values?: Json | null
+          record_id?: string | null
+          table_name?: string | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       admin_settings: {
         Row: {
           description: string | null
@@ -335,6 +374,18 @@ export type Database = {
     Functions: {
       is_admin: {
         Args: Record<PropertyKey, never> | { user_id: string }
+        Returns: boolean
+      }
+      validate_email: {
+        Args: { email: string }
+        Returns: boolean
+      }
+      validate_password_complexity: {
+        Args: { password: string }
+        Returns: boolean
+      }
+      validate_phone: {
+        Args: { phone: string }
         Returns: boolean
       }
     }

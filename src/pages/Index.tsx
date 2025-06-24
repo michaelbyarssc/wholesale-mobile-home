@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MobileHomesShowcase } from '@/components/MobileHomesShowcase';
@@ -121,10 +120,6 @@ const Index = () => {
     }
   };
 
-  const handleChangePassword = () => {
-    navigate('/auth');
-  };
-
   if (isLoading) {
     return <LoadingSpinner />;
   }
@@ -138,7 +133,6 @@ const Index = () => {
         isLoading={isLoading}
         onLogout={handleLogout}
         onToggleCart={toggleCart}
-        onChangePassword={handleChangePassword}
       />
 
       <HeroSection user={user} />

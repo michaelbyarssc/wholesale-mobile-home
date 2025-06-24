@@ -5,9 +5,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { validateEmail, validatePhone, sanitizeInput } from '@/utils/security';
+import { AlertTriangle } from 'lucide-react';
 
 interface AdminSetting {
   id: string;
@@ -19,6 +22,7 @@ interface AdminSetting {
 export const SettingsTab = () => {
   const { toast } = useToast();
   const [settings, setSettings] = useState<Record<string, string>>({});
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
   const { data: adminSettings = [], isLoading, refetch } = useQuery({
     queryKey: ['admin-settings'],
@@ -41,14 +45,67 @@ export const SettingsTab = () => {
     }
   });
 
+  const validateSetting = (key: string, value: string): string | null => {
+    const sanitizedValue = sanitizeInput(value);
+    
+    switch (key) {
+      case 'business_email':
+        if (!validateEmail(sanitizedValue)) {
+          return 'Please enter a valid email address';
+        }
+        break;
+      case 'business_phone':
+        if (sanitizedValue && !validatePhone(sanitizedValue)) {
+          return 'Please enter a valid 10-digit phone number';
+        }
+        break;
+      case 'business_name':
+        if (sanitizedValue.length < 2) {
+          return 'Business name must be at least 2 characters long';
+        }
+        break;
+      default:
+        break;
+    }
+    
+    return null;
+  };
+
   const updateSetting = async (key: string, value: string) => {
+    const sanitizedValue = sanitizeInput(value);
+    const validationError = validateSetting(key, sanitizedValue);
+    
+    if (validationError) {
+      setValidationErrors(prev => ({ ...prev, [key]: validationError }));
+      toast({
+        title: "Validation Error",
+        description: validationError,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Clear validation error if validation passes
+    setValidationErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors[key];
+      return newErrors;
+    });
+
     try {
       const { error } = await supabase
         .from('admin_settings')
-        .update({ setting_value: value })
+        .update({ setting_value: sanitizedValue })
         .eq('setting_key', key);
 
       if (error) throw error;
+
+      // Log admin action
+      await supabase.from('admin_audit_log').insert({
+        action: 'UPDATE_SETTING',
+        table_name: 'admin_settings',
+        new_values: { setting_key: key, setting_value: sanitizedValue }
+      });
 
       toast({
         title: "Success",
@@ -68,6 +125,24 @@ export const SettingsTab = () => {
 
   const handleInputChange = (key: string, value: string) => {
     setSettings(prev => ({ ...prev, [key]: value }));
+    
+    // Clear validation error when user starts typing
+    if (validationErrors[key]) {
+      setValidationErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[key];
+        return newErrors;
+      });
+    }
+  };
+
+  const handleInputBlur = (key: string, value: string) => {
+    const validationError = validateSetting(key, value);
+    if (validationError) {
+      setValidationErrors(prev => ({ ...prev, [key]: validationError }));
+    } else {
+      updateSetting(key, value);
+    }
   };
 
   if (isLoading) {
@@ -97,8 +172,15 @@ export const SettingsTab = () => {
                 id="business_name"
                 value={settings.business_name || ''}
                 onChange={(e) => handleInputChange('business_name', e.target.value)}
-                onBlur={(e) => updateSetting('business_name', e.target.value)}
+                onBlur={(e) => handleInputBlur('business_name', e.target.value)}
+                className={validationErrors.business_name ? 'border-red-500' : ''}
               />
+              {validationErrors.business_name && (
+                <Alert variant="destructive" className="mt-2">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription>{validationErrors.business_name}</AlertDescription>
+                </Alert>
+              )}
             </div>
             
             <div>
@@ -107,8 +189,16 @@ export const SettingsTab = () => {
                 id="business_phone"
                 value={settings.business_phone || ''}
                 onChange={(e) => handleInputChange('business_phone', e.target.value)}
-                onBlur={(e) => updateSetting('business_phone', e.target.value)}
+                onBlur={(e) => handleInputBlur('business_phone', e.target.value)}
+                placeholder="(555) 123-4567"
+                className={validationErrors.business_phone ? 'border-red-500' : ''}
               />
+              {validationErrors.business_phone && (
+                <Alert variant="destructive" className="mt-2">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription>{validationErrors.business_phone}</AlertDescription>
+                </Alert>
+              )}
             </div>
             
             <div className="md:col-span-2">
@@ -118,8 +208,15 @@ export const SettingsTab = () => {
                 type="email"
                 value={settings.business_email || ''}
                 onChange={(e) => handleInputChange('business_email', e.target.value)}
-                onBlur={(e) => updateSetting('business_email', e.target.value)}
+                onBlur={(e) => handleInputBlur('business_email', e.target.value)}
+                className={validationErrors.business_email ? 'border-red-500' : ''}
               />
+              {validationErrors.business_email && (
+                <Alert variant="destructive" className="mt-2">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription>{validationErrors.business_email}</AlertDescription>
+                </Alert>
+              )}
             </div>
           </div>
         </CardContent>

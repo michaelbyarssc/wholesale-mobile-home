@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
@@ -15,11 +16,6 @@ const Index = () => {
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       setUser(session?.user ?? null);
-      
-      // If user is logged in, redirect to estimate page
-      if (session?.user) {
-        navigate('/estimate');
-      }
     };
 
     checkAuth();
@@ -28,16 +24,11 @@ const Index = () => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         setUser(session?.user ?? null);
-        
-        // If user logs in, redirect to estimate page
-        if (session?.user) {
-          navigate('/estimate');
-        }
       }
     );
 
     return () => subscription.unsubscribe();
-  }, [navigate]);
+  }, []);
 
   const features = [
     {

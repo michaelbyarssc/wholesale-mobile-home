@@ -6,7 +6,18 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { ChevronDown, ChevronRight, Trash2 } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 interface Estimate {
   id: string;
@@ -60,6 +71,19 @@ export const EstimatesTab = () => {
 
     if (error) {
       console.error('Error updating estimate:', error);
+    } else {
+      refetch();
+    }
+  };
+
+  const deleteEstimate = async (id: string) => {
+    const { error } = await supabase
+      .from('estimates')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error deleting estimate:', error);
     } else {
       refetch();
     }
@@ -176,22 +200,51 @@ export const EstimatesTab = () => {
                           </div>
                           
                           <div className="flex flex-col gap-2 pt-2">
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              className="w-full"
-                              onClick={() => updateEstimateStatus(estimate.id, 'contacted')}
-                            >
-                              Mark Contacted
-                            </Button>
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              className="w-full"
-                              onClick={() => updateEstimateStatus(estimate.id, 'converted')}
-                            >
-                              Mark Converted
-                            </Button>
+                            <div className="flex gap-2">
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                className="flex-1"
+                                onClick={() => updateEstimateStatus(estimate.id, 'contacted')}
+                              >
+                                Mark Contacted
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                className="flex-1"
+                                onClick={() => updateEstimateStatus(estimate.id, 'converted')}
+                              >
+                                Mark Converted
+                              </Button>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button 
+                                    size="sm" 
+                                    variant="destructive"
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Delete Estimate</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Are you sure you want to delete this estimate for {estimate.customer_name}? This action cannot be undone.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={() => deleteEstimate(estimate.id)}
+                                      className="bg-red-600 hover:bg-red-700"
+                                    >
+                                      Delete
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </div>
                           </div>
                         </div>
                       </Card>
@@ -261,6 +314,33 @@ export const EstimatesTab = () => {
                                 >
                                   Mark Converted
                                 </Button>
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button 
+                                      size="sm" 
+                                      variant="destructive"
+                                    >
+                                      <Trash2 className="h-3 w-3" />
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Delete Estimate</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        Are you sure you want to delete this estimate? This action cannot be undone.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                      <AlertDialogAction
+                                        onClick={() => deleteEstimate(estimate.id)}
+                                        className="bg-red-600 hover:bg-red-700"
+                                      >
+                                        Delete
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
                               </div>
                             </TableCell>
                           </TableRow>

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -169,8 +170,8 @@ export const UserManagementTab = () => {
     try {
       setResettingPassword(userId);
       
-      // Generate a new temporary password
-      const newTempPassword = 'reset-' + Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8);
+      // Use the fixed password: Allies123!
+      const newPassword = 'Allies123!';
 
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
@@ -181,7 +182,7 @@ export const UserManagementTab = () => {
       const { data, error } = await supabase.functions.invoke('admin-reset-password', {
         body: {
           user_id: userId,
-          new_password: newTempPassword
+          new_password: newPassword
         }
       });
 
@@ -193,7 +194,7 @@ export const UserManagementTab = () => {
 
       toast({
         title: "Password reset successful",
-        description: `Password for ${userEmail} has been reset. New temporary password: ${newTempPassword}`,
+        description: `Password for ${userEmail} has been reset to: Allies123!`,
       });
 
     } catch (error: any) {
@@ -223,8 +224,8 @@ export const UserManagementTab = () => {
     try {
       setCreatingUser(true);
       
-      // Generate a temporary password
-      const tempPassword = 'temp-' + Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8);
+      // Use the fixed password: Allies123!
+      const tempPassword = 'Allies123!';
 
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
@@ -248,7 +249,7 @@ export const UserManagementTab = () => {
 
       toast({
         title: "User created successfully",
-        description: `User ${newUserEmail} has been created with ${newUserRole} role and 30% markup. Temporary password: ${tempPassword}`,
+        description: `User ${newUserEmail} has been created with ${newUserRole} role and 30% markup. Password: Allies123!`,
       });
 
       // Clear the form
@@ -282,10 +283,10 @@ export const UserManagementTab = () => {
     }
 
     try {
-      // Send invitation using the standard sign-up flow
+      // Send invitation using the standard sign-up flow with fixed password
       const { data, error } = await supabase.auth.signUp({
         email: newUserEmail,
-        password: 'temp-password-' + Math.random().toString(36).slice(-8), // Temporary password
+        password: 'Allies123!', // Use fixed password
         options: {
           emailRedirectTo: window.location.origin + '/auth'
         }
@@ -333,7 +334,7 @@ export const UserManagementTab = () => {
         } else {
           toast({
             title: "User invitation sent",
-            description: `Invitation sent to ${newUserEmail} with ${newUserRole} role and 30% default markup.`,
+            description: `Invitation sent to ${newUserEmail} with ${newUserRole} role and 30% default markup. Password: Allies123!`,
           });
         }
       }
@@ -580,7 +581,7 @@ export const UserManagementTab = () => {
               {creatingUser ? "Creating User..." : "Create User"}
             </Button>
             <p className="text-sm text-gray-600">
-              User will be created directly with a temporary password. The user can change their password after logging in.
+              User will be created with password: Allies123! (they can change it after logging in)
             </p>
           </form>
         </CardContent>
@@ -625,7 +626,7 @@ export const UserManagementTab = () => {
               Send Invitation
             </Button>
             <p className="text-sm text-gray-600">
-              An invitation will be sent to the email address. The user will need to complete registration and set their password.
+              Invitation will be sent with password: Allies123! (user can change it after logging in)
             </p>
           </form>
         </CardContent>
@@ -845,7 +846,7 @@ export const UserManagementTab = () => {
               <li>• <strong>Invitations:</strong> Send registration invitations with pre-assigned roles</li>
               <li>• <strong>Role Changes:</strong> Modify user roles as needed or remove roles entirely</li>
               <li>• <strong>Profile Editing:</strong> Edit user names and email addresses as needed</li>
-              <li>• <strong>Password Reset:</strong> Generate new temporary passwords for users</li>
+              <li>• <strong>Password Reset:</strong> Reset user passwords to: Allies123!</li>
             </ul>
           </div>
         </CardContent>

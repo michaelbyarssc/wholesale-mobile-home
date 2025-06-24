@@ -177,7 +177,7 @@ export type Database = {
           manufacturer: string
           model: string
           price: number
-          series: Database["public"]["Enums"]["mobile_home_series"]
+          series: string
           square_footage: number | null
           updated_at: string
           width_feet: number | null
@@ -198,7 +198,7 @@ export type Database = {
           manufacturer?: string
           model: string
           price: number
-          series: Database["public"]["Enums"]["mobile_home_series"]
+          series: string
           square_footage?: number | null
           updated_at?: string
           width_feet?: number | null
@@ -219,7 +219,7 @@ export type Database = {
           manufacturer?: string
           model?: string
           price?: number
-          series?: Database["public"]["Enums"]["mobile_home_series"]
+          series?: string
           square_footage?: number | null
           updated_at?: string
           width_feet?: number | null
@@ -340,7 +340,6 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "user"
-      mobile_home_series: "Tru" | "Epic"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -457,7 +456,6 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "user"],
-      mobile_home_series: ["Tru", "Epic"],
     },
   },
 } as const

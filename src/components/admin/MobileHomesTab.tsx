@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -21,7 +22,7 @@ export const MobileHomesTab = () => {
   const [editingHome, setEditingHome] = useState<MobileHome | null>(null);
   const [formData, setFormData] = useState({
     manufacturer: 'Clayton',
-    series: 'Tru' as Database['public']['Enums']['mobile_home_series'],
+    series: '',
     model: '',
     display_name: '',
     price: ''
@@ -40,13 +41,38 @@ export const MobileHomesTab = () => {
     }
   });
 
+  // Get unique series for the dropdown
+  const { data: existingSeries = [] } = useQuery({
+    queryKey: ['mobile-home-series'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('mobile_homes')
+        .select('series')
+        .order('series');
+      
+      if (error) throw error;
+      
+      const uniqueSeries = [...new Set(data.map(item => item.series))];
+      return uniqueSeries;
+    }
+  });
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!formData.series.trim()) {
+      toast({
+        title: "Error",
+        description: "Series is required.",
+        variant: "destructive",
+      });
+      return;
+    }
     
     try {
       const insertData: MobileHomeInsert = {
         manufacturer: formData.manufacturer,
-        series: formData.series,
+        series: formData.series.trim(),
         model: formData.model,
         display_name: formData.display_name,
         price: parseFloat(formData.price)
@@ -63,7 +89,7 @@ export const MobileHomesTab = () => {
         description: "Mobile home added successfully.",
       });
 
-      setFormData({ manufacturer: 'Clayton', series: 'Tru', model: '', display_name: '', price: '' });
+      setFormData({ manufacturer: 'Clayton', series: '', model: '', display_name: '', price: '' });
       setShowAddForm(false);
       refetch();
     } catch (error) {
@@ -238,15 +264,24 @@ export const MobileHomesTab = () => {
               </div>
               <div>
                 <Label htmlFor="series">Series</Label>
-                <Select value={formData.series} onValueChange={(value: Database['public']['Enums']['mobile_home_series']) => setFormData({...formData, series: value})}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Tru">Tru</SelectItem>
-                    <SelectItem value="Epic">Epic</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="space-y-2">
+                  <Select value={formData.series} onValueChange={(value) => setFormData({...formData, series: value})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select existing series or type new one below" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {existingSeries.map((series) => (
+                        <SelectItem key={series} value={series}>{series}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    placeholder="Or enter new series name"
+                    value={formData.series}
+                    onChange={(e) => setFormData({...formData, series: e.target.value})}
+                    required
+                  />
+                </div>
               </div>
               <div>
                 <Label htmlFor="model">Model</Label>

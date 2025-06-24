@@ -8,6 +8,7 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Admin from "./pages/Admin";
 import MyEstimates from "./pages/MyEstimates";
+import EstimateForm from "./pages/EstimateForm";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -21,6 +22,7 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
+          <Route path="/estimate" element={<EstimateForm />} />
           <Route path="/auth" element={<Auth />} />
           <Route 
             path="/my-estimates" 

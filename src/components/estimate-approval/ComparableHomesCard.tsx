@@ -34,11 +34,36 @@ export const ComparableHomesCard = ({
   const [searchAddress, setSearchAddress] = useState(deliveryAddress || '');
   const [searchRadius, setSearchRadius] = useState('5');
   const [hasSearched, setHasSearched] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Auto-search when component mounts with valid data
+  useEffect(() => {
+    if (deliveryAddress && deliveryAddress.trim() && mobileHomeBedrooms && mobileHomeBathrooms) {
+      console.log('Auto-searching for comparables with:', {
+        address: deliveryAddress,
+        bedrooms: mobileHomeBedrooms,
+        bathrooms: mobileHomeBathrooms
+      });
+      searchComparables();
+    }
+  }, [deliveryAddress, mobileHomeBedrooms, mobileHomeBathrooms]);
 
   const searchComparables = async () => {
-    if (!searchAddress.trim()) return;
+    if (!searchAddress.trim()) {
+      setError('Please enter a search address');
+      return;
+    }
+    
+    console.log('Searching for comparables...', {
+      address: searchAddress,
+      bedrooms: mobileHomeBedrooms,
+      bathrooms: mobileHomeBathrooms,
+      radius: searchRadius
+    });
     
     setLoading(true);
+    setError(null);
+    
     try {
       const { data, error } = await supabase.functions.invoke('get-comparable-homes', {
         body: {
@@ -49,15 +74,22 @@ export const ComparableHomesCard = ({
         }
       });
 
+      console.log('Comparable homes response:', data);
+
       if (error) {
         console.error('Error fetching comparables:', error);
+        setError(`Failed to fetch comparable homes: ${error.message || 'Unknown error'}`);
         setComparables([]);
       } else {
         setComparables(data?.comparables || []);
         setHasSearched(true);
+        if (!data?.comparables || data.comparables.length === 0) {
+          setError('No comparable mobile homes found in this area. Try expanding your search radius.');
+        }
       }
     } catch (err) {
       console.error('Network error:', err);
+      setError('Network error occurred while searching for comparable homes');
       setComparables([]);
     } finally {
       setLoading(false);
@@ -119,7 +151,7 @@ export const ComparableHomesCard = ({
             ) : (
               <>
                 <Search className="h-4 w-4 mr-2" />
-                Find Comparable Homes
+                Search Again
               </>
             )}
           </Button>
@@ -150,13 +182,20 @@ export const ComparableHomesCard = ({
           </div>
         </div>
 
+        {/* Error Display */}
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-red-800">{error}</p>
+          </div>
+        )}
+
         {/* Results */}
         {loading ? (
           <div className="text-center py-8">
             <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-indigo-600" />
             <p className="text-gray-600">Searching for comparable homes...</p>
           </div>
-        ) : hasSearched && comparables.length === 0 ? (
+        ) : hasSearched && comparables.length === 0 && !error ? (
           <div className="text-center py-8">
             <Home className="h-12 w-12 mx-auto mb-4 text-gray-400" />
             <p className="text-gray-600 mb-2">No comparable mobile homes found in this area.</p>
@@ -207,7 +246,7 @@ export const ComparableHomesCard = ({
           </div>
         ) : null}
 
-        {hasSearched && (
+        {hasSearched && comparables.length > 0 && (
           <div className="mt-6 p-4 bg-blue-50 rounded-lg">
             <p className="text-sm text-blue-800">
               <strong>Note:</strong> These are comparable mobile homes currently for sale in your area. 

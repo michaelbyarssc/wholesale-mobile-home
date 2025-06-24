@@ -262,6 +262,7 @@ export const MobileHomeEditDialog = ({ mobileHome, open, onClose, onSave }: Mobi
         description: "Mobile home updated successfully.",
       });
 
+      // Call onSave to refresh the parent component's data
       onSave();
       onClose();
     } catch (error) {
@@ -286,7 +287,6 @@ export const MobileHomeEditDialog = ({ mobileHome, open, onClose, onSave }: Mobi
         <div className="grid grid-cols-2 gap-6">
           {/* Left Column - Basic Info */}
           <div className="space-y-4">
-            {/* ... keep existing code (basic form fields) */}
             <div>
               <Label htmlFor="manufacturer">Manufacturer</Label>
               <Input
@@ -315,6 +315,15 @@ export const MobileHomeEditDialog = ({ mobileHome, open, onClose, onSave }: Mobi
                 id="model"
                 value={formData.model || ''}
                 onChange={(e) => handleInputChange('model', e.target.value)}
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="display_name">Display Name</Label>
+              <Input
+                id="display_name"
+                value={formData.display_name || ''}
+                onChange={(e) => handleInputChange('display_name', e.target.value)}
               />
             </div>
 

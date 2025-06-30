@@ -421,7 +421,11 @@ export const MobileHomesShowcase = ({
               {uniqueSeries.map((series) => {
                 const seriesHomes = filteredHomes.filter(home => home.series === series);
                 return (
-                  <TabsTrigger key={series} value={series} className="text-lg py-3 min-w-0 flex-1">
+                  <TabsTrigger 
+                    key={series} 
+                    value={series} 
+                    className="text-lg py-3 px-4 min-w-0 flex-1 h-12 flex items-center justify-center whitespace-nowrap"
+                  >
                     {series} Series ({seriesHomes.length})
                   </TabsTrigger>
                 );

@@ -77,7 +77,7 @@ export const useCustomerPricing = (user?: User | null) => {
     // Get the home-specific minimum profit, fallback to customer's global minimum profit, then to 0
     const homeMinProfit = mobileHome.minimum_profit || minimumProfitPerHome || 0;
     
-    // Calculate both pricing methods
+    // Calculate both pricing methods using the same logic as calculatePrice
     const markupPrice = baseCost * (1 + markupPercentage / 100);
     const minimumProfitPrice = baseCost + homeMinProfit;
     

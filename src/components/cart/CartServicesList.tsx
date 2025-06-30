@@ -22,6 +22,8 @@ export const CartServicesList = ({
   const mobileHomes = [item.mobileHome];
   
   console.log(`CartServicesList - Home: ${item.mobileHome.model}, Width: ${item.mobileHome.width_feet}ft`);
+  console.log(`CartServicesList - Available services:`, services.length);
+  console.log(`CartServicesList - Selected services:`, item.selectedServices);
   
   const {
     availableServices,
@@ -29,6 +31,8 @@ export const CartServicesList = ({
     getMissingDependencies,
     getServicesByDependency
   } = useConditionalServices(services, item.mobileHome.id, mobileHomes, item.selectedServices);
+
+  console.log(`CartServicesList - Available services after filtering:`, availableServices.length);
 
   const handleServiceToggle = (serviceId: string) => {
     const service = services.find(s => s.id === serviceId);
@@ -66,6 +70,18 @@ export const CartServicesList = ({
   return (
     <div>
       <h4 className="font-medium mb-3">Available Services:</h4>
+      
+      {/* Debug info for troubleshooting */}
+      <div className="mb-4 p-3 bg-blue-100 border rounded text-xs">
+        <strong>CART DEBUG INFO:</strong><br/>
+        Total Services Available: {services.length}<br/>
+        Services After Filtering: {availableServices.length}<br/>
+        Selected Services: {item.selectedServices.length}<br/>
+        Home Model: {item.mobileHome.model}<br/>
+        Home Width: {item.mobileHome.width_feet}ft<br/>
+        Services List: {availableServices.map(s => s.name).join(', ')}
+      </div>
+      
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {availableServices.map((service) => {
           const isSelected = item.selectedServices.includes(service.id);
@@ -80,8 +96,11 @@ export const CartServicesList = ({
           const homeWidth = item.mobileHome.width_feet || 0;
           const isDoubleWide = homeWidth > 16;
           
-          // Debug info for vinyl skirting specifically
-          const isVinylSkirting = service.name && service.name.toLowerCase().includes('vinyl') && service.name.toLowerCase().includes('skirting');
+          // Check if this is vinyl skirting - make the check more flexible
+          const serviceName = (service.name || '').toLowerCase();
+          const isVinylSkirting = serviceName.includes('vinyl') && serviceName.includes('skirting');
+          
+          console.log(`Service ${service.name}: isVinylSkirting = ${isVinylSkirting}`);
           
           return (
             <div key={service.id} className="flex items-start space-x-3 p-2 border rounded">
@@ -101,16 +120,20 @@ export const CartServicesList = ({
                   <p className="text-xs text-gray-500 mt-1">{service.description}</p>
                 )}
                 
-                {/* Temporary debugging info - visible in UI */}
+                {/* Enhanced debugging info - always visible for vinyl skirting */}
                 {isVinylSkirting && (
-                  <div className="mt-2 p-2 bg-yellow-100 border rounded text-xs">
-                    <strong>DEBUG INFO:</strong><br/>
+                  <div className="mt-2 p-2 bg-yellow-100 border-2 border-yellow-400 rounded text-xs">
+                    <strong>🐛 VINYL SKIRTING DEBUG:</strong><br/>
+                    Service Name: "{service.name}"<br/>
+                    Service ID: {service.id}<br/>
                     Single Wide Price: {service.single_wide_price} (type: {typeof service.single_wide_price})<br/>
                     Double Wide Price: {service.double_wide_price} (type: {typeof service.double_wide_price})<br/>
                     Base Price: {service.price} (type: {typeof service.price})<br/>
+                    Cost Field: {service.cost} (type: {typeof service.cost})<br/>
                     Home Width: {homeWidth}ft ({isDoubleWide ? 'Double' : 'Single'} Wide)<br/>
-                    Raw Service Cost: {serviceCost}<br/>
-                    Final Display Price: {displayPrice}
+                    Raw Service Cost from getServicePrice(): {serviceCost}<br/>
+                    Final Display Price after calculatePrice(): {displayPrice}<br/>
+                    Is Selected: {isSelected}
                   </div>
                 )}
                 

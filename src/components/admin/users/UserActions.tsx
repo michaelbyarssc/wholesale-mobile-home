@@ -50,6 +50,18 @@ export const UserActions = ({ profile, onUserUpdated }: UserActionsProps) => {
 
       if (data?.error) {
         console.error('Function returned error:', data.error);
+        
+        // Handle case where user was deleted but profile still exists
+        if (data.user_deleted) {
+          toast({
+            title: "User cleaned up",
+            description: data.error,
+            variant: "destructive",
+          });
+          onUserUpdated(); // Refresh the user list
+          return;
+        }
+        
         throw new Error(data.error);
       }
 
@@ -104,7 +116,7 @@ export const UserActions = ({ profile, onUserUpdated }: UserActionsProps) => {
 
       toast({
         title: "User deleted successfully",
-        description: `User ${userEmail} has been permanently deleted`,
+        description: data.message || `User ${userEmail} has been deleted`,
       });
 
       onUserUpdated();

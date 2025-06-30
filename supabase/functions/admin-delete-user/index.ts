@@ -87,37 +87,50 @@ serve(async (req) => {
       })
     }
 
-    console.log('Deleting user:', user_id)
+    console.log('Processing deletion for user:', user_id)
 
-    // First delete user data from public tables
+    // Check if user exists in auth system first
+    const { data: targetUser, error: userCheckError } = await supabaseAdmin.auth.admin.getUserById(user_id)
+    const userExistsInAuth = !userCheckError && targetUser
+
+    console.log('User exists in auth system:', userExistsInAuth)
+
+    // Always clean up user data from public tables first
     try {
       // Delete from profiles table
-      await supabaseAdmin.from('profiles').delete().eq('user_id', user_id)
+      const { error: profileError } = await supabaseAdmin.from('profiles').delete().eq('user_id', user_id)
+      if (profileError) console.error('Error deleting profile:', profileError)
       
       // Delete from user_roles table
-      await supabaseAdmin.from('user_roles').delete().eq('user_id', user_id)
+      const { error: roleError } = await supabaseAdmin.from('user_roles').delete().eq('user_id', user_id)
+      if (roleError) console.error('Error deleting user role:', roleError)
       
       // Delete from customer_markups table
-      await supabaseAdmin.from('customer_markups').delete().eq('user_id', user_id)
+      const { error: markupError } = await supabaseAdmin.from('customer_markups').delete().eq('user_id', user_id)
+      if (markupError) console.error('Error deleting customer markup:', markupError)
       
-      console.log('Deleted user data from public tables')
+      console.log('Cleaned up user data from public tables')
     } catch (dbError) {
       console.error('Error deleting user data from public tables:', dbError)
       // Continue with auth user deletion even if some public table deletions fail
     }
 
-    // Delete user from auth.users
-    const { data, error } = await supabaseAdmin.auth.admin.deleteUser(user_id)
+    // Only try to delete from auth if user exists there
+    if (userExistsInAuth) {
+      const { data, error } = await supabaseAdmin.auth.admin.deleteUser(user_id)
 
-    if (error) {
-      console.error('User deletion error:', error)
-      return new Response(JSON.stringify({ error: error.message }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      })
+      if (error) {
+        console.error('User deletion error from auth:', error)
+        return new Response(JSON.stringify({ error: error.message }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
+      }
+
+      console.log('User deleted successfully from auth system:', user_id)
+    } else {
+      console.log('User was already deleted from auth system, only cleaned up profile data')
     }
-
-    console.log('User deleted successfully:', user_id)
 
     // Log admin action
     try {
@@ -126,7 +139,10 @@ serve(async (req) => {
         action: 'USER_DELETE',
         table_name: 'auth.users',
         record_id: user_id,
-        new_values: { deleted: true }
+        new_values: { 
+          deleted: true,
+          auth_user_existed: userExistsInAuth 
+        }
       })
     } catch (auditError) {
       console.error('Failed to log admin action:', auditError)
@@ -135,7 +151,9 @@ serve(async (req) => {
 
     return new Response(JSON.stringify({ 
       success: true, 
-      message: 'User deleted successfully' 
+      message: userExistsInAuth 
+        ? 'User deleted successfully' 
+        : 'User profile data cleaned up (user was already deleted from auth system)'
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     })

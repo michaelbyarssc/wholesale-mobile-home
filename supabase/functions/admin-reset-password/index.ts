@@ -79,6 +79,30 @@ serve(async (req) => {
       })
     }
 
+    // Check if user exists in auth system first
+    const { data: targetUser, error: userCheckError } = await supabaseAdmin.auth.admin.getUserById(user_id)
+    if (userCheckError || !targetUser) {
+      console.log('Target user not found in auth system:', userCheckError)
+      
+      // Clean up profile data for non-existent user
+      try {
+        await supabaseAdmin.from('profiles').delete().eq('user_id', user_id)
+        await supabaseAdmin.from('user_roles').delete().eq('user_id', user_id)
+        await supabaseAdmin.from('customer_markups').delete().eq('user_id', user_id)
+        console.log('Cleaned up profile data for non-existent user:', user_id)
+      } catch (cleanupError) {
+        console.error('Error cleaning up profile data:', cleanupError)
+      }
+      
+      return new Response(JSON.stringify({ 
+        error: 'User not found in authentication system. Profile data has been cleaned up.',
+        user_deleted: true
+      }), {
+        status: 404,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
     // Use provided password or default
     const password = new_password || 'Allies123!'
 

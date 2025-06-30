@@ -53,7 +53,7 @@ export const MobileHomesShowcase = ({
   const [activeTab, setActiveTab] = useState('');
   const [widthFilter, setWidthFilter] = useState<'all' | 'single' | 'double'>('all');
   const [selectedHomeForServices, setSelectedHomeForServices] = useState<MobileHome | null>(null);
-  const { formatCalculatedPrice, loading: pricingLoading } = useCustomerPricing(user);
+  const { calculateMobileHomePrice, loading: pricingLoading } = useCustomerPricing(user);
   
   console.log('MobileHomesShowcase render - cart items from props:', cartItems.length);
 
@@ -187,19 +187,21 @@ export const MobileHomesShowcase = ({
             <p className="text-gray-600 text-sm mt-2">{home.description}</p>
           )}
           
-          {/* Pricing Display Logic */}
+          {/* Pricing Display Logic - Always use calculated pricing for logged in users */}
           {user ? (
-            // Logged in users see their custom pricing
-            home.price && !pricingLoading ? (
+            // Logged in users (including admins) see their calculated pricing
+            !pricingLoading ? (
               <div className="mt-2">
-                <span className="text-2xl font-bold text-green-600">{formatCalculatedPrice(home.price)}</span>
+                <span className="text-2xl font-bold text-green-600">
+                  {formatPrice(calculateMobileHomePrice(home))}
+                </span>
                 <p className="text-sm text-gray-500 mt-1">Your price</p>
               </div>
-            ) : pricingLoading ? (
+            ) : (
               <div className="mt-2">
                 <span className="text-lg text-gray-500 italic">Loading your pricing...</span>
               </div>
-            ) : null
+            )
           ) : (
             // Non-logged in users see retail price or login prompt
             home.retail_price ? (

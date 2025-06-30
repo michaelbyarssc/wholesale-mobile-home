@@ -34,14 +34,15 @@ export const MobileHomesDragDrop = ({
 
   const updateOrderMutation = useMutation({
     mutationFn: async (updates: { id: string; display_order: number }[]) => {
-      const { error } = await supabase
-        .from('mobile_homes')
-        .upsert(updates, { 
-          onConflict: 'id',
-          ignoreDuplicates: false 
-        });
-      
-      if (error) throw error;
+      // Update each mobile home individually to avoid TypeScript issues
+      for (const update of updates) {
+        const { error } = await supabase
+          .from('mobile_homes')
+          .update({ display_order: update.display_order })
+          .eq('id', update.id);
+        
+        if (error) throw error;
+      }
     },
     onSuccess: () => {
       toast({

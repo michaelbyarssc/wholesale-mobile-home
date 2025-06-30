@@ -34,8 +34,7 @@ export const MobileHomeServicesDialog = ({
 }: MobileHomeServicesDialogProps) => {
   console.log('🔍 MobileHomeServicesDialog: Rendering with props:', {
     isOpen,
-    mobileHomeId: mobileHome?.id,
-    mobileHomeModel: mobileHome?.model,
+    mobileHome: mobileHome?.id,
     userId: user?.id
   });
   
@@ -139,7 +138,6 @@ export const MobileHomeServicesDialog = ({
 
   // Don't render if dialog is closed or no mobile home
   if (!isOpen || !mobileHome) {
-    console.log('MobileHomeServicesDialog: Not rendering - isOpen:', isOpen, 'mobileHome:', !!mobileHome);
     return null;
   }
 
@@ -257,15 +255,17 @@ export const MobileHomeServicesDialog = ({
                     return (
                       <div 
                         key={option.id} 
-                        className={`flex items-center justify-between p-3 border rounded-lg cursor-pointer transition-colors ${
+                        className={`flex items-center justify-between p-3 border rounded-lg transition-colors ${
                           isSelected ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
                         }`}
-                        onClick={() => handleHomeOptionToggle(option)}
                       >
                         <div className="flex items-center space-x-3">
                           <Checkbox 
                             checked={isSelected}
-                            onCheckedChange={() => handleHomeOptionToggle(option)}
+                            onCheckedChange={(checked) => {
+                              console.log('🔍 Checkbox changed for option:', option.id, 'checked:', checked);
+                              handleHomeOptionToggle(option);
+                            }}
                           />
                           <div>
                             <div className="font-medium">{option.name}</div>
@@ -309,19 +309,13 @@ export const MobileHomeServicesDialog = ({
                 <div className="flex gap-3">
                   <Button 
                     variant="outline" 
-                    onClick={() => {
-                      console.log('🔍 Cancel button clicked');
-                      onClose();
-                    }} 
+                    onClick={onClose}
                     className="flex-1"
                   >
                     Cancel
                   </Button>
                   <Button 
-                    onClick={() => {
-                      console.log('🔍 Add to Cart button clicked');
-                      handleAddToCart();
-                    }} 
+                    onClick={handleAddToCart}
                     className="flex-1"
                   >
                     Add to Cart

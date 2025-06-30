@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { CheckCircle, Shield, Users, Zap } from 'lucide-react';
 
@@ -34,8 +33,7 @@ export const FeaturesSection = () => {
             Why choose us over the competition?
           </h3>
           <p className="text-base sm:text-lg text-gray-600 max-w-2xl mx-auto leading-relaxed">
-            We provide comprehensive mobile home services with a focus on quality, 
-            reliability, and customer satisfaction.
+            We are a one-stop shop when it comes to all of your mobile home needs!
           </p>
         </div>
         

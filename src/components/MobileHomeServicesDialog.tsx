@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -97,22 +98,24 @@ export const MobileHomeServicesDialog = ({
 
   const handleServiceToggle = (serviceId: string) => {
     console.log('🔍 Service toggle clicked:', serviceId);
-    setSelectedServices(prev => 
-      prev.includes(serviceId) 
+    setSelectedServices(prev => {
+      const newSelection = prev.includes(serviceId) 
         ? prev.filter(id => id !== serviceId)
-        : [...prev, serviceId]
-    );
+        : [...prev, serviceId];
+      console.log('🔍 Updated selectedServices:', newSelection);
+      return newSelection;
+    });
   };
 
   const handleHomeOptionToggle = (option: HomeOption) => {
     console.log('🔍 Home option toggle clicked:', option.id);
     setSelectedHomeOptions(prev => {
       const existing = prev.find(item => item.option.id === option.id);
-      if (existing) {
-        return prev.filter(item => item.option.id !== option.id);
-      } else {
-        return [...prev, { option, quantity: 1 }];
-      }
+      const newSelection = existing
+        ? prev.filter(item => item.option.id !== option.id)
+        : [...prev, { option, quantity: 1 }];
+      console.log('🔍 Updated selectedHomeOptions:', newSelection);
+      return newSelection;
     });
   };
 
@@ -212,12 +215,20 @@ export const MobileHomeServicesDialog = ({
                         className={`flex items-center justify-between p-3 border rounded-lg cursor-pointer transition-colors ${
                           isSelected ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
                         }`}
-                        onClick={() => handleServiceToggle(service.id)}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleServiceToggle(service.id);
+                        }}
                       >
                         <div className="flex items-center space-x-3">
                           <Checkbox 
                             checked={isSelected}
-                            onCheckedChange={() => handleServiceToggle(service.id)}
+                            onCheckedChange={(checked) => {
+                              console.log('🔍 Service checkbox changed:', service.id, checked);
+                              handleServiceToggle(service.id);
+                            }}
+                            onClick={(e) => e.stopPropagation()}
                           />
                           <div>
                             <div className="font-medium">{service.name}</div>
@@ -255,17 +266,23 @@ export const MobileHomeServicesDialog = ({
                     return (
                       <div 
                         key={option.id} 
-                        className={`flex items-center justify-between p-3 border rounded-lg transition-colors ${
+                        className={`flex items-center justify-between p-3 border rounded-lg cursor-pointer transition-colors ${
                           isSelected ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
                         }`}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleHomeOptionToggle(option);
+                        }}
                       >
                         <div className="flex items-center space-x-3">
                           <Checkbox 
                             checked={isSelected}
                             onCheckedChange={(checked) => {
-                              console.log('🔍 Checkbox changed for option:', option.id, 'checked:', checked);
+                              console.log('🔍 Home option checkbox changed:', option.id, checked);
                               handleHomeOptionToggle(option);
                             }}
+                            onClick={(e) => e.stopPropagation()}
                           />
                           <div>
                             <div className="font-medium">{option.name}</div>

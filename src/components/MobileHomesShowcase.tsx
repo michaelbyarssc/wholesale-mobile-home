@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -57,20 +58,6 @@ export const MobileHomesShowcase = ({
     queryFn: async () => {
       console.log('Fetching mobile homes...');
       
-      // First, let's check all homes regardless of active status for debugging
-      const { data: allHomes, error: allHomesError } = await supabase
-        .from('mobile_homes')
-        .select('*')
-        .order('series', { ascending: true })
-        .order('square_footage', { ascending: true });
-      
-      console.log('All homes in database (active and inactive):', allHomes?.length || 0);
-      console.log('All homes data:', allHomes);
-      if (allHomesError) {
-        console.error('Error fetching all homes:', allHomesError);
-      }
-
-      // Now fetch only active homes
       const { data, error } = await supabase
         .from('mobile_homes')
         .select('*')
@@ -79,24 +66,12 @@ export const MobileHomesShowcase = ({
         .order('square_footage', { ascending: true });
       
       if (error) {
-        console.error('Error fetching active mobile homes:', error);
+        console.error('Error fetching mobile homes:', error);
         throw error;
       }
       
-      console.log('Active mobile homes fetched:', data?.length || 0);
+      console.log('Mobile homes fetched:', data?.length || 0);
       console.log('Active homes data:', data);
-      
-      // Log the active status of all homes
-      if (allHomes) {
-        const activeCount = allHomes.filter(home => home.active).length;
-        const inactiveCount = allHomes.filter(home => !home.active).length;
-        console.log(`Database contains ${activeCount} active homes and ${inactiveCount} inactive homes`);
-        
-        // Log each home's active status
-        allHomes.forEach(home => {
-          console.log(`Home ${home.model || home.display_name}: active = ${home.active}`);
-        });
-      }
       
       return data as MobileHome[];
     }
@@ -118,7 +93,6 @@ export const MobileHomesShowcase = ({
         throw error;
       }
       console.log('Mobile home images fetched:', data?.length || 0);
-      console.log('Sample images:', data?.slice(0, 3));
       return data as MobileHomeImage[];
     }
   });
@@ -129,18 +103,20 @@ export const MobileHomesShowcase = ({
     if (b === 'Tru') return 1;
     return a.localeCompare(b);
   });
+
+  console.log('Unique series found:', uniqueSeries);
   
-  // Set Tru as the default active tab, or the first series if Tru doesn't exist
+  // Set the first series as the default active tab
   React.useEffect(() => {
     if (uniqueSeries.length > 0 && !activeTab) {
-      const defaultTab = uniqueSeries.includes('Tru') ? 'Tru' : uniqueSeries[0];
+      const defaultTab = uniqueSeries[0];
+      console.log('Setting default tab to:', defaultTab);
       setActiveTab(defaultTab);
     }
   }, [uniqueSeries, activeTab]);
 
   const getHomeImages = (homeId: string) => {
     const images = homeImages.filter(image => image.mobile_home_id === homeId);
-    console.log(`Images for home ${homeId}:`, images.length);
     return images;
   };
 
@@ -169,12 +145,8 @@ export const MobileHomesShowcase = ({
 
   const renderHomeCard = (home: MobileHome, index: number) => {
     const homeImageList = getHomeImages(home.id);
-    console.log(`Rendering card for ${home.model} with ${homeImageList.length} images`);
-    
     const isInCart = cartItems.some(item => item.mobileHome.id === home.id);
     const homeFeatures = getHomeFeatures(home.features);
-    
-    console.log(`Home ${home.model} is in cart:`, isInCart);
     
     return (
       <Card key={home.id} className="overflow-hidden hover:shadow-lg transition-shadow">
@@ -326,7 +298,7 @@ export const MobileHomesShowcase = ({
     );
   }
 
-  if (uniqueSeries.length === 0) {
+  if (mobileHomes.length === 0) {
     return (
       <section className="py-20 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -335,6 +307,24 @@ export const MobileHomesShowcase = ({
               Our Mobile Home Models
             </h3>
             <p className="text-lg text-gray-600">No mobile homes available at this time.</p>
+            <p className="text-sm text-gray-500 mt-2">
+              Please check back later or contact us for more information.
+            </p>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (uniqueSeries.length === 0) {
+    return (
+      <section className="py-20 bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h3 className="text-3xl font-bold text-gray-900 mb-4">
+              Our Mobile Home Models
+            </h3>
+            <p className="text-lg text-gray-600">No mobile home series available at this time.</p>
           </div>
         </div>
       </section>
@@ -373,6 +363,8 @@ export const MobileHomesShowcase = ({
 
           {uniqueSeries.map((series) => {
             const seriesHomes = mobileHomes.filter(home => home.series === series);
+            console.log(`Rendering ${series} series with ${seriesHomes.length} homes:`, seriesHomes);
+            
             return (
               <TabsContent key={series} value={series}>
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">

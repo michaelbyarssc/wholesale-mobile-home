@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Phone, Mail, MapPin } from 'lucide-react';
 import { useBusinessInfo } from '@/hooks/useBusinessInfo';
@@ -35,10 +34,6 @@ export const Footer = () => {
                   <span className="text-blue-100">{businessInfo.business_email}</span>
                 </div>
               )}
-              <div className="flex items-center gap-2">
-                <MapPin className="h-4 w-4 text-blue-300" />
-                <span className="text-blue-100">Serving North & South Carolina</span>
-              </div>
             </div>
           </div>
           

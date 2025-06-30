@@ -47,6 +47,7 @@ export const ServicesSelection = ({
   const { calculateHomeOptionPrice } = useCustomerPricing(user);
 
   // Use the conditional services hook to get proper pricing
+  // Make sure the selected home is in the mobileHomes array
   const mobileHomes = selectedHome ? [selectedHome] : [];
   const { getServicePrice } = useConditionalServices(services, selectedHome?.id, mobileHomes, selectedServices);
 

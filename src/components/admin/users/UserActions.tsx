@@ -64,6 +64,7 @@ export const UserActions = ({ profile, onUserUpdated }: UserActionsProps) => {
       toast({
         title: "Password reset successful",
         description: `Password for ${userEmail} has been reset to: ${data.temporaryPassword}`,
+        duration: 10000, // Show for 10 seconds so user can copy the password
       });
 
     } catch (error: any) {
@@ -200,7 +201,7 @@ export const UserActions = ({ profile, onUserUpdated }: UserActionsProps) => {
         variant="outline"
         onClick={() => resetUserPassword(profile.user_id, profile.email)}
         disabled={resettingPassword === profile.user_id}
-        title="Reset password to WholesaleReset2024!"
+        title="Reset password to a secure randomly generated password"
       >
         {resettingPassword === profile.user_id ? (
           <div className="h-3 w-3 animate-spin rounded-full border-b-2 border-current" />

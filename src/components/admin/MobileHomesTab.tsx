@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -61,6 +61,14 @@ export const MobileHomesTab = () => {
       return uniqueSeries;
     }
   });
+
+  // Use useCallback to prevent unnecessary re-renders
+  const handleInputChange = useCallback((field: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -229,7 +237,8 @@ export const MobileHomesTab = () => {
     }
   };
 
-  const AddFormContent = () => (
+  // Memoize the AddFormContent component to prevent unnecessary re-renders
+  const AddFormContent = React.memo(() => (
     <form onSubmit={handleSubmit} className="space-y-4 p-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
@@ -237,7 +246,7 @@ export const MobileHomesTab = () => {
           <Input
             id="manufacturer"
             value={formData.manufacturer}
-            onChange={(e) => setFormData({...formData, manufacturer: e.target.value})}
+            onChange={(e) => handleInputChange('manufacturer', e.target.value)}
             required
           />
         </div>
@@ -246,7 +255,7 @@ export const MobileHomesTab = () => {
           <Input
             id="series"
             value={formData.series}
-            onChange={(e) => setFormData({...formData, series: e.target.value})}
+            onChange={(e) => handleInputChange('series', e.target.value)}
             placeholder="Enter series name (e.g., Tru, Epic, Classic)"
             required
           />
@@ -256,7 +265,7 @@ export const MobileHomesTab = () => {
           <Input
             id="model"
             value={formData.model}
-            onChange={(e) => setFormData({...formData, model: e.target.value})}
+            onChange={(e) => handleInputChange('model', e.target.value)}
             required
           />
         </div>
@@ -265,7 +274,7 @@ export const MobileHomesTab = () => {
           <Input
             id="display_name"
             value={formData.display_name}
-            onChange={(e) => setFormData({...formData, display_name: e.target.value})}
+            onChange={(e) => handleInputChange('display_name', e.target.value)}
             placeholder="Enter OwnTru model name"
             required
           />
@@ -276,7 +285,7 @@ export const MobileHomesTab = () => {
             id="price"
             type="number"
             value={formData.price}
-            onChange={(e) => setFormData({...formData, price: e.target.value})}
+            onChange={(e) => handleInputChange('price', e.target.value)}
             required
           />
         </div>
@@ -286,7 +295,7 @@ export const MobileHomesTab = () => {
             id="retail_price"
             type="number"
             value={formData.retail_price}
-            onChange={(e) => setFormData({...formData, retail_price: e.target.value})}
+            onChange={(e) => handleInputChange('retail_price', e.target.value)}
             placeholder="Enter retail price for public display"
           />
         </div>
@@ -296,14 +305,14 @@ export const MobileHomesTab = () => {
             id="minimum_profit"
             type="number"
             value={formData.minimum_profit}
-            onChange={(e) => setFormData({...formData, minimum_profit: e.target.value})}
+            onChange={(e) => handleInputChange('minimum_profit', e.target.value)}
             placeholder="0"
           />
         </div>
       </div>
       <Button type="submit" className="w-full">Add Mobile Home</Button>
     </form>
-  );
+  ));
 
   if (isLoading) {
     return (

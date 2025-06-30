@@ -49,10 +49,10 @@ export const UserManagementTab = () => {
 
       console.log('User roles data:', roleData);
 
-      // Fetch customer markups
+      // Fetch customer markups (now includes minimum_profit_per_home)
       const { data: markupData, error: markupError } = await supabase
         .from('customer_markups')
-        .select('user_id, markup_percentage');
+        .select('user_id, markup_percentage, minimum_profit_per_home');
 
       if (markupError) {
         console.error('Error fetching markups:', markupError);
@@ -73,7 +73,8 @@ export const UserManagementTab = () => {
           last_name: profile.last_name || null,
           role: role?.role || null,
           created_at: profile.created_at || role?.created_at || new Date().toISOString(),
-          markup_percentage: markup?.markup_percentage || 0
+          markup_percentage: markup?.markup_percentage || 0,
+          minimum_profit_per_home: markup?.minimum_profit_per_home || 0
         };
       }) || [];
 

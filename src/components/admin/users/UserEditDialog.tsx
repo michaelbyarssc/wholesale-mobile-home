@@ -16,6 +16,7 @@ export interface UserProfile {
   role: 'admin' | 'user' | null;
   created_at: string;
   markup_percentage?: number;
+  minimum_profit_per_home?: number;
 }
 
 interface UserEditDialogProps {

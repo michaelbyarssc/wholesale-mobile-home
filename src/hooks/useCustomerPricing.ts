@@ -9,11 +9,12 @@ type Service = Database['public']['Tables']['services']['Row'];
 
 export const useCustomerPricing = (user?: User | null) => {
   const [markupPercentage, setMarkupPercentage] = useState<number>(30); // Default 30%
+  const [minimumProfitPerHome, setMinimumProfitPerHome] = useState<number>(0); // Default $0
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchMarkup = async () => {
+    const fetchPricing = async () => {
       if (!user?.id) {
         setLoading(false);
         return;
@@ -23,27 +24,28 @@ export const useCustomerPricing = (user?: User | null) => {
         setError(null);
         const { data, error: fetchError } = await supabase
           .from('customer_markups')
-          .select('markup_percentage')
+          .select('markup_percentage, minimum_profit_per_home')
           .eq('user_id', user.id)
           .maybeSingle();
 
         if (fetchError) {
-          console.error('Error fetching customer markup:', fetchError);
+          console.error('Error fetching customer pricing:', fetchError);
           setError(fetchError.message);
-          // Keep default markup on error
+          // Keep default values on error
         } else if (data) {
           setMarkupPercentage(data.markup_percentage);
+          setMinimumProfitPerHome(data.minimum_profit_per_home || 0);
         }
-        // If no data found, keep default markup
+        // If no data found, keep default values
       } catch (err) {
-        console.error('Unexpected error fetching markup:', err);
+        console.error('Unexpected error fetching pricing:', err);
         setError('Failed to load pricing information');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchMarkup();
+    fetchPricing();
   }, [user?.id]);
 
   const calculatePrice = (baseCost: number): number => {
@@ -53,7 +55,13 @@ export const useCustomerPricing = (user?: User | null) => {
     }
     
     const markup = markupPercentage / 100;
-    return Math.round(baseCost * (1 + markup) * 100) / 100; // Round to 2 decimal places
+    const markupPrice = baseCost * (1 + markup);
+    const minimumPrice = baseCost + minimumProfitPerHome;
+    
+    // Use the higher of the two prices
+    const finalPrice = Math.max(markupPrice, minimumPrice);
+    
+    return Math.round(finalPrice * 100) / 100; // Round to 2 decimal places
   };
 
   const formatCalculatedPrice = (baseCost: number): string => {
@@ -84,6 +92,7 @@ export const useCustomerPricing = (user?: User | null) => {
 
   return {
     markupPercentage,
+    minimumProfitPerHome,
     customerMarkup: markupPercentage, // Add alias for backward compatibility
     loading,
     error,

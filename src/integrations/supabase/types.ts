@@ -77,6 +77,7 @@ export type Database = {
           created_at: string
           id: string
           markup_percentage: number
+          minimum_profit_per_home: number
           updated_at: string
           user_id: string
         }
@@ -84,6 +85,7 @@ export type Database = {
           created_at?: string
           id?: string
           markup_percentage?: number
+          minimum_profit_per_home?: number
           updated_at?: string
           user_id: string
         }
@@ -91,6 +93,7 @@ export type Database = {
           created_at?: string
           id?: string
           markup_percentage?: number
+          minimum_profit_per_home?: number
           updated_at?: string
           user_id?: string
         }

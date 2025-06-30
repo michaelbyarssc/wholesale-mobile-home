@@ -21,6 +21,7 @@ interface MobileHomeData {
 }
 
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -28,9 +29,20 @@ serve(async (req) => {
   try {
     console.log('Starting OwnTru models scraping...');
     
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    // Check environment variables
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     const firecrawlApiKey = Deno.env.get('FIRECRAWL_API_KEY');
+
+    console.log('Environment check:', {
+      hasSupabaseUrl: !!supabaseUrl,
+      hasServiceKey: !!supabaseServiceKey,
+      hasFirecrawlKey: !!firecrawlApiKey
+    });
+
+    if (!supabaseUrl || !supabaseServiceKey) {
+      throw new Error('Missing Supabase environment variables');
+    }
 
     if (!firecrawlApiKey) {
       throw new Error('FIRECRAWL_API_KEY not found in environment variables');
@@ -39,7 +51,8 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Crawl the OwnTru models page
-    console.log('Crawling OwnTru models page...');
+    console.log('Initiating crawl with Firecrawl API...');
+    
     const crawlResponse = await fetch('https://api.firecrawl.dev/v0/crawl', {
       method: 'POST',
       headers: {
@@ -50,6 +63,7 @@ serve(async (req) => {
         url: 'https://owntru.com/models/',
         crawlerOptions: {
           includes: ['https://owntru.com/models/*'],
+          excludes: ['https://owntru.com/models/#*'], // Exclude anchor links
           limit: 50,
         },
         pageOptions: {
@@ -60,11 +74,17 @@ serve(async (req) => {
     });
 
     if (!crawlResponse.ok) {
-      throw new Error(`Firecrawl API error: ${crawlResponse.status} ${crawlResponse.statusText}`);
+      const errorText = await crawlResponse.text();
+      console.error('Firecrawl API error:', crawlResponse.status, errorText);
+      throw new Error(`Firecrawl API error: ${crawlResponse.status} ${crawlResponse.statusText} - ${errorText}`);
     }
 
     const crawlData = await crawlResponse.json();
-    console.log('Crawl initiated, job ID:', crawlData.jobId);
+    console.log('Crawl initiated successfully. Job ID:', crawlData.jobId);
+
+    if (!crawlData.jobId) {
+      throw new Error('No job ID received from Firecrawl API');
+    }
 
     // Poll for crawl completion
     let crawlComplete = false;
@@ -72,6 +92,8 @@ serve(async (req) => {
     const maxAttempts = 30; // 5 minutes max
     let crawlResult;
 
+    console.log('Polling for crawl completion...');
+    
     while (!crawlComplete && attempts < maxAttempts) {
       await new Promise(resolve => setTimeout(resolve, 10000)); // Wait 10 seconds
       
@@ -82,23 +104,29 @@ serve(async (req) => {
       });
 
       if (!statusResponse.ok) {
-        throw new Error(`Failed to check crawl status: ${statusResponse.status}`);
+        const errorText = await statusResponse.text();
+        console.error('Status check error:', statusResponse.status, errorText);
+        throw new Error(`Failed to check crawl status: ${statusResponse.status} - ${errorText}`);
       }
 
       crawlResult = await statusResponse.json();
-      console.log('Crawl status:', crawlResult.status);
+      console.log(`Crawl status check ${attempts + 1}:`, crawlResult.status);
 
       if (crawlResult.status === 'completed') {
         crawlComplete = true;
       } else if (crawlResult.status === 'failed') {
-        throw new Error('Crawl failed');
+        throw new Error(`Crawl failed: ${crawlResult.error || 'Unknown error'}`);
       }
       
       attempts++;
     }
 
     if (!crawlComplete) {
-      throw new Error('Crawl timed out');
+      throw new Error('Crawl timed out after 5 minutes');
+    }
+
+    if (!crawlResult.data || !Array.isArray(crawlResult.data)) {
+      throw new Error('No data received from crawl');
     }
 
     console.log(`Successfully crawled ${crawlResult.data.length} pages`);
@@ -128,21 +156,41 @@ serve(async (req) => {
       const urlParts = url.split('/');
       const modelSlug = urlParts[urlParts.length - 2] || urlParts[urlParts.length - 1];
       
-      // Extract title/display name
-      const titleMatch = content.match(/([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s*(?:Mobile Home|Model|Floor Plan)/i);
-      if (titleMatch) {
-        modelData.display_name = titleMatch[1].trim();
-        modelData.model = titleMatch[1].trim().replace(/\s+/g, '');
-      } else {
-        // Fallback to URL slug
+      // Extract title/display name - try multiple patterns
+      const titlePatterns = [
+        /([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s*(?:Mobile Home|Model|Floor Plan)/i,
+        /(?:The\s+)?([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s*(?:\d+x\d+|\d+\s*sq\.?\s*ft)/i,
+        /<h1[^>]*>([^<]+)<\/h1>/i,
+        /^([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/m
+      ];
+      
+      for (const pattern of titlePatterns) {
+        const match = content.match(pattern);
+        if (match) {
+          modelData.display_name = match[1].trim();
+          modelData.model = match[1].trim().replace(/\s+/g, '');
+          break;
+        }
+      }
+      
+      // Fallback to URL slug if no title found
+      if (!modelData.display_name) {
         modelData.display_name = modelSlug.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
         modelData.model = modelSlug.replace(/-/g, '');
       }
 
       // Extract square footage
-      const sqftMatch = content.match(/(\d{1,4})\s*(?:sq\.?\s*ft\.?|square\s+feet)/i);
-      if (sqftMatch) {
-        modelData.square_footage = parseInt(sqftMatch[1]);
+      const sqftPatterns = [
+        /(\d{1,4})\s*(?:sq\.?\s*ft\.?|square\s+feet)/i,
+        /(\d{1,4})\s*sqft/i
+      ];
+      
+      for (const pattern of sqftPatterns) {
+        const match = content.match(pattern);
+        if (match) {
+          modelData.square_footage = parseInt(match[1]);
+          break;
+        }
       }
 
       // Extract bedrooms
@@ -158,16 +206,32 @@ serve(async (req) => {
       }
 
       // Extract dimensions
-      const dimensionMatch = content.match(/(\d+)(?:\s*[x×]\s*|\s+by\s+)(\d+)(?:\s*ft)?/i);
-      if (dimensionMatch) {
-        modelData.width_feet = parseInt(dimensionMatch[1]);
-        modelData.length_feet = parseInt(dimensionMatch[2]);
+      const dimensionPatterns = [
+        /(\d+)(?:\s*[x×]\s*|\s+by\s+)(\d+)(?:\s*ft)?/i,
+        /(\d+)'\s*[x×]\s*(\d+)'/i
+      ];
+      
+      for (const pattern of dimensionPatterns) {
+        const match = content.match(pattern);
+        if (match) {
+          modelData.width_feet = parseInt(match[1]);
+          modelData.length_feet = parseInt(match[2]);
+          break;
+        }
       }
 
       // Extract description
-      const descriptionMatch = content.match(/description[:\s]*([^.!?]{50,500}[.!?])/i);
-      if (descriptionMatch) {
-        modelData.description = descriptionMatch[1].trim();
+      const descriptionPatterns = [
+        /description[:\s]*([^.!?]{50,500}[.!?])/i,
+        /overview[:\s]*([^.!?]{50,500}[.!?])/i
+      ];
+      
+      for (const pattern of descriptionPatterns) {
+        const match = content.match(pattern);
+        if (match) {
+          modelData.description = match[1].trim();
+          break;
+        }
       }
 
       // Extract features
@@ -190,7 +254,22 @@ serve(async (req) => {
       }
     }
 
-    console.log(`Extracted ${mobileHomes.length} mobile homes`);
+    console.log(`Extracted ${mobileHomes.length} mobile homes from crawled data`);
+
+    if (mobileHomes.length === 0) {
+      return new Response(JSON.stringify({
+        success: true,
+        message: 'Crawl completed but no mobile homes were found. This might indicate the website structure has changed.',
+        data: {
+          totalProcessed: 0,
+          created: 0,
+          updated: 0,
+          homes: [],
+        }
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     // Update or create mobile homes in database
     let updatedCount = 0;
@@ -283,7 +362,7 @@ serve(async (req) => {
       }
     };
 
-    console.log('Scraping completed:', result.message);
+    console.log('Scraping completed successfully:', result.message);
 
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -291,10 +370,13 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Error in scrape-owntru-models function:', error);
+    
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: error.message,
+        error: errorMessage,
         message: 'Failed to scrape OwnTru models'
       }),
       {

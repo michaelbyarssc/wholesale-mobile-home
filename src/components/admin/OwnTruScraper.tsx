@@ -30,16 +30,22 @@ export const OwnTruScraper = () => {
     
     try {
       console.log('Starting OwnTru scraping...');
+      console.log('Calling edge function: scrape-owntru-models');
       
-      const { data, error } = await supabase.functions.invoke('scrape-owntru-models');
+      const { data, error } = await supabase.functions.invoke('scrape-owntru-models', {
+        body: { timestamp: new Date().toISOString() }
+      });
+      
+      console.log('Edge function response:', { data, error });
       
       if (error) {
-        throw error;
+        console.error('Edge function error:', error);
+        throw new Error(`Edge function error: ${error.message}`);
       }
 
       setResult(data);
       
-      if (data.success) {
+      if (data?.success) {
         toast({
           title: "Success!",
           description: data.message,
@@ -47,13 +53,24 @@ export const OwnTruScraper = () => {
       } else {
         toast({
           title: "Error",
-          description: data.message || "Failed to scrape OwnTru models",
+          description: data?.message || "Failed to scrape OwnTru models",
           variant: "destructive",
         });
       }
     } catch (error) {
       console.error('Error scraping OwnTru models:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      
+      let errorMessage = 'Unknown error occurred';
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      
+      // Check for specific network errors
+      if (errorMessage.includes('Failed to fetch')) {
+        errorMessage = 'Network error: Unable to connect to the scraping service. Please check your internet connection and try again.';
+      } else if (errorMessage.includes('FunctionsFetchError')) {
+        errorMessage = 'Service unavailable: The scraping function is temporarily unavailable. Please try again in a few minutes.';
+      }
       
       setResult({
         success: false,
@@ -63,7 +80,7 @@ export const OwnTruScraper = () => {
       
       toast({
         title: "Error",
-        description: `Failed to scrape OwnTru models: ${errorMessage}`,
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -145,7 +162,18 @@ export const OwnTruScraper = () => {
                 )}
                 
                 {!result.success && result.error && (
-                  <p className="text-sm text-red-600">Error: {result.error}</p>
+                  <div className="text-sm text-red-600">
+                    <p className="font-medium">Error Details:</p>
+                    <p>{result.error}</p>
+                    <p className="mt-2 text-xs">
+                      If this error persists, please check:
+                    </p>
+                    <ul className="text-xs list-disc list-inside mt-1">
+                      <li>Your internet connection</li>
+                      <li>That the Firecrawl API key is properly configured</li>
+                      <li>The edge function logs for more details</li>
+                    </ul>
+                  </div>
                 )}
               </div>
             </AlertDescription>

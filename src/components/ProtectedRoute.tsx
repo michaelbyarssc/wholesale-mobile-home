@@ -8,14 +8,17 @@ import { LoadingSpinner } from '@/components/layout/LoadingSpinner';
 interface ProtectedRouteProps {
   children: React.ReactNode;
   requireAuth?: boolean;
+  adminOnly?: boolean;
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ 
   children, 
-  requireAuth = true 
+  requireAuth = true,
+  adminOnly = false
 }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -33,7 +36,12 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
           navigate('/auth');
         }
         
-        setLoading(false);
+        // Check admin status if user exists and adminOnly is required
+        if (session?.user && adminOnly) {
+          checkAdminStatus(session.user.id);
+        } else {
+          setLoading(false);
+        }
       }
     );
 
@@ -53,12 +61,53 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
           
           if (requireAuth && !session?.user) {
             navigate('/auth');
+          } else if (session?.user && adminOnly) {
+            // Check admin status
+            await checkAdminStatus(session.user.id);
+          } else {
+            setLoading(false);
           }
         }
       } catch (error) {
         console.error('ProtectedRoute: Auth check error:', error);
         if (requireAuth && mounted) {
           navigate('/auth');
+        }
+      } finally {
+        if (mounted && !adminOnly) {
+          setLoading(false);
+        }
+      }
+    };
+
+    const checkAdminStatus = async (userId: string) => {
+      try {
+        const { data, error } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', userId)
+          .eq('role', 'admin')
+          .single();
+
+        if (!mounted) return;
+
+        if (error && error.code !== 'PGRST116') {
+          console.error('ProtectedRoute: Error checking admin status:', error);
+          setIsAdmin(false);
+        } else {
+          setIsAdmin(!!data);
+          if (adminOnly && !data) {
+            console.log('ProtectedRoute: User is not admin, redirecting to home');
+            navigate('/');
+          }
+        }
+      } catch (error) {
+        console.error('ProtectedRoute: Admin check error:', error);
+        if (mounted) {
+          setIsAdmin(false);
+          if (adminOnly) {
+            navigate('/');
+          }
         }
       } finally {
         if (mounted) {
@@ -73,7 +122,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
       mounted = false;
       subscription.unsubscribe();
     };
-  }, [navigate, requireAuth]);
+  }, [navigate, requireAuth, adminOnly]);
 
   if (loading) {
     return <LoadingSpinner />;
@@ -81,6 +130,10 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   if (requireAuth && !user) {
     return null; // Will redirect to auth
+  }
+
+  if (adminOnly && !isAdmin) {
+    return null; // Will redirect to home
   }
 
   return <>{children}</>;

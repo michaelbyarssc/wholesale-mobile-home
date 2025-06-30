@@ -22,7 +22,7 @@ export const MobileHomeSelection: React.FC<MobileHomeSelectionProps> = ({
   onMobileHomeSelect,
   user
 }) => {
-  const { calculateMobileHomePrice } = useCustomerPricing(user);
+  const { calculatePrice } = useCustomerPricing(user);
 
   const getHomeName = (home: MobileHome) => {
     return home.display_name || `${home.series} ${home.model}`;
@@ -47,7 +47,7 @@ export const MobileHomeSelection: React.FC<MobileHomeSelectionProps> = ({
           </SelectTrigger>
           <SelectContent>
             {mobileHomes.map((home) => {
-              const customerPrice = calculateMobileHomePrice(home);
+              const customerPrice = calculatePrice(home.cost || home.price);
               return (
                 <SelectItem key={home.id} value={home.id}>
                   <div className="flex justify-between items-center w-full">
@@ -72,7 +72,7 @@ export const MobileHomeSelection: React.FC<MobileHomeSelectionProps> = ({
               <div>
                 <span className="text-gray-600">Price:</span> 
                 <span className="font-medium text-green-600 ml-1">
-                  {formatPrice(calculateMobileHomePrice(selectedMobileHome))}
+                  {formatPrice(calculatePrice(selectedMobileHome.cost || selectedMobileHome.price))}
                 </span>
               </div>
               {selectedMobileHome.square_footage && (

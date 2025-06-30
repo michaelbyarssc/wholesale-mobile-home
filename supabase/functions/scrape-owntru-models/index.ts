@@ -12,11 +12,6 @@ interface MobileHomeData {
   model: string;
   display_name: string;
   description?: string;
-  square_footage?: number;
-  bedrooms?: number;
-  bathrooms?: number;
-  length_feet?: number;
-  width_feet?: number;
   features?: string[];
 }
 
@@ -78,7 +73,7 @@ serve(async (req) => {
           console.log('Scraped content length:', markdown.length);
           console.log('Content sample:', markdown.substring(0, 500));
           
-          // Parse the scraped content with improved logic
+          // Parse the scraped content with simplified logic
           mobileHomes = parseTrueMobileHomes(markdown);
           console.log(`Parsed ${mobileHomes.length} models from scraped content`);
           
@@ -123,7 +118,7 @@ serve(async (req) => {
           .maybeSingle();
 
         if (existingHome) {
-          // Update existing home
+          // Update existing home - only description and features
           const { error } = await supabase
             .from('mobile_homes')
             .update({
@@ -131,11 +126,6 @@ serve(async (req) => {
               model: homeData.model,
               display_name: homeData.display_name,
               description: homeData.description,
-              square_footage: homeData.square_footage,
-              bedrooms: homeData.bedrooms,
-              bathrooms: homeData.bathrooms,
-              length_feet: homeData.length_feet,
-              width_feet: homeData.width_feet,
               features: homeData.features ? JSON.stringify(homeData.features) : null,
               updated_at: new Date().toISOString(),
             })
@@ -148,7 +138,7 @@ serve(async (req) => {
             console.error(`Update error for ${homeData.display_name}:`, error);
           }
         } else {
-          // Create new home
+          // Create new home - only with description and features
           const { data: maxOrder } = await supabase
             .from('mobile_homes')
             .select('display_order')
@@ -165,11 +155,6 @@ serve(async (req) => {
               model: homeData.model,
               display_name: homeData.display_name,
               description: homeData.description,
-              square_footage: homeData.square_footage,
-              bedrooms: homeData.bedrooms,
-              bathrooms: homeData.bathrooms,
-              length_feet: homeData.length_feet,
-              width_feet: homeData.width_feet,
               features: homeData.features ? JSON.stringify(homeData.features) : null,
               price: 45000, // Default price
               minimum_profit: 7500, // Default profit
@@ -199,10 +184,7 @@ serve(async (req) => {
         homes: mobileHomes.map(h => ({
           display_name: h.display_name,
           model: h.model,
-          square_footage: h.square_footage,
-          bedrooms: h.bedrooms,
-          bathrooms: h.bathrooms,
-          dimensions: h.length_feet && h.width_feet ? `${h.width_feet}x${h.length_feet}` : null,
+          description: h.description,
           features_count: h.features?.length || 0
         }))
       }
@@ -228,7 +210,7 @@ serve(async (req) => {
   }
 });
 
-// Helper function to parse scraped markdown content from TrueMobileHomes
+// Simplified helper function to parse scraped markdown content from TrueMobileHomes
 function parseTrueMobileHomes(markdown: string): MobileHomeData[] {
   const models: MobileHomeData[] = [];
   
@@ -287,37 +269,12 @@ function parseTrueMobileHomes(markdown: string): MobileHomeData[] {
         continue;
       }
       
-      // Extract specifications when we're in a model section
+      // Extract only description and features when we're in a model section
       if (isInModelSection && currentModel.model) {
-        // Square footage
-        let sqftMatch = line.match(/(\d+(?:,\d+)?)\s*(?:sq\.?\s*ft\.?|square\s*feet?)/i);
-        if (sqftMatch) {
-          currentModel.square_footage = parseInt(sqftMatch[1].replace(',', ''));
-        }
-        
-        // Bedrooms
-        let bedroomMatch = line.match(/(\d+)\s*(?:bed|bedroom)/i);
-        if (bedroomMatch) {
-          currentModel.bedrooms = parseInt(bedroomMatch[1]);
-        }
-        
-        // Bathrooms
-        let bathroomMatch = line.match(/(\d+(?:\.\d+)?)\s*(?:bath|bathroom)/i);
-        if (bathroomMatch) {
-          currentModel.bathrooms = parseFloat(bathroomMatch[1]);
-        }
-        
-        // Dimensions
-        let dimensionMatch = line.match(/(\d+)\s*[x×]\s*(\d+)/);
-        if (dimensionMatch) {
-          currentModel.width_feet = parseInt(dimensionMatch[1]);
-          currentModel.length_feet = parseInt(dimensionMatch[2]);
-        }
-        
         // Features (bullet points, dashes, or structured lists)
         if (line.match(/^[\-\*•·]\s*(.+)$/) || line.match(/^\d+\.\s*(.+)$/)) {
           const feature = line.replace(/^[\-\*•·\d\.]\s*/, '').trim();
-          if (feature && feature.length > 3 && !feature.match(/^\d+\s*(sq|bed|bath|x|×)/i)) {
+          if (feature && feature.length > 3) {
             currentModel.features = currentModel.features || [];
             if (!currentModel.features.includes(feature)) {
               currentModel.features.push(feature);
@@ -330,23 +287,6 @@ function parseTrueMobileHomes(markdown: string): MobileHomeData[] {
             line.match(/[a-z]/) && !line.match(/\d+\s*(sq|bed|bath|x|×)/i)) {
           if (!currentModel.description) {
             currentModel.description = line;
-          }
-        }
-        
-        // Look for specs in structured format
-        if (line.includes(':')) {
-          const [key, value] = line.split(':').map(s => s.trim());
-          if (key.match(/sq/i) && value.match(/\d+/)) {
-            const sqft = value.match(/(\d+(?:,\d+)?)/);
-            if (sqft) currentModel.square_footage = parseInt(sqft[1].replace(',', ''));
-          }
-          if (key.match(/bed/i) && value.match(/\d+/)) {
-            const beds = value.match(/(\d+)/);
-            if (beds) currentModel.bedrooms = parseInt(beds[1]);
-          }
-          if (key.match(/bath/i) && value.match(/\d+/)) {
-            const baths = value.match(/(\d+(?:\.\d+)?)/);
-            if (baths) currentModel.bathrooms = parseFloat(baths[1]);
           }
         }
       }
@@ -373,11 +313,6 @@ function createModelData(model: Partial<MobileHomeData>): MobileHomeData {
     model: model.model || 'Unknown',
     display_name: model.display_name || `${model.series} ${model.model}`,
     description: model.description,
-    square_footage: model.square_footage,
-    bedrooms: model.bedrooms,
-    bathrooms: model.bathrooms,
-    length_feet: model.length_feet,
-    width_feet: model.width_feet,
     features: model.features || []
   };
 }

@@ -101,10 +101,7 @@ export const OwnTruScraper = () => {
           <p>This tool will scrape mobile home data from TrueMobileHomes.com including:</p>
           <ul className="list-disc list-inside mt-2 space-y-1">
             <li>Model names and descriptions</li>
-            <li>Square footage</li>
-            <li>Bedrooms and bathrooms</li>
-            <li>Dimensions (length × width)</li>
-            <li>Features and specifications</li>
+            <li>Features and amenities</li>
           </ul>
           <p className="mt-3 text-amber-600">
             <strong>Note:</strong> This process may take 2-5 minutes to complete as it crawls multiple pages.
@@ -152,7 +149,11 @@ export const OwnTruScraper = () => {
                         <div className="mt-2 max-h-40 overflow-y-auto">
                           {result.data.homes.map((home, index) => (
                             <div key={index} className="text-xs py-1">
-                              {home.display_name} ({home.model})
+                              <div className="font-medium">{home.display_name} ({home.model})</div>
+                              {home.description && (
+                                <div className="text-gray-600 truncate">{home.description}</div>
+                              )}
+                              <div className="text-gray-500">Features: {home.features_count}</div>
                             </div>
                           ))}
                         </div>

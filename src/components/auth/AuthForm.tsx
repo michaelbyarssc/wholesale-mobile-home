@@ -47,6 +47,71 @@ export const AuthForm = ({
       if (isSignUp) {
         console.log('Starting sign up process...');
         
+        // Check if user was previously denied
+        const { data: existingProfile, error: profileCheckError } = await supabase
+          .from('profiles')
+          .select('denied, user_id')
+          .eq('email', email)
+          .single();
+
+        if (profileCheckError && profileCheckError.code !== 'PGRST116') {
+          console.error('Error checking existing profile:', profileCheckError);
+        }
+
+        // If user was denied, reset their denial status
+        if (existingProfile && existingProfile.denied) {
+          console.log('User was previously denied, resetting denial status...');
+          
+          const { error: resetError } = await supabase
+            .from('profiles')
+            .update({
+              denied: false,
+              denied_at: null,
+              denied_by: null,
+              approved: false,
+              approved_at: null,
+              approved_by: null
+            })
+            .eq('user_id', existingProfile.user_id);
+
+          if (resetError) {
+            console.error('Error resetting denial status:', resetError);
+            throw new Error('Failed to reset account status');
+          }
+
+          toast({
+            title: "Account Reset",
+            description: "Your account status has been reset. You can now request approval again.",
+          });
+
+          // Send notification to admin about re-registration
+          try {
+            const { error: notificationError } = await supabase.functions.invoke('send-new-user-notification', {
+              body: {
+                firstName,
+                lastName,
+                email,
+                phoneNumber,
+                isReregistration: true,
+              },
+            });
+
+            if (notificationError) {
+              console.error('Notification error:', notificationError);
+            }
+          } catch (notificationError) {
+            console.error('Failed to send admin notification:', notificationError);
+          }
+
+          toast({
+            title: "Re-registration Submitted",
+            description: "Your request for approval has been submitted again. You will receive an email once approved.",
+          });
+
+          setLoading(false);
+          return;
+        }
+
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
@@ -115,7 +180,7 @@ export const AuthForm = ({
               await supabase.auth.signOut();
               toast({
                 title: "Access Denied",
-                description: "Your account has been denied access. Please contact an administrator.",
+                description: "Your account has been denied access. Please contact an administrator or sign up again to request approval.",
                 variant: "destructive",
               });
               setLoading(false);

@@ -4,19 +4,20 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Admin from "./pages/Admin";
-import MyEstimates from "./pages/MyEstimates";
 import EstimateForm from "./pages/EstimateForm";
-import NotFound from "./pages/NotFound";
-import ProtectedRoute from "./components/ProtectedRoute";
+import MyEstimates from "./pages/MyEstimates";
 import ApproveEstimate from "./pages/ApproveEstimate";
+import NotFound from "./pages/NotFound";
+import { ProtectedRoute } from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
 
-function App() {
-  return (
+const App = () => (
+  <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
@@ -24,25 +25,25 @@ function App() {
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
-            <Route path="/estimate" element={<EstimateForm />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/estimate" element={<EstimateForm />} />
             <Route path="/my-estimates" element={
               <ProtectedRoute>
                 <MyEstimates />
               </ProtectedRoute>
             } />
+            <Route path="/approve-estimate/:token" element={<ApproveEstimate />} />
             <Route path="/admin" element={
-              <ProtectedRoute>
+              <ProtectedRoute adminOnly>
                 <Admin />
               </ProtectedRoute>
             } />
-            <Route path="/approve" element={<ApproveEstimate />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>
-  );
-}
+  </ErrorBoundary>
+);
 
 export default App;

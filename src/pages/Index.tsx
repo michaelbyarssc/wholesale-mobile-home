@@ -16,14 +16,8 @@ const Index = () => {
   console.log('Index component: Starting to render');
   
   const navigate = useNavigate();
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
-  const [userProfile, setUserProfile] = useState<{ first_name?: string } | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   
-  console.log('Index component: State initialized', { user: user?.id, isLoading });
-  
-  // IMPORTANT: Call ALL hooks before any conditional logic or early returns
+  // ALL hooks must be called at the top level before any conditional logic
   const {
     cartItems,
     isCartOpen,
@@ -38,7 +32,13 @@ const Index = () => {
     isLoading: cartLoading,
   } = useShoppingCart();
 
-  console.log('Index component: Shopping cart initialized, items:', cartItems.length);
+  // State hooks after shopping cart hook
+  const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [userProfile, setUserProfile] = useState<{ first_name?: string } | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  
+  console.log('Index component: All hooks initialized', { user: user?.id, isLoading, cartItems: cartItems.length });
 
   useEffect(() => {
     console.log('Index component: Auth effect starting');
@@ -165,7 +165,7 @@ const Index = () => {
 
   console.log('Index component: About to render, isLoading:', isLoading, 'cartLoading:', cartLoading);
 
-  // Now it's safe to do conditional rendering after all hooks have been called
+  // Conditional rendering only after all hooks have been called
   if (isLoading || cartLoading) {
     console.log('Index component: Rendering loading spinner');
     return <LoadingSpinner />;

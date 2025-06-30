@@ -165,7 +165,7 @@ const Index = () => {
 
   console.log('Index component: About to render, isLoading:', isLoading, 'cartLoading:', cartLoading);
 
-  // Conditional rendering only after all hooks have been called
+  // Now we can safely do conditional rendering since all hooks have been called
   if (isLoading || cartLoading) {
     console.log('Index component: Rendering loading spinner');
     return <LoadingSpinner />;

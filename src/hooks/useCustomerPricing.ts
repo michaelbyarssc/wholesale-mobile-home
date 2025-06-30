@@ -48,6 +48,12 @@ export const useCustomerPricing = (user: User | null) => {
     }
   }, [markupLoading]);
 
+  const calculatePrice = (basePrice: number): number => {
+    if (!basePrice) return 0;
+    const markup = customerMarkup?.markup_percentage || 30;
+    return basePrice * (1 + markup / 100);
+  };
+
   const calculateMobileHomePrice = (mobileHome: MobileHome | null): number => {
     console.log('useCustomerPricing: calculateMobileHomePrice called with:', mobileHome?.id);
     
@@ -81,8 +87,8 @@ export const useCustomerPricing = (user: User | null) => {
 
     if (option.pricing_type === 'per_sqft' && squareFootage && option.price_per_sqft) {
       basePrice = option.price_per_sqft * squareFootage;
-    } else if (option.pricing_type === 'fixed' && option.fixed_price) {
-      basePrice = option.fixed_price;
+    } else if (option.pricing_type === 'fixed' && option.cost_price) {
+      basePrice = option.cost_price;
     }
 
     return basePrice * (1 + markup / 100);
@@ -114,7 +120,9 @@ export const useCustomerPricing = (user: User | null) => {
 
   return {
     customerMarkup: customerMarkup?.markup_percentage || 30,
+    markupPercentage: customerMarkup?.markup_percentage || 30, // Add alias for backward compatibility
     loading,
+    calculatePrice, // Add the missing calculatePrice function
     calculateMobileHomePrice,
     calculateServicePrice,
     calculateHomeOptionPrice,

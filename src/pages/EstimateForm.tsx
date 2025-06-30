@@ -21,7 +21,7 @@ const EstimateForm = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { cartItems, clearCart } = useShoppingCart();
-  const { markupPercentage, calculatePrice, calculateHomeOptionPrice } = useCustomerPricing();
+  const { markupPercentage, calculatePrice, calculateHomeOptionPrice } = useCustomerPricing(null);
   
   const [services, setServices] = useState<any[]>([]);
   const [mobileHomes, setMobileHomes] = useState<any[]>([]);

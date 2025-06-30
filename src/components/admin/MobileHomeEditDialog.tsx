@@ -336,6 +336,27 @@ export const MobileHomeEditDialog = ({ mobileHome, open, onClose, onSave }: Mobi
             </div>
 
             <div>
+              <Label htmlFor="retail_price">Retail Price (Public Display)</Label>
+              <div className="space-y-2">
+                {formData.retail_price && (
+                  <div className="text-sm text-gray-600 font-medium">
+                    Current Retail Price: {formatPrice(formData.retail_price)}
+                  </div>
+                )}
+                <Input
+                  id="retail_price"
+                  type="number"
+                  value={formData.retail_price || ''}
+                  onChange={(e) => handleInputChange('retail_price', parseFloat(e.target.value))}
+                  placeholder="Enter retail price for public display"
+                />
+                <p className="text-xs text-gray-500">
+                  This price will be shown to visitors who are not logged in
+                </p>
+              </div>
+            </div>
+
+            <div>
               <Label htmlFor="minimum_profit">Minimum Profit per Home</Label>
               <div className="space-y-2">
                 {formData.minimum_profit !== undefined && (

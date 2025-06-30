@@ -296,6 +296,7 @@ export type Database = {
           minimum_profit: number
           model: string
           price: number
+          retail_price: number | null
           series: string
           square_footage: number | null
           updated_at: string
@@ -319,6 +320,7 @@ export type Database = {
           minimum_profit?: number
           model: string
           price: number
+          retail_price?: number | null
           series: string
           square_footage?: number | null
           updated_at?: string
@@ -342,6 +344,7 @@ export type Database = {
           minimum_profit?: number
           model?: string
           price?: number
+          retail_price?: number | null
           series?: string
           square_footage?: number | null
           updated_at?: string

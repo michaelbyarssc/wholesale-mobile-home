@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -23,6 +24,7 @@ export const MobileHomesTab = () => {
     model: '',
     display_name: '',
     price: '',
+    retail_price: '',
     minimum_profit: ''
   });
 
@@ -83,6 +85,7 @@ export const MobileHomesTab = () => {
         model: formData.model,
         display_name: formData.display_name,
         price: parseFloat(formData.price),
+        retail_price: formData.retail_price ? parseFloat(formData.retail_price) : null,
         minimum_profit: parseFloat(formData.minimum_profit) || 0,
         display_order: nextOrder
       };
@@ -98,7 +101,7 @@ export const MobileHomesTab = () => {
         description: "Mobile home added successfully.",
       });
 
-      setFormData({ manufacturer: 'Clayton', series: '', model: '', display_name: '', price: '', minimum_profit: '' });
+      setFormData({ manufacturer: 'Clayton', series: '', model: '', display_name: '', price: '', retail_price: '', minimum_profit: '' });
       setShowAddForm(false);
       refetch();
     } catch (error) {
@@ -297,6 +300,16 @@ export const MobileHomesTab = () => {
                 />
               </div>
               <div>
+                <Label htmlFor="retail_price">Retail Price (Public Display)</Label>
+                <Input
+                  id="retail_price"
+                  type="number"
+                  value={formData.retail_price}
+                  onChange={(e) => setFormData({...formData, retail_price: e.target.value})}
+                  placeholder="Enter retail price for public display"
+                />
+              </div>
+              <div className="col-span-2">
                 <Label htmlFor="minimum_profit">Minimum Profit per Home</Label>
                 <Input
                   id="minimum_profit"

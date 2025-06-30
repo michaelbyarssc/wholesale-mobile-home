@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -12,6 +13,7 @@ import { ShoppingCart } from './ShoppingCart';
 import { useCustomerPricing } from '@/hooks/useCustomerPricing';
 import { CartItem } from '@/hooks/useShoppingCart';
 import { User } from '@supabase/supabase-js';
+import { formatPrice } from '@/lib/utils';
 import type { Database } from '@/integrations/supabase/types';
 
 type MobileHome = Database['public']['Tables']['mobile_homes']['Row'];
@@ -168,20 +170,34 @@ export const MobileHomesShowcase = ({
           {home.description && (
             <p className="text-gray-600 text-sm mt-2">{home.description}</p>
           )}
-          {user && home.price && !pricingLoading && (
-            <div className="mt-2">
-              <span className="text-2xl font-bold text-green-600">{formatCalculatedPrice(home.price)}</span>
-            </div>
-          )}
-          {user && pricingLoading && (
-            <div className="mt-2">
-              <span className="text-lg text-gray-500 italic">Loading pricing...</span>
-            </div>
-          )}
-          {!user && (
-            <div className="mt-2">
-              <span className="text-lg text-gray-500 italic">Login to view pricing</span>
-            </div>
+          
+          {/* Pricing Display Logic */}
+          {user ? (
+            // Logged in users see their custom pricing
+            home.price && !pricingLoading ? (
+              <div className="mt-2">
+                <span className="text-2xl font-bold text-green-600">{formatCalculatedPrice(home.price)}</span>
+                <p className="text-sm text-gray-500 mt-1">Your price</p>
+              </div>
+            ) : pricingLoading ? (
+              <div className="mt-2">
+                <span className="text-lg text-gray-500 italic">Loading your pricing...</span>
+              </div>
+            ) : null
+          ) : (
+            // Non-logged in users see retail price or login prompt
+            home.retail_price ? (
+              <div className="mt-2">
+                <span className="text-2xl font-bold text-blue-600">{formatPrice(home.retail_price)}</span>
+                <p className="text-sm text-gray-500 mt-1">
+                  Retail price • <span className="text-blue-600 font-medium cursor-pointer hover:underline" onClick={() => window.location.href = '/auth'}>Login to see your price</span>
+                </p>
+              </div>
+            ) : (
+              <div className="mt-2">
+                <span className="text-lg text-gray-500 italic">Login to view pricing</span>
+              </div>
+            )
           )}
         </CardHeader>
         
@@ -342,7 +358,7 @@ export const MobileHomesShowcase = ({
             quality construction, and thoughtful amenities for comfortable living.
             {!user && (
               <span className="block mt-2 text-blue-600 font-medium">
-                Login to view pricing and add items to your cart.
+                Login to view your personalized pricing and add items to your cart.
               </span>
             )}
           </p>

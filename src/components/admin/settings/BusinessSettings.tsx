@@ -3,14 +3,17 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Save } from 'lucide-react';
 
 interface BusinessSettingsProps {
   settings: Record<string, string>;
   validationErrors: Record<string, string>;
   onInputChange: (key: string, value: string) => void;
   onInputBlur: (key: string, value: string) => void;
+  onSave: () => void;
+  isSaving: boolean;
 }
 
 export const BusinessSettings: React.FC<BusinessSettingsProps> = ({
@@ -18,11 +21,23 @@ export const BusinessSettings: React.FC<BusinessSettingsProps> = ({
   validationErrors,
   onInputChange,
   onInputBlur,
+  onSave,
+  isSaving,
 }) => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Business Settings</CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle>Business Settings</CardTitle>
+          <Button 
+            onClick={onSave}
+            disabled={isSaving}
+            className="flex items-center gap-2"
+          >
+            <Save className="h-4 w-4" />
+            {isSaving ? 'Saving...' : 'Save Settings'}
+          </Button>
+        </div>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

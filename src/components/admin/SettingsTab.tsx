@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BusinessSettings } from './settings/BusinessSettings';
@@ -9,6 +10,7 @@ export const SettingsTab = () => {
   const [settings, setSettings] = useState<Record<string, string>>({});
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
 
   // Load settings on component mount
@@ -92,10 +94,7 @@ export const SettingsTab = () => {
         ...prev,
         [key]: error
       }));
-      return;
     }
-
-    await updateSetting(key, value);
   };
 
   const updateSetting = async (key: string, value: string) => {
@@ -110,24 +109,60 @@ export const SettingsTab = () => {
 
       if (error) {
         console.error('Error updating setting:', error);
-        toast({
-          title: "Error",
-          description: `Failed to update ${key}`,
-          variant: "destructive",
-        });
-      } else {
-        toast({
-          title: "Success",
-          description: "Setting updated successfully",
-        });
+        throw error;
       }
     } catch (error) {
       console.error('Error updating setting:', error);
+      throw error;
+    }
+  };
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    
+    try {
+      // Validate all settings first
+      const errors: Record<string, string> = {};
+      const businessSettings = ['business_name', 'business_email', 'business_phone'];
+      
+      for (const key of businessSettings) {
+        const value = settings[key] || '';
+        const error = validateSetting(key, value);
+        if (error) {
+          errors[key] = error;
+        }
+      }
+
+      if (Object.keys(errors).length > 0) {
+        setValidationErrors(errors);
+        toast({
+          title: "Validation Error",
+          description: "Please fix the validation errors before saving",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Save all business settings
+      for (const key of businessSettings) {
+        if (settings[key]) {
+          await updateSetting(key, settings[key]);
+        }
+      }
+
+      toast({
+        title: "Success",
+        description: "Business settings saved successfully",
+      });
+    } catch (error) {
+      console.error('Error saving settings:', error);
       toast({
         title: "Error",
-        description: `Failed to update ${key}`,
+        description: "Failed to save settings",
         variant: "destructive",
       });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -147,6 +182,8 @@ export const SettingsTab = () => {
           validationErrors={validationErrors}
           onInputChange={handleInputChange}
           onInputBlur={handleInputBlur}
+          onSave={handleSave}
+          isSaving={isSaving}
         />
         <EmailTemplates
           settings={settings}

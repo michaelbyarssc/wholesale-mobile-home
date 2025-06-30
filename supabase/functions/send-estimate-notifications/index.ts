@@ -17,7 +17,17 @@ serve(async (req) => {
   }
 
   try {
-    const { estimateId } = await req.json()
+    const {
+      customer_name,
+      customer_email,
+      customer_phone,
+      delivery_address,
+      mobile_home_id,
+      selected_services,
+      selected_home_options,
+      additional_requirements,
+      total_amount
+    } = await req.json()
 
     // Initialize Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
@@ -27,19 +37,22 @@ serve(async (req) => {
     // Generate approval token
     const approvalToken = crypto.randomUUID()
     
-    // Update estimate with approval token
-    const { error: updateError } = await supabase
+    // First, create the estimate record
+    const { data: estimate, error: createError } = await supabase
       .from('estimates')
-      .update({ approval_token: approvalToken })
-      .eq('id', estimateId)
-
-    if (updateError) {
-      throw new Error(`Failed to update estimate with approval token: ${updateError.message}`)
-    }
-
-    // Fetch the estimate details with related data
-    const { data: estimate, error: estimateError } = await supabase
-      .from('estimates')
+      .insert({
+        customer_name,
+        customer_email,
+        customer_phone,
+        delivery_address,
+        mobile_home_id,
+        selected_services: selected_services || [],
+        selected_home_options: selected_home_options || [],
+        additional_requirements: additional_requirements || '',
+        total_amount,
+        approval_token: approvalToken,
+        status: 'pending'
+      })
       .select(`
         *,
         mobile_homes (
@@ -49,18 +62,17 @@ serve(async (req) => {
           display_name
         )
       `)
-      .eq('id', estimateId)
       .single()
 
-    if (estimateError) {
-      throw new Error(`Failed to fetch estimate: ${estimateError.message}`)
+    if (createError) {
+      throw new Error(`Failed to create estimate: ${createError.message}`)
     }
 
     // Fetch selected services
     const { data: services, error: servicesError } = await supabase
       .from('services')
       .select('*')
-      .in('id', estimate.selected_services)
+      .in('id', estimate.selected_services || [])
 
     if (servicesError) {
       throw new Error(`Failed to fetch services: ${servicesError.message}`)
@@ -130,7 +142,7 @@ Created: ${new Date(estimate.created_at).toLocaleDateString()}
     const approvalUrl = `${supabaseUrl.replace('.supabase.co', '.app')}/approve?token=${approvalToken}`
 
     console.log('Estimate details prepared for notifications:', {
-      estimateId,
+      estimateId: estimate.id,
       customerEmail: estimate.customer_email,
       adminCount: adminUsers?.length || 0,
       adminUsers: adminUsers?.map(u => u.email),
@@ -208,7 +220,7 @@ Created: ${new Date(estimate.created_at).toLocaleDateString()}
       JSON.stringify({ 
         success: true, 
         message: 'Estimate notifications processed',
-        estimateId,
+        estimateId: estimate.id,
         customerEmail: estimate.customer_email,
         adminEmailsSent: adminUsers?.length || 0,
         adminEmails: adminUsers?.map(u => u.email) || [],

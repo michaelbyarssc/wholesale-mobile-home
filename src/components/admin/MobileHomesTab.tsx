@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,6 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { MobileHomeEditDialog } from './MobileHomeEditDialog';
 import { MobileHomesDragDrop } from './MobileHomesDragDrop';
+import { formatPrice } from '@/lib/utils';
 import type { Database } from '@/integrations/supabase/types';
 
 type MobileHome = Database['public']['Tables']['mobile_homes']['Row'];
@@ -332,6 +332,63 @@ export const MobileHomesTab = () => {
             onToggleActive={toggleActive}
             onRefetch={refetch}
           />
+        </CardContent>
+      </Card>
+
+      {/* New Retail Price Overview Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Retail Price Overview</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {mobileHomes.map((home) => (
+              <div key={home.id} className="border rounded-lg p-4 space-y-2">
+                <h3 className="font-semibold text-lg">
+                  {home.display_name || `${home.manufacturer} ${home.model}`}
+                </h3>
+                <div className="space-y-1 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Series:</span>
+                    <span>{home.series}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Internal Cost:</span>
+                    <span className="font-medium">{formatPrice(home.price)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Retail Price:</span>
+                    <span className="font-medium text-blue-600">
+                      {home.retail_price ? formatPrice(home.retail_price) : 'Not set'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Status:</span>
+                    <span className={`px-2 py-1 rounded text-xs ${
+                      home.active 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-red-100 text-red-800'
+                    }`}>
+                      {home.active ? 'Active' : 'Inactive'}
+                    </span>
+                  </div>
+                </div>
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  onClick={() => setEditingHome(home)}
+                  className="w-full mt-2"
+                >
+                  Edit Details
+                </Button>
+              </div>
+            ))}
+          </div>
+          {mobileHomes.length === 0 && (
+            <div className="text-center text-gray-500 py-8">
+              No mobile homes found. Add your first mobile home to get started.
+            </div>
+          )}
         </CardContent>
       </Card>
 

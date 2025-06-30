@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Phone, Mail, MapPin } from 'lucide-react';
 import { useBusinessInfo } from '@/hooks/useBusinessInfo';
@@ -69,7 +68,7 @@ export const Footer = () => {
               </li>
               <li>
                 <a 
-                  href="#contact" 
+                  href="#cta" 
                   className="text-blue-100 hover:text-white transition-colors text-sm sm:text-base block py-1"
                 >
                   Contact Us

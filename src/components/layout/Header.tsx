@@ -54,38 +54,32 @@ export const Header = ({
             <div className="flex-1 min-w-0">
               <div className="mb-2 lg:mb-3">
                 <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 tracking-tight leading-tight truncate">
-                  {businessInfo?.business_name || 'Wholesale Homes of the Carolinas'}
+                  WholesaleMobileHome.com
                 </h1>
                 <div className="w-12 sm:w-16 h-1 bg-blue-600 mt-1 lg:mt-2"></div>
               </div>
               
-              {/* Contact Information - Hidden on mobile, visible on larger screens */}
-              {(businessInfo?.business_phone || businessInfo?.business_email) && (
-                <div className="hidden md:flex flex-col lg:flex-row gap-2 lg:gap-6">
-                  {businessInfo.business_phone && (
-                    <a 
-                      href={`tel:${businessInfo.business_phone}`}
-                      className="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition-colors group"
-                    >
-                      <div className="flex items-center justify-center w-7 h-7 lg:w-8 lg:h-8 bg-blue-50 rounded-full group-hover:bg-blue-100 transition-colors">
-                        <Phone className="h-3 w-3 lg:h-4 lg:w-4 text-blue-600" />
-                      </div>
-                      <span className="font-medium text-sm lg:text-base">{businessInfo.business_phone}</span>
-                    </a>
-                  )}
-                  {businessInfo.business_email && (
-                    <a 
-                      href={`mailto:${businessInfo.business_email}`}
-                      className="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition-colors group"
-                    >
-                      <div className="flex items-center justify-center w-7 h-7 lg:w-8 lg:h-8 bg-blue-50 rounded-full group-hover:bg-blue-100 transition-colors">
-                        <Mail className="h-3 w-3 lg:h-4 lg:w-4 text-blue-600" />
-                      </div>
-                      <span className="font-medium text-sm lg:text-base">{businessInfo.business_email}</span>
-                    </a>
-                  )}
-                </div>
-              )}
+              {/* Contact Information */}
+              <div className="hidden md:flex flex-col lg:flex-row gap-2 lg:gap-6">
+                <a 
+                  href="tel:864-680-4030"
+                  className="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition-colors group"
+                >
+                  <div className="flex items-center justify-center w-7 h-7 lg:w-8 lg:h-8 bg-blue-50 rounded-full group-hover:bg-blue-100 transition-colors">
+                    <Phone className="h-3 w-3 lg:h-4 lg:w-4 text-blue-600" />
+                  </div>
+                  <span className="font-medium text-sm lg:text-base">864-680-4030</span>
+                </a>
+                <a 
+                  href="mailto:Info@WholesaleMobileHome.com"
+                  className="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition-colors group"
+                >
+                  <div className="flex items-center justify-center w-7 h-7 lg:w-8 lg:h-8 bg-blue-50 rounded-full group-hover:bg-blue-100 transition-colors">
+                    <Mail className="h-3 w-3 lg:h-4 lg:w-4 text-blue-600" />
+                  </div>
+                  <span className="font-medium text-sm lg:text-base">Info@WholesaleMobileHome.com</span>
+                </a>
+              </div>
             </div>
 
             {/* Right side - User Actions */}
@@ -195,32 +189,26 @@ export const Header = ({
               </div>
 
               {/* Contact Info on Mobile */}
-              {(businessInfo?.business_phone || businessInfo?.business_email) && (
-                <div className="space-y-3 px-2 pt-2 border-t border-gray-100">
-                  {businessInfo.business_phone && (
-                    <a 
-                      href={`tel:${businessInfo.business_phone}`}
-                      className="flex items-center gap-3 text-gray-600 hover:text-blue-600 transition-colors"
-                    >
-                      <div className="flex items-center justify-center w-8 h-8 bg-blue-50 rounded-full">
-                        <Phone className="h-4 w-4 text-blue-600" />
-                      </div>
-                      <span className="font-medium">{businessInfo.business_phone}</span>
-                    </a>
-                  )}
-                  {businessInfo.business_email && (
-                    <a 
-                      href={`mailto:${businessInfo.business_email}`}
-                      className="flex items-center gap-3 text-gray-600 hover:text-blue-600 transition-colors"
-                    >
-                      <div className="flex items-center justify-center w-8 h-8 bg-blue-50 rounded-full">
-                        <Mail className="h-4 w-4 text-blue-600" />
-                      </div>
-                      <span className="font-medium">{businessInfo.business_email}</span>
-                    </a>
-                  )}
-                </div>
-              )}
+              <div className="space-y-3 px-2 pt-2 border-t border-gray-100">
+                <a 
+                  href="tel:864-680-4030"
+                  className="flex items-center gap-3 text-gray-600 hover:text-blue-600 transition-colors"
+                >
+                  <div className="flex items-center justify-center w-8 h-8 bg-blue-50 rounded-full">
+                    <Phone className="h-4 w-4 text-blue-600" />
+                  </div>
+                  <span className="font-medium">864-680-4030</span>
+                </a>
+                <a 
+                  href="mailto:Info@WholesaleMobileHome.com"
+                  className="flex items-center gap-3 text-gray-600 hover:text-blue-600 transition-colors"
+                >
+                  <div className="flex items-center justify-center w-8 h-8 bg-blue-50 rounded-full">
+                    <Mail className="h-4 w-4 text-blue-600" />
+                  </div>
+                  <span className="font-medium">Info@WholesaleMobileHome.com</span>
+                </a>
+              </div>
 
               {/* Menu Actions */}
               <div className="space-y-2 px-2 pt-2 border-t border-gray-100">

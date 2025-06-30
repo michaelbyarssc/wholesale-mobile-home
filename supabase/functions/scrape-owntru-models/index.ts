@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -85,16 +84,16 @@ serve(async (req) => {
     const mainMarkdown = mainPageData.data?.markdown || '';
     console.log('Main markdown length:', mainMarkdown.length);
 
-    // Extract individual model URLs from the main page
+    // Extract individual model URLs from the main page with improved logic
     const modelUrls = new Set<string>();
     
     console.log('Extracting model URLs from main page...');
     
-    // Look for model-specific URLs in the markdown
+    // Look for model-specific URLs in the markdown with more comprehensive patterns
     const urlPatterns = [
-      /https:\/\/owntru\.com\/models\/[a-z0-9]+[a-z0-9\/]*/gi,
-      /owntru\.com\/models\/[a-z0-9]+[a-z0-9\/]*/gi,
-      /\/models\/[a-z0-9]+[a-z0-9\/]*/gi
+      /https:\/\/owntru\.com\/models\/[a-z0-9]+[a-z0-9]*/gi,
+      /owntru\.com\/models\/[a-z0-9]+[a-z0-9]*/gi,
+      /\/models\/[a-z0-9]+[a-z0-9]*/gi
     ];
 
     for (const pattern of urlPatterns) {
@@ -107,7 +106,10 @@ serve(async (req) => {
           url = 'https://owntru.com' + (url.startsWith('/') ? '' : '/') + url;
         }
         
-        // Filter out non-specific URLs
+        // Remove any duplicate owntru.com parts
+        url = url.replace(/owntru\.com\/owntru\.com\//, 'owntru.com/');
+        
+        // Filter out non-specific URLs and ensure they're model-specific
         if (url.includes('/models/') && !url.endsWith('/models/') && !url.includes('#')) {
           // Remove trailing slashes and fragments
           url = url.replace(/\/$/, '').split('#')[0];
@@ -117,14 +119,24 @@ serve(async (req) => {
       }
     }
 
-    // Remove duplicates and invalid URLs
-    const cleanUrls = Array.from(modelUrls).filter(url => {
+    // Improved deduplication - remove duplicates based on the model code at the end
+    const uniqueUrls = new Map<string, string>();
+    for (const url of modelUrls) {
       const pathParts = url.split('/');
-      const modelPart = pathParts[pathParts.length - 1];
-      return modelPart && modelPart.length > 3 && /^[a-z0-9]+$/.test(modelPart);
-    });
+      const modelCode = pathParts[pathParts.length - 1];
+      
+      // Only keep URLs with valid model codes
+      if (modelCode && modelCode.length > 5 && /^[a-z0-9]+$/.test(modelCode)) {
+        // If we already have this model code, keep the cleaner URL (without duplicate domains)
+        if (!uniqueUrls.has(modelCode) || url.split('/').length < uniqueUrls.get(modelCode)!.split('/').length) {
+          uniqueUrls.set(modelCode, url);
+        }
+      }
+    }
 
-    console.log(`Found ${cleanUrls.length} clean model URLs`);
+    const cleanUrls = Array.from(uniqueUrls.values());
+    console.log(`Found ${cleanUrls.length} unique model URLs after deduplication`);
+    cleanUrls.forEach((url, index) => console.log(`${index + 1}: ${url}`));
 
     if (cleanUrls.length === 0) {
       return new Response(JSON.stringify({
@@ -145,12 +157,12 @@ serve(async (req) => {
       });
     }
 
-    // Process models in smaller batches to avoid timeout
+    // Process all available models (up to 15 to account for all 13 plus some buffer)
     const mobileHomes: MobileHomeData[] = [];
-    const maxModels = Math.min(6, cleanUrls.length); // Reduced to 6 for more processing time per model
+    const maxModels = Math.min(15, cleanUrls.length);
     let processedCount = 0;
 
-    console.log(`Processing ${maxModels} models to avoid timeout...`);
+    console.log(`Processing ${maxModels} models to capture all available homes...`);
 
     for (let i = 0; i < maxModels; i++) {
       const modelUrl = cleanUrls[i];
@@ -160,7 +172,7 @@ serve(async (req) => {
         
         // Add timeout to individual requests
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 20000); // Increased timeout
+        const timeoutId = setTimeout(() => controller.abort(), 15000); // Reduced individual timeout
 
         const modelPageResponse = await fetch('https://api.firecrawl.dev/v0/scrape', {
           method: 'POST',
@@ -172,9 +184,9 @@ serve(async (req) => {
             url: modelUrl,
             formats: ['markdown', 'html'],
             onlyMainContent: true,
-            includeTags: ['h1', 'h2', 'h3', 'p', 'div', 'ul', 'li', 'span', 'td', 'th'],
+            includeTags: ['h1', 'h2', 'h3', 'p', 'div', 'ul', 'li', 'span', 'td', 'th', 'table'],
             excludeTags: ['nav', 'footer', 'header', 'script', 'style'],
-            waitFor: 3000
+            waitFor: 2000 // Reduced wait time
           }),
           signal: controller.signal
         });
@@ -197,35 +209,36 @@ serve(async (req) => {
         const modelHtml = modelPageData.data?.html || '';
         console.log(`Content length for ${modelUrl}:`, modelMarkdown.length);
         
-        // Log a sample of the content for debugging
-        console.log(`Sample content from ${modelUrl}:`, modelMarkdown.substring(0, 300));
-
-        if (modelMarkdown.length < 100) {
+        if (modelMarkdown.length < 50) {
           console.log(`Skipping ${modelUrl} - insufficient content`);
           continue;
         }
 
-        // Extract model name from URL
+        // Extract model name from URL and content with enhanced patterns
         const urlParts = modelUrl.split('/');
         const urlModelName = urlParts[urlParts.length - 1] || urlParts[urlParts.length - 2];
         let modelName = urlModelName.replace(/-/g, ' ').toUpperCase();
 
-        // Try to find a better model name in the content with more specific patterns
+        // Enhanced title extraction patterns
         const titlePatterns = [
-          /^#\s+([A-Z][A-Z\s0-9]+)$/m,
-          /^##\s+([A-Z][A-Z\s0-9]+)$/m,
-          /^###\s+([A-Z][A-Z\s0-9]+)$/m,
-          /\*\*([A-Z][A-Z\s0-9]{2,15})\*\*/,
-          /^([A-Z][A-Z\s0-9]{2,15})(?:\s*\n|\s*$)/m,
-          /<h[1-3][^>]*>([A-Z][A-Z\s0-9]{2,15})<\/h[1-3]>/i
+          /^#\s+([A-Z][A-Z\s0-9]{2,20})$/m,
+          /^##\s+([A-Z][A-Z\s0-9]{2,20})$/m,
+          /\*\*([A-Z][A-Z\s0-9]{2,20})\*\*/,
+          /<h[1-3][^>]*>([A-Z][A-Z\s0-9]{2,20})<\/h[1-3]>/i,
+          /^([A-Z][A-Z\s0-9]{2,20})(?:\s*\n|\s*-|\s*$)/m,
+          /title[:\s]*([A-Z][A-Z\s0-9]{2,20})/i
         ];
 
         for (const pattern of titlePatterns) {
           const titleMatch = modelMarkdown.match(pattern) || modelHtml.match(pattern);
-          if (titleMatch && titleMatch[1] && titleMatch[1].length >= 3 && titleMatch[1].length <= 20) {
-            modelName = titleMatch[1].trim();
-            console.log(`Found title: ${modelName}`);
-            break;
+          if (titleMatch && titleMatch[1] && titleMatch[1].length >= 3 && titleMatch[1].length <= 25) {
+            const foundTitle = titleMatch[1].trim();
+            // Validate it's a proper model name (not generic text)
+            if (foundTitle && !foundTitle.includes('www') && !foundTitle.includes('http') && !foundTitle.includes('.com')) {
+              modelName = foundTitle;
+              console.log(`Found title: ${modelName}`);
+              break;
+            }
           }
         }
 
@@ -256,14 +269,15 @@ serve(async (req) => {
           }
         }
 
-        // Extract square footage with more comprehensive patterns
+        // Extract square footage with enhanced patterns
         const sqftPatterns = [
           /(\d{3,4})\s*(?:sq\.?\s*ft\.?|sqft|square\s*feet)/i,
-          /(?:size|area|footage)[:\s]*(\d{3,4})/i,
+          /(?:size|area|footage|square\s*footage)[:\s]*(\d{3,4})/i,
           /(\d{3,4})\s*sf\b/i,
           /(\d{3,4})\s*sq/i,
           /<td[^>]*>(\d{3,4})[^<]*(?:sq|ft)/i,
-          /square\s*footage[:\s]*(\d{3,4})/i
+          /total\s*area[:\s]*(\d{3,4})/i,
+          /floor\s*plan[:\s]*(\d{3,4})/i
         ];
 
         for (const pattern of sqftPatterns) {
@@ -318,7 +332,7 @@ serve(async (req) => {
           }
         }
 
-        // Extract dimensions with comprehensive patterns
+        // Enhanced dimension extraction
         const dimensionPatterns = [
           /(\d+)(?:\s*[x×]\s*|\s+by\s+)(\d+)(?:\s*ft|\s*feet)?/i,
           /(?:dimensions|size)[:\s]*(\d+)(?:\s*[x×]\s*|\s+by\s+)(\d+)/i,
@@ -326,7 +340,8 @@ serve(async (req) => {
           /<td[^>]*>(\d+)[^<]*x[^<]*(\d+)/i,
           /length[:\s]*(\d+)[^0-9]*width[:\s]*(\d+)/i,
           /width[:\s]*(\d+)[^0-9]*length[:\s]*(\d+)/i,
-          /(\d+)\s*ft\s*x\s*(\d+)\s*ft/i
+          /(\d+)\s*ft\s*x\s*(\d+)\s*ft/i,
+          /exterior[:\s]*(\d+)[^0-9]*x[^0-9]*(\d+)/i
         ];
 
         for (const pattern of dimensionPatterns) {
@@ -389,8 +404,8 @@ serve(async (req) => {
         console.log(`Successfully processed model: ${modelName}`);
         processedCount++;
 
-        // Delay between requests
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // Reduced delay between requests
+        await new Promise(resolve => setTimeout(resolve, 500));
 
       } catch (error) {
         console.error(`Error processing model URL ${modelUrl}:`, error);

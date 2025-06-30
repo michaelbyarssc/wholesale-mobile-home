@@ -46,86 +46,101 @@ export const Header = ({
 
   return (
     <>
-      <header className="bg-white shadow-sm">
+      <header className="bg-white shadow-md border-b border-gray-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center py-3 sm:py-4 lg:py-6 gap-3 sm:gap-4">
-            <div className="flex flex-col items-start w-full sm:w-auto">
-              <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-blue-900 leading-tight mb-2">
-                {businessInfo?.business_name || 'Wholesale Homes of the Carolinas'}
-              </h1>
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center py-4 lg:py-6 gap-4">
+            {/* Left side - Business Info */}
+            <div className="flex flex-col items-start w-full lg:w-auto">
+              <div className="mb-3">
+                <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 tracking-tight leading-tight">
+                  {businessInfo?.business_name || 'Wholesale Homes of the Carolinas'}
+                </h1>
+                <div className="w-16 h-1 bg-blue-600 mt-2"></div>
+              </div>
+              
               {/* Contact Information */}
               {(businessInfo?.business_phone || businessInfo?.business_email) && (
-                <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 text-sm">
+                <div className="flex flex-col sm:flex-row gap-3 sm:gap-6">
                   {businessInfo.business_phone && (
                     <a 
                       href={`tel:${businessInfo.business_phone}`}
-                      className="flex items-center gap-1 text-blue-700 hover:text-blue-900 transition-colors"
+                      className="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition-colors group"
                     >
-                      <Phone className="h-4 w-4" />
-                      <span>{businessInfo.business_phone}</span>
+                      <div className="flex items-center justify-center w-8 h-8 bg-blue-50 rounded-full group-hover:bg-blue-100 transition-colors">
+                        <Phone className="h-4 w-4 text-blue-600" />
+                      </div>
+                      <span className="font-medium">{businessInfo.business_phone}</span>
                     </a>
                   )}
                   {businessInfo.business_email && (
                     <a 
                       href={`mailto:${businessInfo.business_email}`}
-                      className="flex items-center gap-1 text-blue-700 hover:text-blue-900 transition-colors"
+                      className="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition-colors group"
                     >
-                      <Mail className="h-4 w-4" />
-                      <span>{businessInfo.business_email}</span>
+                      <div className="flex items-center justify-center w-8 h-8 bg-blue-50 rounded-full group-hover:bg-blue-100 transition-colors">
+                        <Mail className="h-4 w-4 text-blue-600" />
+                      </div>
+                      <span className="font-medium">{businessInfo.business_email}</span>
                     </a>
                   )}
                 </div>
               )}
             </div>
+
+            {/* Right side - User Actions */}
             {!user ? (
               <Button 
                 onClick={() => navigate('/auth')}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 text-sm sm:text-base w-full sm:w-auto"
+                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 font-medium rounded-lg shadow-sm transition-all duration-200 w-full sm:w-auto"
               >
                 Login
               </Button>
             ) : (
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
-                <div className="flex items-center justify-between sm:justify-start gap-2 text-xs sm:text-sm">
-                  <span className="text-gray-700 flex items-center gap-1">
-                    <User className="h-3 w-3 sm:h-4 sm:w-4" />
-                    <span className="text-xs sm:text-sm">Welcome, {displayName}!</span>
-                  </span>
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
+                <div className="flex items-center justify-between sm:justify-start gap-3">
+                  <div className="flex items-center gap-2 text-gray-700">
+                    <div className="flex items-center justify-center w-8 h-8 bg-gray-100 rounded-full">
+                      <User className="h-4 w-4 text-gray-600" />
+                    </div>
+                    <span className="font-medium">Welcome, {displayName}</span>
+                  </div>
+                  
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="text-gray-600 hover:text-gray-800 p-1 sm:p-2 h-auto"
+                        className="text-gray-600 hover:text-gray-800 hover:bg-gray-100 p-2 rounded-lg transition-colors"
                       >
                         <Menu className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={handleChangePassword}>
+                    <DropdownMenuContent align="end" className="bg-white border border-gray-200 shadow-lg">
+                      <DropdownMenuItem onClick={handleChangePassword} className="hover:bg-gray-50">
                         <Lock className="h-4 w-4 mr-2" />
                         Change Password
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={onLogout} disabled={isLoading}>
+                      <DropdownMenuItem onClick={onLogout} disabled={isLoading} className="hover:bg-gray-50">
                         <LogOut className="h-4 w-4 mr-2" />
                         Logout
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
+                
                 <Button
                   onClick={onToggleCart}
                   variant="outline"
-                  className="relative w-full sm:w-auto text-sm"
+                  className="relative border-gray-300 hover:border-blue-400 hover:bg-blue-50 transition-all duration-200 w-full sm:w-auto"
                   size="sm"
                 >
                   <CartIcon className="h-4 w-4 mr-2" />
-                  <span>Cart ({cartItems.length})</span>
+                  <span className="font-medium">Cart ({cartItems.length})</span>
                   {cartItems.length > 0 && (
                     <Badge 
                       variant="destructive" 
-                      className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs"
+                      className="absolute -top-2 -right-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs font-bold"
                     >
                       {cartItems.length}
                     </Badge>

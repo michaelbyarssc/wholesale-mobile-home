@@ -35,6 +35,8 @@ export const MobileHomeServicesDialog = ({
   onAddToCart,
   user
 }: MobileHomeServicesDialogProps) => {
+  console.log('MobileHomeServicesDialog: Rendering with mobileHome:', mobileHome?.id);
+  
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [selectedHomeOptions, setSelectedHomeOptions] = useState<{ option: HomeOption; quantity: number }[]>([]);
   const { calculateMobileHomePrice, calculateServicePrice, calculateHomeOptionPrice, calculateTotalPrice } = useCustomerPricing(user);
@@ -43,6 +45,7 @@ export const MobileHomeServicesDialog = ({
   const { data: allServices = [] } = useQuery({
     queryKey: ['services'],
     queryFn: async () => {
+      console.log('MobileHomeServicesDialog: Fetching services');
       const { data, error } = await supabase
         .from('services')
         .select('*')
@@ -50,6 +53,7 @@ export const MobileHomeServicesDialog = ({
         .order('name');
       
       if (error) throw error;
+      console.log('MobileHomeServicesDialog: Services fetched:', data?.length);
       return data as Service[];
     }
   });
@@ -58,6 +62,7 @@ export const MobileHomeServicesDialog = ({
   const { data: allHomeOptions = [] } = useQuery({
     queryKey: ['home-options'],
     queryFn: async () => {
+      console.log('MobileHomeServicesDialog: Fetching home options');
       const { data, error } = await supabase
         .from('home_options')
         .select('*')
@@ -65,6 +70,7 @@ export const MobileHomeServicesDialog = ({
         .order('display_order', { ascending: true });
       
       if (error) throw error;
+      console.log('MobileHomeServicesDialog: Home options fetched:', data?.length);
       return data as HomeOption[];
     }
   });
@@ -77,9 +83,12 @@ export const MobileHomeServicesDialog = ({
     selectedServices
   );
 
+  console.log('MobileHomeServicesDialog: Available services:', availableServices?.length);
+
   // Reset selections when dialog opens/closes or mobile home changes
   useEffect(() => {
     if (isOpen) {
+      console.log('MobileHomeServicesDialog: Resetting selections for dialog open');
       setSelectedServices([]);
       setSelectedHomeOptions([]);
     }
@@ -124,9 +133,13 @@ export const MobileHomeServicesDialog = ({
 
   const totalPrice = calculateTotalPrice(mobileHome, getSelectedServicesData(), selectedHomeOptions);
 
-  if (!mobileHome) return null;
+  if (!mobileHome) {
+    console.log('MobileHomeServicesDialog: No mobile home provided, returning null');
+    return null;
+  }
 
   const homeName = mobileHome.display_name || `${mobileHome.manufacturer} ${mobileHome.model}`;
+  console.log('MobileHomeServicesDialog: Rendering dialog for home:', homeName);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -185,7 +198,6 @@ export const MobileHomeServicesDialog = ({
               <CardContent>
                 <div className="space-y-3">
                   {availableServices.map((service) => {
-                    const servicePrice = getServicePrice(service.id);
                     const finalPrice = calculateServicePrice(service);
                     const isSelected = selectedServices.includes(service.id);
                     

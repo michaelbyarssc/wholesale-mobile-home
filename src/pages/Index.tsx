@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MobileHomesShowcase } from '@/components/MobileHomesShowcase';
@@ -14,11 +12,15 @@ import { Footer } from '@/components/layout/Footer';
 import { LoadingSpinner } from '@/components/layout/LoadingSpinner';
 
 const Index = () => {
+  console.log('Index component: Starting to render');
+  
   const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [userProfile, setUserProfile] = useState<{ first_name?: string } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  
+  console.log('Index component: State initialized', { user: user?.id, isLoading });
   
   // Use the shopping cart hook at the top level
   const {
@@ -34,7 +36,10 @@ const Index = () => {
     setIsCartOpen,
   } = useShoppingCart();
 
+  console.log('Index component: Shopping cart initialized');
+
   useEffect(() => {
+    console.log('Index component: Auth effect starting');
     let mounted = true;
 
     // Set up auth state listener first
@@ -57,6 +62,7 @@ const Index = () => {
     // Then check current session
     const checkAuth = async () => {
       try {
+        console.log('Index component: Checking current session');
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
@@ -65,6 +71,7 @@ const Index = () => {
         
         if (!mounted) return;
         
+        console.log('Index component: Session check complete', { hasSession: !!session, userId: session?.user?.id });
         setSession(session);
         setUser(session?.user ?? null);
       } catch (error) {
@@ -75,6 +82,7 @@ const Index = () => {
         }
       } finally {
         if (mounted) {
+          console.log('Index component: Setting loading to false');
           setIsLoading(false);
         }
       }
@@ -83,6 +91,7 @@ const Index = () => {
     checkAuth();
 
     return () => {
+      console.log('Index component: Cleaning up auth effect');
       mounted = false;
       subscription.unsubscribe();
     };
@@ -145,9 +154,14 @@ const Index = () => {
     }
   };
 
+  console.log('Index component: About to render, isLoading:', isLoading);
+
   if (isLoading) {
+    console.log('Index component: Rendering loading spinner');
     return <LoadingSpinner />;
   }
+
+  console.log('Index component: Rendering main content');
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-green-50 to-yellow-50">

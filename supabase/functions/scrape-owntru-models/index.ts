@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -155,7 +154,7 @@ serve(async (req) => {
         }
 
         // Bedrooms
-        const bedroomMatches = pdfContent.match/(\d+)\s*(?:BEDROOM|BED)S?/gi);
+        const bedroomMatches = pdfContent.match(/(\d+)\s*(?:BEDROOM|BED)S?/gi);
         if (bedroomMatches) {
           const beds = parseInt(bedroomMatches[0].match(/\d+/)?.[0] || '0');
           if (beds >= 1 && beds <= 6) {

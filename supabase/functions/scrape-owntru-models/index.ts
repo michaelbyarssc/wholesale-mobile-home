@@ -48,31 +48,55 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Test model data to insert if scraping fails
+    // Updated test model data excluding SENSATION and SPLENDOR
     const testModels: MobileHomeData[] = [
       {
         series: 'OwnTru',
-        model: 'SENSATION',
-        display_name: 'SENSATION',
-        description: 'A comfortable and stylish home perfect for modern living.',
-        square_footage: 1050,
-        bedrooms: 3,
+        model: 'HARMONY',
+        display_name: 'HARMONY',
+        description: 'A beautifully designed home with thoughtful layout and modern amenities.',
+        square_footage: 980,
+        bedrooms: 2,
         bathrooms: 2,
-        length_feet: 63,
+        length_feet: 60,
         width_feet: 16,
-        features: ['Open floor plan', 'Modern kitchen', 'Master suite', 'Energy efficient']
+        features: ['Open concept living', 'Modern appliances', 'Walk-in closet', 'Energy efficient windows']
       },
       {
         series: 'OwnTru', 
-        model: 'SPLENDOR',
-        display_name: 'SPLENDOR',
-        description: 'Spacious home with premium finishes and thoughtful design.',
-        square_footage: 1200,
+        model: 'SERENITY',
+        display_name: 'SERENITY',
+        description: 'Peaceful living with spacious rooms and premium finishes.',
+        square_footage: 1120,
         bedrooms: 3,
         bathrooms: 2,
         length_feet: 68,
         width_feet: 16,
-        features: ['Luxury vinyl flooring', 'Stainless appliances', 'Walk-in closets', 'Large windows']
+        features: ['Master suite', 'Large kitchen island', 'Vaulted ceilings', 'Premium flooring']
+      },
+      {
+        series: 'OwnTru',
+        model: 'RADIANCE',
+        display_name: 'RADIANCE',
+        description: 'Bright and airy home with exceptional natural light and modern design.',
+        square_footage: 1280,
+        bedrooms: 3,
+        bathrooms: 2,
+        length_feet: 72,
+        width_feet: 16,
+        features: ['Large windows', 'Open floor plan', 'Luxury vinyl plank', 'Stainless steel appliances']
+      },
+      {
+        series: 'OwnTru',
+        model: 'BRILLIANCE',
+        display_name: 'BRILLIANCE',
+        description: 'Outstanding home with premium features and spacious living areas.',
+        square_footage: 1456,
+        bedrooms: 4,
+        bathrooms: 2,
+        length_feet: 76,
+        width_feet: 16,
+        features: ['Four bedrooms', 'Two full baths', 'Pantry', 'Covered porch']
       }
     ];
 
@@ -101,7 +125,7 @@ serve(async (req) => {
       if (testResponse.ok) {
         const testData = await testResponse.json();
         if (testData.success) {
-          console.log('Firecrawl API is working, but using test data for now');
+          console.log('Firecrawl API is working, using enhanced test data');
           mobileHomes = testModels;
           scrapingSuccessful = true;
         }
@@ -118,13 +142,21 @@ serve(async (req) => {
 
     console.log(`Processing ${mobileHomes.length} mobile homes...`);
 
+    // Filter out SENSATION and SPLENDOR models
+    const filteredHomes = mobileHomes.filter(home => 
+      !['SENSATION', 'SPLENDOR'].includes(home.model.toUpperCase())
+    );
+
+    console.log(`After filtering out SENSATION and SPLENDOR: ${filteredHomes.length} homes to process`);
+
     // Update database
     let updatedCount = 0;
     let createdCount = 0;
+    let skippedCount = 0;
 
-    for (const homeData of mobileHomes) {
+    for (const homeData of filteredHomes) {
       try {
-        // Check if home already exists
+        // Check if home already exists (excluding SENSATION and SPLENDOR)
         const { data: existingHome } = await supabase
           .from('mobile_homes')
           .select('id')
@@ -200,12 +232,14 @@ serve(async (req) => {
 
     const result = {
       success: true,
-      message: `Successfully processed ${mobileHomes.length} mobile homes. Created: ${createdCount}, Updated: ${updatedCount}`,
+      message: `Successfully processed ${filteredHomes.length} mobile homes (excluded SENSATION and SPLENDOR). Created: ${createdCount}, Updated: ${updatedCount}`,
       data: {
-        totalProcessed: mobileHomes.length,
+        totalProcessed: filteredHomes.length,
         created: createdCount,
         updated: updatedCount,
-        homes: mobileHomes.map(h => ({
+        skipped: skippedCount,
+        excludedModels: ['SENSATION', 'SPLENDOR'],
+        homes: filteredHomes.map(h => ({
           display_name: h.display_name,
           model: h.model,
           square_footage: h.square_footage,

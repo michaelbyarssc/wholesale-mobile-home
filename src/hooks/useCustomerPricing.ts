@@ -11,6 +11,7 @@ type HomeOption = Database['public']['Tables']['home_options']['Row'];
 
 export const useCustomerPricing = (user?: User | null) => {
   const [markupPercentage, setMarkupPercentage] = useState<number>(30); // Default 30%
+  const [minimumProfitPerHome, setMinimumProfitPerHome] = useState<number>(0); // Default 0
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -25,7 +26,7 @@ export const useCustomerPricing = (user?: User | null) => {
         setError(null);
         const { data, error: fetchError } = await supabase
           .from('customer_markups')
-          .select('markup_percentage')
+          .select('markup_percentage, minimum_profit_per_home')
           .eq('user_id', user.id)
           .maybeSingle();
 
@@ -35,6 +36,7 @@ export const useCustomerPricing = (user?: User | null) => {
           // Keep default values on error
         } else if (data) {
           setMarkupPercentage(data.markup_percentage);
+          setMinimumProfitPerHome(data.minimum_profit_per_home || 0);
         }
         // If no data found, keep default values
       } catch (err) {
@@ -66,7 +68,9 @@ export const useCustomerPricing = (user?: User | null) => {
 
   const calculateMobileHomePrice = (mobileHome: MobileHome): number => {
     const baseCost = typeof mobileHome.cost === 'number' ? mobileHome.cost : mobileHome.price;
-    const homeMinProfit = mobileHome.minimum_profit || 0;
+    
+    // Get the home-specific minimum profit, fallback to customer's global minimum profit, then to 0
+    const homeMinProfit = mobileHome.minimum_profit || minimumProfitPerHome || 0;
     
     // Calculate both pricing methods
     const markupPrice = baseCost * (1 + markupPercentage / 100);
@@ -74,6 +78,7 @@ export const useCustomerPricing = (user?: User | null) => {
     
     // Return the higher of the two
     const finalPrice = Math.max(markupPrice, minimumProfitPrice);
+    console.log(`Mobile home pricing for ${mobileHome.model}: baseCost=${baseCost}, markupPrice=${markupPrice}, minimumProfitPrice=${minimumProfitPrice}, finalPrice=${finalPrice}`);
     return Math.round(finalPrice * 100) / 100;
   };
 
@@ -119,6 +124,7 @@ export const useCustomerPricing = (user?: User | null) => {
 
   return {
     markupPercentage,
+    minimumProfitPerHome,
     customerMarkup: markupPercentage, // Add alias for backward compatibility
     loading,
     error,

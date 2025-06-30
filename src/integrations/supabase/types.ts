@@ -403,6 +403,9 @@ export type Database = {
           approved_at: string | null
           approved_by: string | null
           created_at: string
+          denied: boolean
+          denied_at: string | null
+          denied_by: string | null
           email: string | null
           first_name: string | null
           id: string
@@ -415,6 +418,9 @@ export type Database = {
           approved_at?: string | null
           approved_by?: string | null
           created_at?: string
+          denied?: boolean
+          denied_at?: string | null
+          denied_by?: string | null
           email?: string | null
           first_name?: string | null
           id?: string
@@ -427,6 +433,9 @@ export type Database = {
           approved_at?: string | null
           approved_by?: string | null
           created_at?: string
+          denied?: boolean
+          denied_at?: string | null
+          denied_by?: string | null
           email?: string | null
           first_name?: string | null
           id?: string

@@ -26,7 +26,7 @@ export const UserManagementTab = () => {
       // Fetch all user profiles including approval status
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
-        .select('user_id, email, first_name, last_name, created_at, approved, approved_at');
+        .select('user_id, email, first_name, last_name, created_at, approved, approved_at, denied');
 
       if (profileError) {
         console.error('Error fetching profiles:', profileError);
@@ -40,9 +40,9 @@ export const UserManagementTab = () => {
 
       console.log('Profiles data:', profileData);
 
-      // Separate approved and pending users
+      // Separate approved users, pending users (not approved and not denied), and denied users
       const approvedUsers = profileData?.filter(profile => profile.approved) || [];
-      const pendingUsers = profileData?.filter(profile => !profile.approved) || [];
+      const pendingUsers = profileData?.filter(profile => !profile.approved && !profile.denied) || [];
 
       // Fetch user roles for approved users
       const { data: roleData, error: roleError } = await supabase
@@ -81,7 +81,7 @@ export const UserManagementTab = () => {
         };
       });
 
-      // Process pending users
+      // Process pending users (only those not denied)
       const pendingUsersData: UserProfile[] = pendingUsers.map(profile => ({
         user_id: profile.user_id,
         email: profile.email || 'No email',

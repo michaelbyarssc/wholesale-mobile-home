@@ -3,9 +3,8 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { validatePasswordComplexity, isPasswordStrengthResponse } from '@/utils/security';
-import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface AuthFormProps {
   isSignUp: boolean;
@@ -23,7 +22,7 @@ interface AuthFormProps {
   setLoading: (loading: boolean) => void;
 }
 
-export const AuthForm: React.FC<AuthFormProps> = ({
+export const AuthForm = ({
   isSignUp,
   email,
   setEmail,
@@ -37,7 +36,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
   setPhoneNumber,
   loading,
   setLoading,
-}) => {
+}: AuthFormProps) => {
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -46,127 +45,105 @@ export const AuthForm: React.FC<AuthFormProps> = ({
 
     try {
       if (isSignUp) {
-        // Validate all required fields for sign up
-        if (!firstName.trim() || !lastName.trim() || !phoneNumber.trim()) {
-          toast({
-            title: "Missing Information",
-            description: "Please fill in all required fields.",
-            variant: "destructive",
-          });
-          setLoading(false);
-          return;
-        }
-
-        // Enhanced password validation for sign up
-        const passwordValidation = validatePasswordComplexity(password);
-        if (!passwordValidation.isValid) {
-          toast({
-            title: "Password Requirements Not Met",
-            description: passwordValidation.errors.join(', '),
-            variant: "destructive",
-          });
-          setLoading(false);
-          return;
-        }
-
-        // Additional server-side validation
-        try {
-          const { data: strengthCheck } = await supabase.rpc('check_password_strength', {
-            password: password
-          });
-
-          if (strengthCheck && isPasswordStrengthResponse(strengthCheck) && !strengthCheck.valid) {
-            toast({
-              title: "Password Security Check Failed",
-              description: strengthCheck.errors.join(', '),
-              variant: "destructive",
-            });
-            setLoading(false);
-            return;
-          }
-        } catch (error) {
-          console.error('Password strength check error:', error);
-          // Continue with client-side validation if server check fails
-        }
-
-        const { error } = await supabase.auth.signUp({
+        console.log('Starting sign up process...');
+        
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/`,
             data: {
-              first_name: firstName.trim(),
-              last_name: lastName.trim(),
-              phone_number: phoneNumber.trim()
-            }
-          }
+              first_name: firstName,
+              last_name: lastName,
+              phone_number: phoneNumber,
+            },
+          },
         });
-        
-        if (error) throw error;
+
+        if (error) {
+          console.error('Sign up error:', error);
+          throw error;
+        }
+
+        console.log('Sign up successful:', data);
 
         // Send notification to admin about new user registration
         try {
-          await supabase.functions.invoke('send-new-user-notification', {
+          const { error: notificationError } = await supabase.functions.invoke('send-new-user-notification', {
             body: {
-              firstName: firstName.trim(),
-              lastName: lastName.trim(),
-              email: email,
-              phoneNumber: phoneNumber.trim()
-            }
+              firstName,
+              lastName,
+              email,
+              phoneNumber,
+            },
           });
+
+          if (notificationError) {
+            console.error('Notification error:', notificationError);
+            // Don't throw here as the signup was successful
+          }
         } catch (notificationError) {
           console.error('Failed to send admin notification:', notificationError);
-          // Don't block registration if notification fails
+          // Continue with success message even if notification fails
         }
-        
+
         toast({
-          title: "Registration Submitted!",
-          description: "Your account has been created and is pending admin approval. You'll be able to sign in once approved.",
+          title: "Account Created Successfully",
+          description: "Your account has been created and is pending admin approval. You will receive an email once approved.",
         });
       } else {
-        // Check if user is approved before allowing sign in
-        const { error: signInError } = await supabase.auth.signInWithPassword({
+        // Sign in process
+        const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
-        
-        if (signInError) throw signInError;
+
+        if (error) throw error;
 
         // Check if user is approved
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('approved, first_name, last_name')
-          .eq('email', email)
-          .single();
+        if (data.user) {
+          const { data: profileData, error: profileError } = await supabase
+            .from('profiles')
+            .select('approved, denied')
+            .eq('user_id', data.user.id)
+            .single();
 
-        if (profileError) {
-          console.error('Profile check error:', profileError);
-          throw new Error('Unable to verify account status');
+          if (profileError) {
+            console.error('Error checking approval status:', profileError);
+          } else if (profileData) {
+            if (profileData.denied) {
+              // Sign out the user immediately
+              await supabase.auth.signOut();
+              toast({
+                title: "Access Denied",
+                description: "Your account has been denied access. Please contact an administrator.",
+                variant: "destructive",
+              });
+              setLoading(false);
+              return;
+            } else if (!profileData.approved) {
+              // Sign out the user immediately
+              await supabase.auth.signOut();
+              toast({
+                title: "Account Pending Approval",
+                description: "Your account is still pending admin approval. Please wait for approval before signing in.",
+                variant: "destructive",
+              });
+              setLoading(false);
+              return;
+            }
+          }
         }
 
-        if (!profile.approved) {
-          // Sign out the user immediately
-          await supabase.auth.signOut();
-          toast({
-            title: "Account Pending Approval",
-            description: "Your account is awaiting admin approval. Please contact an administrator.",
-            variant: "destructive",
-          });
-          setLoading(false);
-          return;
-        }
-        
         toast({
           title: "Welcome back!",
-          description: "You have been successfully signed in.",
+          description: "You have successfully signed in.",
         });
-        // Navigation will be handled by the auth state change listener
       }
     } catch (error: any) {
       console.error('Auth error:', error);
       toast({
-        title: "Authentication Error",
-        description: error.message || "An error occurred during authentication.",
+        title: isSignUp ? "Sign Up Failed" : "Sign In Failed",
+        description: error.message || "An unexpected error occurred",
         variant: "destructive",
       });
     } finally {
@@ -178,54 +155,58 @@ export const AuthForm: React.FC<AuthFormProps> = ({
     <form onSubmit={handleSubmit} className="space-y-4">
       {isSignUp && (
         <>
-          <div>
-            <Label htmlFor="firstName">First Name *</Label>
-            <Input
-              id="firstName"
-              type="text"
-              value={firstName}
-              onChange={(e) => setFirstName(e.target.value)}
-              required
-              placeholder="Enter your first name"
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="firstName">First Name</Label>
+              <Input
+                id="firstName"
+                type="text"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                required
+                placeholder="John"
+              />
+            </div>
+            <div>
+              <Label htmlFor="lastName">Last Name</Label>
+              <Input
+                id="lastName"
+                type="text"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                required
+                placeholder="Doe"
+              />
+            </div>
           </div>
           <div>
-            <Label htmlFor="lastName">Last Name *</Label>
-            <Input
-              id="lastName"
-              type="text"
-              value={lastName}
-              onChange={(e) => setLastName(e.target.value)}
-              required
-              placeholder="Enter your last name"
-            />
-          </div>
-          <div>
-            <Label htmlFor="phoneNumber">Phone Number *</Label>
+            <Label htmlFor="phoneNumber">Phone Number</Label>
             <Input
               id="phoneNumber"
               type="tel"
               value={phoneNumber}
               onChange={(e) => setPhoneNumber(e.target.value)}
               required
-              placeholder="Enter your phone number"
+              placeholder="(555) 123-4567"
             />
           </div>
         </>
       )}
+      
       <div>
-        <Label htmlFor="email">Email *</Label>
+        <Label htmlFor="email">Email</Label>
         <Input
           id="email"
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
-          placeholder="Enter your email address"
+          placeholder="john@example.com"
         />
       </div>
+      
       <div>
-        <Label htmlFor="password">Password *</Label>
+        <Label htmlFor="password">Password</Label>
         <Input
           id="password"
           type="password"
@@ -234,18 +215,10 @@ export const AuthForm: React.FC<AuthFormProps> = ({
           required
           placeholder="Enter your password"
         />
-        {isSignUp && password && (
-          <div className="mt-2 text-xs text-gray-600">
-            Password must be at least 8 characters with uppercase, lowercase, number, and special character.
-          </div>
-        )}
       </div>
-      <Button 
-        type="submit" 
-        className="w-full bg-blue-600 hover:bg-blue-700"
-        disabled={loading}
-      >
-        {loading ? 'Processing...' : (isSignUp ? 'Create Account' : 'Sign In')}
+      
+      <Button type="submit" className="w-full" disabled={loading}>
+        {loading ? "Processing..." : (isSignUp ? "Create Account" : "Sign In")}
       </Button>
     </form>
   );

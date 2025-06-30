@@ -3,7 +3,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Clock, UserCheck } from 'lucide-react';
+import { Clock, UserCheck, UserX } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { UserProfile } from './UserEditDialog';
@@ -35,6 +35,30 @@ export const PendingApprovalsCard = ({ pendingUsers, onUserApproved }: PendingAp
       toast({
         title: "Approval Failed",
         description: error.message || "Failed to approve user",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDenyUser = async (userId: string, userName: string) => {
+    try {
+      const { error } = await supabase.functions.invoke('admin-deny-user', {
+        body: { userId }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "User Denied",
+        description: `${userName} has been denied access to the system.`,
+      });
+
+      onUserApproved();
+    } catch (error: any) {
+      console.error('Error denying user:', error);
+      toast({
+        title: "Denial Failed",
+        description: error.message || "Failed to deny user",
         variant: "destructive",
       });
     }
@@ -77,14 +101,24 @@ export const PendingApprovalsCard = ({ pendingUsers, onUserApproved }: PendingAp
                   </Badge>
                 </div>
               </div>
-              <Button
-                onClick={() => handleApproveUser(user.user_id, getDisplayName(user))}
-                className="bg-green-600 hover:bg-green-700 text-white"
-                size="sm"
-              >
-                <UserCheck className="h-4 w-4 mr-1" />
-                Approve
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => handleApproveUser(user.user_id, getDisplayName(user))}
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                  size="sm"
+                >
+                  <UserCheck className="h-4 w-4 mr-1" />
+                  Approve
+                </Button>
+                <Button
+                  onClick={() => handleDenyUser(user.user_id, getDisplayName(user))}
+                  variant="destructive"
+                  size="sm"
+                >
+                  <UserX className="h-4 w-4 mr-1" />
+                  Deny
+                </Button>
+              </div>
             </div>
           ))}
         </div>

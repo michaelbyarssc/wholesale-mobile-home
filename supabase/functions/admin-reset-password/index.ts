@@ -103,8 +103,8 @@ serve(async (req) => {
       })
     }
 
-    // Use provided password or default to "Wholesale123!"
-    const password = new_password || 'Wholesale123!'
+    // Use provided password or default to a stronger password that won't be flagged as weak
+    const password = new_password || 'WholesaleReset2024!'
 
     console.log('Updating password for user:', user_id)
 

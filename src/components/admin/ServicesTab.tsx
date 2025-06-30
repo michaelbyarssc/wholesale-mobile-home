@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -269,7 +270,7 @@ export const ServicesTab = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="single_wide_price">Single Wide Price (≤16 ft)</Label>
+                  <Label htmlFor="single_wide_price">Single Wide Price (&le;16 ft)</Label>
                   <Input
                     id="single_wide_price"
                     type="number"
@@ -279,7 +280,7 @@ export const ServicesTab = () => {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="double_wide_price">Double Wide Price (>16 ft)</Label>
+                  <Label htmlFor="double_wide_price">Double Wide Price (&gt;16 ft)</Label>
                   <Input
                     id="double_wide_price"
                     type="number"

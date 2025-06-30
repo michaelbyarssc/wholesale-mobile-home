@@ -8,7 +8,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { MobileHomeEditDialog } from './MobileHomeEditDialog';
 import { MobileHomesDragDrop } from './MobileHomesDragDrop';
-import { OwnTruScraper } from './OwnTruScraper';
 import type { Database } from '@/integrations/supabase/types';
 
 type MobileHome = Database['public']['Tables']['mobile_homes']['Row'];
@@ -237,9 +236,6 @@ export const MobileHomesTab = () => {
 
   return (
     <div className="space-y-6">
-      {/* OwnTru Scraper Section */}
-      <OwnTruScraper />
-
       <Card>
         <CardHeader>
           <div className="flex justify-between items-center">

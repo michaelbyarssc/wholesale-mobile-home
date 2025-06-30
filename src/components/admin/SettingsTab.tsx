@@ -1,9 +1,7 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BusinessSettings } from './settings/BusinessSettings';
 import { EmailTemplates } from './settings/EmailTemplates';
-import { OwnTruScraper } from './OwnTruScraper';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -155,7 +153,6 @@ export const SettingsTab = () => {
           onInputChange={handleInputChange}
           onUpdateSetting={updateSetting}
         />
-        <OwnTruScraper />
       </div>
     </div>
   );

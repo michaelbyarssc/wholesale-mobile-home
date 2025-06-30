@@ -25,12 +25,6 @@ serve(async (req) => {
       }
     )
 
-    // Create regular client for auth verification
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? ''
-    )
-
     // Verify admin authorization
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) {
@@ -44,7 +38,8 @@ serve(async (req) => {
     const token = authHeader.replace('Bearer ', '')
     console.log('Token extracted, length:', token.length)
     
-    const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token)
+    // Verify the token and get user
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token)
     if (authError || !user) {
       console.log('Auth verification failed:', authError)
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
@@ -94,7 +89,24 @@ serve(async (req) => {
 
     console.log('Deleting user:', user_id)
 
-    // Delete user from auth.users (this will cascade delete from other tables due to foreign key constraints)
+    // First delete user data from public tables
+    try {
+      // Delete from profiles table
+      await supabaseAdmin.from('profiles').delete().eq('user_id', user_id)
+      
+      // Delete from user_roles table
+      await supabaseAdmin.from('user_roles').delete().eq('user_id', user_id)
+      
+      // Delete from customer_markups table
+      await supabaseAdmin.from('customer_markups').delete().eq('user_id', user_id)
+      
+      console.log('Deleted user data from public tables')
+    } catch (dbError) {
+      console.error('Error deleting user data from public tables:', dbError)
+      // Continue with auth user deletion even if some public table deletions fail
+    }
+
+    // Delete user from auth.users
     const { data, error } = await supabaseAdmin.auth.admin.deleteUser(user_id)
 
     if (error) {

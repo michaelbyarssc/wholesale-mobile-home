@@ -25,12 +25,6 @@ serve(async (req) => {
       }
     )
 
-    // Create regular client for auth verification
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? ''
-    )
-
     // Verify admin authorization
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) {
@@ -44,7 +38,8 @@ serve(async (req) => {
     const token = authHeader.replace('Bearer ', '')
     console.log('Token extracted, length:', token.length)
     
-    const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token)
+    // Verify the token and get user
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token)
     if (authError || !user) {
       console.log('Auth verification failed:', authError)
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
@@ -84,8 +79,8 @@ serve(async (req) => {
       })
     }
 
-    // Use provided password or generate a secure one
-    const password = new_password || generateSecurePassword()
+    // Use provided password or default
+    const password = new_password || 'Allies123!'
 
     console.log('Updating password for user:', user_id)
 
@@ -103,7 +98,7 @@ serve(async (req) => {
       })
     }
 
-    console.log('Password updated successfully for user:', data.user.id)
+    console.log('Password updated successfully for user:', data.user?.id)
 
     // Log admin action
     try {
@@ -111,7 +106,7 @@ serve(async (req) => {
         admin_user_id: user.id,
         action: 'PASSWORD_RESET',
         table_name: 'auth.users',
-        record_id: data.user.id,
+        record_id: data.user?.id,
         new_values: { password_reset: true }
       })
     } catch (auditError) {
@@ -135,22 +130,3 @@ serve(async (req) => {
     })
   }
 })
-
-function generateSecurePassword(): string {
-  const charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*"
-  let password = ""
-  
-  // Ensure at least one of each required character type
-  password += "ABCDEFGHIJKLMNOPQRSTUVWXYZ"[Math.floor(Math.random() * 26)]
-  password += "abcdefghijklmnopqrstuvwxyz"[Math.floor(Math.random() * 26)]
-  password += "0123456789"[Math.floor(Math.random() * 10)]
-  password += "!@#$%^&*"[Math.floor(Math.random() * 8)]
-  
-  // Fill remaining characters
-  for (let i = 4; i < 12; i++) {
-    password += charset[Math.floor(Math.random() * charset.length)]
-  }
-  
-  // Shuffle the password
-  return password.split('').sort(() => Math.random() - 0.5).join('')
-}

@@ -35,6 +35,9 @@ export const UserActions = ({ profile, onUserUpdated }: UserActionsProps) => {
         body: {
           user_id: userId,
           new_password: newPassword
+        },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`
         }
       });
 
@@ -81,6 +84,9 @@ export const UserActions = ({ profile, onUserUpdated }: UserActionsProps) => {
       const { data, error } = await supabase.functions.invoke('admin-delete-user', {
         body: {
           user_id: userId
+        },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`
         }
       });
 

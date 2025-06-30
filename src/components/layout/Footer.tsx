@@ -14,7 +14,7 @@ export const Footer = () => {
               {businessInfo?.business_name || 'Wholesale Mobile Home'}
             </h3>
             <p className="text-blue-100 mb-4">
-              Your trusted partner for quality mobile homes in North and South Carolina. 
+              Your trusted partner for quality mobile homes in the Southeast. 
               We provide affordable housing solutions with exceptional service.
             </p>
           </div>

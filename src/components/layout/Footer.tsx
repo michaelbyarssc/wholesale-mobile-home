@@ -12,7 +12,7 @@ export const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           <div>
             <h3 className="text-xl font-bold mb-4">
-              {businessInfo?.business_name || 'Wholesale Homes of the Carolinas'}
+              {businessInfo?.business_name || 'Wholesale Mobile Home'}
             </h3>
             <p className="text-blue-100 mb-4">
               Your trusted partner for quality mobile homes in North and South Carolina. 
@@ -66,7 +66,7 @@ export const Footer = () => {
         
         <div className="border-t border-blue-800 mt-8 pt-8 text-center">
           <p className="text-blue-200">
-            © 2025 {businessInfo?.business_name || 'Wholesale Homes of the Carolinas'}. All rights reserved.
+            © 2025 {businessInfo?.business_name || 'Wholesale Mobile Home'}. All rights reserved.
           </p>
         </div>
       </div>

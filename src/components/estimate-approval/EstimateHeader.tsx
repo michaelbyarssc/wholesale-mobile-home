@@ -15,7 +15,7 @@ export const EstimateHeader = ({ estimateNumber, currentDate }: EstimateHeaderPr
           <div>
             <div className="flex items-center gap-3 mb-2">
               <Building2 className="h-8 w-8" />
-              <h1 className="text-3xl font-bold">Wholesale Homes of the Carolinas</h1>
+              <h1 className="text-3xl font-bold">Wholesale Mobile Home</h1>
             </div>
             <p className="text-blue-100 text-lg">Premium Mobile Home Solutions</p>
           </div>

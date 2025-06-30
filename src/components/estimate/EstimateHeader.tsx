@@ -15,7 +15,7 @@ export const EstimateHeader = ({ user, displayName, customerMarkup }: EstimateHe
   return (
     <div className="text-center mb-8">
       <h1 className="text-4xl font-bold text-blue-900 mb-2">
-        Wholesale Homes of the Carolinas
+        Wholesale Mobile Home
       </h1>
       <p className="text-lg text-green-700">Browse Our Mobile Home Selection</p>
       <div className="mt-4 flex justify-center gap-4">

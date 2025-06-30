@@ -45,7 +45,7 @@ export const BusinessSettings: React.FC<BusinessSettingsProps> = ({
             <Label htmlFor="business_name">Business Name</Label>
             <Input
               id="business_name"
-              value={settings.business_name || ''}
+              value={settings.business_name || 'Wholesale Mobile Home'}
               onChange={(e) => onInputChange('business_name', e.target.value)}
               onBlur={(e) => onInputBlur('business_name', e.target.value)}
               className={validationErrors.business_name ? 'border-red-500' : ''}

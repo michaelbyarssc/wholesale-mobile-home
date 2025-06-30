@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -221,7 +222,7 @@ const Admin = () => {
               <MobileNavigation />
               <div>
                 <h1 className="text-xl md:text-2xl font-bold text-blue-900">Admin Dashboard</h1>
-                <p className="text-sm md:text-base text-gray-600 hidden sm:block">Wholesale Homes of the Carolinas</p>
+                <p className="text-sm md:text-base text-gray-600 hidden sm:block">Wholesale Mobile Home</p>
               </div>
             </div>
             <div className="flex items-center gap-2 md:gap-4">

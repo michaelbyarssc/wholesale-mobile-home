@@ -68,16 +68,16 @@ export const useCustomerPricing = (user: User | null) => {
 
     const markup = customerMarkup?.markup_percentage || 30;
     
-    // If markup is 0, use internal cost + minimum profit
-    if (markup === 0) {
-      const finalPrice = mobileHome.price + (mobileHome.minimum_profit || 0);
-      console.log('useCustomerPricing: 0% markup - using cost + min profit:', finalPrice, 'from cost:', mobileHome.price, 'min profit:', mobileHome.minimum_profit);
-      return finalPrice;
-    }
+    // Pricing 1: Internal price + minimum profit
+    const pricing1 = mobileHome.price + (mobileHome.minimum_profit || 0);
     
-    // Otherwise use normal markup calculation
-    const finalPrice = mobileHome.price * (1 + markup / 100);
-    console.log('useCustomerPricing: Calculated price:', finalPrice, 'from base:', mobileHome.price, 'with markup:', markup);
+    // Pricing 2: Internal price + markup %
+    const pricing2 = mobileHome.price * (1 + markup / 100);
+    
+    // Use the higher of the two prices
+    const finalPrice = Math.max(pricing1, pricing2);
+    
+    console.log('useCustomerPricing: Pricing comparison - Cost + Min Profit:', pricing1, 'Cost + Markup%:', pricing2, 'Final (higher):', finalPrice);
     return finalPrice;
   };
 

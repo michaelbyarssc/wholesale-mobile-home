@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MobileHomesShowcase } from '@/components/MobileHomesShowcase';
@@ -41,10 +42,11 @@ const Index = () => {
   useEffect(() => {
     console.log('Index component: Auth effect starting');
     let mounted = true;
+    let initialCheckDone = false;
 
     // Set up auth state listener first
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
         if (!mounted) return;
         
         console.log('Index: Auth state changed:', event, session?.user?.id);
@@ -55,7 +57,11 @@ const Index = () => {
           setUserProfile(null);
         }
         
-        setIsLoading(false);
+        // Only set loading to false if initial check is done
+        if (initialCheckDone) {
+          console.log('Index: Setting loading to false after auth state change');
+          setIsLoading(false);
+        }
       }
     );
 
@@ -71,18 +77,20 @@ const Index = () => {
         
         if (!mounted) return;
         
-        console.log('Index component: Session check complete', { hasSession: !!session, userId: session?.user?.id });
+        console.log('Index component: Initial session check complete', { hasSession: !!session, userId: session?.user?.id });
         setSession(session);
         setUser(session?.user ?? null);
+        
+        initialCheckDone = true;
+        console.log('Index component: Setting loading to false after initial check');
+        setIsLoading(false);
       } catch (error) {
         console.error('Index: Auth check error:', error);
         if (mounted) {
           setSession(null);
           setUser(null);
-        }
-      } finally {
-        if (mounted) {
-          console.log('Index component: Setting loading to false');
+          initialCheckDone = true;
+          console.log('Index component: Setting loading to false after error');
           setIsLoading(false);
         }
       }

@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -26,7 +25,7 @@ serve(async (req) => {
   }
 
   try {
-    console.log('Starting OwnTru models scraping with improved extraction...');
+    console.log('Starting OwnTru models scraping with improved patterns...');
     
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -79,11 +78,15 @@ serve(async (req) => {
           },
           body: JSON.stringify({
             url: modelUrl,
-            formats: ['markdown'],
+            formats: ['markdown', 'html'],
             onlyMainContent: true,
-            waitFor: 3000,
+            waitFor: 5000,
             timeout: 30000,
-            removeBase64Images: true
+            removeBase64Images: true,
+            actions: [{
+              type: 'wait',
+              milliseconds: 3000
+            }]
           })
         });
 
@@ -100,8 +103,9 @@ serve(async (req) => {
         }
 
         const content = modelData.data?.markdown || '';
+        const htmlContent = modelData.data?.html || '';
         console.log(`Raw content length for ${modelUrl}: ${content.length} chars`);
-        console.log(`First 500 chars:`, content.substring(0, 500));
+        console.log(`Sample content:`, content.substring(0, 1000));
         
         if (content.length < 100) {
           console.log(`Insufficient content for ${modelUrl}, skipping`);
@@ -118,211 +122,227 @@ serve(async (req) => {
           display_name: urlSlug.toUpperCase(),
         };
 
-        // Extract title/display name - look for main headings
-        const titlePatterns = [
-          /^#\s+([A-Z][A-Z\s]{2,30})\s*$/gm,
-          /^##\s+([A-Z][A-Z\s]{2,30})\s*$/gm,
-          /\*\*([A-Z][A-Z\s]{3,30})\*\*/g,
-          /^([A-Z][A-Z\s]{3,30})$/gm
+        // Look for patterns like "TRU28684R // 4 beds // 2 baths // 1,791 sq. ft. // 28x68"
+        const specPatterns = [
+          // Pattern: "TRU28684R // 4 beds // 2 baths // 1,791 sq. ft. // 28x68"
+          /([A-Z]{3}\d{5}[A-Z])\s*\/\/\s*(\d+)\s*beds?\s*\/\/\s*(\d+(?:\.\d+)?)\s*baths?\s*\/\/\s*([\d,]+)\s*sq\.?\s*ft\.?\s*\/\/\s*(\d+)x(\d+)/gi,
+          // Alternative patterns
+          /(\d+)\s*bed[s]?\s*[\/\-\|]\s*(\d+(?:\.\d+)?)\s*bath[s]?\s*[\/\-\|]\s*([\d,]+)\s*sq\.?\s*ft\.?\s*[\/\-\|]\s*(\d+)\s*[x×]\s*(\d+)/gi,
+          /(\d+)\s*BR\s*[\/\-\|]\s*(\d+(?:\.\d+)?)\s*BA\s*[\/\-\|]\s*([\d,]+)\s*SF\s*[\/\-\|]\s*(\d+)\s*[x×]\s*(\d+)/gi,
         ];
 
-        for (const pattern of titlePatterns) {
+        let specFound = false;
+
+        for (const pattern of specPatterns) {
           const matches = [...content.matchAll(pattern)];
+          console.log(`Testing pattern ${pattern.source} - found ${matches.length} matches`);
+          
           for (const match of matches) {
-            if (match && match[1]) {
-              const title = match[1].trim();
-              if (title.length >= 3 && title.length <= 30 && 
-                  !title.includes('OWNTRU') && 
-                  !title.includes('HOME') &&
-                  !title.includes('MOBILE') &&
-                  title.match(/^[A-Z\s]+$/)) {
-                homeData.display_name = title;
-                homeData.model = title.replace(/\s+/g, '');
-                console.log(`Found title: ${title}`);
+            console.log(`Match found:`, match);
+            
+            if (pattern.source.includes('([A-Z]{3}\\d{5}[A-Z])')) {
+              // Full pattern match: TRU28684R // 4 beds // 2 baths // 1,791 sq. ft. // 28x68
+              if (match[1]) homeData.display_name = match[1];
+              if (match[2]) homeData.bedrooms = parseInt(match[2]);
+              if (match[3]) homeData.bathrooms = parseFloat(match[3]);
+              if (match[4]) homeData.square_footage = parseInt(match[4].replace(/,/g, ''));
+              if (match[5] && match[6]) {
+                homeData.width_feet = parseInt(match[5]);
+                homeData.length_feet = parseInt(match[6]);
+              }
+            } else {
+              // Other patterns
+              if (match[1]) homeData.bedrooms = parseInt(match[1]);
+              if (match[2]) homeData.bathrooms = parseFloat(match[2]);
+              if (match[3]) homeData.square_footage = parseInt(match[3].replace(/,/g, ''));
+              if (match[4] && match[5]) {
+                homeData.width_feet = parseInt(match[4]);
+                homeData.length_feet = parseInt(match[5]);
+              }
+            }
+            
+            specFound = true;
+            console.log(`Extracted specs:`, {
+              beds: homeData.bedrooms,
+              baths: homeData.bathrooms,
+              sqft: homeData.square_footage,
+              dimensions: `${homeData.width_feet}x${homeData.length_feet}`
+            });
+            break;
+          }
+          
+          if (specFound) break;
+        }
+
+        // If main pattern didn't work, try individual extraction
+        if (!homeData.bedrooms || !homeData.bathrooms || !homeData.square_footage) {
+          console.log('Main pattern failed, trying individual extraction...');
+          
+          // Extract bedrooms
+          const bedroomPatterns = [
+            /(\d+)\s*(?:bed|BR)(?:room)?s?\b/gi,
+            /bed(?:room)?s?[\s:]*(\d+)/gi,
+          ];
+
+          for (const pattern of bedroomPatterns) {
+            const matches = [...content.matchAll(pattern)];
+            for (const match of matches) {
+              const beds = parseInt(match[1]);
+              if (beds >= 1 && beds <= 6) {
+                homeData.bedrooms = beds;
+                console.log(`Found bedrooms: ${beds}`);
                 break;
               }
             }
+            if (homeData.bedrooms) break;
           }
-          if (homeData.display_name !== urlSlug.toUpperCase()) break;
-        }
 
-        // Extract square footage - more specific patterns
-        const sqftPatterns = [
-          /(\d{3,4})[\s\-]*(?:sq\.?\s*ft\.?|square[\s\-]*feet?)\b/gi,
-          /(?:square[\s\-]*footage|sq\.?\s*ft\.?)[\s\:\-]*(\d{3,4})\b/gi,
-          /(?:total|living)[\s\-]*(?:area|space)[\s\:\-]*(\d{3,4})[\s\-]*(?:sq|ft)/gi,
-          /(\d{3,4})[\s\-]*sf\b/gi
-        ];
+          // Extract bathrooms
+          const bathroomPatterns = [
+            /(\d+(?:\.\d+)?)\s*(?:bath|BA)(?:room)?s?\b/gi,
+            /bath(?:room)?s?[\s:]*(\d+(?:\.\d+)?)/gi,
+          ];
 
-        for (const pattern of sqftPatterns) {
-          const matches = [...content.matchAll(pattern)];
-          for (const match of matches) {
-            if (match && match[1]) {
-              const sqft = parseInt(match[1]);
-              if (sqft >= 400 && sqft <= 2500) {
+          for (const pattern of bathroomPatterns) {
+            const matches = [...content.matchAll(pattern)];
+            for (const match of matches) {
+              const baths = parseFloat(match[1]);
+              if (baths >= 0.5 && baths <= 5) {
+                homeData.bathrooms = baths;
+                console.log(`Found bathrooms: ${baths}`);
+                break;
+              }
+            }
+            if (homeData.bathrooms) break;
+          }
+
+          // Extract square footage
+          const sqftPatterns = [
+            /([\d,]+)\s*sq\.?\s*ft\.?\b/gi,
+            /sq\.?\s*ft\.?[\s:]*(\d{3,4})/gi,
+            /(1,?\d{3})\s*SF\b/gi,
+          ];
+
+          for (const pattern of sqftPatterns) {
+            const matches = [...content.matchAll(pattern)];
+            for (const match of matches) {
+              const sqft = parseInt(match[1].replace(/,/g, ''));
+              if (sqft >= 500 && sqft <= 3000) {
                 homeData.square_footage = sqft;
                 console.log(`Found square footage: ${sqft}`);
                 break;
               }
             }
+            if (homeData.square_footage) break;
           }
-          if (homeData.square_footage) break;
-        }
 
-        // Extract bedrooms and bathrooms
-        const bedroomPatterns = [
-          /(\d+)[\s\-]*bed(?:room)?s?\b/gi,
-          /bed(?:room)?s?[\s\:\-]*(\d+)/gi,
-          /(\d+)[\s\-]*br\b/gi
-        ];
+          // Extract dimensions
+          const dimensionPatterns = [
+            /(\d{2})\s*[x×]\s*(\d{2})/gi,
+            /(\d{2})\s*[′']\s*[x×]\s*(\d{2})\s*[′']/gi,
+          ];
 
-        for (const pattern of bedroomPatterns) {
-          const matches = [...content.matchAll(pattern)];
-          for (const match of matches) {
-            if (match && match[1]) {
-              const bedrooms = parseInt(match[1]);
-              if (bedrooms >= 1 && bedrooms <= 5) {
-                homeData.bedrooms = bedrooms;
-                console.log(`Found bedrooms: ${bedrooms}`);
-                break;
-              }
-            }
-          }
-          if (homeData.bedrooms) break;
-        }
-
-        const bathroomPatterns = [
-          /(\d+(?:\.\d+)?)[\s\-]*bath(?:room)?s?\b/gi,
-          /bath(?:room)?s?[\s\:\-]*(\d+(?:\.\d+)?)/gi,
-          /(\d+(?:\.\d+)?)[\s\-]*ba\b/gi
-        ];
-
-        for (const pattern of bathroomPatterns) {
-          const matches = [...content.matchAll(pattern)];
-          for (const match of matches) {
-            if (match && match[1]) {
-              const bathrooms = parseFloat(match[1]);
-              if (bathrooms >= 0.5 && bathrooms <= 4) {
-                homeData.bathrooms = bathrooms;
-                console.log(`Found bathrooms: ${bathrooms}`);
-                break;
-              }
-            }
-          }
-          if (homeData.bathrooms) break;
-        }
-
-        // Extract dimensions
-        const dimensionPatterns = [
-          /(\d+)[\s\-]*[′'x×]\s*(\d+)[\s\-]*[′']/gi,
-          /(\d+)[\s\-]*ft[\s\-]*[x×][\s\-]*(\d+)[\s\-]*ft/gi,
-          /(\d+)[\s\-]*by[\s\-]*(\d+)/gi,
-          /length[\s\:\-]*(\d+)[^0-9]*width[\s\:\-]*(\d+)/gi,
-          /width[\s\:\-]*(\d+)[^0-9]*length[\s\:\-]*(\d+)/gi
-        ];
-
-        for (const pattern of dimensionPatterns) {
-          const matches = [...content.matchAll(pattern)];
-          for (const match of matches) {
-            if (match && match[1] && match[2]) {
+          for (const pattern of dimensionPatterns) {
+            const matches = [...content.matchAll(pattern)];
+            for (const match of matches) {
               const dim1 = parseInt(match[1]);
               const dim2 = parseInt(match[2]);
-              if (dim1 >= 10 && dim1 <= 50 && dim2 >= 30 && dim2 <= 120) {
-                homeData.width_feet = Math.min(dim1, dim2);
-                homeData.length_feet = Math.max(dim1, dim2);
-                console.log(`Found dimensions: ${homeData.width_feet}x${homeData.length_feet}`);
+              if (dim1 >= 12 && dim1 <= 32 && dim2 >= 40 && dim2 <= 90) {
+                homeData.width_feet = dim1;
+                homeData.length_feet = dim2;
+                console.log(`Found dimensions: ${dim1}x${dim2}`);
                 break;
               }
             }
+            if (homeData.width_feet && homeData.length_feet) break;
           }
-          if (homeData.length_feet && homeData.width_feet) break;
         }
 
-        // Extract description - look for substantial paragraphs
-        const lines = content.split('\n');
-        let bestDescription = '';
-        
-        for (let j = 0; j < lines.length; j++) {
-          const line = lines[j].trim();
-          
-          // Skip headers, navigation, and short lines
-          if (line.startsWith('#') || 
-              line.startsWith('*') || 
-              line.length < 100 ||
-              line.toLowerCase().includes('owntru.com') ||
-              line.toLowerCase().includes('navigation') ||
-              line.toLowerCase().includes('menu') ||
-              line.toLowerCase().includes('cookie')) {
-            continue;
-          }
-          
-          // Look for descriptive content
-          if (line.length >= 100 && line.length <= 800) {
-            const cleanLine = line.replace(/[*#\[\]]/g, '').trim();
-            if (cleanLine.length >= 100 && 
-                cleanLine.split(' ').length >= 15 &&
-                cleanLine.match(/[a-z]/)) {
-              bestDescription = cleanLine;
+        // Extract model name/title
+        const titlePatterns = [
+          /(?:^|\n)#\s*([A-Z][A-Z\s]{2,20})\s*$/gm,
+          /\*\*([A-Z][A-Z\s]{3,20})\*\*/g,
+          /([A-Z]{3}\d{5}[A-Z])/g,
+        ];
+
+        for (const pattern of titlePatterns) {
+          const matches = [...content.matchAll(pattern)];
+          for (const match of matches) {
+            const title = match[1].trim();
+            if (title.length >= 3 && title.length <= 20 && 
+                !title.includes('OWNTRU') && 
+                !title.includes('HOME') &&
+                !title.includes('MOBILE')) {
+              homeData.display_name = title;
+              homeData.model = title.replace(/\s+/g, '');
+              console.log(`Found title: ${title}`);
               break;
             }
+          }
+          if (homeData.display_name !== urlSlug.toUpperCase()) break;
+        }
+
+        // Extract description - look for meaningful paragraphs
+        const contentLines = content.split('\n');
+        let bestDescription = '';
+        
+        for (const line of contentLines) {
+          const cleanLine = line.trim().replace(/[#*\[\]]/g, '');
+          
+          if (cleanLine.length >= 100 && cleanLine.length <= 500 &&
+              !cleanLine.toLowerCase().includes('owntru.com') &&
+              !cleanLine.toLowerCase().includes('navigation') &&
+              !cleanLine.toLowerCase().includes('cookie') &&
+              !cleanLine.includes('//') &&
+              cleanLine.match(/[a-z]/) &&
+              cleanLine.split(' ').length >= 15) {
+            bestDescription = cleanLine;
+            console.log(`Found description: ${cleanLine.substring(0, 100)}...`);
+            break;
           }
         }
         
         if (bestDescription) {
           homeData.description = bestDescription;
-          console.log(`Found description: ${bestDescription.substring(0, 100)}...`);
         }
 
-        // Extract features - look for bullet points and feature lists
+        // Extract features - look for actual home features, not navigation
         const features: string[] = [];
-        const contentLines = content.split('\n');
-        
-        for (let j = 0; j < contentLines.length && features.length < 15; j++) {
-          const line = contentLines[j].trim();
-          
-          // Look for bullet points or list items
-          if (line.startsWith('*') || line.startsWith('-') || line.startsWith('•')) {
-            let feature = line.replace(/^[\*\-•]\s*/, '').trim();
+        const featureKeywords = [
+          'kitchen', 'cabinet', 'counter', 'appliance', 'island',
+          'bathroom', 'shower', 'tub', 'vanity', 'toilet',
+          'bedroom', 'closet', 'storage', 'room',
+          'flooring', 'vinyl', 'carpet', 'tile', 'wood',
+          'window', 'door', 'ceiling', 'wall', 'paint',
+          'electric', 'plumbing', 'heating', 'cooling', 'insulation'
+        ];
+
+        for (const line of contentLines) {
+          if ((line.startsWith('*') || line.startsWith('-') || line.startsWith('•')) && 
+              line.length >= 20 && line.length <= 120) {
             
-            // Clean up the feature text
+            let feature = line.replace(/^[\*\-•]\s*/, '').trim();
             feature = feature.replace(/\[.*?\]/g, '').trim();
             
-            // Validate feature
-            if (feature.length >= 10 && 
-                feature.length <= 100 && 
+            const hasRelevantKeyword = featureKeywords.some(keyword => 
+              feature.toLowerCase().includes(keyword)
+            );
+            
+            if (hasRelevantKeyword && 
                 !feature.toLowerCase().includes('owntru') &&
                 !feature.toLowerCase().includes('http') &&
                 !feature.toLowerCase().includes('navigation') &&
-                !feature.toLowerCase().includes('menu') &&
-                !feature.toLowerCase().includes('cookie') &&
-                !features.includes(feature) &&
-                feature.match(/[a-zA-Z]/) &&
-                (feature.toLowerCase().includes('kitchen') ||
-                 feature.toLowerCase().includes('bathroom') ||
-                 feature.toLowerCase().includes('bedroom') ||
-                 feature.toLowerCase().includes('flooring') ||
-                 feature.toLowerCase().includes('cabinet') ||
-                 feature.toLowerCase().includes('appliance') ||
-                 feature.toLowerCase().includes('window') ||
-                 feature.toLowerCase().includes('door') ||
-                 feature.toLowerCase().includes('storage') ||
-                 feature.toLowerCase().includes('closet') ||
-                 feature.toLowerCase().includes('counter') ||
-                 feature.toLowerCase().includes('ceiling') ||
-                 feature.toLowerCase().includes('vinyl') ||
-                 feature.toLowerCase().includes('wood') ||
-                 feature.toLowerCase().includes('tile') ||
-                 feature.toLowerCase().includes('carpet'))) {
-              
+                !features.includes(feature)) {
               features.push(feature);
               console.log(`Found feature: ${feature}`);
             }
           }
+          
+          if (features.length >= 10) break;
         }
 
         if (features.length > 0) {
           homeData.features = features;
-          console.log(`Found ${features.length} features total`);
         }
 
         mobileHomes.push(homeData);

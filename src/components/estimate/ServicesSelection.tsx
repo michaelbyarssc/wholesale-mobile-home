@@ -46,10 +46,18 @@ export const ServicesSelection = ({
 }: ServicesSelectionProps) => {
   const { calculateHomeOptionPrice } = useCustomerPricing(user);
 
-  // Use the conditional services hook to get proper pricing
-  // Make sure the selected home is in the mobileHomes array
+  // Fix: Pass the actual home object and its ID correctly to useConditionalServices
   const mobileHomes = selectedHome ? [selectedHome] : [];
-  const { getServicePrice } = useConditionalServices(services, selectedHome?.id, mobileHomes, selectedServices);
+  const selectedHomeId = selectedHome?.id || null;
+  
+  console.log('ServicesSelection Debug:', {
+    selectedHome: selectedHome,
+    selectedHomeId: selectedHomeId,
+    mobileHomesLength: mobileHomes.length,
+    servicesLength: services.length
+  });
+
+  const { getServicePrice } = useConditionalServices(services, selectedHomeId, mobileHomes, selectedServices);
 
   // Fetch home options
   const { data: homeOptions = [] } = useQuery({

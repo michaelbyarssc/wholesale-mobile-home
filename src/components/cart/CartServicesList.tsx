@@ -21,6 +21,8 @@ export const CartServicesList = ({
 }: CartServicesListProps) => {
   const mobileHomes = [item.mobileHome];
   
+  console.log(`CartServicesList - Home: ${item.mobileHome.model}, Width: ${item.mobileHome.width_feet}ft`);
+  
   const {
     availableServices,
     getServicePrice,
@@ -67,13 +69,16 @@ export const CartServicesList = ({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {availableServices.map((service) => {
           const isSelected = item.selectedServices.includes(service.id);
-          // Use the conditional pricing from the hook instead of calculatePrice
+          // Get the raw service cost from conditional pricing
           const serviceCost = getServicePrice(service.id);
+          console.log(`Cart - Service ${service.name}: Raw cost from getServicePrice = ${serviceCost}`);
+          
+          // Apply customer markup to the cost
           const displayPrice = calculatePrice(serviceCost);
+          console.log(`Cart - Service ${service.name}: After markup = ${displayPrice}`);
+          
           const homeWidth = item.mobileHome.width_feet || 0;
           const isDoubleWide = homeWidth > 16;
-          
-          console.log(`Cart - Service ${service.name}: serviceCost = ${serviceCost}, displayPrice = ${displayPrice}, homeWidth = ${homeWidth}ft`);
           
           return (
             <div key={service.id} className="flex items-start space-x-3 p-2 border rounded">

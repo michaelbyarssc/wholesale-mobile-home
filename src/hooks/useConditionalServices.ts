@@ -48,8 +48,11 @@ export const useConditionalServices = (
 
   const getServicePrice = useMemo(() => {
     return (serviceId: string) => {
+      console.log(`getServicePrice called for serviceId: ${serviceId}`);
       const service = services.find(s => s.id === serviceId);
       const selectedMobileHome = mobileHomes.find(home => home.id === selectedHome);
+      
+      console.log(`Found service: ${service?.name}, Found home: ${selectedMobileHome?.model}`);
       
       if (!service || !selectedMobileHome) {
         console.log(`Service price calculation failed: service=${!!service}, home=${!!selectedMobileHome}`);
@@ -61,6 +64,7 @@ export const useConditionalServices = (
       const isDoubleWide = homeWidth > 16;
 
       console.log(`Service ${service.name}: Home width = ${homeWidth}ft, isDoubleWide = ${isDoubleWide}`);
+      console.log(`Service pricing - single_wide_price: ${service.single_wide_price}, double_wide_price: ${service.double_wide_price}, base_price: ${service.price}`);
 
       // Use the appropriate pricing based on home width
       let price = 0;
@@ -70,7 +74,7 @@ export const useConditionalServices = (
         price = service.single_wide_price || service.price;
       }
 
-      console.log(`Service ${service.name} final price: ${price}`);
+      console.log(`Service ${service.name} final calculated price: ${price}`);
       return price;
     };
   }, [services, selectedHome, mobileHomes]);

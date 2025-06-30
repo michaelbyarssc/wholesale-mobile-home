@@ -101,10 +101,10 @@ export const MobileHomeEditDialog = ({ mobileHome, open, onClose, onSave }: Mobi
     const files = event.target.files;
     if (!files || !mobileHome) return;
 
-    if (images.length + files.length > 15) {
+    if (images.length + files.length > 40) {
       toast({
         title: "Upload Limit Exceeded",
-        description: `You can only upload up to 15 images. Currently you have ${images.length} images.`,
+        description: `You can only upload up to 40 images. Currently you have ${images.length} images.`,
         variant: "destructive",
       });
       return;
@@ -431,7 +431,7 @@ export const MobileHomeEditDialog = ({ mobileHome, open, onClose, onSave }: Mobi
           {/* Right Column - Images */}
           <div className="space-y-4">
             <div className="flex justify-between items-center">
-              <h3 className="text-lg font-semibold">Images ({images.length}/15)</h3>
+              <h3 className="text-lg font-semibold">Images ({images.length}/40)</h3>
               <div className="relative">
                 <input
                   type="file"
@@ -439,18 +439,18 @@ export const MobileHomeEditDialog = ({ mobileHome, open, onClose, onSave }: Mobi
                   accept="image/*"
                   onChange={handleFileUpload}
                   className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                  disabled={uploading || images.length >= 15}
+                  disabled={uploading || images.length >= 40}
                 />
-                <Button size="sm" disabled={uploading || images.length >= 15}>
+                <Button size="sm" disabled={uploading || images.length >= 40}>
                   <Upload className="h-4 w-4 mr-1" />
                   {uploading ? 'Uploading...' : 'Upload Images'}
                 </Button>
               </div>
             </div>
             
-            {images.length >= 15 && (
+            {images.length >= 40 && (
               <p className="text-sm text-amber-600">
-                Maximum of 15 images reached. Delete some images to upload new ones.
+                Maximum of 40 images reached. Delete some images to upload new ones.
               </p>
             )}
             
@@ -520,7 +520,7 @@ export const MobileHomeEditDialog = ({ mobileHome, open, onClose, onSave }: Mobi
                 <div className="text-center text-gray-500">
                   <Image className="h-8 w-8 mx-auto mb-2" />
                   <span className="text-sm">No images uploaded</span>
-                  <p className="text-xs text-gray-400 mt-1">Upload up to 15 images</p>
+                  <p className="text-xs text-gray-400 mt-1">Upload up to 40 images</p>
                 </div>
               </div>
             )}

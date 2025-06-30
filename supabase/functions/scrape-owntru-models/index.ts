@@ -26,7 +26,7 @@ serve(async (req) => {
   }
 
   try {
-    console.log('Starting OwnTru models scraping...');
+    console.log('Starting TrueMobileHomes models scraping...');
     
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -62,7 +62,7 @@ serve(async (req) => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          url: 'https://owntru.com/models/',
+          url: 'https://www.truemobilehomes.com/',
           formats: ['markdown'],
           onlyMainContent: true,
           timeout: 30000
@@ -72,14 +72,14 @@ serve(async (req) => {
       if (response.ok) {
         const data = await response.json();
         if (data.success && data.data && data.data.markdown) {
-          console.log('Successfully scraped OwnTru models page');
+          console.log('Successfully scraped TrueMobileHomes page');
           
           const markdown = data.data.markdown;
           console.log('Scraped content length:', markdown.length);
           console.log('Content sample:', markdown.substring(0, 500));
           
           // Parse the scraped content with improved logic
-          mobileHomes = parseOwnTruModels(markdown);
+          mobileHomes = parseTrueMobileHomes(markdown);
           console.log(`Parsed ${mobileHomes.length} models from scraped content`);
           
           if (mobileHomes.length > 0) {
@@ -99,7 +99,7 @@ serve(async (req) => {
       
       return new Response(JSON.stringify({
         success: false,
-        message: 'Failed to scrape OwnTru models. Please check the Firecrawl API key and try again.',
+        message: 'Failed to scrape TrueMobileHomes models. Please check the Firecrawl API key and try again.',
         error: 'No models could be scraped from the website'
       }), {
         status: 500,
@@ -109,20 +109,13 @@ serve(async (req) => {
 
     console.log(`Processing ${mobileHomes.length} mobile homes...`);
 
-    // Filter out SENSATION and SPLENDOR models
-    const filteredHomes = mobileHomes.filter(home => 
-      !['SENSATION', 'SPLENDOR'].includes(home.model.toUpperCase())
-    );
-
-    console.log(`After filtering out SENSATION and SPLENDOR: ${filteredHomes.length} homes to process`);
-
     // Update database
     let updatedCount = 0;
     let createdCount = 0;
 
-    for (const homeData of filteredHomes) {
+    for (const homeData of mobileHomes) {
       try {
-        // Check if home already exists (excluding SENSATION and SPLENDOR)
+        // Check if home already exists
         const { data: existingHome } = await supabase
           .from('mobile_homes')
           .select('id')
@@ -167,7 +160,7 @@ serve(async (req) => {
           const { error } = await supabase
             .from('mobile_homes')
             .insert({
-              manufacturer: 'OwnTru',
+              manufacturer: 'TrueMobileHomes',
               series: homeData.series,
               model: homeData.model,
               display_name: homeData.display_name,
@@ -198,13 +191,12 @@ serve(async (req) => {
 
     const result = {
       success: true,
-      message: `Successfully processed ${filteredHomes.length} mobile homes from scraping (excluded SENSATION and SPLENDOR). Created: ${createdCount}, Updated: ${updatedCount}`,
+      message: `Successfully processed ${mobileHomes.length} mobile homes from TrueMobileHomes scraping. Created: ${createdCount}, Updated: ${updatedCount}`,
       data: {
-        totalProcessed: filteredHomes.length,
+        totalProcessed: mobileHomes.length,
         created: createdCount,
         updated: updatedCount,
-        excludedModels: ['SENSATION', 'SPLENDOR'],
-        homes: filteredHomes.map(h => ({
+        homes: mobileHomes.map(h => ({
           display_name: h.display_name,
           model: h.model,
           square_footage: h.square_footage,
@@ -228,7 +220,7 @@ serve(async (req) => {
     return new Response(JSON.stringify({
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
-      message: 'Failed to process OwnTru models'
+      message: 'Failed to process TrueMobileHomes models'
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -236,11 +228,11 @@ serve(async (req) => {
   }
 });
 
-// Helper function to parse scraped markdown content with improved logic
-function parseOwnTruModels(markdown: string): MobileHomeData[] {
+// Helper function to parse scraped markdown content from TrueMobileHomes
+function parseTrueMobileHomes(markdown: string): MobileHomeData[] {
   const models: MobileHomeData[] = [];
   
-  console.log('Starting to parse OwnTru markdown content');
+  console.log('Starting to parse TrueMobileHomes markdown content');
   
   try {
     // Split content into sections and look for patterns
@@ -253,11 +245,12 @@ function parseOwnTruModels(markdown: string): MobileHomeData[] {
       const line = lines[i];
       const nextLine = i + 1 < lines.length ? lines[i + 1] : '';
       
-      // Look for series patterns (various formats)
-      if (line.match(/^#+\s*(TRU|ASPIRE|ELEMENT|INSPIRE|PREMIER|CLASSIC|ADVANTAGE|CELEBRATION|COMPASS|DELIGHT|ESSENCE|HARMONY|LEGACY|MOMENTUM|NAVIGATE|OPTIMIZE|PRECISION|QUEST|RESOLVE|SUMMIT|TRIUMPH|VELOCITY|WONDER|ZENITH)\s*(SERIES|LINE)?/i)) {
-        const seriesMatch = line.match(/^#+\s*([A-Z]+)/i);
+      // Look for series patterns - common mobile home series names
+      if (line.match(/^#+\s*(Single|Double|Triple|Multi|Wide|Homes?|Series|Collection|Line)\s*/i) ||
+          line.match(/^(Single Wide|Double Wide|Triple Wide|Multi-Section)/i)) {
+        const seriesMatch = line.match(/^#+\s*([A-Za-z\s]+)/) || line.match(/^([A-Za-z\s]+)/);
         if (seriesMatch) {
-          currentSeries = seriesMatch[1].toUpperCase();
+          currentSeries = seriesMatch[1].trim();
           console.log(`Found series: ${currentSeries}`);
         }
         continue;
@@ -270,26 +263,18 @@ function parseOwnTruModels(markdown: string): MobileHomeData[] {
       modelMatch = line.match(/^#+\s*([A-Z][A-Z0-9\s\-]+)$/) || 
                   line.match(/^\*\*([A-Z][A-Z0-9\s\-]+)\*\*$/) ||
                   line.match(/^([A-Z][A-Z0-9\s\-]{2,})$/) ||
-                  line.match(/^Model:\s*([A-Z][A-Z0-9\s\-]+)$/i);
+                  line.match(/^Model:\s*([A-Z][A-Z0-9\s\-]+)$/i) ||
+                  line.match(/^([A-Z]+\s*\d+[A-Z]*)\s*$/);
       
       if (modelMatch && currentSeries) {
         // Save previous model if exists
         if (currentModel.model && currentModel.series) {
           const completedModel = createModelData(currentModel);
-          if (!['SENSATION', 'SPLENDOR'].includes(completedModel.model.toUpperCase())) {
-            models.push(completedModel);
-          }
+          models.push(completedModel);
         }
         
         // Start new model
         const modelName = modelMatch[1].trim();
-        
-        // Skip if it's SENSATION or SPLENDOR
-        if (['SENSATION', 'SPLENDOR'].includes(modelName.toUpperCase())) {
-          currentModel = {};
-          isInModelSection = false;
-          continue;
-        }
         
         currentModel = {
           series: currentSeries,
@@ -370,9 +355,7 @@ function parseOwnTruModels(markdown: string): MobileHomeData[] {
     // Don't forget the last model
     if (currentModel.model && currentModel.series) {
       const completedModel = createModelData(currentModel);
-      if (!['SENSATION', 'SPLENDOR'].includes(completedModel.model.toUpperCase())) {
-        models.push(completedModel);
-      }
+      models.push(completedModel);
     }
     
     console.log(`Successfully parsed ${models.length} models`);

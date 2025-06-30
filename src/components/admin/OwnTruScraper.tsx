@@ -29,7 +29,7 @@ export const OwnTruScraper = () => {
     setResult(null);
     
     try {
-      console.log('Starting OwnTru scraping...');
+      console.log('Starting TrueMobileHomes scraping...');
       console.log('Calling edge function: scrape-owntru-models');
       
       const { data, error } = await supabase.functions.invoke('scrape-owntru-models', {
@@ -53,12 +53,12 @@ export const OwnTruScraper = () => {
       } else {
         toast({
           title: "Error",
-          description: data?.message || "Failed to scrape OwnTru models",
+          description: data?.message || "Failed to scrape mobile home models",
           variant: "destructive",
         });
       }
     } catch (error) {
-      console.error('Error scraping OwnTru models:', error);
+      console.error('Error scraping mobile home models:', error);
       
       let errorMessage = 'Unknown error occurred';
       if (error instanceof Error) {
@@ -74,7 +74,7 @@ export const OwnTruScraper = () => {
       
       setResult({
         success: false,
-        message: 'Failed to scrape OwnTru models',
+        message: 'Failed to scrape mobile home models',
         error: errorMessage
       });
       
@@ -93,12 +93,12 @@ export const OwnTruScraper = () => {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Download className="h-5 w-5" />
-          OwnTru Models Scraper
+          TrueMobileHomes Models Scraper
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="text-sm text-gray-600">
-          <p>This tool will scrape mobile home data from OwnTru.com including:</p>
+          <p>This tool will scrape mobile home data from TrueMobileHomes.com including:</p>
           <ul className="list-disc list-inside mt-2 space-y-1">
             <li>Model names and descriptions</li>
             <li>Square footage</li>
@@ -119,12 +119,12 @@ export const OwnTruScraper = () => {
           {isLoading ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Scraping OwnTru Models...
+              Scraping TrueMobileHomes Models...
             </>
           ) : (
             <>
               <Download className="mr-2 h-4 w-4" />
-              Scrape OwnTru Models
+              Scrape TrueMobileHomes Models
             </>
           )}
         </Button>

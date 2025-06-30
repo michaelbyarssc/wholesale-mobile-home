@@ -1,4 +1,3 @@
-
 import { useMemo } from 'react';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -59,6 +58,18 @@ export const useConditionalServices = (
         return 0;
       }
 
+      // Special logging for Vinyl Skirting
+      if (service.name && service.name.toLowerCase().includes('vinyl skirting')) {
+        console.log(`VINYL SKIRTING DEBUG:`);
+        console.log(`- Service ID: ${service.id}`);
+        console.log(`- Service name: ${service.name}`);
+        console.log(`- Base price: ${service.price}`);
+        console.log(`- Single wide price: ${service.single_wide_price}`);
+        console.log(`- Double wide price: ${service.double_wide_price}`);
+        console.log(`- Cost: ${service.cost}`);
+        console.log(`- All service data:`, service);
+      }
+
       // Determine if it's a single wide or double wide based on WIDTH (not length)
       const homeWidth = selectedMobileHome.width_feet || 0;
       const isDoubleWide = homeWidth > 16;
@@ -69,12 +80,18 @@ export const useConditionalServices = (
       // Use the appropriate pricing based on home width
       let price = 0;
       if (isDoubleWide) {
-        price = service.double_wide_price || service.price;
+        price = service.double_wide_price || service.price || 0;
       } else {
-        price = service.single_wide_price || service.price;
+        price = service.single_wide_price || service.price || 0;
       }
 
       console.log(`Service ${service.name} final calculated price: ${price}`);
+      
+      // Extra logging for vinyl skirting
+      if (service.name && service.name.toLowerCase().includes('vinyl skirting')) {
+        console.log(`VINYL SKIRTING FINAL PRICE: ${price}`);
+      }
+      
       return price;
     };
   }, [services, selectedHome, mobileHomes]);

@@ -85,7 +85,7 @@ serve(async (req) => {
     const mainMarkdown = mainPageData.data?.markdown || '';
     console.log('Main markdown length:', mainMarkdown.length);
 
-    // Extract individual model URLs from the main page using improved regex
+    // Extract individual model URLs from the main page
     const modelUrls = new Set<string>();
     
     console.log('Extracting model URLs from main page...');
@@ -147,7 +147,7 @@ serve(async (req) => {
 
     // Process models in smaller batches to avoid timeout
     const mobileHomes: MobileHomeData[] = [];
-    const maxModels = Math.min(8, cleanUrls.length); // Reduced from 15 to 8
+    const maxModels = Math.min(6, cleanUrls.length); // Reduced to 6 for more processing time per model
     let processedCount = 0;
 
     console.log(`Processing ${maxModels} models to avoid timeout...`);
@@ -160,7 +160,7 @@ serve(async (req) => {
         
         // Add timeout to individual requests
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout per request
+        const timeoutId = setTimeout(() => controller.abort(), 20000); // Increased timeout
 
         const modelPageResponse = await fetch('https://api.firecrawl.dev/v0/scrape', {
           method: 'POST',
@@ -170,11 +170,11 @@ serve(async (req) => {
           },
           body: JSON.stringify({
             url: modelUrl,
-            formats: ['markdown'],
+            formats: ['markdown', 'html'],
             onlyMainContent: true,
-            includeTags: ['h1', 'h2', 'h3', 'p', 'div', 'ul', 'li'],
+            includeTags: ['h1', 'h2', 'h3', 'p', 'div', 'ul', 'li', 'span', 'td', 'th'],
             excludeTags: ['nav', 'footer', 'header', 'script', 'style'],
-            waitFor: 2000
+            waitFor: 3000
           }),
           signal: controller.signal
         });
@@ -194,7 +194,11 @@ serve(async (req) => {
         }
 
         const modelMarkdown = modelPageData.data?.markdown || '';
+        const modelHtml = modelPageData.data?.html || '';
         console.log(`Content length for ${modelUrl}:`, modelMarkdown.length);
+        
+        // Log a sample of the content for debugging
+        console.log(`Sample content from ${modelUrl}:`, modelMarkdown.substring(0, 300));
 
         if (modelMarkdown.length < 100) {
           console.log(`Skipping ${modelUrl} - insufficient content`);
@@ -206,16 +210,19 @@ serve(async (req) => {
         const urlModelName = urlParts[urlParts.length - 1] || urlParts[urlParts.length - 2];
         let modelName = urlModelName.replace(/-/g, ' ').toUpperCase();
 
-        // Try to find a better model name in the content
+        // Try to find a better model name in the content with more specific patterns
         const titlePatterns = [
-          /^#{1,3}\s+([A-Z][A-Z\s0-9]+?)(?:\s*$|\n)/m,
-          /\*\*([A-Z][A-Z\s0-9]+?)\*\*/,
-          /^([A-Z][A-Z\s0-9]{3,20})(?:\s*\n|\s*$)/m
+          /^#\s+([A-Z][A-Z\s0-9]+)$/m,
+          /^##\s+([A-Z][A-Z\s0-9]+)$/m,
+          /^###\s+([A-Z][A-Z\s0-9]+)$/m,
+          /\*\*([A-Z][A-Z\s0-9]{2,15})\*\*/,
+          /^([A-Z][A-Z\s0-9]{2,15})(?:\s*\n|\s*$)/m,
+          /<h[1-3][^>]*>([A-Z][A-Z\s0-9]{2,15})<\/h[1-3]>/i
         ];
 
         for (const pattern of titlePatterns) {
-          const titleMatch = modelMarkdown.match(pattern);
-          if (titleMatch && titleMatch[1].length >= 3 && titleMatch[1].length <= 25) {
+          const titleMatch = modelMarkdown.match(pattern) || modelHtml.match(pattern);
+          if (titleMatch && titleMatch[1] && titleMatch[1].length >= 3 && titleMatch[1].length <= 20) {
             modelName = titleMatch[1].trim();
             console.log(`Found title: ${modelName}`);
             break;
@@ -228,31 +235,39 @@ serve(async (req) => {
           display_name: modelName,
         };
 
-        // Extract description with multiple patterns
+        // Extract description with better patterns
         const descriptionPatterns = [
-          /(?:description|about|overview)[:\s]*([^.\n]+(?:\.[^.\n]+){0,2})/i,
-          /^([^.\n]{20,200})/m,
-          /\*\*[^*]+\*\*\s*([^.\n]{20,200})/
+          /(?:description|about|overview)[:\s]*([^.\n]{30,300}\.?)/i,
+          /^([A-Z][^.\n]{30,300}\.)/m,
+          /\*\*[^*]+\*\*\s*([^.\n]{30,300}\.)/,
+          /<p[^>]*>([^<]{30,300}\.?)<\/p>/i,
+          /^[^#\*\[\n]+([^.\n]{30,300}\.)/m
         ];
 
         for (const pattern of descriptionPatterns) {
-          const descMatch = modelMarkdown.match(pattern);
-          if (descMatch && descMatch[1] && descMatch[1].length > 20 && descMatch[1].length < 300) {
-            modelData.description = descMatch[1].trim().replace(/[*#]/g, '');
-            console.log(`Found description: ${modelData.description.substring(0, 50)}...`);
-            break;
+          const descMatch = (modelMarkdown + ' ' + modelHtml).match(pattern);
+          if (descMatch && descMatch[1] && descMatch[1].length > 30 && descMatch[1].length < 400) {
+            const desc = descMatch[1].trim().replace(/[*#\[\]]/g, '').replace(/\s+/g, ' ');
+            if (!desc.includes('owntru.com') && !desc.includes('href=') && !desc.includes('](')) {
+              modelData.description = desc;
+              console.log(`Found description: ${modelData.description.substring(0, 50)}...`);
+              break;
+            }
           }
         }
 
-        // Extract square footage with improved patterns
+        // Extract square footage with more comprehensive patterns
         const sqftPatterns = [
-          /(\d{3,4})\s*(?:sq\.?\s*ft|sqft|square\s*feet)/i,
+          /(\d{3,4})\s*(?:sq\.?\s*ft\.?|sqft|square\s*feet)/i,
           /(?:size|area|footage)[:\s]*(\d{3,4})/i,
-          /(\d{3,4})\s*sf/i
+          /(\d{3,4})\s*sf\b/i,
+          /(\d{3,4})\s*sq/i,
+          /<td[^>]*>(\d{3,4})[^<]*(?:sq|ft)/i,
+          /square\s*footage[:\s]*(\d{3,4})/i
         ];
 
         for (const pattern of sqftPatterns) {
-          const sqftMatch = modelMarkdown.match(pattern);
+          const sqftMatch = (modelMarkdown + ' ' + modelHtml).match(pattern);
           if (sqftMatch) {
             const sqft = parseInt(sqftMatch[1]);
             if (sqft >= 400 && sqft <= 3000) {
@@ -265,12 +280,14 @@ serve(async (req) => {
 
         // Extract bedrooms with improved patterns
         const bedroomPatterns = [
-          /(\d+)\s*(?:bed|bedroom|br)/i,
-          /(?:bed|bedroom|br)[:\s]*(\d+)/i
+          /(\d+)\s*(?:bed|bedroom|br)\b/i,
+          /(?:bed|bedroom|br)[:\s]*(\d+)/i,
+          /<td[^>]*>(\d+)[^<]*bed/i,
+          /bedrooms?[:\s]*(\d+)/i
         ];
 
         for (const pattern of bedroomPatterns) {
-          const bedroomMatch = modelMarkdown.match(pattern);
+          const bedroomMatch = (modelMarkdown + ' ' + modelHtml).match(pattern);
           if (bedroomMatch) {
             const bedrooms = parseInt(bedroomMatch[1]);
             if (bedrooms >= 1 && bedrooms <= 6) {
@@ -283,12 +300,14 @@ serve(async (req) => {
 
         // Extract bathrooms with improved patterns
         const bathroomPatterns = [
-          /(\d+(?:\.\d+)?)\s*(?:bath|bathroom|ba)/i,
-          /(?:bath|bathroom|ba)[:\s]*(\d+(?:\.\d+)?)/i
+          /(\d+(?:\.\d+)?)\s*(?:bath|bathroom|ba)\b/i,
+          /(?:bath|bathroom|ba)[:\s]*(\d+(?:\.\d+)?)/i,
+          /<td[^>]*>(\d+(?:\.\d+)?)[^<]*bath/i,
+          /bathrooms?[:\s]*(\d+(?:\.\d+)?)/i
         ];
 
         for (const pattern of bathroomPatterns) {
-          const bathroomMatch = modelMarkdown.match(pattern);
+          const bathroomMatch = (modelMarkdown + ' ' + modelHtml).match(pattern);
           if (bathroomMatch) {
             const bathrooms = parseFloat(bathroomMatch[1]);
             if (bathrooms >= 1 && bathrooms <= 4) {
@@ -299,15 +318,19 @@ serve(async (req) => {
           }
         }
 
-        // Extract dimensions with improved patterns
+        // Extract dimensions with comprehensive patterns
         const dimensionPatterns = [
-          /(\d+)(?:\s*[x×]\s*|\s+by\s+)(\d+)(?:\s*ft)?/i,
+          /(\d+)(?:\s*[x×]\s*|\s+by\s+)(\d+)(?:\s*ft|\s*feet)?/i,
           /(?:dimensions|size)[:\s]*(\d+)(?:\s*[x×]\s*|\s+by\s+)(\d+)/i,
-          /(\d+)'?\s*x\s*(\d+)'/i
+          /(\d+)'?\s*x\s*(\d+)'/i,
+          /<td[^>]*>(\d+)[^<]*x[^<]*(\d+)/i,
+          /length[:\s]*(\d+)[^0-9]*width[:\s]*(\d+)/i,
+          /width[:\s]*(\d+)[^0-9]*length[:\s]*(\d+)/i,
+          /(\d+)\s*ft\s*x\s*(\d+)\s*ft/i
         ];
 
         for (const pattern of dimensionPatterns) {
-          const dimensionMatch = modelMarkdown.match(pattern);
+          const dimensionMatch = (modelMarkdown + ' ' + modelHtml).match(pattern);
           if (dimensionMatch) {
             const dim1 = parseInt(dimensionMatch[1]);
             const dim2 = parseInt(dimensionMatch[2]);
@@ -323,26 +346,34 @@ serve(async (req) => {
         // Extract features with improved patterns
         const featurePatterns = [
           /(?:features|includes|amenities)[:\s]*([^.\n]+(?:\.[^.\n]+)*)/i,
-          /•\s*([^.\n]+)/g,
-          /-\s*([^.\n]+)/g,
-          /\*\s*([^.\n]+)/g
+          /•\s*([^.\n]{5,80})/g,
+          /-\s*([^.\n]{5,80})/g,
+          /\*\s*([^.\n]{5,80})/g,
+          /<li[^>]*>([^<]{5,80})<\/li>/gi,
+          /^\s*-\s*([^.\n]{5,80})$/gm
         ];
 
         const features: string[] = [];
+        const combinedContent = modelMarkdown + ' ' + modelHtml;
+        
         for (const pattern of featurePatterns) {
           if (pattern.global) {
             let match;
-            while ((match = pattern.exec(modelMarkdown)) !== null && features.length < 8) {
-              const feature = match[1].trim().replace(/[*#]/g, '');
-              if (feature.length > 5 && feature.length < 80 && !features.includes(feature)) {
+            pattern.lastIndex = 0; // Reset regex state
+            while ((match = pattern.exec(combinedContent)) !== null && features.length < 8) {
+              const feature = match[1].trim().replace(/[*#<>]/g, '').replace(/\s+/g, ' ');
+              if (feature.length > 5 && feature.length < 80 && 
+                  !features.includes(feature) && 
+                  !feature.includes('owntru.com') && 
+                  !feature.includes('href=')) {
                 features.push(feature);
               }
             }
           } else {
-            const match = modelMarkdown.match(pattern);
+            const match = combinedContent.match(pattern);
             if (match && match[1]) {
               const featureText = match[1].trim();
-              const splitFeatures = featureText.split(/[,;]/).map(f => f.trim()).filter(f => f.length > 5);
+              const splitFeatures = featureText.split(/[,;]/).map(f => f.trim().replace(/[*#<>]/g, '')).filter(f => f.length > 5);
               features.push(...splitFeatures.slice(0, 5));
               break;
             }
@@ -351,15 +382,15 @@ serve(async (req) => {
 
         if (features.length > 0) {
           modelData.features = [...new Set(features)].slice(0, 8); // Remove duplicates and limit
-          console.log(`Found ${features.length} features`);
+          console.log(`Found ${features.length} features:`, features.slice(0, 3));
         }
 
         mobileHomes.push(modelData);
         console.log(`Successfully processed model: ${modelName}`);
         processedCount++;
 
-        // Reduced delay between requests
-        await new Promise(resolve => setTimeout(resolve, 500));
+        // Delay between requests
+        await new Promise(resolve => setTimeout(resolve, 1000));
 
       } catch (error) {
         console.error(`Error processing model URL ${modelUrl}:`, error);

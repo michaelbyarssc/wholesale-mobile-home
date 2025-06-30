@@ -47,10 +47,10 @@ export const AuthForm = ({
       if (isSignUp) {
         console.log('Starting sign up process...');
         
-        // First check if user was previously denied
+        // Check if user already exists and is approved
         const { data: existingProfile, error: profileCheckError } = await supabase
           .from('profiles')
-          .select('denied, user_id, approved')
+          .select('approved, user_id')
           .eq('email', email)
           .single();
 
@@ -58,62 +58,24 @@ export const AuthForm = ({
           console.error('Error checking existing profile:', profileCheckError);
         }
 
-        // If user was denied, delete their old auth user and profile first, then allow fresh signup
-        if (existingProfile && existingProfile.denied) {
-          console.log('User was previously denied, deleting old account and allowing fresh signup...');
-          
-          try {
-            // Delete the existing user using admin function
-            const { error: deleteError } = await supabase.functions.invoke('admin-delete-user', {
-              body: { user_id: existingProfile.user_id }
-            });
-
-            if (deleteError) {
-              console.error('Error deleting old user account:', deleteError);
-              toast({
-                title: "Error",
-                description: "Failed to reset your account. Please contact an administrator.",
-                variant: "destructive",
-              });
-              setLoading(false);
-              return;
-            }
-
-            console.log('Old account deleted successfully');
-            toast({
-              title: "Account Reset",
-              description: "Your previous account has been reset. Creating a new account...",
-            });
-
-            // Add a small delay to ensure the deletion is processed
-            await new Promise(resolve => setTimeout(resolve, 1000));
-          } catch (deleteError) {
-            console.error('Failed to delete old account:', deleteError);
-            toast({
-              title: "Error",
-              description: "Failed to reset your account. Please contact an administrator.",
-              variant: "destructive",
-            });
-            setLoading(false);
-            return;
-          }
+        // If user already exists and is approved, they should sign in instead
+        if (existingProfile && existingProfile.approved) {
+          toast({
+            title: "Account Already Exists",
+            description: "Your account is already approved. Please sign in instead.",
+            variant: "destructive",
+          });
+          setLoading(false);
+          return;
         }
 
-        // If user already exists and is not denied, check if they're already approved
-        if (existingProfile && !existingProfile.denied) {
-          if (existingProfile.approved) {
-            toast({
-              title: "Account Already Exists",
-              description: "Your account is already approved. Please sign in instead.",
-              variant: "destructive",
-            });
-          } else {
-            toast({
-              title: "Account Pending",
-              description: "Your account is already pending approval. Please wait for admin approval.",
-              variant: "destructive",
-            });
-          }
+        // If user already exists but not approved, they're still pending
+        if (existingProfile && !existingProfile.approved) {
+          toast({
+            title: "Account Pending",
+            description: "Your account is already pending approval. Please wait for admin approval.",
+            variant: "destructive",
+          });
           setLoading(false);
           return;
         }
@@ -147,7 +109,6 @@ export const AuthForm = ({
               lastName,
               email,
               phoneNumber,
-              isReregistration: existingProfile && existingProfile.denied,
             },
           });
 
@@ -160,12 +121,9 @@ export const AuthForm = ({
           // Continue with success message even if notification fails
         }
 
-        const isReregistration = existingProfile && existingProfile.denied;
         toast({
           title: "Account Created Successfully",
-          description: isReregistration 
-            ? "Your new account has been created and is pending admin approval. You will receive an email once approved."
-            : "Your account has been created and is pending admin approval. You will receive an email once approved.",
+          description: "Your account has been created and is pending admin approval. You will receive an email once approved.",
         });
       } else {
         // Sign in process
@@ -180,34 +138,22 @@ export const AuthForm = ({
         if (data.user) {
           const { data: profileData, error: profileError } = await supabase
             .from('profiles')
-            .select('approved, denied')
+            .select('approved')
             .eq('user_id', data.user.id)
             .single();
 
           if (profileError) {
             console.error('Error checking approval status:', profileError);
-          } else if (profileData) {
-            if (profileData.denied) {
-              // Sign out the user immediately
-              await supabase.auth.signOut();
-              toast({
-                title: "Access Denied",
-                description: "Your account has been denied access. Please contact an administrator or sign up again to request approval.",
-                variant: "destructive",
-              });
-              setLoading(false);
-              return;
-            } else if (!profileData.approved) {
-              // Sign out the user immediately
-              await supabase.auth.signOut();
-              toast({
-                title: "Account Pending Approval",
-                description: "Your account is still pending admin approval. Please wait for approval before signing in.",
-                variant: "destructive",
-              });
-              setLoading(false);
-              return;
-            }
+          } else if (profileData && !profileData.approved) {
+            // Sign out the user immediately
+            await supabase.auth.signOut();
+            toast({
+              title: "Account Pending Approval",
+              description: "Your account is still pending admin approval. Please wait for approval before signing in.",
+              variant: "destructive",
+            });
+            setLoading(false);
+            return;
           }
         }
 

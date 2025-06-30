@@ -49,8 +49,8 @@ export const PendingApprovalsCard = ({ pendingUsers, onUserApproved }: PendingAp
       if (error) throw error;
 
       toast({
-        title: "User Denied",
-        description: `${userName} has been denied access to the system.`,
+        title: "User Denied and Deleted",
+        description: `${userName} has been denied access and completely removed from the system.`,
       });
 
       onUserApproved();
@@ -58,7 +58,7 @@ export const PendingApprovalsCard = ({ pendingUsers, onUserApproved }: PendingAp
       console.error('Error denying user:', error);
       toast({
         title: "Denial Failed",
-        description: error.message || "Failed to deny user",
+        description: error.message || "Failed to deny and delete user",
         variant: "destructive",
       });
     }
@@ -114,9 +114,10 @@ export const PendingApprovalsCard = ({ pendingUsers, onUserApproved }: PendingAp
                   onClick={() => handleDenyUser(user.user_id, getDisplayName(user))}
                   variant="destructive"
                   size="sm"
+                  title="This will completely delete the user and all their data"
                 >
                   <UserX className="h-4 w-4 mr-1" />
-                  Deny
+                  Deny & Delete
                 </Button>
               </div>
             </div>

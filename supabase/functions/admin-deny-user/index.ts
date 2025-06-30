@@ -50,21 +50,87 @@ const handler = async (req: Request): Promise<Response> => {
 
     const { userId }: DenyUserRequest = await req.json();
 
-    // Update user profile to denied
-    const { error: updateError } = await supabase
-      .from('profiles')
-      .update({
-        denied: true,
-        denied_at: new Date().toISOString(),
-        denied_by: user.id
-      })
-      .eq('user_id', userId);
-
-    if (updateError) {
-      throw updateError;
+    // Prevent admin from deleting themselves
+    if (userId === user.id) {
+      throw new Error("Cannot deny your own account");
     }
 
-    return new Response(JSON.stringify({ success: true }), {
+    console.log('Processing denial/deletion for user:', userId);
+
+    // Check if user exists in auth system first
+    const { data: targetUser, error: userCheckError } = await supabase.auth.admin.getUserById(userId);
+    const userExistsInAuth = !userCheckError && targetUser;
+
+    console.log('User exists in auth system:', userExistsInAuth);
+
+    // Always clean up user data from public tables first
+    try {
+      // Delete from profiles table
+      const { error: profileError } = await supabase.from('profiles').delete().eq('user_id', userId);
+      if (profileError) console.error('Error deleting profile:', profileError);
+      
+      // Delete from user_roles table
+      const { error: roleError } = await supabase.from('user_roles').delete().eq('user_id', userId);
+      if (roleError) console.error('Error deleting user role:', roleError);
+      
+      // Delete from customer_markups table
+      const { error: markupError } = await supabase.from('customer_markups').delete().eq('user_id', userId);
+      if (markupError) console.error('Error deleting customer markup:', markupError);
+      
+      // Delete from estimates table
+      const { error: estimatesError } = await supabase.from('estimates').delete().eq('user_id', userId);
+      if (estimatesError) console.error('Error deleting estimates:', estimatesError);
+      
+      // Delete from invoices table
+      const { error: invoicesError } = await supabase.from('invoices').delete().eq('user_id', userId);
+      if (invoicesError) console.error('Error deleting invoices:', invoicesError);
+      
+      console.log('Cleaned up user data from public tables');
+    } catch (dbError) {
+      console.error('Error deleting user data from public tables:', dbError);
+      // Continue with auth user deletion even if some public table deletions fail
+    }
+
+    // Only try to delete from auth if user exists there
+    if (userExistsInAuth) {
+      const { data, error } = await supabase.auth.admin.deleteUser(userId);
+
+      if (error) {
+        console.error('User deletion error from auth:', error);
+        return new Response(JSON.stringify({ error: error.message }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" }
+        });
+      }
+
+      console.log('User deleted successfully from auth system:', userId);
+    } else {
+      console.log('User was already deleted from auth system, only cleaned up profile data');
+    }
+
+    // Log admin action
+    try {
+      await supabase.from('admin_audit_log').insert({
+        admin_user_id: user.id,
+        action: 'USER_DENIED_AND_DELETED',
+        table_name: 'auth.users',
+        record_id: userId,
+        new_values: { 
+          deleted: true,
+          auth_user_existed: userExistsInAuth 
+        }
+      });
+    } catch (auditError) {
+      console.error('Failed to log admin action:', auditError);
+      // Don't fail the request if audit logging fails
+    }
+
+    return new Response(JSON.stringify({ 
+      success: true, 
+      message: userExistsInAuth 
+        ? 'User denied and completely deleted from the system' 
+        : 'User profile data cleaned up (user was already deleted from auth system)'
+    }), {
       status: 200,
       headers: {
         "Content-Type": "application/json",
@@ -72,7 +138,7 @@ const handler = async (req: Request): Promise<Response> => {
       },
     });
   } catch (error: any) {
-    console.error("Error denying user:", error);
+    console.error("Error denying/deleting user:", error);
     return new Response(
       JSON.stringify({ error: error.message }),
       {

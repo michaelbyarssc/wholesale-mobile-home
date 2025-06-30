@@ -26,7 +26,7 @@ serve(async (req) => {
   }
 
   try {
-    console.log('Starting OwnTru models scraping with PDF link extraction...');
+    console.log('Starting OwnTru models scraping with direct PDF parsing...');
     
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -58,12 +58,12 @@ serve(async (req) => {
 
     const mobileHomes: MobileHomeData[] = [];
     
-    // Helper function to extract model name from PDF links
-    const extractModelNameFromPDFLinks = (content: string, htmlContent: string): string | null => {
+    // Helper function to extract PDF URL from page content
+    const extractPDFUrl = (content: string, htmlContent: string): string | null => {
       // Look for PDF links in both markdown and HTML content
       const pdfLinkPatterns = [
-        /https:\/\/owntru\.com\/wp-content\/uploads\/[^"'\s]*([A-Z][A-Z\s]+)\.pdf/gi,
-        /href="([^"]*\.pdf[^"]*)"[^>]*>([^<]*)/gi,
+        /https:\/\/owntru\.com\/wp-content\/uploads\/[^"'\s]*\.pdf/gi,
+        /href="([^"]*\.pdf[^"]*)"/gi,
         /\[([^\]]*)\]\(([^)]*\.pdf[^)]*)\)/gi
       ];
 
@@ -71,38 +71,183 @@ serve(async (req) => {
         const matches = [...content.matchAll(pattern), ...htmlContent.matchAll(pattern)];
         
         for (const match of matches) {
-          let modelName = null;
+          let pdfUrl = null;
           
-          // Extract model name from different match groups
-          if (match[1] && match[1].match(/[A-Z][A-Z\s]+/)) {
-            modelName = match[1];
-          } else if (match[2] && match[2].match(/[A-Z][A-Z\s]+/)) {
-            modelName = match[2];
+          // Extract PDF URL from different match groups
+          if (match[0] && match[0].includes('.pdf')) {
+            pdfUrl = match[0].replace(/['"]/g, '');
+          } else if (match[1] && match[1].includes('.pdf')) {
+            pdfUrl = match[1];
+          } else if (match[2] && match[2].includes('.pdf')) {
+            pdfUrl = match[2];
           }
           
-          if (modelName) {
-            // Clean up the model name
-            modelName = modelName.replace(/[_\-\.]/g, ' ')
-                                 .replace(/\s+/g, ' ')
-                                 .trim()
-                                 .replace(/\b\w/g, l => l.toUpperCase());
-            
-            // Filter out common non-model words
-            if (!modelName.includes('UPDATE') && 
-                !modelName.includes('SINGLE') && 
-                !modelName.includes('SHEET') &&
-                !modelName.includes('TRU') &&
-                !modelName.includes('TRS') &&
-                modelName.length >= 3 && 
-                modelName.length <= 15) {
-              console.log(`Extracted model name from PDF link: ${modelName}`);
-              return modelName;
-            }
+          if (pdfUrl && pdfUrl.startsWith('https://owntru.com/wp-content/uploads/')) {
+            console.log(`Found PDF URL: ${pdfUrl}`);
+            return pdfUrl;
           }
         }
       }
       
       return null;
+    };
+
+    // Helper function to parse PDF content and extract data
+    const parsePDFContent = async (pdfUrl: string): Promise<Partial<MobileHomeData>> => {
+      try {
+        console.log(`Scraping PDF content from: ${pdfUrl}`);
+        
+        // Use Firecrawl to scrape the PDF directly
+        const pdfResponse = await fetch('https://api.firecrawl.dev/v0/scrape', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${firecrawlApiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            url: pdfUrl,
+            formats: ['markdown', 'html'],
+            onlyMainContent: true,
+            waitFor: 3000,
+            timeout: 30000,
+            removeBase64Images: true
+          })
+        });
+
+        if (!pdfResponse.ok) {
+          console.error(`Failed to scrape PDF ${pdfUrl} (${pdfResponse.status})`);
+          return {};
+        }
+
+        const pdfData = await pdfResponse.json();
+        if (!pdfData.success) {
+          console.error(`PDF scrape error for ${pdfUrl}:`, pdfData);
+          return {};
+        }
+
+        const pdfContent = pdfData.data?.markdown || '';
+        console.log(`PDF content length: ${pdfContent.length} chars`);
+        console.log(`PDF sample content:`, pdfContent.substring(0, 500));
+
+        const extractedData: Partial<MobileHomeData> = {};
+
+        // Extract model name from PDF filename or content
+        const urlParts = pdfUrl.split('/');
+        const filename = urlParts[urlParts.length - 1];
+        const modelNameMatch = filename.match(/_([A-Z][A-Z\s]+)\.pdf$/i);
+        if (modelNameMatch) {
+          extractedData.display_name = modelNameMatch[1].replace(/_/g, ' ').trim();
+          extractedData.model = extractedData.display_name.toLowerCase().replace(/\s+/g, '-');
+          console.log(`Extracted model name from PDF filename: ${extractedData.display_name}`);
+        }
+
+        // Extract specifications from PDF content
+        // Look for patterns like "1,791 SQ FT", "4 BEDROOMS", "2 BATHROOMS", "28' x 68'"
+        
+        // Square footage
+        const sqftMatches = pdfContent.match(/(\d{1,2},?\d{3})\s*(?:SQ\.?\s*FT\.?|SQUARE\s+FEET?)/gi);
+        if (sqftMatches) {
+          const sqft = parseInt(sqftMatches[0].replace(/[^\d]/g, ''));
+          if (sqft >= 500 && sqft <= 3000) {
+            extractedData.square_footage = sqft;
+            console.log(`Extracted square footage from PDF: ${sqft}`);
+          }
+        }
+
+        // Bedrooms
+        const bedroomMatches = pdfContent.match/(\d+)\s*(?:BEDROOM|BED)S?/gi);
+        if (bedroomMatches) {
+          const beds = parseInt(bedroomMatches[0].match(/\d+/)?.[0] || '0');
+          if (beds >= 1 && beds <= 6) {
+            extractedData.bedrooms = beds;
+            console.log(`Extracted bedrooms from PDF: ${beds}`);
+          }
+        }
+
+        // Bathrooms  
+        const bathroomMatches = pdfContent.match(/(\d+(?:\.\d+)?)\s*(?:BATHROOM|BATH)S?/gi);
+        if (bathroomMatches) {
+          const baths = parseFloat(bathroomMatches[0].match(/\d+(?:\.\d+)?/)?.[0] || '0');
+          if (baths >= 0.5 && baths <= 5) {
+            extractedData.bathrooms = baths;
+            console.log(`Extracted bathrooms from PDF: ${baths}`);
+          }
+        }
+
+        // Dimensions - look for patterns like "28' x 68'" or "28 x 68"
+        const dimensionMatches = pdfContent.match(/(\d{2})['']?\s*[x×]\s*(\d{2})['']?/gi);
+        if (dimensionMatches) {
+          const match = dimensionMatches[0];
+          const parts = match.split(/[x×]/i);
+          const dim1 = parseInt(parts[0]?.replace(/[^\d]/g, '') || '0');
+          const dim2 = parseInt(parts[1]?.replace(/[^\d]/g, '') || '0');
+          
+          if (dim1 >= 12 && dim1 <= 32 && dim2 >= 40 && dim2 <= 90) {
+            extractedData.width_feet = dim1;
+            extractedData.length_feet = dim2;
+            console.log(`Extracted dimensions from PDF: ${dim1}x${dim2}`);
+          }
+        }
+
+        // Extract features - look for bullet points and feature lists
+        const features: string[] = [];
+        const featureKeywords = [
+          'kitchen', 'cabinet', 'counter', 'appliance', 'island', 'pantry',
+          'bathroom', 'shower', 'tub', 'vanity', 'master', 'suite',
+          'bedroom', 'closet', 'storage', 'living', 'dining', 'room',
+          'flooring', 'vinyl', 'carpet', 'tile', 'wood', 'laminate',
+          'window', 'door', 'ceiling', 'wall', 'energy', 'efficient'
+        ];
+
+        // Look for bullet points or list items
+        const lines = pdfContent.split('\n');
+        for (const line of lines) {
+          const cleanLine = line.trim().replace(/^[\s\*\-•]\s*/, '');
+          
+          if (cleanLine.length >= 10 && cleanLine.length <= 100) {
+            const hasFeatureKeyword = featureKeywords.some(keyword => 
+              cleanLine.toLowerCase().includes(keyword)
+            );
+            
+            if (hasFeatureKeyword && 
+                !cleanLine.toLowerCase().includes('owntru') &&
+                !cleanLine.toLowerCase().includes('http') &&
+                !features.includes(cleanLine) &&
+                features.length < 10) {
+              features.push(cleanLine);
+              console.log(`Extracted feature from PDF: ${cleanLine}`);
+            }
+          }
+        }
+
+        if (features.length > 0) {
+          extractedData.features = features;
+        }
+
+        // Extract description - look for descriptive paragraphs
+        const contentLines = pdfContent.split('\n');
+        for (const line of contentLines) {
+          const cleanLine = line.trim();
+          
+          if (cleanLine.length >= 50 && cleanLine.length <= 300 &&
+              !cleanLine.toLowerCase().includes('owntru.com') &&
+              !cleanLine.toLowerCase().includes('sq ft') &&
+              !cleanLine.toLowerCase().includes('bedroom') &&
+              !cleanLine.toLowerCase().includes('bathroom') &&
+              cleanLine.match(/[a-z]/) &&
+              cleanLine.split(' ').length >= 8) {
+            extractedData.description = cleanLine;
+            console.log(`Extracted description from PDF: ${cleanLine.substring(0, 100)}...`);
+            break;
+          }
+        }
+
+        return extractedData;
+
+      } catch (error) {
+        console.error(`Error parsing PDF ${pdfUrl}:`, error);
+        return {};
+      }
     };
     
     // Process each model URL with proper rate limiting
@@ -118,6 +263,7 @@ serve(async (req) => {
           await new Promise(resolve => setTimeout(resolve, DELAY_BETWEEN_REQUESTS));
         }
         
+        // First scrape the model page to find the PDF URL
         const modelResponse = await fetch('https://api.firecrawl.dev/v0/scrape', {
           method: 'POST',
           headers: {
@@ -152,198 +298,37 @@ serve(async (req) => {
 
         const content = modelData.data?.markdown || '';
         const htmlContent = modelData.data?.html || '';
-        console.log(`Raw content length for ${modelUrl}: ${content.length} chars`);
-        console.log(`Sample content:`, content.substring(0, 1000));
         
-        if (content.length < 100) {
-          console.log(`Insufficient content for ${modelUrl}, skipping`);
+        // Extract PDF URL from the page
+        const pdfUrl = extractPDFUrl(content, htmlContent);
+        if (!pdfUrl) {
+          console.log(`No PDF found for ${modelUrl}, skipping`);
           continue;
         }
 
-        // Extract model name from URL as fallback
+        // Add another delay before PDF scraping
+        console.log(`Waiting ${DELAY_BETWEEN_REQUESTS/1000} seconds before PDF scraping...`);
+        await new Promise(resolve => setTimeout(resolve, DELAY_BETWEEN_REQUESTS));
+
+        // Parse the PDF to extract all data
+        const pdfData = await parsePDFContent(pdfUrl);
+
+        // Create the mobile home data object
         const urlParts = modelUrl.split('/');
         const urlSlug = urlParts[urlParts.length - 1];
         
         const homeData: MobileHomeData = {
           series: 'OwnTru',
-          model: urlSlug,
-          display_name: urlSlug.toUpperCase(),
+          model: pdfData.model || urlSlug,
+          display_name: pdfData.display_name || urlSlug.toUpperCase(),
+          description: pdfData.description,
+          square_footage: pdfData.square_footage,
+          bedrooms: pdfData.bedrooms,
+          bathrooms: pdfData.bathrooms,
+          length_feet: pdfData.length_feet,
+          width_feet: pdfData.width_feet,
+          features: pdfData.features,
         };
-
-        // Try to extract the actual model name from PDF links first
-        const modelNameFromPDF = extractModelNameFromPDFLinks(content, htmlContent);
-        if (modelNameFromPDF) {
-          homeData.display_name = modelNameFromPDF;
-          homeData.model = modelNameFromPDF.toLowerCase().replace(/\s+/g, '-');
-          console.log(`Using model name from PDF: ${modelNameFromPDF}`);
-        }
-
-        // Primary pattern: "TRU28684R // 4 beds // 2 baths // 1,791 sq. ft. // 28x68"
-        const primaryPattern = /([A-Z]{3}\d{5}[A-Z])\s*\/\/\s*(\d+)\s*beds?\s*\/\/\s*(\d+(?:\.\d+)?)\s*baths?\s*\/\/\s*([\d,]+)\s*sq\.?\s*ft\.?\s*\/\/\s*(\d+)x(\d+)/gi;
-        
-        let primaryMatch = primaryPattern.exec(content);
-        console.log(`Testing primary pattern - found match:`, primaryMatch);
-        
-        if (primaryMatch) {
-          // Don't override the display name if we got it from PDF
-          if (!modelNameFromPDF) {
-            homeData.display_name = primaryMatch[1];
-            homeData.model = primaryMatch[1];
-          }
-          homeData.bedrooms = parseInt(primaryMatch[2]);
-          homeData.bathrooms = parseFloat(primaryMatch[3]);
-          homeData.square_footage = parseInt(primaryMatch[4].replace(/,/g, ''));
-          homeData.width_feet = parseInt(primaryMatch[5]);
-          homeData.length_feet = parseInt(primaryMatch[6]);
-          
-          console.log(`Extracted from primary pattern:`, {
-            model: homeData.model,
-            display_name: homeData.display_name,
-            beds: homeData.bedrooms,
-            baths: homeData.bathrooms,
-            sqft: homeData.square_footage,
-            dimensions: `${homeData.width_feet}x${homeData.length_feet}`
-          });
-        } else {
-          console.log('Primary pattern failed, trying alternative patterns...');
-          
-          // Alternative patterns for individual extraction
-          const bedroomMatches = content.match(/(\d+)\s*(?:bed|BR)(?:room)?s?\b/gi);
-          if (bedroomMatches) {
-            for (const match of bedroomMatches) {
-              const beds = parseInt(match.match(/\d+/)?.[0] || '0');
-              if (beds >= 1 && beds <= 6) {
-                homeData.bedrooms = beds;
-                console.log(`Found bedrooms: ${beds}`);
-                break;
-              }
-            }
-          }
-
-          const bathroomMatches = content.match(/(\d+(?:\.\d+)?)\s*(?:bath|BA)(?:room)?s?\b/gi);
-          if (bathroomMatches) {
-            for (const match of bathroomMatches) {
-              const baths = parseFloat(match.match(/\d+(?:\.\d+)?/)?.[0] || '0');
-              if (baths >= 0.5 && baths <= 5) {
-                homeData.bathrooms = baths;
-                console.log(`Found bathrooms: ${baths}`);
-                break;
-              }
-            }
-          }
-
-          const sqftMatches = content.match(/([\d,]+)\s*sq\.?\s*ft\.?\b/gi);
-          if (sqftMatches) {
-            for (const match of sqftMatches) {
-              const sqft = parseInt(match.replace(/[^\d]/g, ''));
-              if (sqft >= 500 && sqft <= 3000) {
-                homeData.square_footage = sqft;
-                console.log(`Found square footage: ${sqft}`);
-                break;
-              }
-            }
-          }
-
-          const dimensionMatches = content.match(/(\d{2})\s*[x×]\s*(\d{2})/gi);
-          if (dimensionMatches) {
-            for (const match of dimensionMatches) {
-              const parts = match.split(/[x×]/);
-              const dim1 = parseInt(parts[0]?.trim() || '0');
-              const dim2 = parseInt(parts[1]?.trim() || '0');
-              if (dim1 >= 12 && dim1 <= 32 && dim2 >= 40 && dim2 <= 90) {
-                homeData.width_feet = dim1;
-                homeData.length_feet = dim2;
-                console.log(`Found dimensions: ${dim1}x${dim2}`);
-                break;
-              }
-            }
-          }
-        }
-
-        // Extract model name/title from headings if we don't have it from PDF
-        if (!modelNameFromPDF) {
-          const titleMatches = content.match(/(?:^|\n)#+\s*([A-Z][A-Z\s]{2,20})\s*$/gm);
-          if (titleMatches) {
-            for (const match of titleMatches) {
-              const title = match.replace(/#+\s*/, '').trim();
-              if (title.length >= 3 && title.length <= 20 && 
-                  !title.includes('OWNTRU') && 
-                  !title.includes('HOME') &&
-                  !title.includes('MOBILE') &&
-                  !title.includes('NAVIGATION')) {
-                homeData.display_name = title;
-                console.log(`Found title from heading: ${title}`);
-                break;
-              }
-            }
-          }
-        }
-
-        // Extract description - look for meaningful paragraphs
-        const contentLines = content.split('\n');
-        let bestDescription = '';
-        
-        for (const line of contentLines) {
-          const cleanLine = line.trim().replace(/[#*\[\]]/g, '');
-          
-          if (cleanLine.length >= 50 && cleanLine.length <= 300 &&
-              !cleanLine.toLowerCase().includes('owntru.com') &&
-              !cleanLine.toLowerCase().includes('navigation') &&
-              !cleanLine.toLowerCase().includes('cookie') &&
-              !cleanLine.toLowerCase().includes('footer') &&
-              !cleanLine.toLowerCase().includes('header') &&
-              !cleanLine.includes('//') &&
-              cleanLine.match(/[a-z]/) &&
-              cleanLine.split(' ').length >= 8) {
-            bestDescription = cleanLine;
-            console.log(`Found description: ${cleanLine.substring(0, 100)}...`);
-            break;
-          }
-        }
-        
-        if (bestDescription) {
-          homeData.description = bestDescription;
-        }
-
-        // Extract features - look for actual home features, not navigation
-        const features: string[] = [];
-        const featureKeywords = [
-          'kitchen', 'cabinet', 'counter', 'appliance', 'island', 'pantry',
-          'bathroom', 'shower', 'tub', 'vanity', 'toilet', 'master',
-          'bedroom', 'closet', 'storage', 'room', 'living', 'dining',
-          'flooring', 'vinyl', 'carpet', 'tile', 'wood', 'laminate',
-          'window', 'door', 'ceiling', 'wall', 'paint', 'trim',
-          'electric', 'plumbing', 'heating', 'cooling', 'insulation', 'energy'
-        ];
-
-        // Look for bullet points or list items that contain feature keywords
-        const bulletRegex = /^[\s\*\-•]\s*(.+)$/gm;
-        let bulletMatch;
-        
-        while ((bulletMatch = bulletRegex.exec(content)) !== null && features.length < 10) {
-          let feature = bulletMatch[1].trim();
-          feature = feature.replace(/\[.*?\]/g, '').trim(); // Remove markdown links
-          
-          const hasRelevantKeyword = featureKeywords.some(keyword => 
-            feature.toLowerCase().includes(keyword)
-          );
-          
-          if (hasRelevantKeyword && 
-              feature.length >= 10 && feature.length <= 100 &&
-              !feature.toLowerCase().includes('owntru') &&
-              !feature.toLowerCase().includes('http') &&
-              !feature.toLowerCase().includes('navigation') &&
-              !feature.toLowerCase().includes('footer') &&
-              !feature.toLowerCase().includes('menu') &&
-              !features.includes(feature)) {
-            features.push(feature);
-            console.log(`Found feature: ${feature}`);
-          }
-        }
-
-        if (features.length > 0) {
-          homeData.features = features;
-        }
 
         mobileHomes.push(homeData);
         console.log(`Successfully processed: ${homeData.display_name}`);
@@ -365,7 +350,7 @@ serve(async (req) => {
       }
     }
 
-    console.log(`Successfully extracted ${mobileHomes.length} mobile homes`);
+    console.log(`Successfully extracted ${mobileHomes.length} mobile homes from PDFs`);
 
     // Update database
     let updatedCount = 0;
@@ -446,7 +431,7 @@ serve(async (req) => {
 
     const result = {
       success: true,
-      message: `Successfully processed ${mobileHomes.length} mobile homes. Created: ${createdCount}, Updated: ${updatedCount}`,
+      message: `Successfully processed ${mobileHomes.length} mobile homes from PDFs. Created: ${createdCount}, Updated: ${updatedCount}`,
       data: {
         totalProcessed: mobileHomes.length,
         created: createdCount,
@@ -464,19 +449,19 @@ serve(async (req) => {
       }
     };
 
-    console.log('Scraping completed:', result.message);
+    console.log('PDF scraping completed:', result.message);
 
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
   } catch (error) {
-    console.error('Scraping error:', error);
+    console.error('PDF scraping error:', error);
     
     return new Response(JSON.stringify({
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
-      message: 'Failed to scrape OwnTru models'
+      message: 'Failed to scrape OwnTru models from PDFs'
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

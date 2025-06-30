@@ -417,20 +417,26 @@ export const MobileHomesShowcase = ({
           </div>
         ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full mb-8" style={{ gridTemplateColumns: `repeat(${uniqueSeries.length}, minmax(0, 1fr))` }}>
-              {uniqueSeries.map((series) => {
-                const seriesHomes = filteredHomes.filter(home => home.series === series);
-                return (
-                  <TabsTrigger 
-                    key={series} 
-                    value={series} 
-                    className="text-lg py-3 px-4 min-w-0 flex-1 h-12 flex items-center justify-center whitespace-nowrap"
-                  >
-                    {series} Series ({seriesHomes.length})
-                  </TabsTrigger>
-                );
-              })}
-            </TabsList>
+            <div className="flex justify-center mb-8">
+              <div className="inline-flex rounded-lg border border-gray-200 bg-white p-1">
+                {uniqueSeries.map((series) => {
+                  const seriesHomes = filteredHomes.filter(home => home.series === series);
+                  return (
+                    <button
+                      key={series}
+                      onClick={() => setActiveTab(series)}
+                      className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                        activeTab === series
+                          ? 'bg-blue-600 text-white'
+                          : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'
+                      }`}
+                    >
+                      {series} Series ({seriesHomes.length})
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
 
             {uniqueSeries.map((series) => {
               const seriesHomes = filteredHomes.filter(home => home.series === series);

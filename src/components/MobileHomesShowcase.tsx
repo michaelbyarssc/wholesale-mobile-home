@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -49,6 +48,7 @@ export const MobileHomesShowcase = ({
   setIsCartOpen
 }: MobileHomesShowcaseProps) => {
   const [activeTab, setActiveTab] = useState('');
+  const [widthFilter, setWidthFilter] = useState<'all' | 'single' | 'double'>('all');
   const [selectedHomeForServices, setSelectedHomeForServices] = useState<MobileHome | null>(null);
   const { formatCalculatedPrice, loading: pricingLoading } = useCustomerPricing(user);
   
@@ -98,8 +98,21 @@ export const MobileHomesShowcase = ({
     }
   });
 
-  // Get unique series from the mobile homes data and sort with Tru first
-  const uniqueSeries = [...new Set(mobileHomes.map(home => home.series))].sort((a, b) => {
+  // Filter homes based on width
+  const getFilteredHomes = (homes: MobileHome[]) => {
+    if (widthFilter === 'single') {
+      return homes.filter(home => !home.width_feet || home.width_feet < 16);
+    }
+    if (widthFilter === 'double') {
+      return homes.filter(home => home.width_feet && home.width_feet >= 16);
+    }
+    return homes;
+  };
+
+  const filteredHomes = getFilteredHomes(mobileHomes);
+
+  // Get unique series from the filtered mobile homes data and sort with Tru first
+  const uniqueSeries = [...new Set(filteredHomes.map(home => home.series))].sort((a, b) => {
     if (a === 'Tru') return -1;
     if (b === 'Tru') return 1;
     return a.localeCompare(b);
@@ -293,7 +306,9 @@ export const MobileHomesShowcase = ({
     imageCount: homeImages.length,
     uniqueSeries,
     activeTab,
-    cartItemsCount: cartItems.length
+    cartItemsCount: cartItems.length,
+    widthFilter,
+    filteredHomesCount: filteredHomes.length
   });
 
   if (isLoading) {
@@ -332,21 +347,6 @@ export const MobileHomesShowcase = ({
     );
   }
 
-  if (uniqueSeries.length === 0) {
-    return (
-      <section className="py-20 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h3 className="text-3xl font-bold text-gray-900 mb-4">
-              Our Mobile Home Models
-            </h3>
-            <p className="text-lg text-gray-600">No mobile home series available at this time.</p>
-          </div>
-        </div>
-      </section>
-    );
-  }
-
   return (
     <section className="py-20 bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -365,37 +365,84 @@ export const MobileHomesShowcase = ({
           </p>
         </div>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className={`grid w-full mb-8 ${uniqueSeries.length <= 2 ? 'grid-cols-2' : uniqueSeries.length <= 3 ? 'grid-cols-3' : 'grid-cols-4'}`}>
+        {/* Width Filter Tabs */}
+        <div className="mb-8">
+          <div className="flex justify-center">
+            <div className="inline-flex rounded-lg border border-gray-200 bg-white p-1">
+              <button
+                onClick={() => setWidthFilter('all')}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  widthFilter === 'all'
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'
+                }`}
+              >
+                All Homes ({mobileHomes.length})
+              </button>
+              <button
+                onClick={() => setWidthFilter('single')}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  widthFilter === 'single'
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'
+                }`}
+              >
+                Single Wide ({mobileHomes.filter(h => !h.width_feet || h.width_feet < 16).length})
+              </button>
+              <button
+                onClick={() => setWidthFilter('double')}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  widthFilter === 'double'
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'
+                }`}
+              >
+                Double Wide ({mobileHomes.filter(h => h.width_feet && h.width_feet >= 16).length})
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {uniqueSeries.length === 0 ? (
+          <div className="text-center py-8">
+            <p className="text-lg text-gray-600">No mobile homes available for the selected filter.</p>
+            <p className="text-sm text-gray-500 mt-2">
+              Try selecting a different width category above.
+            </p>
+          </div>
+        ) : (
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className={`grid w-full mb-8 ${uniqueSeries.length <= 2 ? 'grid-cols-2' : uniqueSeries.length <= 3 ? 'grid-cols-3' : 'grid-cols-4'}`}>
+              {uniqueSeries.map((series) => {
+                const seriesHomes = filteredHomes.filter(home => home.series === series);
+                return (
+                  <TabsTrigger key={series} value={series} className="text-lg py-3">
+                    {series} Series ({seriesHomes.length})
+                  </TabsTrigger>
+                );
+              })}
+            </TabsList>
+
             {uniqueSeries.map((series) => {
-              const seriesHomes = mobileHomes.filter(home => home.series === series);
+              const seriesHomes = filteredHomes.filter(home => home.series === series);
+              console.log(`Rendering ${series} series with ${seriesHomes.length} homes:`, seriesHomes);
+              
               return (
-                <TabsTrigger key={series} value={series} className="text-lg py-3">
-                  {series} Series ({seriesHomes.length})
-                </TabsTrigger>
+                <TabsContent key={series} value={series}>
+                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    {seriesHomes.length > 0 ? (
+                      seriesHomes.map((home, index) => renderHomeCard(home, index))
+                    ) : (
+                      <div className="col-span-full text-center py-8">
+                        <p className="text-gray-500">No {series} series models available for the selected width category.</p>
+                      </div>
+                    )}
+                  </div>
+                </TabsContent>
               );
             })}
-          </TabsList>
-
-          {uniqueSeries.map((series) => {
-            const seriesHomes = mobileHomes.filter(home => home.series === series);
-            console.log(`Rendering ${series} series with ${seriesHomes.length} homes:`, seriesHomes);
-            
-            return (
-              <TabsContent key={series} value={series}>
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-                  {seriesHomes.length > 0 ? (
-                    seriesHomes.map((home, index) => renderHomeCard(home, index))
-                  ) : (
-                    <div className="col-span-full text-center py-8">
-                      <p className="text-gray-500">No {series} series models available.</p>
-                    </div>
-                  )}
-                </div>
-              </TabsContent>
-            );
-          })}
-        </Tabs>
+          </Tabs>
+        )}
 
         {/* Shopping Cart - Only show for logged in users */}
         {user && (

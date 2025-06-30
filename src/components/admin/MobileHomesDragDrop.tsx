@@ -1,13 +1,11 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Badge } from '@/components/ui/badge';
+import { GripVertical, Edit, Trash2, Eye, EyeOff } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Edit, Trash2, GripVertical } from 'lucide-react';
 import { formatPrice } from '@/lib/utils';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -21,200 +19,143 @@ interface MobileHomesDragDropProps {
   onRefetch: () => void;
 }
 
-export const MobileHomesDragDrop = ({ 
-  mobileHomes, 
-  onEdit, 
-  onDelete, 
+export const MobileHomesDragDrop = ({
+  mobileHomes,
+  onEdit,
+  onDelete,
   onToggleActive,
-  onRefetch 
+  onRefetch
 }: MobileHomesDragDropProps) => {
   const { toast } = useToast();
-  const queryClient = useQueryClient();
-  const [isDragging, setIsDragging] = useState(false);
 
-  const updateOrderMutation = useMutation({
-    mutationFn: async (updates: { id: string; display_order: number }[]) => {
-      // Update each mobile home individually to avoid TypeScript issues
+  const handleDragEnd = async (result: DropResult) => {
+    if (!result.destination) return;
+
+    const items = Array.from(mobileHomes);
+    const [reorderedItem] = items.splice(result.source.index, 1);
+    items.splice(result.destination.index, 0, reorderedItem);
+
+    // Update display_order for all items
+    const updates = items.map((item, index) => ({
+      id: item.id,
+      display_order: index + 1
+    }));
+
+    try {
       for (const update of updates) {
         const { error } = await supabase
           .from('mobile_homes')
           .update({ display_order: update.display_order })
           .eq('id', update.id);
-        
+
         if (error) throw error;
       }
-    },
-    onSuccess: () => {
+
+      onRefetch();
       toast({
         title: "Success",
-        description: "Mobile homes order updated successfully.",
+        description: "Mobile homes reordered successfully.",
       });
-      queryClient.invalidateQueries({ queryKey: ['admin-mobile-homes'] });
-      onRefetch();
-    },
-    onError: (error) => {
-      console.error('Error updating order:', error);
+    } catch (error) {
+      console.error('Error reordering mobile homes:', error);
       toast({
         title: "Error",
-        description: "Failed to update mobile homes order.",
+        description: "Failed to reorder mobile homes.",
         variant: "destructive",
       });
     }
-  });
-
-  const handleDragEnd = (result: DropResult) => {
-    setIsDragging(false);
-    
-    if (!result.destination) {
-      return;
-    }
-
-    const sourceIndex = result.source.index;
-    const destinationIndex = result.destination.index;
-
-    if (sourceIndex === destinationIndex) {
-      return;
-    }
-
-    // Create a new array with the reordered items
-    const reorderedHomes = Array.from(mobileHomes);
-    const [removed] = reorderedHomes.splice(sourceIndex, 1);
-    reorderedHomes.splice(destinationIndex, 0, removed);
-
-    // Update display_order for all affected items
-    const updates = reorderedHomes.map((home, index) => ({
-      id: home.id,
-      display_order: index + 1
-    }));
-
-    updateOrderMutation.mutate(updates);
-  };
-
-  const formatSize = (home: MobileHome) => {
-    if (home.length_feet && home.width_feet) {
-      return `${home.width_feet}x${home.length_feet}`;
-    }
-    return 'N/A';
-  };
-
-  const getHomeName = (home: MobileHome) => {
-    return home.display_name || `${home.series} ${home.model}`;
-  };
-
-  const calculateCustomerPrice = (home: MobileHome, customerMarkup: number = 30) => {
-    const baseCost = home.cost || home.price;
-    const minimumProfit = home.minimum_profit || 0;
-    
-    const markupPrice = baseCost * (1 + customerMarkup / 100);
-    const minimumPrice = baseCost + minimumProfit;
-    
-    return Math.max(markupPrice, minimumPrice);
   };
 
   return (
-    <div className="overflow-x-auto">
-      <DragDropContext onDragEnd={handleDragEnd} onDragStart={() => setIsDragging(true)}>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-8"></TableHead>
-              <TableHead>Name</TableHead>
-              <TableHead>Size</TableHead>
-              <TableHead>Manufacturer</TableHead>
-              <TableHead>Series</TableHead>
-              <TableHead>Model</TableHead>
-              <TableHead>Cost (Internal)</TableHead>
-              <TableHead>Min Profit</TableHead>
-              <TableHead>Customer Price (30% markup)</TableHead>
-              <TableHead>Sq Ft</TableHead>
-              <TableHead>Bed/Bath</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <Droppable droppableId="mobile-homes">
-            {(provided, snapshot) => (
-              <TableBody
-                ref={provided.innerRef}
-                {...provided.droppableProps}
-                className={snapshot.isDraggingOver ? 'bg-blue-50' : ''}
-              >
-                {mobileHomes.map((home, index) => {
-                  const customerPrice = calculateCustomerPrice(home, 30);
-                  return (
-                    <Draggable key={home.id} draggableId={home.id} index={index}>
-                      {(provided, snapshot) => (
-                        <TableRow
-                          ref={provided.innerRef}
-                          {...provided.draggableProps}
-                          className={`${
-                            snapshot.isDragging ? 'bg-blue-100 shadow-lg' : ''
-                          } ${isDragging && !snapshot.isDragging ? 'opacity-50' : ''}`}
+    <DragDropContext onDragEnd={handleDragEnd}>
+      <Droppable droppableId="mobile-homes">
+        {(provided) => (
+          <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-2">
+            {mobileHomes.map((home, index) => (
+              <Draggable key={home.id} draggableId={home.id} index={index}>
+                {(provided, snapshot) => (
+                  <div
+                    ref={provided.innerRef}
+                    {...provided.draggableProps}
+                    className={`border rounded-lg p-4 bg-white ${
+                      snapshot.isDragging ? 'shadow-lg' : 'shadow-sm'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-4">
+                        <div
+                          {...provided.dragHandleProps}
+                          className="cursor-grab active:cursor-grabbing"
                         >
-                          <TableCell {...provided.dragHandleProps} className="cursor-grab active:cursor-grabbing">
-                            <GripVertical className="h-4 w-4 text-gray-400" />
-                          </TableCell>
-                          <TableCell className="font-medium">{getHomeName(home)}</TableCell>
-                          <TableCell>{formatSize(home)}</TableCell>
-                          <TableCell>{home.manufacturer}</TableCell>
-                          <TableCell>{home.series}</TableCell>
-                          <TableCell>{home.model}</TableCell>
-                          <TableCell>
-                            <span className="text-sm font-medium text-gray-600">{formatPrice(home.cost || home.price)}</span>
-                          </TableCell>
-                          <TableCell>
-                            <span className="text-sm font-medium text-blue-600">{formatPrice(home.minimum_profit || 0)}</span>
-                          </TableCell>
-                          <TableCell>
-                            <span className="text-sm font-medium text-green-600">{formatPrice(customerPrice)}</span>
-                          </TableCell>
-                          <TableCell>{home.square_footage || 'N/A'}</TableCell>
-                          <TableCell>
-                            {home.bedrooms || 'N/A'}/{home.bathrooms || 'N/A'}
-                          </TableCell>
-                          <TableCell>
-                            <span className={`px-2 py-1 rounded-full text-xs ${
-                              home.active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                            }`}>
+                          <GripVertical className="h-5 w-5 text-gray-400" />
+                        </div>
+                        
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-2 mb-1">
+                            <h3 className="font-semibold text-lg">
+                              {home.display_name || `${home.manufacturer} ${home.model}`}
+                            </h3>
+                            <Badge variant={home.active ? "default" : "secondary"}>
                               {home.active ? 'Active' : 'Inactive'}
-                            </span>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex space-x-2">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => onEdit(home)}
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => onToggleActive(home.id, home.active)}
-                              >
-                                {home.active ? 'Deactivate' : 'Activate'}
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="destructive"
-                                onClick={() => onDelete(home.id, getHomeName(home))}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
+                            </Badge>
+                          </div>
+                          
+                          <div className="text-sm text-gray-600 space-y-1">
+                            <div className="flex items-center space-x-4">
+                              <span><strong>Series:</strong> {home.series}</span>
+                              <span><strong>Model:</strong> {home.model}</span>
+                              <span><strong>Manufacturer:</strong> {home.manufacturer}</span>
                             </div>
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </Draggable>
-                  );
-                })}
-                {provided.placeholder}
-              </TableBody>
-            )}
-          </Droppable>
-        </Table>
-      </DragDropContext>
-    </div>
+                            
+                            <div className="flex items-center space-x-4">
+                              <span><strong>Internal Cost:</strong> {formatPrice(home.price)}</span>
+                              <span><strong>Retail Price:</strong> 
+                                <span className="font-medium text-blue-600 ml-1">
+                                  {home.retail_price ? formatPrice(home.retail_price) : 'Not set'}
+                                </span>
+                              </span>
+                              {home.minimum_profit > 0 && (
+                                <span><strong>Min Profit:</strong> {formatPrice(home.minimum_profit)}</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center space-x-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => onToggleActive(home.id, home.active)}
+                        >
+                          {home.active ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </Button>
+                        
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => onEdit(home)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => onDelete(home.id, home.display_name || `${home.manufacturer} ${home.model}`)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </Draggable>
+            ))}
+            {provided.placeholder}
+          </div>
+        )}
+      </Droppable>
+    </DragDropContext>
   );
 };

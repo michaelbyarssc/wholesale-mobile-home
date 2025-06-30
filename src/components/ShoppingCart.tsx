@@ -5,7 +5,6 @@ import { ShoppingCart as CartIcon } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useCustomerPricing } from '@/hooks/useCustomerPricing';
-import { useConditionalServices } from '@/hooks/useConditionalServices';
 import { User } from '@supabase/supabase-js';
 import { useNavigate } from 'react-router-dom';
 import { CartItemCard } from './cart/CartItemCard';
@@ -78,12 +77,13 @@ export const ShoppingCart = ({
   const calculateItemTotal = (item: CartItem) => {
     const homePrice = calculatePrice(item.mobileHome.cost || item.mobileHome.price);
     
-    // Use conditional services pricing for accurate service pricing
-    const mobileHomes = [item.mobileHome];
-    const { getServicePrice } = useConditionalServices(services, item.mobileHome.id, mobileHomes, item.selectedServices);
-    
+    // Calculate services price using the basic service cost/price fields
     const servicesPrice = item.selectedServices.reduce((total, serviceId) => {
-      const serviceCost = getServicePrice(serviceId);
+      const service = services.find(s => s.id === serviceId);
+      if (!service) return total;
+      
+      // For now, use the basic cost or price field until we fix the conditional pricing
+      const serviceCost = service.cost || service.price || 0;
       const finalPrice = calculatePrice(serviceCost);
       console.log(`Total calc - Service ${serviceId}: serviceCost = ${serviceCost}, finalPrice = ${finalPrice}`);
       return total + finalPrice;

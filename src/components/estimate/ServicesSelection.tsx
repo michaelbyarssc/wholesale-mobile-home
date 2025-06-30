@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -117,48 +118,6 @@ export const ServicesSelection = ({
 
   return (
     <div className="space-y-6">
-      {/* Debug Information Card - ALWAYS VISIBLE */}
-      <Card className="border-2 border-red-500 bg-red-50">
-        <CardHeader>
-          <CardTitle className="text-red-700">🚨 DEBUG INFORMATION - PLEASE SHARE THIS WITH AI</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-sm space-y-2">
-            <div><strong>Selected Home:</strong> {selectedHome ? `${selectedHome.model} (ID: ${selectedHome.id})` : 'None'}</div>
-            <div><strong>Home Width:</strong> {selectedHome?.width_feet || 'Unknown'}ft ({(selectedHome?.width_feet || 0) > 16 ? 'Double' : 'Single'} Wide)</div>
-            <div><strong>Services Array Length:</strong> {services.length}</div>
-            <div><strong>Available Services Length:</strong> {availableServices.length}</div>
-            <div><strong>Mobile Homes Array:</strong> {mobileHomes.length} items</div>
-            <div><strong>User Present:</strong> {user ? 'Yes' : 'No'}</div>
-            <div><strong>Calculate Price Function:</strong> {typeof calculatePrice}</div>
-            
-            {/* Find vinyl skirting service and show its data */}
-            {(() => {
-              const vinylService = services.find(s => s.name && s.name.toLowerCase().includes('vinyl') && s.name.toLowerCase().includes('skirting'));
-              if (vinylService) {
-                const serviceCost = getServicePrice(vinylService.id);
-                const displayPrice = calculatePrice(serviceCost);
-                return (
-                  <div className="mt-4 p-3 bg-yellow-100 border border-yellow-400 rounded">
-                    <div><strong>🎯 VINYL SKIRTING SERVICE FOUND:</strong></div>
-                    <div>Name: "{vinylService.name}"</div>
-                    <div>ID: {vinylService.id}</div>
-                    <div>Base Price: {vinylService.price}</div>
-                    <div>Cost: {vinylService.cost}</div>
-                    <div>Single Wide Price: {vinylService.single_wide_price}</div>
-                    <div>Double Wide Price: {vinylService.double_wide_price}</div>
-                    <div>Raw Service Cost (from getServicePrice): {serviceCost}</div>
-                    <div>Final Display Price (after calculatePrice): {displayPrice}</div>
-                    <div>Is in Available Services: {availableServices.some(s => s.id === vinylService.id) ? 'Yes' : 'No'}</div>
-                  </div>
-                );
-              }
-              return <div className="text-orange-600">❌ No vinyl skirting service found in services array</div>;
-            })()}
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Services Card */}
       <Card>
         <CardHeader>

@@ -23,7 +23,7 @@ export const UserTable = ({ userProfiles, onUserUpdated }: UserTableProps) => {
               <TableRow>
                 <TableHead>User</TableHead>
                 <TableHead>Role</TableHead>
-                <TableHead>Pricing Settings</TableHead>
+                <TableHead>Markup %</TableHead>
                 <TableHead>Registered</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>

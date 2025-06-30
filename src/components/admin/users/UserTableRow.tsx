@@ -54,7 +54,6 @@ export const UserTableRow = ({ profile, onUserUpdated }: UserTableRowProps) => {
         <MarkupEditor
           userId={profile.user_id}
           currentMarkup={profile.markup_percentage || 0}
-          currentMinProfit={profile.minimum_profit_per_home || 0}
           onMarkupUpdated={onUserUpdated}
         />
       </TableCell>

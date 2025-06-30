@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
@@ -10,7 +9,6 @@ type Service = Database['public']['Tables']['services']['Row'];
 
 export const useCustomerPricing = (user?: User | null) => {
   const [markupPercentage, setMarkupPercentage] = useState<number>(30); // Default 30%
-  const [minimumProfitPerHome, setMinimumProfitPerHome] = useState<number>(0); // Default $0
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -25,7 +23,7 @@ export const useCustomerPricing = (user?: User | null) => {
         setError(null);
         const { data, error: fetchError } = await supabase
           .from('customer_markups')
-          .select('markup_percentage, minimum_profit_per_home')
+          .select('markup_percentage')
           .eq('user_id', user.id)
           .maybeSingle();
 
@@ -35,7 +33,6 @@ export const useCustomerPricing = (user?: User | null) => {
           // Keep default values on error
         } else if (data) {
           setMarkupPercentage(data.markup_percentage);
-          setMinimumProfitPerHome(data.minimum_profit_per_home || 0);
         }
         // If no data found, keep default values
       } catch (err) {
@@ -57,12 +54,8 @@ export const useCustomerPricing = (user?: User | null) => {
     
     const markup = markupPercentage / 100;
     const markupPrice = baseCost * (1 + markup);
-    const minimumPrice = baseCost + minimumProfitPerHome;
     
-    // Use the higher of the two prices
-    const finalPrice = Math.max(markupPrice, minimumPrice);
-    
-    return Math.round(finalPrice * 100) / 100; // Round to 2 decimal places
+    return Math.round(markupPrice * 100) / 100; // Round to 2 decimal places
   };
 
   const formatCalculatedPrice = (baseCost: number): string => {
@@ -101,7 +94,6 @@ export const useCustomerPricing = (user?: User | null) => {
 
   return {
     markupPercentage,
-    minimumProfitPerHome,
     customerMarkup: markupPercentage, // Add alias for backward compatibility
     loading,
     error,

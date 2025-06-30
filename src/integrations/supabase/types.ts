@@ -438,10 +438,12 @@ export type Database = {
           created_at: string
           dependencies: Json | null
           description: string | null
+          double_wide_price: number
           id: string
           name: string
           price: number
           requires_admin: boolean | null
+          single_wide_price: number
           updated_at: string
         }
         Insert: {
@@ -454,10 +456,12 @@ export type Database = {
           created_at?: string
           dependencies?: Json | null
           description?: string | null
+          double_wide_price?: number
           id?: string
           name: string
           price: number
           requires_admin?: boolean | null
+          single_wide_price?: number
           updated_at?: string
         }
         Update: {
@@ -470,10 +474,12 @@ export type Database = {
           created_at?: string
           dependencies?: Json | null
           description?: string | null
+          double_wide_price?: number
           id?: string
           name?: string
           price?: number
           requires_admin?: boolean | null
+          single_wide_price?: number
           updated_at?: string
         }
         Relationships: []

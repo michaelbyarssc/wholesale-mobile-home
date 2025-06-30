@@ -49,12 +49,22 @@ export const useConditionalServices = (
   const getServicePrice = useMemo(() => {
     return (serviceId: string) => {
       const service = services.find(s => s.id === serviceId);
-      if (!service) return 0;
+      const selectedMobileHome = mobileHomes.find(home => home.id === selectedHome);
+      
+      if (!service || !selectedMobileHome) return 0;
 
-      // For now, return base price. Could implement conditional pricing logic here
-      return service.price;
+      // Determine if it's a single wide or double wide based on width
+      const homeWidth = selectedMobileHome.width_feet || 0;
+      const isDoubleWide = homeWidth > 16;
+
+      // Use the appropriate pricing based on home width
+      if (isDoubleWide) {
+        return service.double_wide_price || service.price;
+      } else {
+        return service.single_wide_price || service.price;
+      }
     };
-  }, [services]);
+  }, [services, selectedHome, mobileHomes]);
 
   const getDependencies = useMemo(() => {
     return (serviceId: string) => {

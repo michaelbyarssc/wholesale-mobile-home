@@ -23,6 +23,7 @@ export const CartServicesList = ({
   
   const {
     availableServices,
+    getServicePrice,
     getMissingDependencies,
     getServicesByDependency
   } = useConditionalServices(services, item.mobileHome.id, mobileHomes, item.selectedServices);
@@ -66,8 +67,10 @@ export const CartServicesList = ({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {availableServices.map((service) => {
           const isSelected = item.selectedServices.includes(service.id);
-          const serviceCost = service.cost || service.price;
+          const serviceCost = getServicePrice(service.id);
           const displayPrice = calculatePrice(serviceCost);
+          const homeWidth = item.mobileHome.width_feet || 0;
+          const isDoubleWide = homeWidth > 16;
           
           return (
             <div key={service.id} className="flex items-start space-x-3 p-2 border rounded">
@@ -88,6 +91,9 @@ export const CartServicesList = ({
                 )}
                 <p className="text-sm text-gray-600 mt-1">
                   {formatPrice(displayPrice)}
+                  <span className="text-xs text-gray-400 ml-1">
+                    ({isDoubleWide ? 'Double' : 'Single'} Wide)
+                  </span>
                 </p>
               </div>
             </div>

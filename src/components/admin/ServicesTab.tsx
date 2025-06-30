@@ -18,6 +18,8 @@ interface Service {
   name: string;
   description: string;
   price: number;
+  single_wide_price: number;
+  double_wide_price: number;
   active: boolean;
   conditions?: any;
   dependencies?: string[];
@@ -42,6 +44,8 @@ export const ServicesTab = () => {
     name: '',
     description: '',
     price: '',
+    single_wide_price: '',
+    double_wide_price: '',
     dependencies: [] as string[],
     applicable_manufacturers: [] as string[],
     applicable_series: [] as string[],
@@ -86,6 +90,8 @@ export const ServicesTab = () => {
         name: formData.name,
         description: formData.description,
         price: parseFloat(formData.price),
+        single_wide_price: parseFloat(formData.single_wide_price),
+        double_wide_price: parseFloat(formData.double_wide_price),
         dependencies: formData.dependencies,
         applicable_manufacturers: formData.applicable_manufacturers,
         applicable_series: formData.applicable_series,
@@ -128,6 +134,8 @@ export const ServicesTab = () => {
       name: '',
       description: '',
       price: '',
+      single_wide_price: '',
+      double_wide_price: '',
       dependencies: [],
       applicable_manufacturers: [],
       applicable_series: [],
@@ -143,6 +151,8 @@ export const ServicesTab = () => {
       name: service.name,
       description: service.description || '',
       price: service.price.toString(),
+      single_wide_price: service.single_wide_price.toString(),
+      double_wide_price: service.double_wide_price.toString(),
       dependencies: service.dependencies || [],
       applicable_manufacturers: service.applicable_manufacturers || [],
       applicable_series: service.applicable_series || [],
@@ -246,12 +256,35 @@ export const ServicesTab = () => {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="price">Base Price</Label>
+                  <Label htmlFor="price">Base Price (Legacy)</Label>
                   <Input
                     id="price"
                     type="number"
                     value={formData.price}
                     onChange={(e) => setFormData({...formData, price: e.target.value})}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="single_wide_price">Single Wide Price (≤16 ft)</Label>
+                  <Input
+                    id="single_wide_price"
+                    type="number"
+                    value={formData.single_wide_price}
+                    onChange={(e) => setFormData({...formData, single_wide_price: e.target.value})}
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="double_wide_price">Double Wide Price (>16 ft)</Label>
+                  <Input
+                    id="double_wide_price"
+                    type="number"
+                    value={formData.double_wide_price}
+                    onChange={(e) => setFormData({...formData, double_wide_price: e.target.value})}
                     required
                   />
                 </div>
@@ -334,7 +367,8 @@ export const ServicesTab = () => {
               <TableRow>
                 <TableHead>Service Name</TableHead>
                 <TableHead>Description</TableHead>
-                <TableHead>Price</TableHead>
+                <TableHead>Single Wide Price</TableHead>
+                <TableHead>Double Wide Price</TableHead>
                 <TableHead>Conditions</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Actions</TableHead>
@@ -346,7 +380,10 @@ export const ServicesTab = () => {
                   <TableCell className="font-medium">{service.name}</TableCell>
                   <TableCell className="max-w-xs truncate">{service.description}</TableCell>
                   <TableCell>
-                    <span className="text-sm font-medium">{formatPrice(service.price)}</span>
+                    <span className="text-sm font-medium">{formatPrice(service.single_wide_price)}</span>
+                  </TableCell>
+                  <TableCell>
+                    <span className="text-sm font-medium">{formatPrice(service.double_wide_price)}</span>
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-wrap gap-1">

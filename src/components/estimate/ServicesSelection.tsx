@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useCustomerPricing } from '@/hooks/useCustomerPricing';
+import { useConditionalServices } from '@/hooks/useConditionalServices';
 import { formatPrice } from '@/lib/utils';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -44,6 +45,10 @@ export const ServicesSelection = ({
   user
 }: ServicesSelectionProps) => {
   const { calculateHomeOptionPrice } = useCustomerPricing(user);
+
+  // Use the conditional services hook to get proper pricing
+  const mobileHomes = selectedHome ? [selectedHome] : [];
+  const { getServicePrice } = useConditionalServices(services, selectedHome?.id, mobileHomes, selectedServices);
 
   // Fetch home options
   const { data: homeOptions = [] } = useQuery({
@@ -84,6 +89,17 @@ export const ServicesSelection = ({
       );
     }
 
+    // Add badge showing home width type
+    if (selectedHome) {
+      const homeWidth = selectedHome.width_feet || 0;
+      const isDoubleWide = homeWidth > 16;
+      badges.push(
+        <Badge key="width" variant="outline" className="text-xs">
+          {isDoubleWide ? 'Double Wide' : 'Single Wide'} Pricing
+        </Badge>
+      );
+    }
+
     return badges;
   };
 
@@ -95,7 +111,7 @@ export const ServicesSelection = ({
           <CardTitle className="text-blue-900">Additional Services</CardTitle>
           {selectedHome && (
             <p className="text-sm text-gray-600">
-              Services available for your selected mobile home
+              Services available for your selected mobile home ({selectedHome.width_feet || 0}' wide - {selectedHome.width_feet > 16 ? 'Double Wide' : 'Single Wide'})
             </p>
           )}
         </CardHeader>
@@ -108,7 +124,7 @@ export const ServicesSelection = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {availableServices.map((service) => {
                 const isDisabled = isServiceDisabled(service);
-                const serviceCost = service.cost || service.price;
+                const serviceCost = getServicePrice(service.id);
                 const displayPrice = calculatePrice(serviceCost);
                 
                 return (

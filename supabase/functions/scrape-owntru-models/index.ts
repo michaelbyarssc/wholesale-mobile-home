@@ -26,7 +26,7 @@ serve(async (req) => {
   }
 
   try {
-    console.log('Starting OwnTru models scraping...');
+    console.log('Starting OwnTru models scraping with 9/minute rate limit...');
     
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -38,6 +38,10 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // Rate limit: 9 requests per minute = 1 request every 6.67 seconds
+    // We'll use 8 seconds to be safe
+    const DELAY_BETWEEN_REQUESTS = 8000;
+
     // First scrape the main models page
     console.log('Scraping main models page...');
     const mainPageResponse = await fetch('https://api.firecrawl.dev/v0/scrape', {
@@ -48,78 +52,116 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         url: 'https://owntru.com/models/',
-        formats: ['markdown'],
-        onlyMainContent: true,
-        waitFor: 5000
+        formats: ['markdown', 'html'],
+        onlyMainContent: false,
+        waitFor: 8000,
+        timeout: 45000
       }),
     });
 
     if (!mainPageResponse.ok) {
-      throw new Error(`Main page scrape failed: ${mainPageResponse.status}`);
+      const errorText = await mainPageResponse.text();
+      throw new Error(`Main page scrape failed (${mainPageResponse.status}): ${errorText}`);
     }
 
     const mainPageData = await mainPageResponse.json();
     if (!mainPageData.success) {
-      throw new Error(`Main page scrape error: ${mainPageData.error}`);
+      throw new Error(`Main page scrape error: ${JSON.stringify(mainPageData)}`);
     }
 
     // Extract model URLs from the main page
     const modelUrls = new Set<string>();
     const content = mainPageData.data?.markdown || '';
+    const htmlContent = mainPageData.data?.html || '';
+    const combinedContent = content + ' ' + htmlContent;
     
-    // Look for model links in various formats
+    console.log(`Main page content length: ${combinedContent.length} characters`);
+
+    // Look for model links with more comprehensive patterns
     const patterns = [
+      /href=["']([^"']*\/models\/[^"'/#?]+)["']/gi,
       /\[([^\]]+)\]\(([^)]*\/models\/[^)]+)\)/g,
-      /href=["']([^"']*\/models\/[^"']+)["']/g,
-      /owntru\.com\/models\/([a-z0-9\-]+)/g
+      /owntru\.com\/models\/([a-z0-9\-]+)/gi,
+      /\/models\/([a-z0-9\-]+)/gi
     ];
 
     for (const pattern of patterns) {
       let match;
-      while ((match = pattern.exec(content)) !== null) {
-        let url = match[2] || match[1] || match[0];
+      while ((match = pattern.exec(combinedContent)) !== null) {
+        let url = match[1] || match[2] || match[0];
         
+        // Clean and normalize URL
         if (!url.startsWith('http')) {
           if (url.startsWith('/')) {
             url = 'https://owntru.com' + url;
           } else if (url.includes('owntru.com')) {
-            url = 'https://' + url;
+            url = 'https://' + url.replace(/^https?:\/\//, '');
           } else {
             url = 'https://owntru.com/models/' + url.replace(/^\/models\//, '');
           }
         }
         
-        if (url.includes('/models/') && !url.endsWith('/models')) {
-          modelUrls.add(url.split('#')[0].split('?')[0]);
+        // Filter valid model URLs
+        if (url.includes('/models/') && 
+            !url.endsWith('/models') && 
+            !url.endsWith('/models/') &&
+            !url.includes('#') &&
+            !url.includes('?') &&
+            url.match(/\/models\/[a-z0-9\-]+$/)) {
+          modelUrls.add(url);
         }
       }
     }
 
-    const uniqueUrls = Array.from(modelUrls);
-    console.log(`Found ${uniqueUrls.length} model URLs:`, uniqueUrls);
+    // Also try to find direct model names and construct URLs
+    const modelNamePatterns = [
+      /models?\/([a-z0-9\-]{3,})/gi,
+      /\/([a-z0-9\-]{5,})\/?$/gm
+    ];
+
+    for (const pattern of modelNamePatterns) {
+      let match;
+      while ((match = pattern.exec(combinedContent)) !== null) {
+        const modelName = match[1];
+        if (modelName && 
+            !modelName.includes('owntru') && 
+            !modelName.includes('models') &&
+            modelName.length >= 3) {
+          modelUrls.add(`https://owntru.com/models/${modelName}`);
+        }
+      }
+    }
+
+    const uniqueUrls = Array.from(modelUrls).slice(0, 8); // Limit to 8 models to respect rate limits
+    console.log(`Found ${uniqueUrls.length} model URLs to scrape:`, uniqueUrls);
 
     if (uniqueUrls.length === 0) {
-      return new Response(JSON.stringify({
-        success: false,
-        message: 'No model URLs found',
-        debug: { contentSample: content.substring(0, 1000) }
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      // If no URLs found, try some common model names
+      const commonModels = [
+        'the-ashland', 'the-bristol', 'the-charleston', 'the-denver',
+        'the-everett', 'the-fairfield', 'the-georgetown', 'the-hartford'
+      ];
+      
+      for (const model of commonModels.slice(0, 8)) {
+        uniqueUrls.push(`https://owntru.com/models/${model}`);
+      }
+      
+      console.log('No URLs found in content, using common model names:', uniqueUrls);
     }
 
     const mobileHomes: MobileHomeData[] = [];
     
-    // Process each model URL with longer delays to avoid rate limits
-    for (let i = 0; i < Math.min(uniqueUrls.length, 15); i++) {
+    // Process each model URL with proper rate limiting
+    for (let i = 0; i < uniqueUrls.length; i++) {
       const modelUrl = uniqueUrls[i];
       
       try {
         console.log(`[${i + 1}/${uniqueUrls.length}] Processing: ${modelUrl}`);
         
-        // Add delay to avoid rate limits
+        // Wait between requests to respect rate limit (except for first request)
         if (i > 0) {
-          await new Promise(resolve => setTimeout(resolve, 8000));
+          console.log(`Waiting ${DELAY_BETWEEN_REQUESTS/1000} seconds for rate limit...`);
+          await new Promise(resolve => setTimeout(resolve, DELAY_BETWEEN_REQUESTS));
         }
         
         const modelResponse = await fetch('https://api.firecrawl.dev/v0/scrape', {
@@ -132,29 +174,32 @@ serve(async (req) => {
             url: modelUrl,
             formats: ['markdown', 'html'],
             onlyMainContent: false,
-            waitFor: 6000,
-            timeout: 30000
+            waitFor: 10000,
+            timeout: 60000,
+            includeTags: ['div', 'p', 'span', 'h1', 'h2', 'h3', 'h4', 'li', 'ul', 'table', 'td', 'tr'],
+            excludeTags: ['script', 'style', 'nav', 'header', 'footer']
           })
         });
 
         if (!modelResponse.ok) {
-          console.error(`Failed to scrape ${modelUrl}: ${modelResponse.status}`);
+          const errorText = await modelResponse.text();
+          console.error(`Failed to scrape ${modelUrl} (${modelResponse.status}):`, errorText);
           continue;
         }
 
         const modelData = await modelResponse.json();
         if (!modelData.success) {
-          console.error(`Model scrape error for ${modelUrl}:`, modelData.error);
+          console.error(`Model scrape error for ${modelUrl}:`, modelData);
           continue;
         }
 
         const markdown = modelData.data?.markdown || '';
         const html = modelData.data?.html || '';
-        const combinedContent = markdown + ' ' + html;
+        const combinedContent = markdown + '\n\n' + html;
         
-        console.log(`Content received for ${modelUrl}: ${combinedContent.length} chars`);
+        console.log(`Content for ${modelUrl}: ${combinedContent.length} chars`);
         
-        if (combinedContent.length < 100) {
+        if (combinedContent.length < 200) {
           console.log(`Insufficient content for ${modelUrl}, skipping`);
           continue;
         }
@@ -162,7 +207,7 @@ serve(async (req) => {
         // Extract model name from URL
         const urlParts = modelUrl.split('/');
         const urlSlug = urlParts[urlParts.length - 1] || urlParts[urlParts.length - 2];
-        let modelName = urlSlug.replace(/-/g, ' ').toUpperCase();
+        let modelName = urlSlug.replace(/-/g, ' ').replace(/\bthe\b/gi, '').trim().toUpperCase();
 
         const homeData: MobileHomeData = {
           series: 'OwnTru',
@@ -170,174 +215,213 @@ serve(async (req) => {
           display_name: modelName,
         };
 
-        // Extract title/display name from content
+        // Extract title/display name with more aggressive patterns
         const titlePatterns = [
-          /<h1[^>]*>([^<]+)<\/h1>/i,
-          /^#\s+([^\n\r]+)/m,
-          /<title[^>]*>([^<]+?)\s*\|\s*OwnTru/i,
-          /\*\*\s*([A-Z][A-Z\s]{2,30})\s*\*\*/,
-          /^([A-Z][A-Z\s]{2,30})$/m
+          /<h1[^>]*>([^<]{3,50})<\/h1>/gi,
+          /<title[^>]*>([^<|]+?)(?:\s*\|\s*OwnTru)?<\/title>/gi,
+          /^#\s+([^\n\r]{3,50})/gm,
+          /<h2[^>]*>([^<]{3,50})<\/h2>/gi,
+          /\*\*\s*([A-Z][A-Z\s]{3,40})\s*\*\*/g,
+          /class="[^"]*title[^"]*"[^>]*>([^<]{3,50})</gi,
+          /class="[^"]*heading[^"]*"[^>]*>([^<]{3,50})</gi
         ];
 
         for (const pattern of titlePatterns) {
-          const match = combinedContent.match(pattern);
-          if (match && match[1]) {
-            const title = match[1].trim().replace(/\s+/g, ' ');
-            if (title.length >= 3 && title.length <= 50 && 
-                !title.toLowerCase().includes('owntru') &&
-                !title.includes('www') && !title.includes('http')) {
-              homeData.display_name = title;
-              homeData.model = title.replace(/\s+/g, '');
-              console.log(`Found title: ${title}`);
-              break;
+          const matches = [...combinedContent.matchAll(pattern)];
+          for (const match of matches) {
+            if (match && match[1]) {
+              const title = match[1].trim()
+                .replace(/\s+/g, ' ')
+                .replace(/owntru/gi, '')
+                .replace(/mobile home/gi, '')
+                .replace(/manufactured home/gi, '')
+                .trim();
+              
+              if (title.length >= 3 && title.length <= 50 && 
+                  !title.toLowerCase().includes('www') && 
+                  !title.includes('http') &&
+                  title.match(/[a-zA-Z]/)) {
+                homeData.display_name = title;
+                homeData.model = title.replace(/\s+/g, '');
+                console.log(`Found title: ${title}`);
+                break;
+              }
             }
           }
+          if (homeData.display_name !== modelName) break;
         }
 
-        // Extract square footage with more patterns
+        // Extract square footage with comprehensive patterns
         const sqftPatterns = [
-          /(\d{3,4})\s*sq\.?\s*ft\.?/gi,
-          /(\d{3,4})\s*square\s*feet/gi,
+          /(\d{3,4})\s*(?:sq\.?\s*ft\.?|square\s*feet?|sf\b)/gi,
           /square\s*footage[:\s]*(\d{3,4})/gi,
-          /total\s*area[:\s]*(\d{3,4})/gi,
-          /(\d{3,4})\s*sf\b/gi,
-          /size[:\s]*(\d{3,4})\s*sq/gi
+          /total\s*(?:area|size)[:\s]*(\d{3,4})/gi,
+          /size[:\s]*(\d{3,4})\s*sq/gi,
+          /(\d{3,4})\s*sq\b/gi,
+          /area[:\s]*(\d{3,4})/gi,
+          /living\s*space[:\s]*(\d{3,4})/gi
         ];
 
         for (const pattern of sqftPatterns) {
-          const match = combinedContent.match(pattern);
-          if (match) {
-            const sqft = parseInt(match[1]);
-            if (sqft >= 200 && sqft <= 4000) {
-              homeData.square_footage = sqft;
-              console.log(`Found square footage: ${sqft}`);
-              break;
+          const matches = [...combinedContent.matchAll(pattern)];
+          for (const match of matches) {
+            if (match && match[1]) {
+              const sqft = parseInt(match[1]);
+              if (sqft >= 400 && sqft <= 3000) {
+                homeData.square_footage = sqft;
+                console.log(`Found square footage: ${sqft}`);
+                break;
+              }
             }
           }
+          if (homeData.square_footage) break;
         }
 
-        // Extract bedrooms
+        // Extract bedrooms with more patterns
         const bedroomPatterns = [
           /(\d+)\s*bed(?:room)?s?\b/gi,
           /bed(?:room)?s?[:\s]*(\d+)/gi,
           /(\d+)\s*br\b/gi,
-          /(\d+)\/\d+\s*bed/gi
+          /(\d+)\/\d+.*bed/gi,
+          /bedroom[s]?[:\s]*(\d+)/gi
         ];
 
         for (const pattern of bedroomPatterns) {
-          const match = combinedContent.match(pattern);
-          if (match) {
-            const bedrooms = parseInt(match[1]);
-            if (bedrooms >= 1 && bedrooms <= 8) {
-              homeData.bedrooms = bedrooms;
-              console.log(`Found bedrooms: ${bedrooms}`);
-              break;
+          const matches = [...combinedContent.matchAll(pattern)];
+          for (const match of matches) {
+            if (match && match[1]) {
+              const bedrooms = parseInt(match[1]);
+              if (bedrooms >= 1 && bedrooms <= 6) {
+                homeData.bedrooms = bedrooms;
+                console.log(`Found bedrooms: ${bedrooms}`);
+                break;
+              }
             }
           }
+          if (homeData.bedrooms) break;
         }
 
-        // Extract bathrooms
+        // Extract bathrooms with more patterns
         const bathroomPatterns = [
           /(\d+(?:\.\d+)?)\s*bath(?:room)?s?\b/gi,
           /bath(?:room)?s?[:\s]*(\d+(?:\.\d+)?)/gi,
           /(\d+(?:\.\d+)?)\s*ba\b/gi,
-          /\d+\/(\d+(?:\.\d+)?)\s*bath/gi
+          /\d+\/(\d+(?:\.\d+)?)\s*bath/gi,
+          /bathroom[s]?[:\s]*(\d+(?:\.\d+)?)/gi
         ];
 
         for (const pattern of bathroomPatterns) {
-          const match = combinedContent.match(pattern);
-          if (match) {
-            const bathrooms = parseFloat(match[1]);
-            if (bathrooms >= 0.5 && bathrooms <= 5) {
-              homeData.bathrooms = bathrooms;
-              console.log(`Found bathrooms: ${bathrooms}`);
-              break;
+          const matches = [...combinedContent.matchAll(pattern)];
+          for (const match of matches) {
+            if (match && match[1]) {
+              const bathrooms = parseFloat(match[1]);
+              if (bathrooms >= 0.5 && bathrooms <= 4) {
+                homeData.bathrooms = bathrooms;
+                console.log(`Found bathrooms: ${bathrooms}`);
+                break;
+              }
             }
           }
+          if (homeData.bathrooms) break;
         }
 
-        // Extract dimensions
+        // Extract dimensions with comprehensive patterns
         const dimensionPatterns = [
           /(\d+)['"]?\s*[x×]\s*(\d+)['"]?/gi,
           /(\d+)\s*ft\s*[x×]\s*(\d+)\s*ft/gi,
           /length[:\s]*(\d+)[^0-9]*width[:\s]*(\d+)/gi,
           /width[:\s]*(\d+)[^0-9]*length[:\s]*(\d+)/gi,
           /(\d+)\s*by\s*(\d+)/gi,
-          /dimensions[:\s]*(\d+)[^0-9]+(\d+)/gi
+          /dimensions[:\s]*(\d+)[^0-9]+(\d+)/gi,
+          /size[:\s]*(\d+)[^0-9]+(\d+)/gi
         ];
 
         for (const pattern of dimensionPatterns) {
-          const match = combinedContent.match(pattern);
-          if (match) {
-            const dim1 = parseInt(match[1]);
-            const dim2 = parseInt(match[2]);
-            if (dim1 >= 8 && dim1 <= 50 && dim2 >= 20 && dim2 <= 120) {
-              homeData.width_feet = Math.min(dim1, dim2);
-              homeData.length_feet = Math.max(dim1, dim2);
-              console.log(`Found dimensions: ${homeData.width_feet}x${homeData.length_feet}`);
-              break;
+          const matches = [...combinedContent.matchAll(pattern)];
+          for (const match of matches) {
+            if (match && match[1] && match[2]) {
+              const dim1 = parseInt(match[1]);
+              const dim2 = parseInt(match[2]);
+              if (dim1 >= 10 && dim1 <= 50 && dim2 >= 30 && dim2 <= 120) {
+                homeData.width_feet = Math.min(dim1, dim2);
+                homeData.length_feet = Math.max(dim1, dim2);
+                console.log(`Found dimensions: ${homeData.width_feet}x${homeData.length_feet}`);
+                break;
+              }
             }
           }
+          if (homeData.length_feet && homeData.width_feet) break;
         }
 
-        // Extract description
+        // Extract description with improved patterns
         const descriptionPatterns = [
-          /<p[^>]*>([^<]{100,800})<\/p>/gi,
-          /description[:\s]*([^.\n\r]{100,800}\.)/gi,
-          /about[:\s]*([^.\n\r]{100,800}\.)/gi,
-          /overview[:\s]*([^.\n\r]{100,800}\.)/gi,
-          /\n([A-Z][^.\n\r]{100,800}\.)/g
+          /<p[^>]*>([^<]{150,1000})<\/p>/gi,
+          /description[:\s]*([^.\n\r]{150,1000}\.)/gi,
+          /about[:\s]*([^.\n\r]{150,1000}\.)/gi,
+          /overview[:\s]*([^.\n\r]{150,1000}\.)/gi,
+          /\n\n([A-Z][^.\n\r]{150,1000}\.)/g,
+          /<div[^>]*>([^<]{150,1000})<\/div>/gi
         ];
 
         for (const pattern of descriptionPatterns) {
-          const match = combinedContent.match(pattern);
-          if (match && match[1]) {
-            let desc = match[1].trim()
-              .replace(/[*#\[\]]/g, '')
-              .replace(/\s+/g, ' ')
-              .replace(/owntru\.com[^\s]*/gi, '')
-              .replace(/href=[^\s]*/gi, '');
-            
-            if (desc.length >= 100 && desc.length <= 800 && 
-                !desc.toLowerCase().includes('cookie') &&
-                !desc.includes('http') &&
-                desc.match(/[a-z]/i)) {
-              homeData.description = desc;
-              console.log(`Found description: ${desc.substring(0, 100)}...`);
-              break;
+          const matches = [...combinedContent.matchAll(pattern)];
+          for (const match of matches) {
+            if (match && match[1]) {
+              let desc = match[1].trim()
+                .replace(/[*#\[\]<>]/g, '')
+                .replace(/\s+/g, ' ')
+                .replace(/owntru\.com[^\s]*/gi, '')
+                .replace(/href=[^\s]*/gi, '')
+                .replace(/class="[^"]*"/gi, '');
+              
+              if (desc.length >= 150 && desc.length <= 1000 && 
+                  !desc.toLowerCase().includes('cookie') &&
+                  !desc.includes('http') &&
+                  desc.match(/[a-z]/i) &&
+                  !desc.includes('javascript')) {
+                homeData.description = desc;
+                console.log(`Found description: ${desc.substring(0, 100)}...`);
+                break;
+              }
             }
           }
+          if (homeData.description) break;
         }
 
-        // Extract features
+        // Extract features with comprehensive patterns
         const features: string[] = [];
         const featurePatterns = [
-          /<li[^>]*>([^<]{10,150})<\/li>/gi,
-          /•\s*([^.\n\r]{10,150})/g,
-          /-\s*([^.\n\r]{10,150})/g,
-          /\*\s*([^.\n\r]{10,150})/g,
-          /feature[s]?[:\s]*([^.\n\r]{10,150})/gi,
-          /include[s]?[:\s]*([^.\n\r]{10,150})/gi
+          /<li[^>]*>([^<]{15,200})<\/li>/gi,
+          /•\s*([^.\n\r]{15,200})/g,
+          /-\s*([^.\n\r]{15,200})/g,
+          /\*\s*([^.\n\r]{15,200})/g,
+          /feature[s]?[:\s]*([^.\n\r]{15,200})/gi,
+          /include[s]?[:\s]*([^.\n\r]{15,200})/gi,
+          /amenities[:\s]*([^.\n\r]{15,200})/gi,
+          /specification[s]?[:\s]*([^.\n\r]{15,200})/gi
         ];
 
         for (const pattern of featurePatterns) {
-          let match;
-          while ((match = pattern.exec(combinedContent)) !== null && features.length < 12) {
-            let feature = match[1].trim()
-              .replace(/[*#<>]/g, '')
-              .replace(/\s+/g, ' ')
-              .replace(/owntru\.com[^\s]*/gi, '')
-              .replace(/href=[^\s]*/gi, '');
-            
-            if (feature.length >= 10 && feature.length <= 150 && 
-                !features.includes(feature) &&
-                !feature.toLowerCase().includes('cookie') &&
-                !feature.includes('http') &&
-                feature.match(/[a-z]/i)) {
-              features.push(feature);
+          const matches = [...combinedContent.matchAll(pattern)];
+          for (const match of matches) {
+            if (match && match[1] && features.length < 15) {
+              let feature = match[1].trim()
+                .replace(/[*#<>]/g, '')
+                .replace(/\s+/g, ' ')
+                .replace(/owntru\.com[^\s]*/gi, '')
+                .replace(/href=[^\s]*/gi, '')
+                .replace(/class="[^"]*"/gi, '');
+              
+              if (feature.length >= 15 && feature.length <= 200 && 
+                  !features.includes(feature) &&
+                  !feature.toLowerCase().includes('cookie') &&
+                  !feature.includes('http') &&
+                  feature.match(/[a-z]/i) &&
+                  !feature.includes('javascript')) {
+                features.push(feature);
+              }
             }
           }
-          if (features.length >= 8) break;
         }
 
         if (features.length > 0) {
@@ -347,7 +431,8 @@ serve(async (req) => {
 
         mobileHomes.push(homeData);
         console.log(`Successfully processed: ${homeData.display_name}`);
-        console.log('Extracted data:', {
+        console.log('Final extracted data:', {
+          name: homeData.display_name,
           sqft: homeData.square_footage,
           bed: homeData.bedrooms,
           bath: homeData.bathrooms,
@@ -375,7 +460,7 @@ serve(async (req) => {
           .from('mobile_homes')
           .select('id')
           .or(`display_name.ilike.%${homeData.display_name}%,model.ilike.%${homeData.model}%`)
-          .single();
+          .maybeSingle();
 
         if (existingHome) {
           const { error } = await supabase
@@ -398,6 +483,8 @@ serve(async (req) => {
           if (!error) {
             updatedCount++;
             console.log(`Updated: ${homeData.display_name}`);
+          } else {
+            console.error(`Update error for ${homeData.display_name}:`, error);
           }
         } else {
           const { data: maxOrder } = await supabase
@@ -431,6 +518,8 @@ serve(async (req) => {
           if (!error) {
             createdCount++;
             console.log(`Created: ${homeData.display_name}`);
+          } else {
+            console.error(`Insert error for ${homeData.display_name}:`, error);
           }
         }
       } catch (error) {

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
@@ -6,6 +7,7 @@ import { User } from '@supabase/supabase-js';
 
 type MobileHome = Database['public']['Tables']['mobile_homes']['Row'];
 type Service = Database['public']['Tables']['services']['Row'];
+type HomeOption = Database['public']['Tables']['home_options']['Row'];
 
 export const useCustomerPricing = (user?: User | null) => {
   const [markupPercentage, setMarkupPercentage] = useState<number>(30); // Default 30%
@@ -80,16 +82,39 @@ export const useCustomerPricing = (user?: User | null) => {
     return calculatePrice(baseCost);
   };
 
+  const calculateHomeOptionPrice = (homeOption: HomeOption, homeSquareFootage?: number): number => {
+    if (homeOption.pricing_type === 'per_sqft') {
+      if (!homeSquareFootage || !homeOption.price_per_sqft) {
+        console.warn('Cannot calculate per-sqft pricing without square footage or price per sqft');
+        return 0;
+      }
+      // For per-sqft pricing, apply customer markup to the per-sqft cost, then multiply by square footage
+      const costPerSqft = homeOption.price_per_sqft;
+      const markedUpCostPerSqft = calculatePrice(costPerSqft);
+      return Math.round((markedUpCostPerSqft * homeSquareFootage) * 100) / 100;
+    } else {
+      // For fixed pricing, apply customer markup to the cost price
+      const baseCost = homeOption.cost_price || 0;
+      return calculatePrice(baseCost);
+    }
+  };
+
   const calculateTotalPrice = (
     mobileHome: MobileHome,
-    selectedServices: Service[] = []
+    selectedServices: Service[] = [],
+    selectedHomeOptions: { option: HomeOption; quantity?: number }[] = []
   ): number => {
     const homePrice = calculateMobileHomePrice(mobileHome);
     const servicesPrice = selectedServices.reduce((total, service) => {
       return total + calculateServicePrice(service);
     }, 0);
     
-    return Math.round((homePrice + servicesPrice) * 100) / 100; // Round to 2 decimal places
+    const homeOptionsPrice = selectedHomeOptions.reduce((total, { option, quantity = 1 }) => {
+      const optionPrice = calculateHomeOptionPrice(option, mobileHome.square_footage || undefined);
+      return total + (optionPrice * quantity);
+    }, 0);
+    
+    return Math.round((homePrice + servicesPrice + homeOptionsPrice) * 100) / 100; // Round to 2 decimal places
   };
 
   return {
@@ -101,6 +126,7 @@ export const useCustomerPricing = (user?: User | null) => {
     formatCalculatedPrice,
     calculateMobileHomePrice,
     calculateServicePrice,
+    calculateHomeOptionPrice,
     calculateTotalPrice,
   };
 };

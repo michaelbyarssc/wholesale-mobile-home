@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -216,15 +215,17 @@ export const HomeOptionsTab = () => {
     if (option.pricing_type === 'per_sqft') {
       return (
         <div>
-          <span className="text-gray-500">Per Sq Ft:</span>
+          <span className="text-gray-500">Base Cost Per Sq Ft:</span>
           <div className="font-medium text-blue-600">{formatPrice(option.price_per_sqft)}/sq ft</div>
+          <div className="text-xs text-gray-400 mt-1">Final price uses customer's markup %</div>
         </div>
       );
     } else {
       return (
         <div>
-          <span className="text-gray-500">Fixed Price:</span>
-          <div className="font-medium text-green-600">{formatPrice(option.calculated_price)}</div>
+          <span className="text-gray-500">Base Cost:</span>
+          <div className="font-medium text-green-600">{formatPrice(option.cost_price)}</div>
+          <div className="text-xs text-gray-400 mt-1">Final price uses customer's markup %</div>
         </div>
       );
     }
@@ -245,49 +246,35 @@ export const HomeOptionsTab = () => {
               <SelectValue placeholder="Select pricing type" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="fixed">Fixed Price</SelectItem>
-              <SelectItem value="per_sqft">Price Per Square Foot</SelectItem>
+              <SelectItem value="fixed">Fixed Price (Base Cost)</SelectItem>
+              <SelectItem value="per_sqft">Price Per Square Foot (Base Cost)</SelectItem>
             </SelectContent>
           </Select>
+          <p className="text-sm text-gray-500 mt-1">
+            Customer's individual markup percentage will be applied to the base cost.
+          </p>
         </div>
 
         {formData.pricing_type === 'fixed' ? (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <Label htmlFor={`${idPrefix}cost-price`}>Cost Price *</Label>
-              <Input
-                id={`${idPrefix}cost-price`}
-                type="number"
-                step="0.01"
-                min="0"
-                value={formData.cost_price}
-                onChange={(e) => setFormData({ ...formData, cost_price: parseFloat(e.target.value) || 0 })}
-                placeholder="0.00"
-                required
-              />
-            </div>
-            <div>
-              <Label htmlFor={`${idPrefix}markup`}>Markup %</Label>
-              <Input
-                id={`${idPrefix}markup`}
-                type="number"
-                step="0.01"
-                min="0"
-                value={formData.markup_percentage}
-                onChange={(e) => setFormData({ ...formData, markup_percentage: parseFloat(e.target.value) || 0 })}
-                placeholder="0.00"
-              />
-            </div>
-            <div>
-              <Label>Calculated Price</Label>
-              <div className="mt-2 p-2 bg-gray-50 rounded border text-sm font-medium">
-                {formatPrice(formData.cost_price * (1 + formData.markup_percentage / 100))}
-              </div>
-            </div>
+          <div>
+            <Label htmlFor={`${idPrefix}cost-price`}>Base Cost Price *</Label>
+            <Input
+              id={`${idPrefix}cost-price`}
+              type="number"
+              step="0.01"
+              min="0"
+              value={formData.cost_price}
+              onChange={(e) => setFormData({ ...formData, cost_price: parseFloat(e.target.value) || 0 })}
+              placeholder="0.00"
+              required
+            />
+            <p className="text-sm text-gray-500 mt-1">
+              Base cost before customer markup is applied. Example: if base cost is $100 and customer has 30% markup, final price will be $130.
+            </p>
           </div>
         ) : (
           <div>
-            <Label htmlFor={`${idPrefix}price-per-sqft`}>Price Per Square Foot *</Label>
+            <Label htmlFor={`${idPrefix}price-per-sqft`}>Base Cost Per Square Foot *</Label>
             <Input
               id={`${idPrefix}price-per-sqft`}
               type="number"
@@ -299,7 +286,7 @@ export const HomeOptionsTab = () => {
               required
             />
             <p className="text-sm text-gray-500 mt-1">
-              This will be multiplied by the home's square footage to calculate the final price.
+              Base cost per sq ft before customer markup. Example: $0.61/sq ft base cost with 30% markup = $0.79/sq ft final cost, then multiplied by home square footage.
             </p>
           </div>
         )}
@@ -338,6 +325,9 @@ export const HomeOptionsTab = () => {
               Add Home Option
             </Button>
           </div>
+          <p className="text-sm text-gray-600">
+            Manage home options with base costs. Customer-specific markup percentages will be applied automatically.
+          </p>
         </CardHeader>
         <CardContent>
           {/* Create Form */}
@@ -488,24 +478,7 @@ export const HomeOptionsTab = () => {
                             <p className="text-gray-600 mb-3">{option.description}</p>
                           )}
                           
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                            {option.pricing_type === 'fixed' ? (
-                              <>
-                                <div>
-                                  <span className="text-gray-500">Cost Price:</span>
-                                  <div className="font-medium">{formatPrice(option.cost_price)}</div>
-                                </div>
-                                <div>
-                                  <span className="text-gray-500">Markup:</span>
-                                  <div className="font-medium">{option.markup_percentage}%</div>
-                                </div>
-                              </>
-                            ) : (
-                              <div>
-                                <span className="text-gray-500">Cost per Sq Ft:</span>
-                                <div className="font-medium">{formatPrice(option.price_per_sqft)}</div>
-                              </div>
-                            )}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                             {renderPricingDisplay(option)}
                           </div>
                         </div>

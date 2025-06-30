@@ -55,7 +55,8 @@ export const MobileHomesShowcase = ({
   const [selectedHomeForServices, setSelectedHomeForServices] = useState<MobileHome | null>(null);
   const { calculateMobileHomePrice, loading: pricingLoading } = useCustomerPricing(user);
   
-  console.log('MobileHomesShowcase render - cart items from props:', cartItems.length);
+  console.log('🔍 MobileHomesShowcase render - cart items from props:', cartItems.length);
+  console.log('🔍 MobileHomesShowcase - selectedHomeForServices:', selectedHomeForServices?.id);
 
   const { data: mobileHomes = [], isLoading } = useQuery({
     queryKey: ['public-mobile-homes'],
@@ -150,12 +151,17 @@ export const MobileHomesShowcase = ({
   };
 
   const handleAddToCart = useCallback((home: MobileHome) => {
-    console.log('Add to cart button clicked for:', home.id, home.model);
+    console.log('🔍 Add to cart button clicked for:', home.id, home.model);
+    console.log('🔍 Setting selectedHomeForServices to:', home);
     setSelectedHomeForServices(home);
   }, []);
 
   const handleAddToCartWithServices = useCallback((home: MobileHome, selectedServices: string[], selectedHomeOptions: { option: HomeOption; quantity: number }[] = []) => {
-    console.log('Adding to cart with services and options:', home.id, selectedServices, selectedHomeOptions);
+    console.log('🔍 Adding to cart with services and options:', {
+      homeId: home.id,
+      selectedServices,
+      selectedHomeOptions
+    });
     addToCart(home, selectedServices, selectedHomeOptions);
     setSelectedHomeForServices(null);
   }, [addToCart]);
@@ -283,9 +289,15 @@ export const MobileHomesShowcase = ({
           {/* Add to Cart Button - Only show for logged in users */}
           {user ? (
             <Button 
-              onClick={() => handleAddToCart(home)}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('🔍 Button clicked for home:', home.id);
+                handleAddToCart(home);
+              }}
               className="w-full"
               variant={isInCart ? "outline" : "default"}
+              type="button"
             >
               {isInCart ? 'Update in Cart' : 'Add to Cart'}
             </Button>
@@ -294,6 +306,7 @@ export const MobileHomesShowcase = ({
               onClick={() => window.location.href = '/auth'}
               className="w-full"
               variant="outline"
+              type="button"
             >
               Login to Add to Cart
             </Button>
@@ -475,8 +488,11 @@ export const MobileHomesShowcase = ({
             
             <MobileHomeServicesDialog
               isOpen={!!selectedHomeForServices}
-              onClose={() => setSelectedHomeForServices(null)}
-              mobileHome={selectedHomeForServices!}
+              onClose={() => {
+                console.log('🔍 Closing MobileHomeServicesDialog');
+                setSelectedHomeForServices(null);
+              }}
+              mobileHome={selectedHomeForServices}
               onAddToCart={handleAddToCartWithServices}
               user={user}
             />

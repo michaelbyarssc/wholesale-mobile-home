@@ -23,7 +23,7 @@ type HomeOption = Database['public']['Tables']['home_options']['Row'];
 interface MobileHomeServicesDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  mobileHome: MobileHome;
+  mobileHome: MobileHome | null;
   onAddToCart: (home: MobileHome, selectedServices: string[], selectedHomeOptions: { option: HomeOption; quantity: number }[]) => void;
   user: User;
 }
@@ -35,13 +35,12 @@ export const MobileHomeServicesDialog = ({
   onAddToCart,
   user
 }: MobileHomeServicesDialogProps) => {
-  console.log('MobileHomeServicesDialog: Rendering with mobileHome:', mobileHome?.id, 'isOpen:', isOpen);
-  
-  // Early return if no mobile home or dialog is not open
-  if (!isOpen || !mobileHome) {
-    console.log('MobileHomeServicesDialog: Early return - isOpen:', isOpen, 'mobileHome:', !!mobileHome);
-    return null;
-  }
+  console.log('🔍 MobileHomeServicesDialog: Rendering with props:', {
+    isOpen,
+    mobileHomeId: mobileHome?.id,
+    mobileHomeModel: mobileHome?.model,
+    userId: user?.id
+  });
   
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [selectedHomeOptions, setSelectedHomeOptions] = useState<{ option: HomeOption; quantity: number }[]>([]);
@@ -81,11 +80,11 @@ export const MobileHomeServicesDialog = ({
     }
   });
 
-  // Use conditional services hook - now mobileHome is guaranteed to exist
+  // Use conditional services hook
   const { availableServices, getServicePrice } = useConditionalServices(
     allServices,
-    mobileHome.id,
-    [mobileHome],
+    mobileHome?.id || null,
+    mobileHome ? [mobileHome] : [],
     selectedServices
   );
 
@@ -101,6 +100,7 @@ export const MobileHomeServicesDialog = ({
   }, [isOpen, mobileHome?.id]);
 
   const handleServiceToggle = (serviceId: string) => {
+    console.log('🔍 Service toggle clicked:', serviceId);
     setSelectedServices(prev => 
       prev.includes(serviceId) 
         ? prev.filter(id => id !== serviceId)
@@ -109,6 +109,7 @@ export const MobileHomeServicesDialog = ({
   };
 
   const handleHomeOptionToggle = (option: HomeOption) => {
+    console.log('🔍 Home option toggle clicked:', option.id);
     setSelectedHomeOptions(prev => {
       const existing = prev.find(item => item.option.id === option.id);
       if (existing) {
@@ -120,6 +121,7 @@ export const MobileHomeServicesDialog = ({
   };
 
   const handleQuantityChange = (optionId: string, quantity: number) => {
+    console.log('🔍 Quantity change:', optionId, quantity);
     setSelectedHomeOptions(prev =>
       prev.map(item =>
         item.option.id === optionId
@@ -130,16 +132,34 @@ export const MobileHomeServicesDialog = ({
   };
 
   const handleAddToCart = () => {
+    console.log('🔍 Add to cart clicked with:', {
+      homeId: mobileHome?.id,
+      selectedServices,
+      selectedHomeOptions
+    });
+    
+    if (!mobileHome) {
+      console.error('No mobile home selected');
+      return;
+    }
+    
     onAddToCart(mobileHome, selectedServices, selectedHomeOptions);
+    onClose();
   };
 
   const getSelectedServicesData = () => {
     return allServices.filter(service => selectedServices.includes(service.id));
   };
 
-  const totalPrice = calculateTotalPrice(mobileHome, getSelectedServicesData(), selectedHomeOptions);
+  // Don't render if dialog is closed or no mobile home
+  if (!isOpen || !mobileHome) {
+    console.log('MobileHomeServicesDialog: Not rendering - isOpen:', isOpen, 'mobileHome:', !!mobileHome);
+    return null;
+  }
 
+  const totalPrice = calculateTotalPrice(mobileHome, getSelectedServicesData(), selectedHomeOptions);
   const homeName = mobileHome.display_name || `${mobileHome.manufacturer} ${mobileHome.model}`;
+  
   console.log('MobileHomeServicesDialog: Rendering dialog for home:', homeName);
 
   return (
@@ -213,7 +233,7 @@ export const MobileHomeServicesDialog = ({
                         <div className="flex items-center space-x-3">
                           <Checkbox 
                             checked={isSelected}
-                            onChange={() => handleServiceToggle(service.id)}
+                            onCheckedChange={() => handleServiceToggle(service.id)}
                           />
                           <div>
                             <div className="font-medium">{service.name}</div>
@@ -259,7 +279,7 @@ export const MobileHomeServicesDialog = ({
                           <div className="flex items-center space-x-3">
                             <Checkbox 
                               checked={isSelected}
-                              onChange={() => handleHomeOptionToggle(option)}
+                              onCheckedChange={() => handleHomeOptionToggle(option)}
                             />
                             <div>
                               <div className="font-medium">{option.name}</div>
@@ -318,10 +338,23 @@ export const MobileHomeServicesDialog = ({
                   <span className="text-green-600">{formatPrice(totalPrice)}</span>
                 </div>
                 <div className="flex gap-3">
-                  <Button variant="outline" onClick={onClose} className="flex-1">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => {
+                      console.log('🔍 Cancel button clicked');
+                      onClose();
+                    }} 
+                    className="flex-1"
+                  >
                     Cancel
                   </Button>
-                  <Button onClick={handleAddToCart} className="flex-1">
+                  <Button 
+                    onClick={() => {
+                      console.log('🔍 Add to Cart button clicked');
+                      handleAddToCart();
+                    }} 
+                    className="flex-1"
+                  >
                     Add to Cart
                   </Button>
                 </div>

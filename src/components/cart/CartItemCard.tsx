@@ -16,6 +16,10 @@ interface CartItemCardProps {
   item: CartItem;
   services: any[];
   homeOptions: any[];
+  availableServices: any[];
+  getServicePrice: (serviceId: string) => number;
+  getMissingDependencies: (serviceId: string) => string[];
+  getServicesByDependency: (serviceId: string) => any[];
   onUpdateServices: (homeId: string, selectedServices: string[]) => void;
   onUpdateHomeOptions: (homeId: string, selectedHomeOptions: { option: HomeOption; quantity: number }[]) => void;
   onRemoveItem: (homeId: string) => void;
@@ -29,6 +33,10 @@ export const CartItemCard = ({
   item,
   services,
   homeOptions,
+  availableServices,
+  getServicePrice,
+  getMissingDependencies,
+  getServicesByDependency,
   onUpdateServices,
   onUpdateHomeOptions,
   onRemoveItem,
@@ -98,6 +106,10 @@ export const CartItemCard = ({
           <CartServicesList
             item={item}
             services={services}
+            availableServices={availableServices}
+            getServicePrice={getServicePrice}
+            getMissingDependencies={getMissingDependencies}
+            getServicesByDependency={getServicesByDependency}
             onUpdateServices={onUpdateServices}
             calculatePrice={calculatePrice}
           />

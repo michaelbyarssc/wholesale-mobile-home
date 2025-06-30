@@ -2,13 +2,16 @@
 import React from 'react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { useConditionalServices } from '@/hooks/useConditionalServices';
 import { formatPrice } from '@/lib/utils';
 import { CartItem } from '@/components/ShoppingCart';
 
 interface CartServicesListProps {
   item: CartItem;
   services: any[];
+  availableServices: any[];
+  getServicePrice: (serviceId: string) => number;
+  getMissingDependencies: (serviceId: string) => string[];
+  getServicesByDependency: (serviceId: string) => any[];
   onUpdateServices: (homeId: string, selectedServices: string[]) => void;
   calculatePrice: (cost: number) => number;
 }
@@ -16,22 +19,16 @@ interface CartServicesListProps {
 export const CartServicesList = ({
   item,
   services,
+  availableServices,
+  getServicePrice,
+  getMissingDependencies,
+  getServicesByDependency,
   onUpdateServices,
   calculatePrice
 }: CartServicesListProps) => {
-  const mobileHomes = [item.mobileHome];
-  
   console.log(`CartServicesList - Home: ${item.mobileHome.model}, Width: ${item.mobileHome.width_feet}ft`);
   console.log(`CartServicesList - Available services:`, services.length);
   console.log(`CartServicesList - Selected services:`, item.selectedServices);
-  
-  const {
-    availableServices,
-    getServicePrice,
-    getMissingDependencies,
-    getServicesByDependency
-  } = useConditionalServices(services, item.mobileHome.id, mobileHomes, item.selectedServices);
-
   console.log(`CartServicesList - Available services after filtering:`, availableServices.length);
 
   const handleServiceToggle = (serviceId: string) => {

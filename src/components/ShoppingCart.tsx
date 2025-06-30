@@ -78,17 +78,22 @@ export const ShoppingCart = ({
     }
   });
 
+  // Use conditional services for the first cart item (or empty if no items)
+  // This ensures stable hook calls even when cart items change
+  const firstHomeId = cartItems.length > 0 ? cartItems[0].mobileHome.id : '';
+  const firstSelectedServices = cartItems.length > 0 ? cartItems[0].selectedServices : [];
+  const mobileHomes = cartItems.map(item => item.mobileHome);
+  
+  const {
+    availableServices,
+    getServicePrice,
+    getMissingDependencies,
+    getServicesByDependency
+  } = useConditionalServices(services, firstHomeId, mobileHomes, firstSelectedServices);
+
   const calculateItemTotal = (item: CartItem) => {
     try {
       const homePrice = calculatePrice(item.mobileHome.cost || item.mobileHome.price);
-      
-      // Use conditional services hook to get proper pricing
-      const { getServicePrice } = useConditionalServices(
-        services,
-        item.mobileHome.id,
-        [item.mobileHome],
-        item.selectedServices
-      );
       
       // Calculate services price using conditional pricing
       const servicesPrice = item.selectedServices.reduce((total, serviceId) => {
@@ -192,6 +197,10 @@ export const ShoppingCart = ({
                 item={item}
                 services={services}
                 homeOptions={homeOptions}
+                availableServices={availableServices}
+                getServicePrice={getServicePrice}
+                getMissingDependencies={getMissingDependencies}
+                getServicesByDependency={getServicesByDependency}
                 onUpdateServices={onUpdateServices}
                 onUpdateHomeOptions={onUpdateHomeOptions}
                 onRemoveItem={handleRemoveItem}

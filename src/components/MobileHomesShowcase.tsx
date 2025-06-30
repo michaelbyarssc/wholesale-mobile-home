@@ -201,7 +201,7 @@ export const MobileHomesShowcase = ({
             // Non-logged in users see retail price or login prompt
             home.retail_price ? (
               <div className="mt-2">
-                <p className="text-sm text-gray-600 mb-1">Starting at:</p>
+                <p className="text-sm text-blue-600 mb-1">Starting at:</p>
                 <span className="text-2xl font-bold text-blue-600">{formatPrice(home.retail_price)}</span>
                 <p className="text-sm text-gray-500 mt-1">
                   <span className="text-blue-600 font-medium cursor-pointer hover:underline" onClick={() => window.location.href = '/auth'}>Login to see your price</span>

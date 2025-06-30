@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -25,7 +26,7 @@ serve(async (req) => {
   }
 
   try {
-    console.log('Starting OwnTru models scraping with improved patterns...');
+    console.log('Starting OwnTru models scraping with PDF link extraction...');
     
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -56,6 +57,53 @@ serve(async (req) => {
     console.log(`Processing ${modelUrls.length} specific model URLs`);
 
     const mobileHomes: MobileHomeData[] = [];
+    
+    // Helper function to extract model name from PDF links
+    const extractModelNameFromPDFLinks = (content: string, htmlContent: string): string | null => {
+      // Look for PDF links in both markdown and HTML content
+      const pdfLinkPatterns = [
+        /https:\/\/owntru\.com\/wp-content\/uploads\/[^"'\s]*([A-Z][A-Z\s]+)\.pdf/gi,
+        /href="([^"]*\.pdf[^"]*)"[^>]*>([^<]*)/gi,
+        /\[([^\]]*)\]\(([^)]*\.pdf[^)]*)\)/gi
+      ];
+
+      for (const pattern of pdfLinkPatterns) {
+        const matches = [...content.matchAll(pattern), ...htmlContent.matchAll(pattern)];
+        
+        for (const match of matches) {
+          let modelName = null;
+          
+          // Extract model name from different match groups
+          if (match[1] && match[1].match(/[A-Z][A-Z\s]+/)) {
+            modelName = match[1];
+          } else if (match[2] && match[2].match(/[A-Z][A-Z\s]+/)) {
+            modelName = match[2];
+          }
+          
+          if (modelName) {
+            // Clean up the model name
+            modelName = modelName.replace(/[_\-\.]/g, ' ')
+                                 .replace(/\s+/g, ' ')
+                                 .trim()
+                                 .replace(/\b\w/g, l => l.toUpperCase());
+            
+            // Filter out common non-model words
+            if (!modelName.includes('UPDATE') && 
+                !modelName.includes('SINGLE') && 
+                !modelName.includes('SHEET') &&
+                !modelName.includes('TRU') &&
+                !modelName.includes('TRS') &&
+                modelName.length >= 3 && 
+                modelName.length <= 15) {
+              console.log(`Extracted model name from PDF link: ${modelName}`);
+              return modelName;
+            }
+          }
+        }
+      }
+      
+      return null;
+    };
     
     // Process each model URL with proper rate limiting
     for (let i = 0; i < modelUrls.length; i++) {
@@ -112,7 +160,7 @@ serve(async (req) => {
           continue;
         }
 
-        // Extract model name from URL
+        // Extract model name from URL as fallback
         const urlParts = modelUrl.split('/');
         const urlSlug = urlParts[urlParts.length - 1];
         
@@ -122,6 +170,14 @@ serve(async (req) => {
           display_name: urlSlug.toUpperCase(),
         };
 
+        // Try to extract the actual model name from PDF links first
+        const modelNameFromPDF = extractModelNameFromPDFLinks(content, htmlContent);
+        if (modelNameFromPDF) {
+          homeData.display_name = modelNameFromPDF;
+          homeData.model = modelNameFromPDF.toLowerCase().replace(/\s+/g, '-');
+          console.log(`Using model name from PDF: ${modelNameFromPDF}`);
+        }
+
         // Primary pattern: "TRU28684R // 4 beds // 2 baths // 1,791 sq. ft. // 28x68"
         const primaryPattern = /([A-Z]{3}\d{5}[A-Z])\s*\/\/\s*(\d+)\s*beds?\s*\/\/\s*(\d+(?:\.\d+)?)\s*baths?\s*\/\/\s*([\d,]+)\s*sq\.?\s*ft\.?\s*\/\/\s*(\d+)x(\d+)/gi;
         
@@ -129,8 +185,11 @@ serve(async (req) => {
         console.log(`Testing primary pattern - found match:`, primaryMatch);
         
         if (primaryMatch) {
-          homeData.display_name = primaryMatch[1];
-          homeData.model = primaryMatch[1];
+          // Don't override the display name if we got it from PDF
+          if (!modelNameFromPDF) {
+            homeData.display_name = primaryMatch[1];
+            homeData.model = primaryMatch[1];
+          }
           homeData.bedrooms = parseInt(primaryMatch[2]);
           homeData.bathrooms = parseFloat(primaryMatch[3]);
           homeData.square_footage = parseInt(primaryMatch[4].replace(/,/g, ''));
@@ -139,6 +198,7 @@ serve(async (req) => {
           
           console.log(`Extracted from primary pattern:`, {
             model: homeData.model,
+            display_name: homeData.display_name,
             beds: homeData.bedrooms,
             baths: homeData.bathrooms,
             sqft: homeData.square_footage,
@@ -200,19 +260,21 @@ serve(async (req) => {
           }
         }
 
-        // Extract model name/title from headings
-        const titleMatches = content.match(/(?:^|\n)#+\s*([A-Z][A-Z\s]{2,20})\s*$/gm);
-        if (titleMatches) {
-          for (const match of titleMatches) {
-            const title = match.replace(/#+\s*/, '').trim();
-            if (title.length >= 3 && title.length <= 20 && 
-                !title.includes('OWNTRU') && 
-                !title.includes('HOME') &&
-                !title.includes('MOBILE') &&
-                !title.includes('NAVIGATION')) {
-              homeData.display_name = title;
-              console.log(`Found title from heading: ${title}`);
-              break;
+        // Extract model name/title from headings if we don't have it from PDF
+        if (!modelNameFromPDF) {
+          const titleMatches = content.match(/(?:^|\n)#+\s*([A-Z][A-Z\s]{2,20})\s*$/gm);
+          if (titleMatches) {
+            for (const match of titleMatches) {
+              const title = match.replace(/#+\s*/, '').trim();
+              if (title.length >= 3 && title.length <= 20 && 
+                  !title.includes('OWNTRU') && 
+                  !title.includes('HOME') &&
+                  !title.includes('MOBILE') &&
+                  !title.includes('NAVIGATION')) {
+                homeData.display_name = title;
+                console.log(`Found title from heading: ${title}`);
+                break;
+              }
             }
           }
         }

@@ -38,7 +38,6 @@ export const MobileHomeServicesDialog = ({
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [selectedHomeOptions, setSelectedHomeOptions] = useState<{ option: HomeOption; quantity: number }[]>([]);
   const { calculateMobileHomePrice, calculateServicePrice, calculateHomeOptionPrice, calculateTotalPrice } = useCustomerPricing(user);
-  const { getServicePrice, getApplicableServices } = useConditionalServices(user);
 
   // Fetch all services
   const { data: allServices = [] } = useQuery({
@@ -70,8 +69,13 @@ export const MobileHomeServicesDialog = ({
     }
   });
 
-  // Get applicable services for this mobile home
-  const applicableServices = getApplicableServices(allServices, mobileHome);
+  // Use conditional services hook with correct parameters
+  const { availableServices, getServicePrice } = useConditionalServices(
+    allServices,
+    mobileHome.id,
+    [mobileHome],
+    selectedServices
+  );
 
   // Reset selections when dialog opens/closes or mobile home changes
   useEffect(() => {
@@ -173,15 +177,16 @@ export const MobileHomeServicesDialog = ({
           </Card>
 
           {/* Services Section */}
-          {applicableServices.length > 0 && (
+          {availableServices.length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle>Available Services</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {applicableServices.map((service) => {
-                    const servicePrice = getServicePrice(service.id, mobileHome);
+                  {availableServices.map((service) => {
+                    const servicePrice = getServicePrice(service.id);
+                    const finalPrice = calculateServicePrice(service);
                     const isSelected = selectedServices.includes(service.id);
                     
                     return (
@@ -206,7 +211,7 @@ export const MobileHomeServicesDialog = ({
                         </div>
                         <div className="text-right">
                           <div className="font-semibold text-green-600">
-                            {formatPrice(servicePrice)}
+                            {formatPrice(finalPrice)}
                           </div>
                         </div>
                       </div>

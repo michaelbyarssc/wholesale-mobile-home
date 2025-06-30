@@ -201,7 +201,7 @@ export const UserActions = ({ profile, onUserUpdated }: UserActionsProps) => {
         variant="outline"
         onClick={() => resetUserPassword(profile.user_id, profile.email)}
         disabled={resettingPassword === profile.user_id}
-        title="Reset password to a secure randomly generated password"
+        title="Reset password to Wholesale2025!"
       >
         {resettingPassword === profile.user_id ? (
           <div className="h-3 w-3 animate-spin rounded-full border-b-2 border-current" />

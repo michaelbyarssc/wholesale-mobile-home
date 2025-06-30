@@ -170,7 +170,7 @@ export const ServicesSelection = ({
                             isDisabled ? 'cursor-not-allowed' : ''
                           }`}
                         >
-                          {service.name} {isVinylSkirting ? '🎯' : ''}
+                          {service.name}
                         </Label>
                         {service.description && (
                           <p className="text-xs text-gray-500 mt-1">{service.description}</p>

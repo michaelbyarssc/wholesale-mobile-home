@@ -75,14 +75,6 @@ export const MobileHomeServicesDialog = ({
   const mobileHomes = mobileHome ? [mobileHome] : [];
   const selectedHomeId = mobileHome?.id || null;
   
-  console.log('🔍 POPUP DEBUG - MobileHomeServicesDialog:', {
-    mobileHome: mobileHome,
-    selectedHomeId: selectedHomeId,
-    mobileHomesLength: mobileHomes.length,
-    servicesLength: services.length,
-    user: user ? 'present' : 'missing'
-  });
-  
   const {
     availableServices,
     getServicePrice,
@@ -190,49 +182,6 @@ export const MobileHomeServicesDialog = ({
         </DialogHeader>
 
         <div className="space-y-6">
-          {/* Debug Information Card - ALWAYS VISIBLE */}
-          <Card className="border-2 border-red-500 bg-red-50">
-            <CardHeader>
-              <CardTitle className="text-red-700">🚨 POPUP DEBUG INFORMATION - PLEASE SHARE THIS WITH AI</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-sm space-y-2">
-                <div><strong>Mobile Home:</strong> {mobileHome ? `${getHomeName(mobileHome)} (ID: ${mobileHome.id})` : 'None'}</div>
-                <div><strong>Home Width:</strong> {mobileHome?.width_feet || 'Unknown'}ft ({(mobileHome?.width_feet || 0) > 16 ? 'Double' : 'Single'} Wide)</div>
-                <div><strong>Services Array Length:</strong> {services.length}</div>
-                <div><strong>Available Services Length:</strong> {availableServices.length}</div>
-                <div><strong>Mobile Homes Array:</strong> {mobileHomes.length} items</div>
-                <div><strong>User Present:</strong> {user ? 'Yes' : 'No'}</div>
-                <div><strong>Calculate Price Function:</strong> {typeof calculatePrice}</div>
-                <div><strong>Get Service Price Function:</strong> {typeof getServicePrice}</div>
-                
-                {/* Find vinyl skirting service and show its data */}
-                {(() => {
-                  const vinylService = services.find(s => s.name && s.name.toLowerCase().includes('vinyl') && s.name.toLowerCase().includes('skirting'));
-                  if (vinylService) {
-                    const serviceCost = getServicePrice(vinylService.id);
-                    const displayPrice = calculatePrice(serviceCost);
-                    return (
-                      <div className="mt-4 p-3 bg-yellow-100 border border-yellow-400 rounded">
-                        <div><strong>🎯 VINYL SKIRTING SERVICE FOUND:</strong></div>
-                        <div>Name: "{vinylService.name}"</div>
-                        <div>ID: {vinylService.id}</div>
-                        <div>Base Price: {vinylService.price}</div>
-                        <div>Cost: {vinylService.cost}</div>
-                        <div>Single Wide Price: {vinylService.single_wide_price}</div>
-                        <div>Double Wide Price: {vinylService.double_wide_price}</div>
-                        <div>Raw Service Cost (from getServicePrice): {serviceCost}</div>
-                        <div>Final Display Price (after calculatePrice): {displayPrice}</div>
-                        <div>Is in Available Services: {availableServices.some(s => s.id === vinylService.id) ? 'Yes' : 'No'}</div>
-                      </div>
-                    );
-                  }
-                  return <div className="text-orange-600">❌ No vinyl skirting service found in services array</div>;
-                })()}
-              </div>
-            </CardContent>
-          </Card>
-
           {/* Home Summary */}
           <Card>
             <CardHeader>
@@ -282,19 +231,8 @@ export const MobileHomeServicesDialog = ({
                     const serviceCost = getServicePrice(service.id);
                     const displayPrice = calculatePrice(serviceCost);
                     
-                    // Special debug for vinyl skirting
-                    const serviceName = (service.name || '').toLowerCase();
-                    const isVinylSkirting = serviceName.includes('vinyl') && serviceName.includes('skirting');
-                    
-                    console.log(`🔍 POPUP - Processing Service: ${service.name}, ID: ${service.id}, serviceCost: ${serviceCost}, displayPrice: ${displayPrice}, isVinylSkirting: ${isVinylSkirting}`);
-                    
                     return (
-                      <div 
-                        key={service.id} 
-                        className={`flex items-start space-x-3 p-3 border rounded ${
-                          isVinylSkirting ? 'border-2 border-yellow-400 bg-yellow-50' : ''
-                        }`}
-                      >
+                      <div key={service.id} className="flex items-start space-x-3 p-3 border rounded">
                         <Checkbox
                           id={service.id}
                           checked={isSelected}
@@ -303,24 +241,13 @@ export const MobileHomeServicesDialog = ({
                         <div className="flex-1">
                           <Label 
                             htmlFor={service.id}
-                            className={`font-medium cursor-pointer ${
-                              isVinylSkirting ? 'text-yellow-800' : ''
-                            }`}
+                            className="font-medium cursor-pointer"
                           >
-                            {service.name} {isVinylSkirting ? '🎯' : ''}
+                            {service.name}
                           </Label>
                           {service.description && (
                             <p className="text-xs text-gray-500 mt-1">{service.description}</p>
                           )}
-
-                          {/* Show pricing debug for ALL services in popup */}
-                          <div className="mt-2 p-2 bg-blue-100 border rounded text-xs">
-                            <strong>Service Debug:</strong><br/>
-                            Raw Cost from getServicePrice(): {serviceCost}<br/>
-                            After calculatePrice(): {displayPrice}<br/>
-                            Type of serviceCost: {typeof serviceCost}<br/>
-                            Type of displayPrice: {typeof displayPrice}
-                          </div>
 
                           <p className="text-sm text-gray-600 mt-1">
                             {formatPrice(displayPrice)}

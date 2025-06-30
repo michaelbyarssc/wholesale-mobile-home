@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -68,6 +67,15 @@ export const useCustomerPricing = (user: User | null) => {
     }
 
     const markup = customerMarkup?.markup_percentage || 30;
+    
+    // If markup is 0, use internal cost + minimum profit
+    if (markup === 0) {
+      const finalPrice = mobileHome.price + (mobileHome.minimum_profit || 0);
+      console.log('useCustomerPricing: 0% markup - using cost + min profit:', finalPrice, 'from cost:', mobileHome.price, 'min profit:', mobileHome.minimum_profit);
+      return finalPrice;
+    }
+    
+    // Otherwise use normal markup calculation
     const finalPrice = mobileHome.price * (1 + markup / 100);
     console.log('useCustomerPricing: Calculated price:', finalPrice, 'from base:', mobileHome.price, 'with markup:', markup);
     return finalPrice;

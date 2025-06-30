@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ShoppingCart as CartIcon } from 'lucide-react';
@@ -85,7 +84,6 @@ export const ShoppingCart = ({
       // For now, use the basic cost or price field until we fix the conditional pricing
       const serviceCost = service.cost || service.price || 0;
       const finalPrice = calculatePrice(serviceCost);
-      console.log(`Total calc - Service ${serviceId}: serviceCost = ${serviceCost}, finalPrice = ${finalPrice}`);
       return total + finalPrice;
     }, 0);
     

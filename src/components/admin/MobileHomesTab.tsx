@@ -9,6 +9,10 @@ import { useToast } from '@/hooks/use-toast';
 import { MobileHomeEditDialog } from './MobileHomeEditDialog';
 import { MobileHomesDragDrop } from './MobileHomesDragDrop';
 import { formatPrice } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerTrigger } from '@/components/ui/drawer';
+import { Plus, Eye } from 'lucide-react';
 import type { Database } from '@/integrations/supabase/types';
 
 type MobileHome = Database['public']['Tables']['mobile_homes']['Row'];
@@ -16,8 +20,10 @@ type MobileHomeInsert = Database['public']['Tables']['mobile_homes']['Insert'];
 
 export const MobileHomesTab = () => {
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingHome, setEditingHome] = useState<MobileHome | null>(null);
+  const [showRetailPrices, setShowRetailPrices] = useState(false);
   const [formData, setFormData] = useState({
     manufacturer: 'Clayton',
     series: '',
@@ -224,6 +230,82 @@ export const MobileHomesTab = () => {
     }
   };
 
+  const AddFormContent = () => (
+    <form onSubmit={handleSubmit} className="space-y-4 p-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <Label htmlFor="manufacturer">Manufacturer</Label>
+          <Input
+            id="manufacturer"
+            value={formData.manufacturer}
+            onChange={(e) => setFormData({...formData, manufacturer: e.target.value})}
+            required
+          />
+        </div>
+        <div>
+          <Label htmlFor="series">Series</Label>
+          <Input
+            id="series"
+            value={formData.series}
+            onChange={(e) => setFormData({...formData, series: e.target.value})}
+            placeholder="Enter series name (e.g., Tru, Epic, Classic)"
+            required
+          />
+        </div>
+        <div>
+          <Label htmlFor="model">Model</Label>
+          <Input
+            id="model"
+            value={formData.model}
+            onChange={(e) => setFormData({...formData, model: e.target.value})}
+            required
+          />
+        </div>
+        <div>
+          <Label htmlFor="display_name">Display Name (e.g., Bliss, Delight, Elation)</Label>
+          <Input
+            id="display_name"
+            value={formData.display_name}
+            onChange={(e) => setFormData({...formData, display_name: e.target.value})}
+            placeholder="Enter OwnTru model name"
+            required
+          />
+        </div>
+        <div>
+          <Label htmlFor="price">Cost (Internal Price)</Label>
+          <Input
+            id="price"
+            type="number"
+            value={formData.price}
+            onChange={(e) => setFormData({...formData, price: e.target.value})}
+            required
+          />
+        </div>
+        <div>
+          <Label htmlFor="retail_price">Retail Price (Public Display)</Label>
+          <Input
+            id="retail_price"
+            type="number"
+            value={formData.retail_price}
+            onChange={(e) => setFormData({...formData, retail_price: e.target.value})}
+            placeholder="Enter retail price for public display"
+          />
+        </div>
+        <div className="sm:col-span-2">
+          <Label htmlFor="minimum_profit">Minimum Profit per Home</Label>
+          <Input
+            id="minimum_profit"
+            type="number"
+            value={formData.minimum_profit}
+            onChange={(e) => setFormData({...formData, minimum_profit: e.target.value})}
+            placeholder="0"
+          />
+        </div>
+      </div>
+      <Button type="submit" className="w-full">Add Mobile Home</Button>
+    </form>
+  );
+
   if (isLoading) {
     return (
       <Card>
@@ -238,91 +320,41 @@ export const MobileHomesTab = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 px-2 sm:px-0">
       <Card>
         <CardHeader>
-          <div className="flex justify-between items-center">
-            <CardTitle>Mobile Homes Management</CardTitle>
-            <Button onClick={() => setShowAddForm(!showAddForm)}>
-              {showAddForm ? 'Cancel' : 'Add Mobile Home'}
-            </Button>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+            <CardTitle className="text-lg sm:text-xl">Mobile Homes Management</CardTitle>
+            <div className="flex gap-2 w-full sm:w-auto">
+              {isMobile ? (
+                <Drawer open={showAddForm} onOpenChange={setShowAddForm}>
+                  <DrawerTrigger asChild>
+                    <Button className="flex-1 sm:flex-none">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Home
+                    </Button>
+                  </DrawerTrigger>
+                  <DrawerContent>
+                    <DrawerHeader>
+                      <DrawerTitle>Add New Mobile Home</DrawerTitle>
+                    </DrawerHeader>
+                    <AddFormContent />
+                  </DrawerContent>
+                </Drawer>
+              ) : (
+                <Button onClick={() => setShowAddForm(!showAddForm)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  {showAddForm ? 'Cancel' : 'Add Mobile Home'}
+                </Button>
+              )}
+            </div>
           </div>
         </CardHeader>
-        <CardContent>
-          {showAddForm && (
-            <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4 mb-6 p-4 border rounded-lg">
-              <div>
-                <Label htmlFor="manufacturer">Manufacturer</Label>
-                <Input
-                  id="manufacturer"
-                  value={formData.manufacturer}
-                  onChange={(e) => setFormData({...formData, manufacturer: e.target.value})}
-                  required
-                />
-              </div>
-              <div>
-                <Label htmlFor="series">Series</Label>
-                <Input
-                  id="series"
-                  value={formData.series}
-                  onChange={(e) => setFormData({...formData, series: e.target.value})}
-                  placeholder="Enter series name (e.g., Tru, Epic, Classic)"
-                  required
-                />
-              </div>
-              <div>
-                <Label htmlFor="model">Model</Label>
-                <Input
-                  id="model"
-                  value={formData.model}
-                  onChange={(e) => setFormData({...formData, model: e.target.value})}
-                  required
-                />
-              </div>
-              <div>
-                <Label htmlFor="display_name">Display Name (e.g., Bliss, Delight, Elation)</Label>
-                <Input
-                  id="display_name"
-                  value={formData.display_name}
-                  onChange={(e) => setFormData({...formData, display_name: e.target.value})}
-                  placeholder="Enter OwnTru model name"
-                  required
-                />
-              </div>
-              <div>
-                <Label htmlFor="price">Cost (Internal Price)</Label>
-                <Input
-                  id="price"
-                  type="number"
-                  value={formData.price}
-                  onChange={(e) => setFormData({...formData, price: e.target.value})}
-                  required
-                />
-              </div>
-              <div>
-                <Label htmlFor="retail_price">Retail Price (Public Display)</Label>
-                <Input
-                  id="retail_price"
-                  type="number"
-                  value={formData.retail_price}
-                  onChange={(e) => setFormData({...formData, retail_price: e.target.value})}
-                  placeholder="Enter retail price for public display"
-                />
-              </div>
-              <div className="col-span-2">
-                <Label htmlFor="minimum_profit">Minimum Profit per Home</Label>
-                <Input
-                  id="minimum_profit"
-                  type="number"
-                  value={formData.minimum_profit}
-                  onChange={(e) => setFormData({...formData, minimum_profit: e.target.value})}
-                  placeholder="0"
-                />
-              </div>
-              <div className="col-span-2">
-                <Button type="submit" className="w-full">Add Mobile Home</Button>
-              </div>
-            </form>
+        <CardContent className="p-3 sm:p-6">
+          {!isMobile && showAddForm && (
+            <div className="mb-6 border rounded-lg">
+              <AddFormContent />
+            </div>
           )}
 
           <MobileHomesDragDrop
@@ -335,22 +367,34 @@ export const MobileHomesTab = () => {
         </CardContent>
       </Card>
 
-      {/* New Retail Price Overview Section */}
+      {/* Retail Price Overview Section */}
       <Card>
         <CardHeader>
-          <CardTitle>Retail Price Overview</CardTitle>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+            <CardTitle className="text-lg sm:text-xl">Retail Price Overview</CardTitle>
+            {isMobile && (
+              <Button 
+                variant="outline" 
+                onClick={() => setShowRetailPrices(!showRetailPrices)}
+                className="w-full sm:w-auto"
+              >
+                <Eye className="h-4 w-4 mr-2" />
+                {showRetailPrices ? 'Hide Prices' : 'View Prices'}
+              </Button>
+            )}
+          </div>
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <CardContent className="p-3 sm:p-6">
+          <div className={`grid grid-cols-1 ${isMobile ? 'gap-3' : 'md:grid-cols-2 lg:grid-cols-3 gap-4'} ${isMobile && !showRetailPrices ? 'hidden' : ''}`}>
             {mobileHomes.map((home) => (
-              <div key={home.id} className="border rounded-lg p-4 space-y-2">
-                <h3 className="font-semibold text-lg">
+              <div key={home.id} className={`border rounded-lg p-3 sm:p-4 space-y-2 ${isMobile ? 'bg-gray-50' : ''}`}>
+                <h3 className="font-semibold text-base sm:text-lg">
                   {home.display_name || `${home.manufacturer} ${home.model}`}
                 </h3>
                 <div className="space-y-1 text-sm">
                   <div className="flex justify-between">
                     <span className="text-gray-600">Series:</span>
-                    <span>{home.series}</span>
+                    <span className="font-medium">{home.series}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Internal Cost:</span>

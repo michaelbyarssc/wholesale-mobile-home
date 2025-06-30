@@ -6,7 +6,7 @@ VALUES (
   'mobile-home-images', 
   true,
   52428800, -- 50MB limit
-  ARRAY['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+  ARRAY['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif']
 );
 
 -- Create storage policies for the bucket

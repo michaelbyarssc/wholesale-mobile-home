@@ -7,8 +7,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Upload, X, Image, Edit2 } from 'lucide-react';
+import { Upload, X, Image, Edit2, GripVertical } from 'lucide-react';
 import { formatPrice } from '@/lib/utils';
+import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import type { Database } from '@/integrations/supabase/types';
 
 type MobileHome = Database['public']['Tables']['mobile_homes']['Row'];
@@ -230,6 +231,58 @@ export const MobileHomeEditDialog = ({ mobileHome, open, onClose, onSave }: Mobi
   const handleCancelEditLabel = () => {
     setEditingLabel(null);
     setLabelText('');
+  };
+
+  const handleImageDragEnd = async (result: DropResult) => {
+    if (!result.destination) return;
+
+    const sourceIndex = result.source.index;
+    const destinationIndex = result.destination.index;
+
+    if (sourceIndex === destinationIndex) return;
+
+    // Create new array with reordered images
+    const reorderedImages = Array.from(images);
+    const [removed] = reorderedImages.splice(sourceIndex, 1);
+    reorderedImages.splice(destinationIndex, 0, removed);
+
+    // Update display_order for all images
+    const updates = reorderedImages.map((image, index) => ({
+      id: image.id,
+      display_order: index
+    }));
+
+    // Optimistically update local state
+    setImages(reorderedImages.map((image, index) => ({
+      ...image,
+      display_order: index
+    })));
+
+    try {
+      // Update database
+      for (const update of updates) {
+        const { error } = await supabase
+          .from('mobile_home_images')
+          .update({ display_order: update.display_order })
+          .eq('id', update.id);
+
+        if (error) throw error;
+      }
+
+      toast({
+        title: "Success",
+        description: "Image order updated successfully.",
+      });
+    } catch (error) {
+      console.error('Error updating image order:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update image order.",
+        variant: "destructive",
+      });
+      // Revert optimistic update on error
+      await fetchImages();
+    }
   };
 
   const handleSave = async () => {
@@ -457,7 +510,7 @@ export const MobileHomeEditDialog = ({ mobileHome, open, onClose, onSave }: Mobi
                 <input
                   type="file"
                   multiple
-                  accept="image/*"
+                  accept="image/jpeg,image/jpg,image/png,image/webp,image/gif,image/avif"
                   onChange={handleFileUpload}
                   className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                   disabled={uploading || images.length >= 40}
@@ -475,66 +528,101 @@ export const MobileHomeEditDialog = ({ mobileHome, open, onClose, onSave }: Mobi
               </p>
             )}
             
-            <div className="grid grid-cols-2 gap-3 max-h-96 overflow-y-auto">
-              {images.map((image, index) => (
-                <div key={image.id} className="relative group border rounded-lg p-2">
-                  <img
-                    src={image.image_url}
-                    alt={image.alt_text || ''}
-                    className="w-full h-24 object-cover rounded mb-2"
-                  />
-                  
-                  <div className="absolute top-1 right-1 flex gap-1">
-                    <button
-                      onClick={() => handleStartEditLabel(image.id, image.alt_text)}
-                      className="bg-blue-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                      title="Edit label"
-                    >
-                      <Edit2 className="h-3 w-3" />
-                    </button>
-                    <button
-                      onClick={() => handleDeleteImage(image.id)}
-                      className="bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                      title="Delete image"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </div>
-                  
-                  {editingLabel === image.id ? (
-                    <div className="space-y-2">
-                      <Input
-                        value={labelText}
-                        onChange={(e) => setLabelText(e.target.value)}
-                        placeholder="Enter image label"
-                        className="text-xs"
-                      />
-                      <div className="flex gap-1">
-                        <Button
-                          size="sm"
-                          onClick={() => handleSaveLabel(image.id)}
-                          className="text-xs px-2 py-1 h-6"
-                        >
-                          Save
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={handleCancelEditLabel}
-                          className="text-xs px-2 py-1 h-6"
-                        >
-                          Cancel
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <p className="text-xs text-gray-600 truncate" title={image.alt_text || 'No label'}>
-                      {image.alt_text || 'No label'}
-                    </p>
-                  )}
-                </div>
-              ))}
+            <div className="text-sm text-gray-500 mb-2">
+              Drag and drop images to reorder them. This order will be reflected on the homepage.
             </div>
+            
+            <DragDropContext onDragEnd={handleImageDragEnd}>
+              <Droppable droppableId="images">
+                {(provided, snapshot) => (
+                  <div
+                    {...provided.droppableProps}
+                    ref={provided.innerRef}
+                    className={`grid grid-cols-2 gap-3 max-h-96 overflow-y-auto ${
+                      snapshot.isDraggingOver ? 'bg-blue-50 rounded-lg p-2' : ''
+                    }`}
+                  >
+                    {images.map((image, index) => (
+                      <Draggable key={image.id} draggableId={image.id} index={index}>
+                        {(provided, snapshot) => (
+                          <div
+                            ref={provided.innerRef}
+                            {...provided.draggableProps}
+                            className={`relative group border rounded-lg p-2 ${
+                              snapshot.isDragging ? 'bg-white shadow-lg' : ''
+                            }`}
+                          >
+                            <div className="flex items-center justify-between mb-2">
+                              <div
+                                {...provided.dragHandleProps}
+                                className="cursor-grab active:cursor-grabbing p-1"
+                              >
+                                <GripVertical className="h-4 w-4 text-gray-400" />
+                              </div>
+                              <div className="flex gap-1">
+                                <button
+                                  onClick={() => handleStartEditLabel(image.id, image.alt_text)}
+                                  className="bg-blue-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                  title="Edit label"
+                                >
+                                  <Edit2 className="h-3 w-3" />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteImage(image.id)}
+                                  className="bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                  title="Delete image"
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
+                              </div>
+                            </div>
+                            
+                            <img
+                              src={image.image_url}
+                              alt={image.alt_text || ''}
+                              className="w-full h-24 object-cover rounded mb-2"
+                            />
+                            
+                            {editingLabel === image.id ? (
+                              <div className="space-y-2">
+                                <Input
+                                  value={labelText}
+                                  onChange={(e) => setLabelText(e.target.value)}
+                                  placeholder="Enter image label"
+                                  className="text-xs"
+                                />
+                                <div className="flex gap-1">
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleSaveLabel(image.id)}
+                                    className="text-xs px-2 py-1 h-6"
+                                  >
+                                    Save
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={handleCancelEditLabel}
+                                    className="text-xs px-2 py-1 h-6"
+                                  >
+                                    Cancel
+                                  </Button>
+                                </div>
+                              </div>
+                            ) : (
+                              <p className="text-xs text-gray-600 truncate" title={image.alt_text || 'No label'}>
+                                {image.alt_text || 'No label'}
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </Draggable>
+                    ))}
+                    {provided.placeholder}
+                  </div>
+                )}
+              </Droppable>
+            </DragDropContext>
             
             {images.length === 0 && (
               <div className="flex items-center justify-center h-40 border-2 border-dashed border-gray-300 rounded">
@@ -542,6 +630,7 @@ export const MobileHomeEditDialog = ({ mobileHome, open, onClose, onSave }: Mobi
                   <Image className="h-8 w-8 mx-auto mb-2" />
                   <span className="text-sm">No images uploaded</span>
                   <p className="text-xs text-gray-400 mt-1">Upload up to 40 images</p>
+                  <p className="text-xs text-gray-400">Supports: JPG, PNG, WebP, GIF, AVIF</p>
                 </div>
               </div>
             )}

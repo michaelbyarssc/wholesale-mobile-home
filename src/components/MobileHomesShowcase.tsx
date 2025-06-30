@@ -56,6 +56,21 @@ export const MobileHomesShowcase = ({
     queryKey: ['public-mobile-homes'],
     queryFn: async () => {
       console.log('Fetching mobile homes...');
+      
+      // First, let's check all homes regardless of active status for debugging
+      const { data: allHomes, error: allHomesError } = await supabase
+        .from('mobile_homes')
+        .select('*')
+        .order('series', { ascending: true })
+        .order('square_footage', { ascending: true });
+      
+      console.log('All homes in database (active and inactive):', allHomes?.length || 0);
+      console.log('All homes data:', allHomes);
+      if (allHomesError) {
+        console.error('Error fetching all homes:', allHomesError);
+      }
+
+      // Now fetch only active homes
       const { data, error } = await supabase
         .from('mobile_homes')
         .select('*')
@@ -64,10 +79,25 @@ export const MobileHomesShowcase = ({
         .order('square_footage', { ascending: true });
       
       if (error) {
-        console.error('Error fetching mobile homes:', error);
+        console.error('Error fetching active mobile homes:', error);
         throw error;
       }
-      console.log('Mobile homes fetched:', data?.length || 0);
+      
+      console.log('Active mobile homes fetched:', data?.length || 0);
+      console.log('Active homes data:', data);
+      
+      // Log the active status of all homes
+      if (allHomes) {
+        const activeCount = allHomes.filter(home => home.active).length;
+        const inactiveCount = allHomes.filter(home => !home.active).length;
+        console.log(`Database contains ${activeCount} active homes and ${inactiveCount} inactive homes`);
+        
+        // Log each home's active status
+        allHomes.forEach(home => {
+          console.log(`Home ${home.model || home.display_name}: active = ${home.active}`);
+        });
+      }
+      
       return data as MobileHome[];
     }
   });

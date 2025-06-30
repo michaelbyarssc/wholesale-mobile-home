@@ -173,11 +173,11 @@ serve(async (req) => {
           body: JSON.stringify({
             url: modelUrl,
             formats: ['markdown', 'html'],
-            onlyMainContent: false,
-            waitFor: 10000,
+            onlyMainContent: true,
+            waitFor: 12000,
             timeout: 60000,
-            includeTags: ['div', 'p', 'span', 'h1', 'h2', 'h3', 'h4', 'li', 'ul', 'table', 'td', 'tr'],
-            excludeTags: ['script', 'style', 'nav', 'header', 'footer']
+            includeTags: ['div', 'p', 'span', 'h1', 'h2', 'h3', 'h4', 'li', 'ul', 'table', 'td', 'tr', 'section'],
+            excludeTags: ['script', 'style', 'nav', 'header', 'footer', 'menu', 'aside']
           })
         });
 
@@ -388,37 +388,81 @@ serve(async (req) => {
           if (homeData.description) break;
         }
 
-        // Extract features with comprehensive patterns
+        // Extract features with FIXED patterns that avoid navigation links
         const features: string[] = [];
         const featurePatterns = [
-          /<li[^>]*>([^<]{15,200})<\/li>/gi,
-          /•\s*([^.\n\r]{15,200})/g,
-          /-\s*([^.\n\r]{15,200})/g,
-          /\*\s*([^.\n\r]{15,200})/g,
-          /feature[s]?[:\s]*([^.\n\r]{15,200})/gi,
-          /include[s]?[:\s]*([^.\n\r]{15,200})/gi,
-          /amenities[:\s]*([^.\n\r]{15,200})/gi,
-          /specification[s]?[:\s]*([^.\n\r]{15,200})/gi
+          // Look for specific feature keywords and content
+          /(?:features?|includes?|amenities|specifications?)[:\s]*([^.\n\r]{20,200}[^.]*\.)/gi,
+          // Look for bullet points that contain home-specific terms
+          /•\s*([^.\n\r]*(?:kitchen|bathroom|bedroom|flooring|ceiling|appliance|cabinet|counter|window|door|closet|storage|laundry)[^.\n\r]{5,150})/gi,
+          /-\s*([^.\n\r]*(?:kitchen|bathroom|bedroom|flooring|ceiling|appliance|cabinet|counter|window|door|closet|storage|laundry)[^.\n\r]{5,150})/gi,
+          // Look for list items with home features
+          /<li[^>]*>([^<]*(?:kitchen|bathroom|bedroom|flooring|ceiling|appliance|cabinet|counter|window|door|closet|storage|laundry)[^<]{5,150})<\/li>/gi,
+          // Look for specific home feature terms in structured content
+          /(?:vinyl|laminate|carpet|tile|granite|quartz|stainless|oak|maple|cherry)[\s\w]*(?:flooring|countertop|cabinet|appliance)[^.\n\r]{5,100}/gi,
+          // Look for room descriptions
+          /(?:master|primary|guest)\s+(?:bedroom|bathroom)[^.\n\r]{10,150}/gi,
+          // Look for appliance mentions
+          /(?:dishwasher|refrigerator|washer|dryer|microwave|range|oven)[^.\n\r]{5,100}/gi
         ];
 
         for (const pattern of featurePatterns) {
           const matches = [...combinedContent.matchAll(pattern)];
           for (const match of matches) {
-            if (match && match[1] && features.length < 15) {
+            if (match && match[1] && features.length < 20) {
               let feature = match[1].trim()
                 .replace(/[*#<>]/g, '')
                 .replace(/\s+/g, ' ')
-                .replace(/owntru\.com[^\s]*/gi, '')
                 .replace(/href=[^\s]*/gi, '')
-                .replace(/class="[^"]*"/gi, '');
+                .replace(/class="[^"]*"/gi, '')
+                .replace(/owntru\.com[^\s]*/gi, '');
               
+              // Filter out navigation links and invalid content
               if (feature.length >= 15 && feature.length <= 200 && 
                   !features.includes(feature) &&
+                  !feature.toLowerCase().includes('owntru.com') &&
+                  !feature.toLowerCase().includes('https://') &&
+                  !feature.toLowerCase().includes('http://') &&
                   !feature.toLowerCase().includes('cookie') &&
-                  !feature.includes('http') &&
+                  !feature.toLowerCase().includes('navigation') &&
+                  !feature.toLowerCase().includes('menu') &&
+                  !feature.toLowerCase().includes('footer') &&
+                  !feature.toLowerCase().includes('header') &&
+                  !feature.toLowerCase().includes('[homes]') &&
+                  !feature.toLowerCase().includes('[about]') &&
+                  !feature.toLowerCase().includes('[learn]') &&
                   feature.match(/[a-z]/i) &&
                   !feature.includes('javascript')) {
                 features.push(feature);
+                console.log(`Found valid feature: ${feature}`);
+              }
+            }
+          }
+        }
+
+        // Additional feature extraction from structured data
+        const structuredFeaturePatterns = [
+          // Look for specification tables or lists
+          /<td[^>]*>([^<]*(?:inch|ft|sq|bed|bath|kitchen|bath)[^<]{5,100})<\/td>/gi,
+          // Look for feature sections
+          /(?:standard|included|feature)[s]?[:\s]*([^.\n\r]{15,200})/gi
+        ];
+
+        for (const pattern of structuredFeaturePatterns) {
+          const matches = [...combinedContent.matchAll(pattern)];
+          for (const match of matches) {
+            if (match && match[1] && features.length < 20) {
+              let feature = match[1].trim()
+                .replace(/[*#<>]/g, '')
+                .replace(/\s+/g, ' ');
+              
+              if (feature.length >= 15 && feature.length <= 200 && 
+                  !features.includes(feature) &&
+                  !feature.toLowerCase().includes('owntru.com') &&
+                  !feature.toLowerCase().includes('http') &&
+                  feature.match(/[a-z]/i)) {
+                features.push(feature);
+                console.log(`Found structured feature: ${feature}`);
               }
             }
           }
@@ -426,7 +470,7 @@ serve(async (req) => {
 
         if (features.length > 0) {
           homeData.features = features;
-          console.log(`Found ${features.length} features`);
+          console.log(`Found ${features.length} valid features`);
         }
 
         mobileHomes.push(homeData);

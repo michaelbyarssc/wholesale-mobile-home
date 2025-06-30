@@ -12,6 +12,7 @@ import { PasswordChangeDialog } from '@/components/auth/PasswordChangeDialog';
 
 const Auth = () => {
   const [isSignUp, setIsSignUp] = useState(false);
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [firstName, setFirstName] = useState('');
@@ -108,6 +109,47 @@ const Auth = () => {
       return userProfile.first_name;
     }
     return null;
+  };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      if (!email.trim()) {
+        toast({
+          title: "Email Required",
+          description: "Please enter your email address.",
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
+
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth`,
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Reset Email Sent",
+        description: "Check your email for password reset instructions.",
+      });
+
+      // Go back to sign in form
+      setIsForgotPassword(false);
+      resetForm();
+    } catch (error: any) {
+      console.error('Password reset error:', error);
+      toast({
+        title: "Reset Error",
+        description: error.message || "An error occurred while sending reset email.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleAuth = async (e: React.FormEvent) => {
@@ -214,6 +256,13 @@ const Auth = () => {
 
   const toggleAuthMode = () => {
     setIsSignUp(!isSignUp);
+    setIsForgotPassword(false);
+    resetForm();
+  };
+
+  const toggleForgotPassword = () => {
+    setIsForgotPassword(!isForgotPassword);
+    setIsSignUp(false);
     resetForm();
   };
 
@@ -242,103 +291,154 @@ const Auth = () => {
           )}
         </div>
 
-        {/* Regular auth form */}
+        {/* Auth form */}
         <Card>
           <CardHeader>
-            <CardTitle>{isSignUp ? 'Create Account' : 'Sign In'}</CardTitle>
+            <CardTitle>
+              {isForgotPassword ? 'Reset Password' : (isSignUp ? 'Create Account' : 'Sign In')}
+            </CardTitle>
             <CardDescription>
-              {isSignUp 
-                ? 'Create an account to access the platform'
-                : 'Sign in to access the platform'
+              {isForgotPassword 
+                ? 'Enter your email to receive reset instructions'
+                : (isSignUp 
+                  ? 'Create an account to access the platform'
+                  : 'Sign in to access the platform'
+                )
               }
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleAuth} className="space-y-4">
-              {isSignUp && (
-                <>
-                  <div>
-                    <Label htmlFor="firstName">First Name *</Label>
-                    <Input
-                      id="firstName"
-                      type="text"
-                      value={firstName}
-                      onChange={(e) => setFirstName(e.target.value)}
-                      required
-                      placeholder="Enter your first name"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="lastName">Last Name *</Label>
-                    <Input
-                      id="lastName"
-                      type="text"
-                      value={lastName}
-                      onChange={(e) => setLastName(e.target.value)}
-                      required
-                      placeholder="Enter your last name"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="phoneNumber">Phone Number *</Label>
-                    <Input
-                      id="phoneNumber"
-                      type="tel"
-                      value={phoneNumber}
-                      onChange={(e) => setPhoneNumber(e.target.value)}
-                      required
-                      placeholder="Enter your phone number"
-                    />
-                  </div>
-                </>
-              )}
-              <div>
-                <Label htmlFor="email">Email *</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  placeholder="Enter your email address"
-                />
-              </div>
-              <div>
-                <Label htmlFor="password">Password *</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  placeholder="Enter your password"
-                />
-                {isSignUp && password && (
-                  <div className="mt-2 text-xs text-gray-600">
-                    Password must be at least 8 characters with uppercase, lowercase, number, and special character.
-                  </div>
+            {isForgotPassword ? (
+              <form onSubmit={handleForgotPassword} className="space-y-4">
+                <div>
+                  <Label htmlFor="email">Email *</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    placeholder="Enter your email address"
+                  />
+                </div>
+                <Button 
+                  type="submit" 
+                  className="w-full bg-blue-600 hover:bg-blue-700"
+                  disabled={loading}
+                >
+                  {loading ? 'Sending...' : 'Send Reset Email'}
+                </Button>
+              </form>
+            ) : (
+              <form onSubmit={handleAuth} className="space-y-4">
+                {isSignUp && (
+                  <>
+                    <div>
+                      <Label htmlFor="firstName">First Name *</Label>
+                      <Input
+                        id="firstName"
+                        type="text"
+                        value={firstName}
+                        onChange={(e) => setFirstName(e.target.value)}
+                        required
+                        placeholder="Enter your first name"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="lastName">Last Name *</Label>
+                      <Input
+                        id="lastName"
+                        type="text"
+                        value={lastName}
+                        onChange={(e) => setLastName(e.target.value)}
+                        required
+                        placeholder="Enter your last name"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="phoneNumber">Phone Number *</Label>
+                      <Input
+                        id="phoneNumber"
+                        type="tel"
+                        value={phoneNumber}
+                        onChange={(e) => setPhoneNumber(e.target.value)}
+                        required
+                        placeholder="Enter your phone number"
+                      />
+                    </div>
+                  </>
                 )}
-              </div>
-              <Button 
-                type="submit" 
-                className="w-full bg-blue-600 hover:bg-blue-700"
-                disabled={loading}
-              >
-                {loading ? 'Processing...' : (isSignUp ? 'Create Account' : 'Sign In')}
-              </Button>
-            </form>
+                <div>
+                  <Label htmlFor="email">Email *</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    placeholder="Enter your email address"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="password">Password *</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    placeholder="Enter your password"
+                  />
+                  {isSignUp && password && (
+                    <div className="mt-2 text-xs text-gray-600">
+                      Password must be at least 8 characters with uppercase, lowercase, number, and special character.
+                    </div>
+                  )}
+                </div>
+                <Button 
+                  type="submit" 
+                  className="w-full bg-blue-600 hover:bg-blue-700"
+                  disabled={loading}
+                >
+                  {loading ? 'Processing...' : (isSignUp ? 'Create Account' : 'Sign In')}
+                </Button>
+              </form>
+            )}
             
-            <div className="mt-4 text-center">
-              <Button
-                variant="link"
-                onClick={toggleAuthMode}
-                className="text-blue-600"
-              >
-                {isSignUp 
-                  ? 'Already have an account? Sign in'
-                  : "Don't have an account? Create one"
-                }
-              </Button>
+            <div className="mt-4 space-y-2 text-center">
+              {!isForgotPassword ? (
+                <>
+                  <Button
+                    variant="link"
+                    onClick={toggleAuthMode}
+                    className="text-blue-600"
+                  >
+                    {isSignUp 
+                      ? 'Already have an account? Sign in'
+                      : "Don't have an account? Create one"
+                    }
+                  </Button>
+                  {!isSignUp && (
+                    <div>
+                      <Button
+                        variant="link"
+                        onClick={toggleForgotPassword}
+                        className="text-blue-600 text-sm"
+                      >
+                        Forgot your password?
+                      </Button>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <Button
+                  variant="link"
+                  onClick={toggleForgotPassword}
+                  className="text-blue-600"
+                >
+                  Back to Sign In
+                </Button>
+              )}
             </div>
 
             <div className="mt-4 text-center">

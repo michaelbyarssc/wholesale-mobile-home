@@ -25,6 +25,12 @@ serve(async (req) => {
       }
     )
 
+    // Create regular client for auth verification
+    const supabaseRegular = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+    )
+
     // Verify admin authorization
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) {
@@ -38,8 +44,8 @@ serve(async (req) => {
     const token = authHeader.replace('Bearer ', '')
     console.log('Token extracted, length:', token.length)
     
-    // Verify the token and get user
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token)
+    // Verify the token and get user using regular client
+    const { data: { user }, error: authError } = await supabaseRegular.auth.getUser(token)
     if (authError || !user) {
       console.log('Auth verification failed:', authError)
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {

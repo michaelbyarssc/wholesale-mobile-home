@@ -34,7 +34,7 @@ export const UserForm = ({ onUserCreated }: UserFormProps) => {
     try {
       setCreatingUser(true);
       
-      const tempPassword = 'Allies123!';
+      const tempPassword = 'Wholesale2025!';
 
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
@@ -58,7 +58,7 @@ export const UserForm = ({ onUserCreated }: UserFormProps) => {
 
       toast({
         title: "User created",
-        description: `User ${newUserEmail} created with ${newUserRole} role. Password: Allies123!`,
+        description: `User ${newUserEmail} created with ${newUserRole} role. Password: Wholesale2025!`,
       });
 
       setNewUserEmail('');
@@ -113,7 +113,7 @@ export const UserForm = ({ onUserCreated }: UserFormProps) => {
           </div>
           <div className="flex items-center justify-between">
             <p className="text-sm text-gray-600">
-              User will be created with password: <strong>Allies123!</strong>
+              User will be created with password: <strong>Wholesale2025!</strong>
             </p>
             <Button type="submit" disabled={creatingUser}>
               {creatingUser ? "Creating..." : "Create User"}

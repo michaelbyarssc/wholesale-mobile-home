@@ -1,3 +1,4 @@
+
 import { useMemo } from 'react';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -50,7 +51,10 @@ export const useConditionalServices = (
       const service = services.find(s => s.id === serviceId);
       const selectedMobileHome = mobileHomes.find(home => home.id === selectedHome);
       
-      if (!service || !selectedMobileHome) return 0;
+      if (!service || !selectedMobileHome) {
+        console.log(`Service price calculation failed: service=${!!service}, home=${!!selectedMobileHome}`);
+        return 0;
+      }
 
       // Determine if it's a single wide or double wide based on WIDTH (not length)
       const homeWidth = selectedMobileHome.width_feet || 0;
@@ -59,11 +63,15 @@ export const useConditionalServices = (
       console.log(`Service ${service.name}: Home width = ${homeWidth}ft, isDoubleWide = ${isDoubleWide}`);
 
       // Use the appropriate pricing based on home width
+      let price = 0;
       if (isDoubleWide) {
-        return service.double_wide_price || service.price;
+        price = service.double_wide_price || service.price;
       } else {
-        return service.single_wide_price || service.price;
+        price = service.single_wide_price || service.price;
       }
+
+      console.log(`Service ${service.name} final price: ${price}`);
+      return price;
     };
   }, [services, selectedHome, mobileHomes]);
 

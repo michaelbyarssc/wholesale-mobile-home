@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ImageGalleryModal } from './ImageGalleryModal';
 
 interface MobileHomeImage {
   id: string;
@@ -21,6 +22,8 @@ export const MobileHomeImageCarousel = ({ images, homeModel }: MobileHomeImageCa
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
   const [loadedImages, setLoadedImages] = useState<Set<string>>(new Set());
   const [retryAttempts, setRetryAttempts] = useState(0);
+  const [isGalleryOpen, setIsGalleryOpen] = useState(false);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
 
   // Reset failed/loaded images when images prop changes
   useEffect(() => {
@@ -63,6 +66,11 @@ export const MobileHomeImageCarousel = ({ images, homeModel }: MobileHomeImageCa
     setRetryAttempts(prev => prev + 1);
   };
 
+  const handleImageClick = (index: number) => {
+    setSelectedImageIndex(index);
+    setIsGalleryOpen(true);
+  };
+
   // If all images fail to load, show enhanced fallback
   if (validImages.length === 0 && failedImages.size > 0) {
     return (
@@ -91,42 +99,58 @@ export const MobileHomeImageCarousel = ({ images, homeModel }: MobileHomeImageCa
   }
 
   return (
-    <Carousel 
-      className="w-full" 
-      key={retryAttempts}
-      opts={{
-        loop: true
-      }}
-    >
-      <CarouselContent>
-        {validImages.map((image, index) => (
-          <CarouselItem key={`${image.id}-${retryAttempts}`}>
-            <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden relative">
-              <img 
-                src={image.image_url} 
-                alt={image.alt_text || `${homeModel} ${image.image_type}`}
-                className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
-                onError={() => handleImageError(image.id, image.image_url)}
-                onLoad={() => handleImageLoad(image.id)}
-              />
-              {/* Image type badge */}
-              <div className="absolute top-2 right-2 bg-black bg-opacity-70 text-white px-2 py-1 rounded text-xs capitalize">
-                {image.image_type}
+    <>
+      <Carousel 
+        className="w-full" 
+        key={retryAttempts}
+        opts={{
+          loop: true
+        }}
+      >
+        <CarouselContent>
+          {validImages.map((image, index) => (
+            <CarouselItem key={`${image.id}-${retryAttempts}`}>
+              <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden relative">
+                <img 
+                  src={image.image_url} 
+                  alt={image.alt_text || `${homeModel} ${image.image_type}`}
+                  className="w-full h-full object-cover hover:scale-105 transition-transform duration-300 cursor-pointer"
+                  onError={() => handleImageError(image.id, image.image_url)}
+                  onLoad={() => handleImageLoad(image.id)}
+                  onClick={() => handleImageClick(index)}
+                />
+                {/* Image type badge */}
+                <div className="absolute top-2 right-2 bg-black bg-opacity-70 text-white px-2 py-1 rounded text-xs capitalize">
+                  {image.image_type}
+                </div>
+                {/* Image counter */}
+                <div className="absolute bottom-2 right-2 bg-black bg-opacity-70 text-white px-2 py-1 rounded text-xs">
+                  {index + 1} / {validImages.length}
+                </div>
+                {/* Click to enlarge hint */}
+                <div className="absolute bottom-2 left-2 bg-black bg-opacity-70 text-white px-2 py-1 rounded text-xs opacity-0 hover:opacity-100 transition-opacity">
+                  Click to enlarge
+                </div>
               </div>
-              {/* Image counter */}
-              <div className="absolute bottom-2 right-2 bg-black bg-opacity-70 text-white px-2 py-1 rounded text-xs">
-                {index + 1} / {validImages.length}
-              </div>
-            </div>
-          </CarouselItem>
-        ))}
-      </CarouselContent>
-      {validImages.length > 1 && (
-        <>
-          <CarouselPrevious className="left-2" />
-          <CarouselNext className="right-2" />
-        </>
-      )}
-    </Carousel>
+            </CarouselItem>
+          ))}
+        </CarouselContent>
+        {validImages.length > 1 && (
+          <>
+            <CarouselPrevious className="left-2" />
+            <CarouselNext className="right-2" />
+          </>
+        )}
+      </Carousel>
+
+      {/* Image Gallery Modal */}
+      <ImageGalleryModal
+        isOpen={isGalleryOpen}
+        onClose={() => setIsGalleryOpen(false)}
+        images={validImages}
+        initialImageIndex={selectedImageIndex}
+        homeModel={homeModel}
+      />
+    </>
   );
 };

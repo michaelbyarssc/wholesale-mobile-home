@@ -91,7 +91,13 @@ export const MobileHomeImageCarousel = ({ images, homeModel }: MobileHomeImageCa
   }
 
   return (
-    <Carousel className="w-full" key={retryAttempts}>
+    <Carousel 
+      className="w-full" 
+      key={retryAttempts}
+      opts={{
+        loop: true
+      }}
+    >
       <CarouselContent>
         {validImages.map((image, index) => (
           <CarouselItem key={`${image.id}-${retryAttempts}`}>

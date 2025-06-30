@@ -177,6 +177,45 @@ export type Database = {
           },
         ]
       }
+      home_options: {
+        Row: {
+          active: boolean
+          calculated_price: number | null
+          cost_price: number
+          created_at: string
+          description: string | null
+          display_order: number
+          id: string
+          markup_percentage: number
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          calculated_price?: number | null
+          cost_price?: number
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          id?: string
+          markup_percentage?: number
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          calculated_price?: number | null
+          cost_price?: number
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          id?: string
+          markup_percentage?: number
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       invoices: {
         Row: {
           created_at: string

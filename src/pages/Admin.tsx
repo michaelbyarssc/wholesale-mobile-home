@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,6 +13,7 @@ import { UserManagementTab } from '@/components/admin/UserManagementTab';
 import { AuditLogTab } from '@/components/admin/AuditLogTab';
 import { Menu, X } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { HomeOptionsTab } from '@/components/admin/HomeOptionsTab';
 
 const Admin = () => {
   const [user, setUser] = useState<any>(null);
@@ -138,6 +138,13 @@ const Admin = () => {
             Services
           </Button>
           <Button
+            variant={activeTab === 'home-options' ? 'default' : 'ghost'}
+            className="justify-start"
+            onClick={() => setActiveTab('home-options')}
+          >
+            Home Options
+          </Button>
+          <Button
             variant={activeTab === 'users' ? 'default' : 'ghost'}
             className="justify-start"
             onClick={() => setActiveTab('users')}
@@ -246,10 +253,11 @@ const Admin = () => {
 
       <div className="container mx-auto px-4 py-4 md:py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="hidden md:grid w-full grid-cols-6">
+          <TabsList className="hidden md:grid w-full grid-cols-7">
             <TabsTrigger value="estimates">Estimates</TabsTrigger>
             <TabsTrigger value="mobile-homes">Mobile Homes</TabsTrigger>
             <TabsTrigger value="services">Services</TabsTrigger>
+            <TabsTrigger value="home-options">Home Options</TabsTrigger>
             <TabsTrigger value="users">Users</TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>
             <TabsTrigger value="audit">Audit Log</TabsTrigger>
@@ -265,6 +273,10 @@ const Admin = () => {
 
           <TabsContent value="services">
             <ServicesTab />
+          </TabsContent>
+
+          <TabsContent value="home-options">
+            <HomeOptionsTab />
           </TabsContent>
 
           <TabsContent value="users">

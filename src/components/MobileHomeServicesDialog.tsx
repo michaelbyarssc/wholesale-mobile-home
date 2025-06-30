@@ -1,12 +1,9 @@
-
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -118,17 +115,6 @@ export const MobileHomeServicesDialog = ({
         return [...prev, { option, quantity: 1 }];
       }
     });
-  };
-
-  const handleQuantityChange = (optionId: string, quantity: number) => {
-    console.log('🔍 Quantity change:', optionId, quantity);
-    setSelectedHomeOptions(prev =>
-      prev.map(item =>
-        item.option.id === optionId
-          ? { ...item, quantity: Math.max(1, quantity) }
-          : item
-      )
-    );
   };
 
   const handleAddToCart = () => {
@@ -271,55 +257,38 @@ export const MobileHomeServicesDialog = ({
                     return (
                       <div 
                         key={option.id} 
-                        className={`p-3 border rounded-lg transition-colors ${
-                          isSelected ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
+                        className={`flex items-center justify-between p-3 border rounded-lg cursor-pointer transition-colors ${
+                          isSelected ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
                         }`}
+                        onClick={() => handleHomeOptionToggle(option)}
                       >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-3">
-                            <Checkbox 
-                              checked={isSelected}
-                              onCheckedChange={() => handleHomeOptionToggle(option)}
-                            />
-                            <div>
-                              <div className="font-medium">{option.name}</div>
-                              {option.description && (
-                                <div className="text-sm text-gray-600">{option.description}</div>
-                              )}
-                              <div className="flex items-center gap-2 mt-1">
-                                <Badge variant={option.pricing_type === 'per_sqft' ? 'secondary' : 'outline'}>
-                                  {option.pricing_type === 'per_sqft' ? 'Per Sq Ft' : 'Fixed Price'}
-                                </Badge>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <div className="font-semibold text-green-600">
-                              {formatPrice(optionPrice)}
-                              {option.pricing_type === 'per_sqft' && (
-                                <span className="text-xs text-gray-500 block">
-                                  (${option.price_per_sqft}/sq ft)
-                                </span>
-                              )}
+                        <div className="flex items-center space-x-3">
+                          <Checkbox 
+                            checked={isSelected}
+                            onCheckedChange={() => handleHomeOptionToggle(option)}
+                          />
+                          <div>
+                            <div className="font-medium">{option.name}</div>
+                            {option.description && (
+                              <div className="text-sm text-gray-600">{option.description}</div>
+                            )}
+                            <div className="flex items-center gap-2 mt-1">
+                              <Badge variant={option.pricing_type === 'per_sqft' ? 'secondary' : 'outline'}>
+                                {option.pricing_type === 'per_sqft' ? 'Per Sq Ft' : 'Fixed Price'}
+                              </Badge>
                             </div>
                           </div>
                         </div>
-                        
-                        {isSelected && (
-                          <div className="mt-3 flex items-center space-x-2">
-                            <Label htmlFor={`quantity-${option.id}`} className="text-sm">
-                              Quantity:
-                            </Label>
-                            <Input
-                              id={`quantity-${option.id}`}
-                              type="number"
-                              min="1"
-                              value={selectedOption?.quantity || 1}
-                              onChange={(e) => handleQuantityChange(option.id, parseInt(e.target.value) || 1)}
-                              className="w-20"
-                            />
+                        <div className="text-right">
+                          <div className="font-semibold text-green-600">
+                            {formatPrice(optionPrice)}
+                            {option.pricing_type === 'per_sqft' && (
+                              <span className="text-xs text-gray-500 block">
+                                (${option.price_per_sqft}/sq ft)
+                              </span>
+                            )}
                           </div>
-                        )}
+                        </div>
                       </div>
                     );
                   })}

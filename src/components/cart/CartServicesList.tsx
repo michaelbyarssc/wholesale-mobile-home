@@ -80,6 +80,9 @@ export const CartServicesList = ({
           const homeWidth = item.mobileHome.width_feet || 0;
           const isDoubleWide = homeWidth > 16;
           
+          // Debug info for vinyl skirting specifically
+          const isVinylSkirting = service.name && service.name.toLowerCase().includes('vinyl') && service.name.toLowerCase().includes('skirting');
+          
           return (
             <div key={service.id} className="flex items-start space-x-3 p-2 border rounded">
               <Checkbox
@@ -97,6 +100,20 @@ export const CartServicesList = ({
                 {service.description && (
                   <p className="text-xs text-gray-500 mt-1">{service.description}</p>
                 )}
+                
+                {/* Temporary debugging info - visible in UI */}
+                {isVinylSkirting && (
+                  <div className="mt-2 p-2 bg-yellow-100 border rounded text-xs">
+                    <strong>DEBUG INFO:</strong><br/>
+                    Single Wide Price: {service.single_wide_price} (type: {typeof service.single_wide_price})<br/>
+                    Double Wide Price: {service.double_wide_price} (type: {typeof service.double_wide_price})<br/>
+                    Base Price: {service.price} (type: {typeof service.price})<br/>
+                    Home Width: {homeWidth}ft ({isDoubleWide ? 'Double' : 'Single'} Wide)<br/>
+                    Raw Service Cost: {serviceCost}<br/>
+                    Final Display Price: {displayPrice}
+                  </div>
+                )}
+                
                 <p className="text-sm text-gray-600 mt-1">
                   {formatPrice(displayPrice)}
                   <span className="text-xs text-gray-400 ml-1">

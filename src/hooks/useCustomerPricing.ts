@@ -56,10 +56,15 @@ export const useCustomerPricing = (user?: User | null) => {
       return 0;
     }
     
-    const markup = markupPercentage / 100;
-    const markupPrice = baseCost * (1 + markup);
+    // Calculate both pricing methods
+    const markupPrice = baseCost * (1 + markupPercentage / 100);
+    const minimumProfitPrice = baseCost + minimumProfitPerHome;
     
-    return Math.round(markupPrice * 100) / 100; // Round to 2 decimal places
+    // Return the higher of the two
+    const finalPrice = Math.max(markupPrice, minimumProfitPrice);
+    console.log(`Price calculation: baseCost=${baseCost}, markupPrice=${markupPrice}, minimumProfitPrice=${minimumProfitPrice}, finalPrice=${finalPrice}`);
+    
+    return Math.round(finalPrice * 100) / 100; // Round to 2 decimal places
   };
 
   const formatCalculatedPrice = (baseCost: number): string => {

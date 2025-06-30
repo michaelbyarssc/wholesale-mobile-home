@@ -79,33 +79,43 @@ export const ShoppingCart = ({
   });
 
   const calculateItemTotal = (item: CartItem) => {
-    const homePrice = calculatePrice(item.mobileHome.cost || item.mobileHome.price);
-    
-    // Use conditional services hook to get proper pricing
-    const { getServicePrice } = useConditionalServices(
-      services,
-      item.mobileHome.id,
-      [item.mobileHome],
-      item.selectedServices
-    );
-    
-    // Calculate services price using conditional pricing
-    const servicesPrice = item.selectedServices.reduce((total, serviceId) => {
-      const serviceCost = getServicePrice(serviceId);
-      const finalPrice = calculatePrice(serviceCost);
-      return total + finalPrice;
-    }, 0);
-    
-    const homeOptionsPrice = (item.selectedHomeOptions || []).reduce((total, { option, quantity }) => {
-      const optionPrice = calculateHomeOptionPrice(option, item.mobileHome.square_footage || undefined);
-      return total + (optionPrice * quantity);
-    }, 0);
-    
-    return homePrice + servicesPrice + homeOptionsPrice;
+    try {
+      const homePrice = calculatePrice(item.mobileHome.cost || item.mobileHome.price);
+      
+      // Use conditional services hook to get proper pricing
+      const { getServicePrice } = useConditionalServices(
+        services,
+        item.mobileHome.id,
+        [item.mobileHome],
+        item.selectedServices
+      );
+      
+      // Calculate services price using conditional pricing
+      const servicesPrice = item.selectedServices.reduce((total, serviceId) => {
+        const serviceCost = getServicePrice(serviceId);
+        const finalPrice = calculatePrice(serviceCost);
+        return total + finalPrice;
+      }, 0);
+      
+      const homeOptionsPrice = (item.selectedHomeOptions || []).reduce((total, { option, quantity }) => {
+        const optionPrice = calculateHomeOptionPrice(option, item.mobileHome.square_footage || undefined);
+        return total + (optionPrice * quantity);
+      }, 0);
+      
+      return homePrice + servicesPrice + homeOptionsPrice;
+    } catch (error) {
+      console.error('Error calculating item total:', error);
+      return 0;
+    }
   };
 
   const calculateGrandTotal = () => {
-    return cartItems.reduce((total, item) => total + calculateItemTotal(item), 0);
+    try {
+      return cartItems.reduce((total, item) => total + calculateItemTotal(item), 0);
+    } catch (error) {
+      console.error('Error calculating grand total:', error);
+      return 0;
+    }
   };
 
   const getHomeName = (home: any) => {
@@ -113,20 +123,32 @@ export const ShoppingCart = ({
   };
 
   const handleConvertToEstimate = () => {
-    // Store cart data in localStorage for the estimate form to pick up
-    localStorage.setItem('cart_for_estimate', JSON.stringify(cartItems));
-    onClose();
-    navigate('/estimate');
+    try {
+      // Store cart data in localStorage for the estimate form to pick up
+      localStorage.setItem('cart_for_estimate', JSON.stringify(cartItems));
+      onClose();
+      navigate('/estimate');
+    } catch (error) {
+      console.error('Error converting to estimate:', error);
+    }
   };
 
   const handleRemoveItem = (homeId: string) => {
-    console.log('ShoppingCart: Removing item:', homeId);
-    onRemoveItem(homeId);
+    console.log('🔍 ShoppingCart: Removing item:', homeId);
+    try {
+      onRemoveItem(homeId);
+    } catch (error) {
+      console.error('🔍 ShoppingCart: Error removing item:', error);
+    }
   };
 
   const handleClearCart = () => {
-    console.log('ShoppingCart: Clearing cart');
-    onClearCart();
+    console.log('🔍 ShoppingCart: Clearing cart');
+    try {
+      onClearCart();
+    } catch (error) {
+      console.error('🔍 ShoppingCart: Error clearing cart:', error);
+    }
   };
 
   if (isLoading) {

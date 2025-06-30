@@ -51,69 +51,84 @@ export const CartItemCard = ({
       console.log('🔍 CartItemCard: Remove item completed');
     } catch (error) {
       console.error('🔍 CartItemCard: Error removing item:', error);
+      // Don't throw the error to prevent crashing the app
     }
   };
 
-  return (
-    <Card>
-      <CardHeader>
-        <div className="flex justify-between items-start">
-          <CardTitle className="text-lg">
-            {getHomeName(item.mobileHome)} - {formatSize(item.mobileHome)}
-          </CardTitle>
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This will remove "{getHomeName(item.mobileHome)}" from your cart. This action cannot be undone.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleRemoveItem}>
-                  Remove Item
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        </div>
-        <div className="text-sm text-gray-600">
-          Base Price: {formatPrice(calculatePrice(item.mobileHome.cost || item.mobileHome.price))}
-        </div>
-      </CardHeader>
-      
-      <CardContent className="space-y-4">
-        <CartServicesList
-          item={item}
-          services={services}
-          onUpdateServices={onUpdateServices}
-          calculatePrice={calculatePrice}
-        />
-
-        <CartHomeOptionsList
-          item={item}
-          homeOptions={homeOptions}
-          onUpdateHomeOptions={onUpdateHomeOptions}
-          calculateHomeOptionPrice={calculateHomeOptionPrice}
-          calculatePrice={calculatePrice}
-        />
-
-        <div className="border-t pt-3">
-          <div className="flex justify-between items-center font-bold">
-            <span>Item Total:</span>
-            <span className="text-green-600">{formatPrice(calculateItemTotal(item))}</span>
+  // Add error boundary for the component
+  try {
+    return (
+      <Card>
+        <CardHeader>
+          <div className="flex justify-between items-start">
+            <CardTitle className="text-lg">
+              {getHomeName(item.mobileHome)} - {formatSize(item.mobileHome)}
+            </CardTitle>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will remove "{getHomeName(item.mobileHome)}" from your cart. This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleRemoveItem}>
+                    Remove Item
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
+          <div className="text-sm text-gray-600">
+            Base Price: {formatPrice(calculatePrice(item.mobileHome.cost || item.mobileHome.price))}
+          </div>
+        </CardHeader>
+        
+        <CardContent className="space-y-4">
+          <CartServicesList
+            item={item}
+            services={services}
+            onUpdateServices={onUpdateServices}
+            calculatePrice={calculatePrice}
+          />
+
+          <CartHomeOptionsList
+            item={item}
+            homeOptions={homeOptions}
+            onUpdateHomeOptions={onUpdateHomeOptions}
+            calculateHomeOptionPrice={calculateHomeOptionPrice}
+            calculatePrice={calculatePrice}
+          />
+
+          <div className="border-t pt-3">
+            <div className="flex justify-between items-center font-bold">
+              <span>Item Total:</span>
+              <span className="text-green-600">{formatPrice(calculateItemTotal(item))}</span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  } catch (error) {
+    console.error('🔍 CartItemCard: Error rendering component:', error);
+    return (
+      <Card>
+        <CardContent className="p-4">
+          <div className="text-red-500">
+            Error loading cart item. Please try refreshing the page.
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 };

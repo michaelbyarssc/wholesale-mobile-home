@@ -116,6 +116,7 @@ export const useShoppingCart = () => {
       });
     } catch (error) {
       console.error('🔍 Error removing from cart:', error);
+      // Don't throw the error, just log it to prevent crashes
     }
   }, []);
 

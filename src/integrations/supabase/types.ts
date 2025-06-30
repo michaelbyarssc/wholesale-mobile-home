@@ -113,6 +113,7 @@ export type Database = {
           invoice_id: string | null
           mobile_home_id: string | null
           preferred_contact: string | null
+          selected_home_options: Json | null
           selected_services: string[] | null
           status: string
           timeline: string | null
@@ -133,6 +134,7 @@ export type Database = {
           invoice_id?: string | null
           mobile_home_id?: string | null
           preferred_contact?: string | null
+          selected_home_options?: Json | null
           selected_services?: string[] | null
           status?: string
           timeline?: string | null
@@ -153,6 +155,7 @@ export type Database = {
           invoice_id?: string | null
           mobile_home_id?: string | null
           preferred_contact?: string | null
+          selected_home_options?: Json | null
           selected_services?: string[] | null
           status?: string
           timeline?: string | null

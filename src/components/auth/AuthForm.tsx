@@ -47,10 +47,10 @@ export const AuthForm = ({
       if (isSignUp) {
         console.log('Starting sign up process...');
         
-        // Check if user was previously denied
+        // First check if user was previously denied
         const { data: existingProfile, error: profileCheckError } = await supabase
           .from('profiles')
-          .select('denied, user_id')
+          .select('denied, user_id, approved')
           .eq('email', email)
           .single();
 
@@ -58,7 +58,7 @@ export const AuthForm = ({
           console.error('Error checking existing profile:', profileCheckError);
         }
 
-        // If user was denied, reset their denial status
+        // If user was denied, reset their denial status and allow re-registration
         if (existingProfile && existingProfile.denied) {
           console.log('User was previously denied, resetting denial status...');
           
@@ -70,7 +70,9 @@ export const AuthForm = ({
               denied_by: null,
               approved: false,
               approved_at: null,
-              approved_by: null
+              approved_by: null,
+              first_name: firstName,
+              last_name: lastName
             })
             .eq('user_id', existingProfile.user_id);
 
@@ -108,6 +110,25 @@ export const AuthForm = ({
             description: "Your request for approval has been submitted again. You will receive an email once approved.",
           });
 
+          setLoading(false);
+          return;
+        }
+
+        // If user already exists and is not denied, check if they're already approved
+        if (existingProfile && !existingProfile.denied) {
+          if (existingProfile.approved) {
+            toast({
+              title: "Account Already Exists",
+              description: "Your account is already approved. Please sign in instead.",
+              variant: "destructive",
+            });
+          } else {
+            toast({
+              title: "Account Pending",
+              description: "Your account is already pending approval. Please wait for admin approval.",
+              variant: "destructive",
+            });
+          }
           setLoading(false);
           return;
         }

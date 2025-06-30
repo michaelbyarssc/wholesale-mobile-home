@@ -125,13 +125,16 @@ export const ServicesSelection = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {availableServices.map((service) => {
                 const isDisabled = isServiceDisabled(service);
-                // Use conditional pricing just like the cart does
+                
+                // Get service cost from conditional pricing
                 const serviceCost = getServicePrice(service.id);
                 const displayPrice = calculatePrice(serviceCost);
                 
-                // Special debug for vinyl skirting in popup too
+                // Special debug for vinyl skirting
                 const serviceName = (service.name || '').toLowerCase();
                 const isVinylSkirting = serviceName.includes('vinyl') && serviceName.includes('skirting');
+                
+                console.log(`POPUP - Service: ${service.name}, ID: ${service.id}, serviceCost: ${serviceCost}, displayPrice: ${displayPrice}`);
                 
                 return (
                   <div 
@@ -160,21 +163,22 @@ export const ServicesSelection = ({
                           <p className="text-xs text-gray-500 mt-1">{service.description}</p>
                         )}
 
-                        {/* Debug info for vinyl skirting - matching cart debug */}
-                        {isVinylSkirting && (
-                          <div className="mt-2 p-2 bg-yellow-100 border-2 border-yellow-400 rounded text-xs">
-                            <strong>🐛 POPUP VINYL SKIRTING DEBUG:</strong><br/>
-                            Service Name: "{service.name}"<br/>
-                            Service ID: {service.id}<br/>
-                            Single Wide Price: {service.single_wide_price} (type: {typeof service.single_wide_price})<br/>
-                            Double Wide Price: {service.double_wide_price} (type: {typeof service.double_wide_price})<br/>
-                            Base Price: {service.price} (type: {typeof service.price})<br/>
-                            Cost Field: {service.cost} (type: {typeof service.cost})<br/>
-                            Home Width: {selectedHome.width_feet || 0}ft ({selectedHome.width_feet > 16 ? 'Double' : 'Single'} Wide)<br/>
-                            Raw Service Cost from getServicePrice(): {serviceCost}<br/>
-                            Final Display Price after calculatePrice(): {displayPrice}<br/>
-                          </div>
-                        )}
+                        {/* Debug info for all services in popup */}
+                        <div className="mt-2 p-2 bg-blue-100 border rounded text-xs">
+                          <strong>🔍 POPUP SERVICE DEBUG:</strong><br/>
+                          Service Name: "{service.name}"<br/>
+                          Service ID: {service.id}<br/>
+                          Single Wide Price: {service.single_wide_price} (type: {typeof service.single_wide_price})<br/>
+                          Double Wide Price: {service.double_wide_price} (type: {typeof service.double_wide_price})<br/>
+                          Base Price: {service.price} (type: {typeof service.price})<br/>
+                          Cost Field: {service.cost} (type: {typeof service.cost})<br/>
+                          Home Width: {selectedHome?.width_feet || 0}ft ({(selectedHome?.width_feet || 0) > 16 ? 'Double' : 'Single'} Wide)<br/>
+                          Raw Service Cost from getServicePrice(): {serviceCost}<br/>
+                          Final Display Price after calculatePrice(): {displayPrice}<br/>
+                          Selected Home ID: {selectedHome?.id}<br/>
+                          Mobile Homes Array Length: {mobileHomes.length}<br/>
+                          Services Array Length: {services.length}
+                        </div>
 
                         <p className="text-sm text-gray-600 mt-1">
                           {formatPrice(displayPrice)}

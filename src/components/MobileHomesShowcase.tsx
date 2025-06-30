@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -54,7 +53,7 @@ export const MobileHomesShowcase = ({
   const [activeTab, setActiveTab] = useState('');
   const [widthFilter, setWidthFilter] = useState<'all' | 'single' | 'double'>('all');
   const [selectedHomeForServices, setSelectedHomeForServices] = useState<MobileHome | null>(null);
-  const { calculateMobileHomePrice, loading: pricingLoading } = useCustomerPricing(user);
+  const { formatCalculatedPrice, loading: pricingLoading } = useCustomerPricing(user);
   
   console.log('MobileHomesShowcase render - cart items from props:', cartItems.length);
 
@@ -190,17 +189,17 @@ export const MobileHomesShowcase = ({
           
           {/* Pricing Display Logic */}
           {user ? (
-            // Logged in users see their custom pricing using calculateMobileHomePrice
-            !pricingLoading ? (
+            // Logged in users see their custom pricing
+            home.price && !pricingLoading ? (
               <div className="mt-2">
-                <span className="text-2xl font-bold text-green-600">{formatPrice(calculateMobileHomePrice(home))}</span>
+                <span className="text-2xl font-bold text-green-600">{formatCalculatedPrice(home.price)}</span>
                 <p className="text-sm text-gray-500 mt-1">Your price</p>
               </div>
-            ) : (
+            ) : pricingLoading ? (
               <div className="mt-2">
                 <span className="text-lg text-gray-500 italic">Loading your pricing...</span>
               </div>
-            )
+            ) : null
           ) : (
             // Non-logged in users see retail price or login prompt
             home.retail_price ? (

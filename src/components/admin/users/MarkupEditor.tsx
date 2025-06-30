@@ -77,10 +77,10 @@ export const MarkupEditor = ({ userId, currentMarkup, currentMinProfit, onMarkup
 
   if (editingMarkup === userId) {
     return (
-      <div className="space-y-3">
-        <div className="flex items-center gap-2">
-          <div className="flex flex-col gap-1">
-            <Label htmlFor="markup" className="text-xs">Markup %</Label>
+      <div className="space-y-3 p-3 border rounded-lg bg-gray-50">
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <Label htmlFor="markup" className="text-xs font-medium">Markup %</Label>
             <Input
               id="markup"
               type="number"
@@ -88,11 +88,12 @@ export const MarkupEditor = ({ userId, currentMarkup, currentMinProfit, onMarkup
               min="0"
               value={markupValue}
               onChange={(e) => setMarkupValue(parseFloat(e.target.value) || 0)}
-              className="w-20"
+              className="h-8"
+              placeholder="30"
             />
           </div>
-          <div className="flex flex-col gap-1">
-            <Label htmlFor="minProfit" className="text-xs">Min Profit $</Label>
+          <div className="space-y-1">
+            <Label htmlFor="minProfit" className="text-xs font-medium">Min Profit $</Label>
             <Input
               id="minProfit"
               type="number"
@@ -100,7 +101,8 @@ export const MarkupEditor = ({ userId, currentMarkup, currentMinProfit, onMarkup
               min="0"
               value={minProfitValue}
               onChange={(e) => setMinProfitValue(parseFloat(e.target.value) || 0)}
-              className="w-24"
+              className="h-8"
+              placeholder="0"
             />
           </div>
         </div>
@@ -108,6 +110,7 @@ export const MarkupEditor = ({ userId, currentMarkup, currentMinProfit, onMarkup
           <Button
             size="sm"
             onClick={() => updateMarkupAndProfit(userId, markupValue, minProfitValue)}
+            className="h-7 px-3 text-xs"
           >
             Save
           </Button>
@@ -115,6 +118,7 @@ export const MarkupEditor = ({ userId, currentMarkup, currentMinProfit, onMarkup
             size="sm"
             variant="outline"
             onClick={cancelMarkupEdit}
+            className="h-7 px-3 text-xs"
           >
             Cancel
           </Button>
@@ -126,13 +130,14 @@ export const MarkupEditor = ({ userId, currentMarkup, currentMinProfit, onMarkup
   return (
     <div className="flex items-center gap-2">
       <div className="text-sm">
-        <div>{currentMarkup || 0}%</div>
-        <div className="text-xs text-gray-500">${currentMinProfit || 0} min</div>
+        <div className="font-medium">{currentMarkup || 0}% markup</div>
+        <div className="text-xs text-gray-500">${currentMinProfit || 0} minimum</div>
       </div>
       <Button
         size="sm"
         variant="ghost"
         onClick={() => startEditingMarkup(userId, currentMarkup || 0, currentMinProfit || 0)}
+        className="h-7 w-7 p-0"
       >
         <Edit className="h-3 w-3" />
       </Button>

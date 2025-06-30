@@ -1,4 +1,3 @@
-
 import { useMemo } from 'react';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -53,9 +52,11 @@ export const useConditionalServices = (
       
       if (!service || !selectedMobileHome) return 0;
 
-      // Determine if it's a single wide or double wide based on width
+      // Determine if it's a single wide or double wide based on WIDTH (not length)
       const homeWidth = selectedMobileHome.width_feet || 0;
       const isDoubleWide = homeWidth > 16;
+
+      console.log(`Service ${service.name}: Home width = ${homeWidth}ft, isDoubleWide = ${isDoubleWide}`);
 
       // Use the appropriate pricing based on home width
       if (isDoubleWide) {

@@ -65,21 +65,37 @@ export const AuthForm = ({
           try {
             // Delete the existing user using admin function
             const { error: deleteError } = await supabase.functions.invoke('admin-delete-user', {
-              body: { userId: existingProfile.user_id }
+              body: { user_id: existingProfile.user_id }
             });
 
             if (deleteError) {
               console.error('Error deleting old user account:', deleteError);
-              // Continue with signup anyway, as the user might have been manually deleted
+              toast({
+                title: "Error",
+                description: "Failed to reset your account. Please contact an administrator.",
+                variant: "destructive",
+              });
+              setLoading(false);
+              return;
             }
 
+            console.log('Old account deleted successfully');
             toast({
               title: "Account Reset",
               description: "Your previous account has been reset. Creating a new account...",
             });
+
+            // Add a small delay to ensure the deletion is processed
+            await new Promise(resolve => setTimeout(resolve, 1000));
           } catch (deleteError) {
             console.error('Failed to delete old account:', deleteError);
-            // Continue with signup anyway
+            toast({
+              title: "Error",
+              description: "Failed to reset your account. Please contact an administrator.",
+              variant: "destructive",
+            });
+            setLoading(false);
+            return;
           }
         }
 
@@ -103,6 +119,7 @@ export const AuthForm = ({
         }
 
         // Proceed with normal signup process
+        console.log('Proceeding with signup...');
         const { data, error } = await supabase.auth.signUp({
           email,
           password,

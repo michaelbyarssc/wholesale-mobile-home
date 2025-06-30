@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MobileHomesShowcase } from '@/components/MobileHomesShowcase';
@@ -162,7 +163,7 @@ const Index = () => {
       {/* Top competitive pricing message */}
       <div className="bg-green-600 text-white py-4 text-center">
         <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold">
-          We will match all competitors' prices!
+          We will beat any lower pricing from all competitors!
         </h2>
       </div>
 
@@ -189,7 +190,7 @@ const Index = () => {
       {/* Bottom competitive pricing message */}
       <div className="bg-green-600 text-white py-4 text-center">
         <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold">
-          We will match all competitors' prices!
+          We will beat any lower pricing from all competitors!
         </h2>
       </div>
 

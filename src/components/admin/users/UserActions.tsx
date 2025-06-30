@@ -1,9 +1,11 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { KeyRound } from 'lucide-react';
+import { KeyRound, Trash2 } from 'lucide-react';
 import { UserProfile } from './UserEditDialog';
 
 interface UserActionsProps {
@@ -13,6 +15,7 @@ interface UserActionsProps {
 
 export const UserActions = ({ profile, onUserUpdated }: UserActionsProps) => {
   const [resettingPassword, setResettingPassword] = useState<string | null>(null);
+  const [deletingUser, setDeletingUser] = useState<string | null>(null);
   const { toast } = useToast();
 
   const resetUserPassword = async (userId: string, userEmail: string) => {
@@ -61,6 +64,54 @@ export const UserActions = ({ profile, onUserUpdated }: UserActionsProps) => {
       });
     } finally {
       setResettingPassword(null);
+    }
+  };
+
+  const deleteUser = async (userId: string, userEmail: string) => {
+    try {
+      setDeletingUser(userId);
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Not authenticated');
+      }
+
+      console.log('Deleting user:', userId);
+
+      const { data, error } = await supabase.functions.invoke('admin-delete-user', {
+        body: {
+          user_id: userId
+        }
+      });
+
+      console.log('User deletion response:', { data, error });
+
+      if (error) {
+        console.error('Function invocation error:', error);
+        throw error;
+      }
+
+      if (data?.error) {
+        console.error('Function returned error:', data.error);
+        throw new Error(data.error);
+      }
+
+      toast({
+        title: "User deleted successfully",
+        description: `User ${userEmail} has been permanently deleted`,
+      });
+
+      onUserUpdated();
+
+    } catch (error: any) {
+      console.error('Error deleting user:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete user",
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingUser(null);
     }
   };
 
@@ -143,6 +194,42 @@ export const UserActions = ({ profile, onUserUpdated }: UserActionsProps) => {
           <KeyRound className="h-3 w-3" />
         )}
       </Button>
+
+      <AlertDialog>
+        <AlertDialogTrigger asChild>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={deletingUser === profile.user_id}
+            title="Delete user permanently"
+            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+          >
+            {deletingUser === profile.user_id ? (
+              <div className="h-3 w-3 animate-spin rounded-full border-b-2 border-current" />
+            ) : (
+              <Trash2 className="h-3 w-3" />
+            )}
+          </Button>
+        </AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete User</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to permanently delete the user "{profile.email}"? 
+              This action cannot be undone and will remove all associated data including estimates, markups, and roles.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteUser(profile.user_id, profile.email)}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Delete User
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       
       <Select
         value={profile.role || 'none'}

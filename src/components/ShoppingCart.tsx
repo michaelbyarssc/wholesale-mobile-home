@@ -10,6 +10,7 @@ import { User } from '@supabase/supabase-js';
 import { useNavigate } from 'react-router-dom';
 import { CartItemCard } from './cart/CartItemCard';
 import { CartTotal } from './cart/CartTotal';
+import { LoadingSpinner } from './layout/LoadingSpinner';
 import type { Database } from '@/integrations/supabase/types';
 
 type HomeOption = Database['public']['Tables']['home_options']['Row'];
@@ -30,6 +31,7 @@ interface ShoppingCartProps {
   onUpdateHomeOptions: (homeId: string, selectedHomeOptions: { option: HomeOption; quantity: number }[]) => void;
   onClearCart: () => void;
   user?: User | null;
+  isLoading?: boolean;
 }
 
 export const ShoppingCart = ({
@@ -40,7 +42,8 @@ export const ShoppingCart = ({
   onUpdateServices,
   onUpdateHomeOptions,
   onClearCart,
-  user
+  user,
+  isLoading = false
 }: ShoppingCartProps) => {
   const navigate = useNavigate();
   const { calculatePrice, calculateHomeOptionPrice } = useCustomerPricing(user);
@@ -116,6 +119,34 @@ export const ShoppingCart = ({
     navigate('/estimate');
   };
 
+  const handleRemoveItem = (homeId: string) => {
+    console.log('ShoppingCart: Removing item:', homeId);
+    onRemoveItem(homeId);
+  };
+
+  const handleClearCart = () => {
+    console.log('ShoppingCart: Clearing cart');
+    onClearCart();
+  };
+
+  if (isLoading) {
+    return (
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CartIcon className="h-5 w-5" />
+              Loading Cart...
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex justify-center py-8">
+            <LoadingSpinner />
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
@@ -141,7 +172,7 @@ export const ShoppingCart = ({
                 homeOptions={homeOptions}
                 onUpdateServices={onUpdateServices}
                 onUpdateHomeOptions={onUpdateHomeOptions}
-                onRemoveItem={onRemoveItem}
+                onRemoveItem={handleRemoveItem}
                 calculatePrice={calculatePrice}
                 calculateHomeOptionPrice={calculateHomeOptionPrice}
                 calculateItemTotal={calculateItemTotal}
@@ -151,7 +182,7 @@ export const ShoppingCart = ({
 
             <CartTotal
               total={calculateGrandTotal()}
-              onClearCart={onClearCart}
+              onClearCart={handleClearCart}
               onConvertToEstimate={handleConvertToEstimate}
               onCloseCart={onClose}
             />

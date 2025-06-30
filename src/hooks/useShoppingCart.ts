@@ -15,34 +15,46 @@ export type CartItem = {
 export const useShoppingCart = () => {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Load cart items from localStorage on mount
   useEffect(() => {
-    try {
-      const savedItems = localStorage.getItem('cart_items');
-      console.log('Loading cart from localStorage:', savedItems);
-      if (savedItems) {
-        const parsed = JSON.parse(savedItems);
-        if (Array.isArray(parsed)) {
-          console.log('Loaded cart items:', parsed.length);
-          setCartItems(parsed);
+    const loadCart = () => {
+      try {
+        const savedItems = localStorage.getItem('cart_items');
+        console.log('Loading cart from localStorage:', savedItems);
+        if (savedItems) {
+          const parsed = JSON.parse(savedItems);
+          if (Array.isArray(parsed)) {
+            console.log('Loaded cart items:', parsed.length);
+            setCartItems(parsed);
+          } else {
+            console.log('Invalid cart data format, clearing cart');
+            localStorage.removeItem('cart_items');
+          }
         }
+      } catch (error) {
+        console.error('Error loading cart from localStorage:', error);
+        localStorage.removeItem('cart_items'); // Clear corrupted data
+      } finally {
+        setIsLoading(false);
       }
-    } catch (error) {
-      console.error('Error loading cart from localStorage:', error);
-      localStorage.removeItem('cart_items'); // Clear corrupted data
-    }
+    };
+
+    loadCart();
   }, []);
 
   // Save cart items to localStorage whenever cartItems changes
   useEffect(() => {
-    try {
-      console.log('Saving cart to localStorage:', cartItems.length, 'items');
-      localStorage.setItem('cart_items', JSON.stringify(cartItems));
-    } catch (error) {
-      console.error('Error saving cart to localStorage:', error);
+    if (!isLoading) {
+      try {
+        console.log('Saving cart to localStorage:', cartItems.length, 'items');
+        localStorage.setItem('cart_items', JSON.stringify(cartItems));
+      } catch (error) {
+        console.error('Error saving cart to localStorage:', error);
+      }
     }
-  }, [cartItems]);
+  }, [cartItems, isLoading]);
 
   const addToCart = useCallback((
     mobileHome: Database['public']['Tables']['mobile_homes']['Row'], 
@@ -85,7 +97,11 @@ export const useShoppingCart = () => {
 
   const removeFromCart = useCallback((itemId: string) => {
     console.log('Removing item from cart:', itemId);
-    setCartItems(prev => prev.filter(item => item.mobileHome.id !== itemId));
+    setCartItems(prev => {
+      const filtered = prev.filter(item => item.mobileHome.id !== itemId);
+      console.log('Cart after removal:', filtered.length, 'items');
+      return filtered;
+    });
   }, []);
 
   const updateServices = useCallback((homeId: string, selectedServices: string[]) => {
@@ -118,18 +134,19 @@ export const useShoppingCart = () => {
       console.log('Setting cart state to:', newState);
       return newState;
     });
-  }, []);
+  }, [isCartOpen]);
 
   const closeCart = useCallback(() => {
     console.log('Closing cart');
     setIsCartOpen(false);
   }, []);
 
-  console.log('useShoppingCart render - cart items:', cartItems.length, 'isOpen:', isCartOpen);
+  console.log('useShoppingCart render - cart items:', cartItems.length, 'isOpen:', isCartOpen, 'isLoading:', isLoading);
 
   return {
     cartItems,
     isCartOpen,
+    isLoading,
     addToCart,
     removeFromCart,
     updateServices,

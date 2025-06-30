@@ -24,6 +24,9 @@ const Index = () => {
   console.log('Index component: State initialized', { user: user?.id, isLoading });
   
   // Use the shopping cart hook at the top level
+  const shoppingCartHook = useShoppingCart();
+  
+  // Destructure after hook call to ensure consistent hook order
   const {
     cartItems,
     isCartOpen,
@@ -35,7 +38,8 @@ const Index = () => {
     toggleCart,
     closeCart,
     setIsCartOpen,
-  } = useShoppingCart();
+    isLoading: cartLoading,
+  } = shoppingCartHook;
 
   console.log('Index component: Shopping cart initialized');
 
@@ -202,6 +206,7 @@ const Index = () => {
           updateHomeOptions={updateHomeOptions}
           clearCart={clearCart}
           setIsCartOpen={setIsCartOpen}
+          cartLoading={cartLoading}
         />
       </div>
 

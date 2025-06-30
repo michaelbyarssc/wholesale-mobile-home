@@ -21,7 +21,6 @@ interface MobileHomeData {
 }
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -29,30 +28,18 @@ serve(async (req) => {
   try {
     console.log('Starting OwnTru models scraping...');
     
-    // Check environment variables
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     const firecrawlApiKey = Deno.env.get('FIRECRAWL_API_KEY');
 
-    console.log('Environment check:', {
-      hasSupabaseUrl: !!supabaseUrl,
-      hasServiceKey: !!supabaseServiceKey,
-      hasFirecrawlKey: !!firecrawlApiKey
-    });
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-      throw new Error('Missing Supabase environment variables');
-    }
-
-    if (!firecrawlApiKey) {
-      throw new Error('FIRECRAWL_API_KEY not found in environment variables');
+    if (!supabaseUrl || !supabaseServiceKey || !firecrawlApiKey) {
+      throw new Error('Missing required environment variables');
     }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // First, scrape the main models page to get all model links
-    console.log('Scraping main models page for model links...');
-    
+    // First scrape the main models page
+    console.log('Scraping main models page...');
     const mainPageResponse = await fetch('https://api.firecrawl.dev/v0/scrape', {
       method: 'POST',
       headers: {
@@ -61,60 +48,37 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         url: 'https://owntru.com/models/',
-        formats: ['markdown', 'html'],
-        onlyMainContent: false, // Get all content to find links
-        waitFor: 3000
+        formats: ['markdown'],
+        onlyMainContent: true,
+        waitFor: 5000
       }),
     });
 
     if (!mainPageResponse.ok) {
-      const errorText = await mainPageResponse.text();
-      console.error('Firecrawl API error:', mainPageResponse.status, errorText);
-      throw new Error(`Firecrawl API error: ${mainPageResponse.status} ${mainPageResponse.statusText}`);
+      throw new Error(`Main page scrape failed: ${mainPageResponse.status}`);
     }
 
     const mainPageData = await mainPageResponse.json();
-    console.log('Main page response received');
-    
     if (!mainPageData.success) {
-      throw new Error(`Firecrawl failed: ${mainPageData.error || 'Unknown error'}`);
+      throw new Error(`Main page scrape error: ${mainPageData.error}`);
     }
 
-    const mainMarkdown = mainPageData.data?.markdown || '';
-    const mainHtml = mainPageData.data?.html || '';
-    console.log('Main content lengths - Markdown:', mainMarkdown.length, 'HTML:', mainHtml.length);
-
-    // Extract individual model URLs - try multiple approaches
+    // Extract model URLs from the main page
     const modelUrls = new Set<string>();
-    const combinedContent = mainMarkdown + ' ' + mainHtml;
+    const content = mainPageData.data?.markdown || '';
     
-    console.log('Extracting model URLs from main page...');
-    console.log('Sample content:', combinedContent.substring(0, 1000));
-    
-    // Look for all possible URL patterns
-    const urlPatterns = [
-      /owntru\.com\/models\/([a-z0-9\-]+)/gi,
-      /href=["']([^"']*\/models\/[a-z0-9\-]+[^"']*)/gi,
-      /\[([^\]]+)\]\(([^)]*\/models\/[a-z0-9\-]+[^)]*)\)/gi,
-      /\/models\/([a-z0-9\-]+)/gi
+    // Look for model links in various formats
+    const patterns = [
+      /\[([^\]]+)\]\(([^)]*\/models\/[^)]+)\)/g,
+      /href=["']([^"']*\/models\/[^"']+)["']/g,
+      /owntru\.com\/models\/([a-z0-9\-]+)/g
     ];
 
-    for (const pattern of urlPatterns) {
+    for (const pattern of patterns) {
       let match;
-      pattern.lastIndex = 0;
-      while ((match = pattern.exec(combinedContent)) !== null) {
-        let url = match[0];
+      while ((match = pattern.exec(content)) !== null) {
+        let url = match[2] || match[1] || match[0];
         
-        // Extract the actual URL from different formats
-        if (url.includes('href=')) {
-          const hrefMatch = url.match(/href=["']([^"']+)/);
-          if (hrefMatch) url = hrefMatch[1];
-        } else if (url.includes('](')) {
-          const linkMatch = url.match(/\]\(([^)]+)\)/);
-          if (linkMatch) url = linkMatch[1];
-        }
-        
-        // Normalize URL
         if (!url.startsWith('http')) {
           if (url.startsWith('/')) {
             url = 'https://owntru.com' + url;
@@ -125,61 +89,40 @@ serve(async (req) => {
           }
         }
         
-        // Clean up URL
-        url = url.replace(/\/$/, '').split('#')[0].split('?')[0];
-        
-        // Validate and add URL
         if (url.includes('/models/') && !url.endsWith('/models')) {
-          const modelSlug = url.split('/models/')[1];
-          if (modelSlug && modelSlug.length > 2 && /^[a-z0-9\-]+$/.test(modelSlug)) {
-            modelUrls.add(url);
-            console.log('Found model URL:', url);
-          }
+          modelUrls.add(url.split('#')[0].split('?')[0]);
         }
       }
     }
 
     const uniqueUrls = Array.from(modelUrls);
-    console.log(`Found ${uniqueUrls.length} unique model URLs`);
+    console.log(`Found ${uniqueUrls.length} model URLs:`, uniqueUrls);
 
     if (uniqueUrls.length === 0) {
-      // If no URLs found, try to find any links in the content
-      console.log('No model URLs found, searching for any links...');
-      const linkPattern = /href=["']([^"']+)["']/gi;
-      let match;
-      const allLinks = [];
-      while ((match = linkPattern.exec(mainHtml)) !== null) {
-        allLinks.push(match[1]);
-      }
-      console.log('All links found:', allLinks.slice(0, 20));
-      
       return new Response(JSON.stringify({
         success: false,
-        message: 'No model URLs found on the main page. The website structure may have changed.',
-        debug: {
-          contentLength: combinedContent.length,
-          sampleContent: combinedContent.substring(0, 1000),
-          allLinksFound: allLinks.slice(0, 10)
-        }
+        message: 'No model URLs found',
+        debug: { contentSample: content.substring(0, 1000) }
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // Process each model URL to get detailed information
     const mobileHomes: MobileHomeData[] = [];
-    const maxModels = Math.min(uniqueUrls.length, 20); // Process up to 20 models
-
-    console.log(`Processing ${maxModels} models...`);
-
-    for (let i = 0; i < maxModels; i++) {
+    
+    // Process each model URL with longer delays to avoid rate limits
+    for (let i = 0; i < Math.min(uniqueUrls.length, 15); i++) {
       const modelUrl = uniqueUrls[i];
       
       try {
-        console.log(`[${i + 1}/${maxModels}] Processing: ${modelUrl}`);
+        console.log(`[${i + 1}/${uniqueUrls.length}] Processing: ${modelUrl}`);
         
-        // Scrape the individual model page
-        const modelPageResponse = await fetch('https://api.firecrawl.dev/v0/scrape', {
+        // Add delay to avoid rate limits
+        if (i > 0) {
+          await new Promise(resolve => setTimeout(resolve, 8000));
+        }
+        
+        const modelResponse = await fetch('https://api.firecrawl.dev/v0/scrape', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${firecrawlApiKey}`,
@@ -189,249 +132,253 @@ serve(async (req) => {
             url: modelUrl,
             formats: ['markdown', 'html'],
             onlyMainContent: false,
-            waitFor: 4000
+            waitFor: 6000,
+            timeout: 30000
           })
         });
 
-        if (!modelPageResponse.ok) {
-          console.error(`Failed to scrape ${modelUrl}:`, modelPageResponse.status);
+        if (!modelResponse.ok) {
+          console.error(`Failed to scrape ${modelUrl}: ${modelResponse.status}`);
           continue;
         }
 
-        const modelPageData = await modelPageResponse.json();
-        
-        if (!modelPageData.success) {
-          console.error(`Firecrawl failed for ${modelUrl}:`, modelPageData.error);
+        const modelData = await modelResponse.json();
+        if (!modelData.success) {
+          console.error(`Model scrape error for ${modelUrl}:`, modelData.error);
           continue;
         }
 
-        const modelMarkdown = modelPageData.data?.markdown || '';
-        const modelHtml = modelPageData.data?.html || '';
-        console.log(`Content for ${modelUrl} - Markdown: ${modelMarkdown.length}, HTML: ${modelHtml.length}`);
+        const markdown = modelData.data?.markdown || '';
+        const html = modelData.data?.html || '';
+        const combinedContent = markdown + ' ' + html;
         
-        if (modelMarkdown.length < 50 && modelHtml.length < 200) {
-          console.log(`Skipping ${modelUrl} - insufficient content`);
+        console.log(`Content received for ${modelUrl}: ${combinedContent.length} chars`);
+        
+        if (combinedContent.length < 100) {
+          console.log(`Insufficient content for ${modelUrl}, skipping`);
           continue;
         }
 
         // Extract model name from URL
         const urlParts = modelUrl.split('/');
-        const urlModelName = urlParts[urlParts.length - 1] || urlParts[urlParts.length - 2];
-        let modelName = urlModelName.replace(/-/g, ' ').toUpperCase();
+        const urlSlug = urlParts[urlParts.length - 1] || urlParts[urlParts.length - 2];
+        let modelName = urlSlug.replace(/-/g, ' ').toUpperCase();
 
-        const modelData: MobileHomeData = {
+        const homeData: MobileHomeData = {
           series: 'OwnTru',
           model: modelName.replace(/\s+/g, ''),
           display_name: modelName,
         };
 
-        const combinedModelContent = modelMarkdown + ' ' + modelHtml;
-        console.log(`Sample content for ${modelName}:`, combinedModelContent.substring(0, 500));
-
-        // Try to extract title/model name from content
+        // Extract title/display name from content
         const titlePatterns = [
           /<h1[^>]*>([^<]+)<\/h1>/i,
-          /<title[^>]*>([^<]+)<\/title>/i,
-          /^#\s+(.+)$/m,
-          /\*\*([A-Z\s]+)\*\*/
+          /^#\s+([^\n\r]+)/m,
+          /<title[^>]*>([^<]+?)\s*\|\s*OwnTru/i,
+          /\*\*\s*([A-Z][A-Z\s]{2,30})\s*\*\*/,
+          /^([A-Z][A-Z\s]{2,30})$/m
         ];
 
         for (const pattern of titlePatterns) {
-          const titleMatch = combinedModelContent.match(pattern);
-          if (titleMatch && titleMatch[1]) {
-            const foundTitle = titleMatch[1].trim().replace(/\s+/g, ' ');
-            if (foundTitle.length >= 3 && foundTitle.length <= 30 && 
-                !foundTitle.toLowerCase().includes('owntru') && 
-                !foundTitle.includes('www')) {
-              modelData.display_name = foundTitle;
-              modelData.model = foundTitle.replace(/\s+/g, '');
-              console.log(`Found title: ${foundTitle}`);
+          const match = combinedContent.match(pattern);
+          if (match && match[1]) {
+            const title = match[1].trim().replace(/\s+/g, ' ');
+            if (title.length >= 3 && title.length <= 50 && 
+                !title.toLowerCase().includes('owntru') &&
+                !title.includes('www') && !title.includes('http')) {
+              homeData.display_name = title;
+              homeData.model = title.replace(/\s+/g, '');
+              console.log(`Found title: ${title}`);
               break;
             }
           }
         }
 
-        // Extract square footage - be more aggressive
+        // Extract square footage with more patterns
         const sqftPatterns = [
-          /(\d{3,4})\s*(?:sq\.?\s*ft\.?|sqft|square\s*feet)/gi,
-          /(\d{3,4})\s*sq/gi,
+          /(\d{3,4})\s*sq\.?\s*ft\.?/gi,
+          /(\d{3,4})\s*square\s*feet/gi,
           /square\s*footage[:\s]*(\d{3,4})/gi,
-          /size[:\s]*(\d{3,4})/gi,
-          />(\d{3,4})[^0-9]*sq/gi,
-          /(\d{3,4})[^0-9]*square/gi
+          /total\s*area[:\s]*(\d{3,4})/gi,
+          /(\d{3,4})\s*sf\b/gi,
+          /size[:\s]*(\d{3,4})\s*sq/gi
         ];
 
         for (const pattern of sqftPatterns) {
-          pattern.lastIndex = 0;
-          const sqftMatch = pattern.exec(combinedModelContent);
-          if (sqftMatch) {
-            const sqft = parseInt(sqftMatch[1]);
-            if (sqft >= 300 && sqft <= 3000) {
-              modelData.square_footage = sqft;
+          const match = combinedContent.match(pattern);
+          if (match) {
+            const sqft = parseInt(match[1]);
+            if (sqft >= 200 && sqft <= 4000) {
+              homeData.square_footage = sqft;
               console.log(`Found square footage: ${sqft}`);
               break;
             }
           }
         }
 
-        // Extract bedrooms - be more aggressive
+        // Extract bedrooms
         const bedroomPatterns = [
-          /(\d+)\s*(?:bed|bedroom|br)\b/gi,
-          /bed[room]*[:\s]*(\d+)/gi,
-          />(\d+)[^0-9]*bed/gi,
-          /(\d+)[^0-9]*bedroom/gi
+          /(\d+)\s*bed(?:room)?s?\b/gi,
+          /bed(?:room)?s?[:\s]*(\d+)/gi,
+          /(\d+)\s*br\b/gi,
+          /(\d+)\/\d+\s*bed/gi
         ];
 
         for (const pattern of bedroomPatterns) {
-          pattern.lastIndex = 0;
-          const bedroomMatch = pattern.exec(combinedModelContent);
-          if (bedroomMatch) {
-            const bedrooms = parseInt(bedroomMatch[1]);
-            if (bedrooms >= 1 && bedrooms <= 6) {
-              modelData.bedrooms = bedrooms;
+          const match = combinedContent.match(pattern);
+          if (match) {
+            const bedrooms = parseInt(match[1]);
+            if (bedrooms >= 1 && bedrooms <= 8) {
+              homeData.bedrooms = bedrooms;
               console.log(`Found bedrooms: ${bedrooms}`);
               break;
             }
           }
         }
 
-        // Extract bathrooms - be more aggressive
+        // Extract bathrooms
         const bathroomPatterns = [
-          /(\d+(?:\.\d+)?)\s*(?:bath|bathroom|ba)\b/gi,
-          /bath[room]*[:\s]*(\d+(?:\.\d+)?)/gi,
-          />(\d+(?:\.\d+)?)[^0-9]*bath/gi,
-          /(\d+(?:\.\d+)?)[^0-9]*bathroom/gi
+          /(\d+(?:\.\d+)?)\s*bath(?:room)?s?\b/gi,
+          /bath(?:room)?s?[:\s]*(\d+(?:\.\d+)?)/gi,
+          /(\d+(?:\.\d+)?)\s*ba\b/gi,
+          /\d+\/(\d+(?:\.\d+)?)\s*bath/gi
         ];
 
         for (const pattern of bathroomPatterns) {
-          pattern.lastIndex = 0;
-          const bathroomMatch = pattern.exec(combinedModelContent);
-          if (bathroomMatch) {
-            const bathrooms = parseFloat(bathroomMatch[1]);
-            if (bathrooms >= 1 && bathrooms <= 4) {
-              modelData.bathrooms = bathrooms;
+          const match = combinedContent.match(pattern);
+          if (match) {
+            const bathrooms = parseFloat(match[1]);
+            if (bathrooms >= 0.5 && bathrooms <= 5) {
+              homeData.bathrooms = bathrooms;
               console.log(`Found bathrooms: ${bathrooms}`);
               break;
             }
           }
         }
 
-        // Extract dimensions - be more aggressive
+        // Extract dimensions
         const dimensionPatterns = [
           /(\d+)['"]?\s*[x×]\s*(\d+)['"]?/gi,
           /(\d+)\s*ft\s*[x×]\s*(\d+)\s*ft/gi,
           /length[:\s]*(\d+)[^0-9]*width[:\s]*(\d+)/gi,
           /width[:\s]*(\d+)[^0-9]*length[:\s]*(\d+)/gi,
           /(\d+)\s*by\s*(\d+)/gi,
-          />(\d+)[^0-9]*x[^0-9]*(\d+)/gi
+          /dimensions[:\s]*(\d+)[^0-9]+(\d+)/gi
         ];
 
         for (const pattern of dimensionPatterns) {
-          pattern.lastIndex = 0;
-          const dimensionMatch = pattern.exec(combinedModelContent);
-          if (dimensionMatch) {
-            const dim1 = parseInt(dimensionMatch[1]);
-            const dim2 = parseInt(dimensionMatch[2]);
-            if (dim1 >= 10 && dim1 <= 40 && dim2 >= 30 && dim2 <= 100) {
-              modelData.width_feet = Math.min(dim1, dim2);
-              modelData.length_feet = Math.max(dim1, dim2);
-              console.log(`Found dimensions: ${modelData.width_feet}x${modelData.length_feet}`);
+          const match = combinedContent.match(pattern);
+          if (match) {
+            const dim1 = parseInt(match[1]);
+            const dim2 = parseInt(match[2]);
+            if (dim1 >= 8 && dim1 <= 50 && dim2 >= 20 && dim2 <= 120) {
+              homeData.width_feet = Math.min(dim1, dim2);
+              homeData.length_feet = Math.max(dim1, dim2);
+              console.log(`Found dimensions: ${homeData.width_feet}x${homeData.length_feet}`);
               break;
             }
           }
         }
 
-        // Extract description - look for paragraphs of text
+        // Extract description
         const descriptionPatterns = [
-          /<p[^>]*>([^<]{50,500})<\/p>/gi,
-          /^([A-Z][^.\n\r]{50,400}\.)/m,
-          /description[:\s]*([^.\n\r]{50,400}\.)/gi,
-          /\n([A-Z][^.\n\r]{50,400}\.)/g
+          /<p[^>]*>([^<]{100,800})<\/p>/gi,
+          /description[:\s]*([^.\n\r]{100,800}\.)/gi,
+          /about[:\s]*([^.\n\r]{100,800}\.)/gi,
+          /overview[:\s]*([^.\n\r]{100,800}\.)/gi,
+          /\n([A-Z][^.\n\r]{100,800}\.)/g
         ];
 
         for (const pattern of descriptionPatterns) {
-          pattern.lastIndex = 0;
-          const descMatch = pattern.exec(combinedModelContent);
-          if (descMatch && descMatch[1]) {
-            let desc = descMatch[1].trim().replace(/[*#\[\]]/g, '').replace(/\s+/g, ' ');
-            if (desc.length > 50 && desc.length < 500 && 
-                !desc.includes('owntru.com') && 
-                !desc.includes('href=') && 
-                !desc.toLowerCase().includes('cookie')) {
-              modelData.description = desc;
-              console.log(`Found description: ${desc.substring(0, 80)}...`);
+          const match = combinedContent.match(pattern);
+          if (match && match[1]) {
+            let desc = match[1].trim()
+              .replace(/[*#\[\]]/g, '')
+              .replace(/\s+/g, ' ')
+              .replace(/owntru\.com[^\s]*/gi, '')
+              .replace(/href=[^\s]*/gi, '');
+            
+            if (desc.length >= 100 && desc.length <= 800 && 
+                !desc.toLowerCase().includes('cookie') &&
+                !desc.includes('http') &&
+                desc.match(/[a-z]/i)) {
+              homeData.description = desc;
+              console.log(`Found description: ${desc.substring(0, 100)}...`);
               break;
             }
           }
         }
 
-        // Extract features - look for lists
+        // Extract features
         const features: string[] = [];
         const featurePatterns = [
-          /<li[^>]*>([^<]{10,100})<\/li>/gi,
-          /•\s*([^.\n\r]{10,100})/g,
-          /-\s*([^.\n\r]{10,100})/g,
-          /\*\s*([^.\n\r]{10,100})/g
+          /<li[^>]*>([^<]{10,150})<\/li>/gi,
+          /•\s*([^.\n\r]{10,150})/g,
+          /-\s*([^.\n\r]{10,150})/g,
+          /\*\s*([^.\n\r]{10,150})/g,
+          /feature[s]?[:\s]*([^.\n\r]{10,150})/gi,
+          /include[s]?[:\s]*([^.\n\r]{10,150})/gi
         ];
 
         for (const pattern of featurePatterns) {
           let match;
-          pattern.lastIndex = 0;
-          while ((match = pattern.exec(combinedModelContent)) !== null && features.length < 8) {
-            const feature = match[1].trim().replace(/[*#<>]/g, '').replace(/\s+/g, ' ');
-            if (feature.length > 10 && feature.length < 100 && 
-                !features.includes(feature) && 
-                !feature.includes('owntru.com') && 
-                !feature.includes('href=')) {
+          while ((match = pattern.exec(combinedContent)) !== null && features.length < 12) {
+            let feature = match[1].trim()
+              .replace(/[*#<>]/g, '')
+              .replace(/\s+/g, ' ')
+              .replace(/owntru\.com[^\s]*/gi, '')
+              .replace(/href=[^\s]*/gi, '');
+            
+            if (feature.length >= 10 && feature.length <= 150 && 
+                !features.includes(feature) &&
+                !feature.toLowerCase().includes('cookie') &&
+                !feature.includes('http') &&
+                feature.match(/[a-z]/i)) {
               features.push(feature);
             }
           }
-          if (features.length > 0) break;
+          if (features.length >= 8) break;
         }
 
         if (features.length > 0) {
-          modelData.features = features;
-          console.log(`Found ${features.length} features:`, features.slice(0, 2));
+          homeData.features = features;
+          console.log(`Found ${features.length} features`);
         }
 
-        mobileHomes.push(modelData);
-        console.log(`Successfully processed model: ${modelData.display_name}`);
-        console.log('Data extracted:', {
-          sqft: modelData.square_footage,
-          bed: modelData.bedrooms,
-          bath: modelData.bathrooms,
-          dimensions: modelData.length_feet && modelData.width_feet ? `${modelData.width_feet}x${modelData.length_feet}` : null,
-          features: modelData.features?.length || 0,
-          hasDescription: !!modelData.description
+        mobileHomes.push(homeData);
+        console.log(`Successfully processed: ${homeData.display_name}`);
+        console.log('Extracted data:', {
+          sqft: homeData.square_footage,
+          bed: homeData.bedrooms,
+          bath: homeData.bathrooms,
+          dimensions: homeData.length_feet && homeData.width_feet ? 
+            `${homeData.width_feet}x${homeData.length_feet}` : null,
+          features: homeData.features?.length || 0,
+          hasDescription: !!homeData.description
         });
 
-        // Small delay between requests
-        await new Promise(resolve => setTimeout(resolve, 2000));
-
       } catch (error) {
-        console.error(`Error processing model URL ${modelUrl}:`, error);
+        console.error(`Error processing ${modelUrl}:`, error);
         continue;
       }
     }
 
-    console.log(`Extracted ${mobileHomes.length} mobile homes with detailed data`);
+    console.log(`Successfully extracted ${mobileHomes.length} mobile homes`);
 
-    // Update or create mobile homes in database
+    // Update database
     let updatedCount = 0;
     let createdCount = 0;
 
     for (const homeData of mobileHomes) {
       try {
-        // Check if mobile home already exists
         const { data: existingHome } = await supabase
           .from('mobile_homes')
-          .select('id, display_order')
+          .select('id')
           .or(`display_name.ilike.%${homeData.display_name}%,model.ilike.%${homeData.model}%`)
           .single();
 
         if (existingHome) {
-          // Update existing home
-          const { error: updateError } = await supabase
+          const { error } = await supabase
             .from('mobile_homes')
             .update({
               series: homeData.series,
@@ -448,23 +395,20 @@ serve(async (req) => {
             })
             .eq('id', existingHome.id);
 
-          if (updateError) {
-            console.error('Error updating mobile home:', updateError);
-          } else {
+          if (!error) {
             updatedCount++;
-            console.log('Updated mobile home:', homeData.display_name);
+            console.log(`Updated: ${homeData.display_name}`);
           }
         } else {
-          // Create new home
-          const { data: maxOrderData } = await supabase
+          const { data: maxOrder } = await supabase
             .from('mobile_homes')
             .select('display_order')
             .order('display_order', { ascending: false })
             .limit(1);
 
-          const nextOrder = (maxOrderData?.[0]?.display_order || 0) + 1;
+          const nextOrder = (maxOrder?.[0]?.display_order || 0) + 1;
 
-          const { error: insertError } = await supabase
+          const { error } = await supabase
             .from('mobile_homes')
             .insert({
               manufacturer: 'OwnTru',
@@ -478,21 +422,19 @@ serve(async (req) => {
               length_feet: homeData.length_feet,
               width_feet: homeData.width_feet,
               features: homeData.features ? JSON.stringify(homeData.features) : null,
-              price: 0, // Default price, will need to be updated manually
+              price: 0,
               minimum_profit: 0,
               display_order: nextOrder,
               active: true,
             });
 
-          if (insertError) {
-            console.error('Error creating mobile home:', insertError);
-          } else {
+          if (!error) {
             createdCount++;
-            console.log('Created mobile home:', homeData.display_name);
+            console.log(`Created: ${homeData.display_name}`);
           }
         }
       } catch (error) {
-        console.error('Error processing mobile home:', homeData.display_name, error);
+        console.error(`Database error for ${homeData.display_name}:`, error);
       }
     }
 
@@ -503,40 +445,35 @@ serve(async (req) => {
         totalProcessed: mobileHomes.length,
         created: createdCount,
         updated: updatedCount,
-        homes: mobileHomes.map(h => ({ 
-          display_name: h.display_name, 
+        homes: mobileHomes.map(h => ({
+          display_name: h.display_name,
           model: h.model,
           square_footage: h.square_footage,
           bedrooms: h.bedrooms,
           bathrooms: h.bathrooms,
           dimensions: h.length_feet && h.width_feet ? `${h.width_feet}x${h.length_feet}` : null,
           features_count: h.features?.length || 0,
-          description: h.description ? h.description.substring(0, 50) + '...' : null
-        })),
+          description: h.description ? h.description.substring(0, 100) + '...' : null
+        }))
       }
     };
 
-    console.log('Scraping completed successfully:', result.message);
+    console.log('Scraping completed:', result.message);
 
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
   } catch (error) {
-    console.error('Error in scrape-owntru-models function:', error);
+    console.error('Scraping error:', error);
     
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-    
-    return new Response(
-      JSON.stringify({ 
-        success: false, 
-        error: errorMessage,
-        message: 'Failed to scrape OwnTru models'
-      }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      }
-    );
+    return new Response(JSON.stringify({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      message: 'Failed to scrape OwnTru models'
+    }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
   }
 });

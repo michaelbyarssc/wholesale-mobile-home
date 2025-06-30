@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -216,15 +215,6 @@ export const ServicesSelection = ({
                         {service.description && (
                           <p className="text-xs text-gray-500 mt-1">{service.description}</p>
                         )}
-
-                        {/* Show pricing debug for ALL services in popup */}
-                        <div className="mt-2 p-2 bg-blue-100 border rounded text-xs">
-                          <strong>Service Debug:</strong><br/>
-                          Raw Cost from getServicePrice(): {serviceCost}<br/>
-                          After calculatePrice(): {displayPrice}<br/>
-                          Type of serviceCost: {typeof serviceCost}<br/>
-                          Type of displayPrice: {typeof displayPrice}
-                        </div>
 
                         <p className="text-sm text-gray-600 mt-1">
                           {formatPrice(displayPrice)}

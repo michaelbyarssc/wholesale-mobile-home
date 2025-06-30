@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -16,6 +17,7 @@ import { formatPrice } from '@/lib/utils';
 import type { Database } from '@/integrations/supabase/types';
 
 type MobileHome = Database['public']['Tables']['mobile_homes']['Row'];
+type HomeOption = Database['public']['Tables']['home_options']['Row'];
 
 interface MobileHomeImage {
   id: string;
@@ -30,9 +32,10 @@ interface MobileHomesShowcaseProps {
   user?: User | null;
   cartItems: CartItem[];
   isCartOpen: boolean;
-  addToCart: (home: MobileHome, selectedServices: string[]) => void;
+  addToCart: (home: MobileHome, selectedServices: string[], selectedHomeOptions: { option: HomeOption; quantity: number }[]) => void;
   removeFromCart: (itemId: string) => void;
   updateServices: (homeId: string, selectedServices: string[]) => void;
+  updateHomeOptions: (homeId: string, selectedHomeOptions: { option: HomeOption; quantity: number }[]) => void;
   clearCart: () => void;
   setIsCartOpen: (open: boolean) => void;
 }
@@ -44,6 +47,7 @@ export const MobileHomesShowcase = ({
   addToCart,
   removeFromCart,
   updateServices,
+  updateHomeOptions,
   clearCart,
   setIsCartOpen
 }: MobileHomesShowcaseProps) => {
@@ -151,9 +155,9 @@ export const MobileHomesShowcase = ({
     setSelectedHomeForServices(home);
   }, []);
 
-  const handleAddToCartWithServices = useCallback((home: MobileHome, selectedServices: string[]) => {
-    console.log('Adding to cart with services:', home.id, selectedServices);
-    addToCart(home, selectedServices);
+  const handleAddToCartWithServices = useCallback((home: MobileHome, selectedServices: string[], selectedHomeOptions: { option: HomeOption; quantity: number }[] = []) => {
+    console.log('Adding to cart with services and options:', home.id, selectedServices, selectedHomeOptions);
+    addToCart(home, selectedServices, selectedHomeOptions);
     setSelectedHomeForServices(null);
   }, [addToCart]);
 
@@ -453,6 +457,7 @@ export const MobileHomesShowcase = ({
               cartItems={cartItems}
               onRemoveItem={removeFromCart}
               onUpdateServices={updateServices}
+              onUpdateHomeOptions={updateHomeOptions}
               onClearCart={clearCart}
               user={user}
             />

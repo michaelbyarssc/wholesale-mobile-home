@@ -1,22 +1,25 @@
 
 import React, { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Edit } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Edit } from 'lucide-react';
 
 export interface UserProfile {
   user_id: string;
   email: string;
   first_name: string | null;
   last_name: string | null;
-  role: 'admin' | 'user' | null;
+  role: string | null;
   created_at: string;
-  markup_percentage?: number;
-  minimum_profit_per_home?: number;
+  markup_percentage: number;
+  minimum_profit_per_home: number;
+  approved?: boolean;
+  approved_at?: string | null;
 }
 
 interface UserEditDialogProps {
@@ -25,141 +28,129 @@ interface UserEditDialogProps {
 }
 
 export const UserEditDialog = ({ profile, onUserUpdated }: UserEditDialogProps) => {
-  const [editingUser, setEditingUser] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState({
-    email: '',
-    first_name: '',
-    last_name: ''
-  });
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [firstName, setFirstName] = useState(profile.first_name || '');
+  const [lastName, setLastName] = useState(profile.last_name || '');
+  const [role, setRole] = useState<'admin' | 'user'>(profile.role as 'admin' | 'user' || 'user');
   const { toast } = useToast();
 
-  const startEditingUser = (profile: UserProfile) => {
-    setEditingUser(profile.user_id);
-    setEditForm({
-      email: profile.email === 'No email' ? '' : profile.email || '',
-      first_name: profile.first_name || '',
-      last_name: profile.last_name || ''
-    });
-  };
-
-  const cancelEditing = () => {
-    setEditingUser(null);
-    setEditForm({ email: '', first_name: '', last_name: '' });
-  };
-
-  const updateUserProfile = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!editingUser) return;
+    setLoading(true);
 
     try {
-      console.log('Updating profile for user:', editingUser);
-      console.log('Update data:', editForm);
-
-      const { data: updateData, error: updateError } = await supabase
+      // Update profile
+      const { error: profileError } = await supabase
         .from('profiles')
         .update({
-          email: editForm.email,
-          first_name: editForm.first_name,
-          last_name: editForm.last_name,
+          first_name: firstName.trim() || null,
+          last_name: lastName.trim() || null,
           updated_at: new Date().toISOString()
         })
-        .eq('user_id', editingUser)
-        .select();
+        .eq('user_id', profile.user_id);
 
-      console.log('Update result:', { updateData, updateError });
+      if (profileError) throw profileError;
 
-      if (updateData && updateData.length === 0) {
-        console.log('No existing profile found, creating new one...');
-        const { data: insertData, error: insertError } = await supabase
-          .from('profiles')
-          .insert({
-            user_id: editingUser,
-            email: editForm.email,
-            first_name: editForm.first_name,
-            last_name: editForm.last_name
-          })
-          .select();
+      // Update role if it exists and has changed
+      if (profile.role !== role) {
+        if (profile.role) {
+          // Update existing role
+          const { error: roleUpdateError } = await supabase
+            .from('user_roles')
+            .update({ role })
+            .eq('user_id', profile.user_id);
 
-        console.log('Insert result:', { insertData, insertError });
+          if (roleUpdateError) throw roleUpdateError;
+        } else {
+          // Insert new role
+          const { error: roleInsertError } = await supabase
+            .from('user_roles')
+            .insert({
+              user_id: profile.user_id,
+              role
+            });
 
-        if (insertError) throw insertError;
-      } else if (updateError) {
-        throw updateError;
+          if (roleInsertError) throw roleInsertError;
+        }
       }
 
       toast({
-        title: "Profile updated",
-        description: "User profile has been updated successfully",
+        title: "User Updated",
+        description: "User profile has been successfully updated.",
       });
 
-      setEditingUser(null);
-      setEditForm({ email: '', first_name: '', last_name: '' });
+      setOpen(false);
       onUserUpdated();
     } catch (error: any) {
-      console.error('Error updating user profile:', error);
+      console.error('Error updating user:', error);
       toast({
-        title: "Error",
+        title: "Update Failed",
         description: error.message || "Failed to update user profile",
         variant: "destructive",
       });
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <Dialog>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => startEditingUser(profile)}
-        >
-          <Edit className="h-3 w-3" />
+        <Button variant="outline" size="sm">
+          <Edit className="h-4 w-4" />
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Edit User Profile</DialogTitle>
         </DialogHeader>
-        <form onSubmit={updateUserProfile} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <Label htmlFor="edit-email">Email Address</Label>
+            <Label htmlFor="firstName">First Name</Label>
             <Input
-              id="edit-email"
-              type="email"
-              value={editForm.email}
-              onChange={(e) => setEditForm(prev => ({ ...prev, email: e.target.value }))}
-              required
+              id="firstName"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              placeholder="First name"
             />
           </div>
           <div>
-            <Label htmlFor="edit-first-name">First Name</Label>
+            <Label htmlFor="lastName">Last Name</Label>
             <Input
-              id="edit-first-name"
-              type="text"
-              value={editForm.first_name}
-              onChange={(e) => setEditForm(prev => ({ ...prev, first_name: e.target.value }))}
+              id="lastName"
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              placeholder="Last name"
             />
           </div>
           <div>
-            <Label htmlFor="edit-last-name">Last Name</Label>
+            <Label htmlFor="email">Email</Label>
             <Input
-              id="edit-last-name"
-              type="text"
-              value={editForm.last_name}
-              onChange={(e) => setEditForm(prev => ({ ...prev, last_name: e.target.value }))}
+              id="email"
+              value={profile.email}
+              disabled
+              className="bg-gray-100"
             />
           </div>
-          <div className="flex justify-end space-x-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={cancelEditing}
-            >
+          <div>
+            <Label htmlFor="role">Role</Label>
+            <Select value={role} onValueChange={(value: 'admin' | 'user') => setRole(value)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="user">User</SelectItem>
+                <SelectItem value="admin">Admin</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit">
-              Save Changes
+            <Button type="submit" disabled={loading}>
+              {loading ? "Updating..." : "Update User"}
             </Button>
           </div>
         </form>

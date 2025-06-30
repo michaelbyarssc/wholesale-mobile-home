@@ -103,18 +103,58 @@ export const AuthForm: React.FC<AuthFormProps> = ({
         });
         
         if (error) throw error;
+
+        // Send notification to admin about new user registration
+        try {
+          await supabase.functions.invoke('send-new-user-notification', {
+            body: {
+              firstName: firstName.trim(),
+              lastName: lastName.trim(),
+              email: email,
+              phoneNumber: phoneNumber.trim()
+            }
+          });
+        } catch (notificationError) {
+          console.error('Failed to send admin notification:', notificationError);
+          // Don't block registration if notification fails
+        }
         
         toast({
-          title: "Account created!",
-          description: "Please check your email to verify your account.",
+          title: "Registration Submitted!",
+          description: "Your account has been created and is pending admin approval. You'll be able to sign in once approved.",
         });
       } else {
-        const { error } = await supabase.auth.signInWithPassword({
+        // Check if user is approved before allowing sign in
+        const { error: signInError } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
         
-        if (error) throw error;
+        if (signInError) throw signInError;
+
+        // Check if user is approved
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('approved, first_name, last_name')
+          .eq('email', email)
+          .single();
+
+        if (profileError) {
+          console.error('Profile check error:', profileError);
+          throw new Error('Unable to verify account status');
+        }
+
+        if (!profile.approved) {
+          // Sign out the user immediately
+          await supabase.auth.signOut();
+          toast({
+            title: "Account Pending Approval",
+            description: "Your account is awaiting admin approval. Please contact an administrator.",
+            variant: "destructive",
+          });
+          setLoading(false);
+          return;
+        }
         
         toast({
           title: "Welcome back!",

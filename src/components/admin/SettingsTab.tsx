@@ -99,17 +99,46 @@ export const SettingsTab = () => {
 
   const updateSetting = async (key: string, value: string) => {
     try {
-      const { error } = await supabase
+      // First try to update existing record
+      const { data: existingData, error: selectError } = await supabase
         .from('admin_settings')
-        .upsert({
-          setting_key: key,
-          setting_value: value,
-          updated_at: new Date().toISOString()
-        });
+        .select('id')
+        .eq('setting_key', key)
+        .maybeSingle();
 
-      if (error) {
-        console.error('Error updating setting:', error);
-        throw error;
+      if (selectError) {
+        console.error('Error checking existing setting:', selectError);
+        throw selectError;
+      }
+
+      if (existingData) {
+        // Update existing record
+        const { error: updateError } = await supabase
+          .from('admin_settings')
+          .update({
+            setting_value: value,
+            updated_at: new Date().toISOString()
+          })
+          .eq('setting_key', key);
+
+        if (updateError) {
+          console.error('Error updating setting:', updateError);
+          throw updateError;
+        }
+      } else {
+        // Insert new record
+        const { error: insertError } = await supabase
+          .from('admin_settings')
+          .insert({
+            setting_key: key,
+            setting_value: value,
+            updated_at: new Date().toISOString()
+          });
+
+        if (insertError) {
+          console.error('Error inserting setting:', insertError);
+          throw insertError;
+        }
       }
     } catch (error) {
       console.error('Error updating setting:', error);

@@ -417,11 +417,11 @@ export const MobileHomesShowcase = ({
           </div>
         ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className={`grid w-full mb-8 ${uniqueSeries.length <= 2 ? 'grid-cols-2' : uniqueSeries.length <= 3 ? 'grid-cols-3' : 'grid-cols-4'}`}>
+            <TabsList className="grid w-full mb-8" style={{ gridTemplateColumns: `repeat(${uniqueSeries.length}, minmax(0, 1fr))` }}>
               {uniqueSeries.map((series) => {
                 const seriesHomes = filteredHomes.filter(home => home.series === series);
                 return (
-                  <TabsTrigger key={series} value={series} className="text-lg py-3">
+                  <TabsTrigger key={series} value={series} className="text-lg py-3 min-w-0 flex-1">
                     {series} Series ({seriesHomes.length})
                   </TabsTrigger>
                 );

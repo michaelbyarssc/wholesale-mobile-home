@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -27,6 +26,8 @@ export const UserActions = ({ profile, onUserUpdated }: UserActionsProps) => {
         throw new Error('Not authenticated');
       }
 
+      console.log('Resetting password for user:', userId);
+
       const { data, error } = await supabase.functions.invoke('admin-reset-password', {
         body: {
           user_id: userId,
@@ -34,15 +35,21 @@ export const UserActions = ({ profile, onUserUpdated }: UserActionsProps) => {
         }
       });
 
-      if (error) throw error;
+      console.log('Password reset response:', { data, error });
 
-      if (data.error) {
+      if (error) {
+        console.error('Function invocation error:', error);
+        throw error;
+      }
+
+      if (data?.error) {
+        console.error('Function returned error:', data.error);
         throw new Error(data.error);
       }
 
       toast({
-        title: "Password reset",
-        description: `Password for ${userEmail} has been reset to: Allies123!`,
+        title: "Password reset successful",
+        description: `Password for ${userEmail} has been reset to: ${newPassword}`,
       });
 
     } catch (error: any) {
@@ -128,6 +135,7 @@ export const UserActions = ({ profile, onUserUpdated }: UserActionsProps) => {
         variant="outline"
         onClick={() => resetUserPassword(profile.user_id, profile.email)}
         disabled={resettingPassword === profile.user_id}
+        title="Reset password to Allies123!"
       >
         {resettingPassword === profile.user_id ? (
           <div className="h-3 w-3 animate-spin rounded-full border-b-2 border-current" />

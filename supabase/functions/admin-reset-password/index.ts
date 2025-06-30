@@ -52,55 +52,26 @@ serve(async (req) => {
       })
     }
 
-    const { email, temporaryPassword } = await req.json()
+    const { user_id, new_password } = await req.json()
 
-    if (!email) {
-      return new Response(JSON.stringify({ error: 'Email is required' }), {
+    if (!user_id) {
+      return new Response(JSON.stringify({ error: 'User ID is required' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
     }
 
-    // Validate email format
-    const emailRegex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/
-    if (!emailRegex.test(email)) {
-      return new Response(JSON.stringify({ error: 'Invalid email format' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      })
-    }
-
-    // First, find the user by email from profiles table
-    const { data: profileData, error: profileError } = await supabaseClient
-      .from('profiles')
-      .select('user_id')
-      .eq('email', email)
-      .maybeSingle()
-
-    if (profileError) {
-      return new Response(JSON.stringify({ error: 'Error finding user: ' + profileError.message }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      })
-    }
-
-    if (!profileData) {
-      return new Response(JSON.stringify({ error: 'User not found' }), {
-        status: 404,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      })
-    }
-
-    // Generate secure random password if not provided
-    const password = temporaryPassword || generateSecurePassword()
+    // Use provided password or generate a secure one
+    const password = new_password || generateSecurePassword()
 
     // Update user password using admin client
     const { data, error } = await supabaseClient.auth.admin.updateUserById(
-      profileData.user_id,
+      user_id,
       { password }
     )
 
     if (error) {
+      console.error('Password reset error:', error)
       return new Response(JSON.stringify({ error: error.message }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -114,7 +85,7 @@ serve(async (req) => {
         action: 'PASSWORD_RESET',
         table_name: 'auth.users',
         record_id: data.user.id,
-        new_values: { email, password_reset: true }
+        new_values: { password_reset: true }
       })
     } catch (auditError) {
       console.error('Failed to log admin action:', auditError)
@@ -124,7 +95,7 @@ serve(async (req) => {
     return new Response(JSON.stringify({ 
       success: true, 
       temporaryPassword: password,
-      message: 'Password reset successfully. User must change password on next login.' 
+      message: 'Password reset successfully' 
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     })

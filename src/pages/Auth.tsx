@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -284,7 +283,7 @@ const Auth = () => {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-blue-900 mb-2">
-            Wholesale Homes of the Carolinas
+            WholesaleMobileHome.com
           </h1>
           {displayName && (
             <p className="text-lg text-blue-600 mb-2">Welcome, {displayName}!</p>

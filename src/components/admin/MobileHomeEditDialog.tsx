@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Upload, X, Image, Edit2, GripVertical } from 'lucide-react';
+import { Upload, X, Image, Edit2, GripVertical, Move } from 'lucide-react';
 import { formatPrice } from '@/lib/utils';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import type { Database } from '@/integrations/supabase/types';
@@ -513,7 +513,7 @@ export const MobileHomeEditDialog = ({ mobileHome, open, onClose, onSave }: Mobi
             </div>
           </div>
 
-          {/* Right Column - Images */}
+          {/* Right Column - Enhanced Images Section */}
           <div className="space-y-4">
             <div className="flex justify-between items-center">
               <h3 className="text-lg font-semibold">Images ({images.length}/40)</h3>
@@ -539,8 +539,16 @@ export const MobileHomeEditDialog = ({ mobileHome, open, onClose, onSave }: Mobi
               </p>
             )}
             
-            <div className="text-sm text-gray-500 mb-2">
-              Drag and drop images to reorder them. This order will be reflected on the homepage.
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+              <div className="flex items-center space-x-2 text-blue-700">
+                <Move className="h-4 w-4" />
+                <span className="text-sm font-medium">How to arrange images:</span>
+              </div>
+              <div className="text-xs text-blue-600 mt-1 space-y-1">
+                <p>• Grab the <GripVertical className="inline h-3 w-3" /> handle to drag and reorder</p>
+                <p>• First image becomes the main showcase photo</p>
+                <p>• Drop zones will highlight in blue when dragging</p>
+              </div>
             </div>
             
             <DragDropContext onDragEnd={handleImageDragEnd}>
@@ -549,8 +557,8 @@ export const MobileHomeEditDialog = ({ mobileHome, open, onClose, onSave }: Mobi
                   <div
                     {...provided.droppableProps}
                     ref={provided.innerRef}
-                    className={`grid grid-cols-2 gap-3 max-h-96 overflow-y-auto ${
-                      snapshot.isDraggingOver ? 'bg-blue-50 rounded-lg p-2' : ''
+                    className={`space-y-3 max-h-96 overflow-y-auto p-2 rounded-lg transition-colors ${
+                      snapshot.isDraggingOver ? 'bg-blue-100 border-2 border-blue-300 border-dashed' : 'bg-gray-50'
                     }`}
                   >
                     {images.map((image, index) => (
@@ -559,72 +567,97 @@ export const MobileHomeEditDialog = ({ mobileHome, open, onClose, onSave }: Mobi
                           <div
                             ref={provided.innerRef}
                             {...provided.draggableProps}
-                            className={`relative group border rounded-lg p-2 ${
-                              snapshot.isDragging ? 'bg-white shadow-lg' : ''
+                            className={`relative group border-2 rounded-lg p-3 bg-white transition-all ${
+                              snapshot.isDragging 
+                                ? 'shadow-xl border-blue-400 bg-blue-50 rotate-1 scale-105' 
+                                : 'border-gray-200 hover:border-gray-300'
                             }`}
                           >
-                            <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-start space-x-3">
+                              {/* Enhanced Drag Handle */}
                               <div
                                 {...provided.dragHandleProps}
-                                className="cursor-grab active:cursor-grabbing p-1"
+                                className={`flex-shrink-0 cursor-grab active:cursor-grabbing p-2 rounded-md transition-colors ${
+                                  snapshot.isDragging 
+                                    ? 'bg-blue-200 text-blue-700' 
+                                    : 'bg-gray-100 hover:bg-gray-200 text-gray-500'
+                                }`}
+                                title="Drag to reorder"
                               >
-                                <GripVertical className="h-4 w-4 text-gray-400" />
+                                <GripVertical className="h-5 w-5" />
                               </div>
-                              <div className="flex gap-1">
-                                <button
-                                  onClick={() => handleStartEditLabel(image.id, image.alt_text)}
-                                  className="bg-blue-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                                  title="Edit label"
-                                >
-                                  <Edit2 className="h-3 w-3" />
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteImage(image.id)}
-                                  className="bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                                  title="Delete image"
-                                >
-                                  <X className="h-3 w-3" />
-                                </button>
+                              
+                              {/* Image Preview */}
+                              <div className="flex-shrink-0">
+                                <img
+                                  src={image.image_url}
+                                  alt={image.alt_text || ''}
+                                  className="w-20 h-20 object-cover rounded-md border"
+                                />
+                                {index === 0 && (
+                                  <div className="absolute -top-1 -left-1 bg-green-500 text-white text-xs px-2 py-1 rounded-full">
+                                    Main
+                                  </div>
+                                )}
+                              </div>
+                              
+                              {/* Image Info and Controls */}
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between mb-2">
+                                  <span className="text-sm font-medium text-gray-700">
+                                    Image #{index + 1}
+                                  </span>
+                                  <div className="flex gap-1">
+                                    <button
+                                      onClick={() => handleStartEditLabel(image.id, image.alt_text)}
+                                      className="bg-blue-500 text-white rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-blue-600"
+                                      title="Edit label"
+                                    >
+                                      <Edit2 className="h-3 w-3" />
+                                    </button>
+                                    <button
+                                      onClick={() => handleDeleteImage(image.id)}
+                                      className="bg-red-500 text-white rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                                      title="Delete image"
+                                    >
+                                      <X className="h-3 w-3" />
+                                    </button>
+                                  </div>
+                                </div>
+                                
+                                {editingLabel === image.id ? (
+                                  <div className="space-y-2">
+                                    <Input
+                                      value={labelText}
+                                      onChange={(e) => setLabelText(e.target.value)}
+                                      placeholder="Enter image label"
+                                      className="text-sm"
+                                    />
+                                    <div className="flex gap-2">
+                                      <Button
+                                        size="sm"
+                                        onClick={() => handleSaveLabel(image.id)}
+                                        className="text-xs px-3 py-1 h-7"
+                                      >
+                                        Save
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={handleCancelEditLabel}
+                                        className="text-xs px-3 py-1 h-7"
+                                      >
+                                        Cancel
+                                      </Button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <p className="text-sm text-gray-600 truncate" title={image.alt_text || 'No label'}>
+                                    {image.alt_text || 'No label'}
+                                  </p>
+                                )}
                               </div>
                             </div>
-                            
-                            <img
-                              src={image.image_url}
-                              alt={image.alt_text || ''}
-                              className="w-full h-24 object-cover rounded mb-2"
-                            />
-                            
-                            {editingLabel === image.id ? (
-                              <div className="space-y-2">
-                                <Input
-                                  value={labelText}
-                                  onChange={(e) => setLabelText(e.target.value)}
-                                  placeholder="Enter image label"
-                                  className="text-xs"
-                                />
-                                <div className="flex gap-1">
-                                  <Button
-                                    size="sm"
-                                    onClick={() => handleSaveLabel(image.id)}
-                                    className="text-xs px-2 py-1 h-6"
-                                  >
-                                    Save
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={handleCancelEditLabel}
-                                    className="text-xs px-2 py-1 h-6"
-                                  >
-                                    Cancel
-                                  </Button>
-                                </div>
-                              </div>
-                            ) : (
-                              <p className="text-xs text-gray-600 truncate" title={image.alt_text || 'No label'}>
-                                {image.alt_text || 'No label'}
-                              </p>
-                            )}
                           </div>
                         )}
                       </Draggable>
@@ -636,7 +669,7 @@ export const MobileHomeEditDialog = ({ mobileHome, open, onClose, onSave }: Mobi
             </DragDropContext>
             
             {images.length === 0 && (
-              <div className="flex items-center justify-center h-40 border-2 border-dashed border-gray-300 rounded">
+              <div className="flex items-center justify-center h-40 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50">
                 <div className="text-center text-gray-500">
                   <Image className="h-8 w-8 mx-auto mb-2" />
                   <span className="text-sm">No images uploaded</span>

@@ -1,141 +1,120 @@
 
 import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Database } from '@/integrations/supabase/types';
-import { formatPrice } from '@/lib/utils';
 import { User } from '@supabase/supabase-js';
+import type { Database } from '@/integrations/supabase/types';
 
 type MobileHome = Database['public']['Tables']['mobile_homes']['Row'];
 type Service = Database['public']['Tables']['services']['Row'];
 type HomeOption = Database['public']['Tables']['home_options']['Row'];
 
-export const useCustomerPricing = (user?: User | null) => {
-  const [markupPercentage, setMarkupPercentage] = useState<number>(30); // Default 30%
-  const [minimumProfitPerHome, setMinimumProfitPerHome] = useState<number>(0); // Default 0
+export const useCustomerPricing = (user: User | null) => {
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+
+  console.log('useCustomerPricing: Hook called with user:', user?.id);
+
+  // Fetch customer markup
+  const { data: customerMarkup, isLoading: markupLoading } = useQuery({
+    queryKey: ['customer-markup', user?.id],
+    queryFn: async () => {
+      if (!user) {
+        console.log('useCustomerPricing: No user, returning default markup');
+        return { markup_percentage: 30 };
+      }
+
+      console.log('useCustomerPricing: Fetching markup for user:', user.id);
+      const { data, error } = await supabase
+        .from('customer_markups')
+        .select('markup_percentage')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (error) {
+        console.error('useCustomerPricing: Error fetching markup:', error);
+        return { markup_percentage: 30 };
+      }
+
+      console.log('useCustomerPricing: Markup fetched:', data);
+      return data || { markup_percentage: 30 };
+    },
+    enabled: true
+  });
 
   useEffect(() => {
-    const fetchPricing = async () => {
-      if (!user?.id) {
-        setLoading(false);
-        return;
-      }
+    if (!markupLoading) {
+      console.log('useCustomerPricing: Setting loading to false');
+      setLoading(false);
+    }
+  }, [markupLoading]);
 
-      try {
-        setError(null);
-        const { data, error: fetchError } = await supabase
-          .from('customer_markups')
-          .select('markup_percentage, minimum_profit_per_home')
-          .eq('user_id', user.id)
-          .maybeSingle();
-
-        if (fetchError) {
-          console.error('Error fetching customer pricing:', fetchError);
-          setError(fetchError.message);
-          // Keep default values on error
-        } else if (data) {
-          setMarkupPercentage(data.markup_percentage);
-          setMinimumProfitPerHome(data.minimum_profit_per_home || 0);
-        }
-        // If no data found, keep default values
-      } catch (err) {
-        console.error('Unexpected error fetching pricing:', err);
-        setError('Failed to load pricing information');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchPricing();
-  }, [user?.id]);
-
-  const calculatePrice = (baseCost: number): number => {
-    if (typeof baseCost !== 'number' || baseCost < 0) {
-      console.warn('Invalid base cost provided to calculatePrice:', baseCost);
+  const calculateMobileHomePrice = (mobileHome: MobileHome | null): number => {
+    console.log('useCustomerPricing: calculateMobileHomePrice called with:', mobileHome?.id);
+    
+    if (!mobileHome) {
+      console.log('useCustomerPricing: mobileHome is null, returning 0');
       return 0;
     }
-    
-    // Calculate both pricing methods
-    const markupPrice = baseCost * (1 + markupPercentage / 100);
-    const minimumProfitPrice = baseCost + minimumProfitPerHome;
-    
-    // Return the higher of the two
-    const finalPrice = Math.max(markupPrice, minimumProfitPrice);
-    console.log(`Price calculation: baseCost=${baseCost}, markupPrice=${markupPrice}, minimumProfitPrice=${minimumProfitPrice}, finalPrice=${finalPrice}`);
-    
-    return Math.round(finalPrice * 100) / 100; // Round to 2 decimal places
-  };
 
-  const formatCalculatedPrice = (baseCost: number): string => {
-    return formatPrice(calculatePrice(baseCost));
-  };
+    if (!mobileHome.price) {
+      console.log('useCustomerPricing: mobileHome.price is null, returning 0');
+      return 0;
+    }
 
-  const calculateMobileHomePrice = (mobileHome: MobileHome): number => {
-    // Use the price field as the base cost for calculations, not the internal cost field
-    const baseCost = mobileHome.price || 0;
-    
-    // Get the home-specific minimum profit, fallback to customer's global minimum profit, then to 0
-    const homeMinProfit = mobileHome.minimum_profit || minimumProfitPerHome || 0;
-    
-    // Calculate both pricing methods
-    const markupPrice = baseCost * (1 + markupPercentage / 100);
-    const minimumProfitPrice = baseCost + homeMinProfit;
-    
-    // Return the higher of the two
-    const finalPrice = Math.max(markupPrice, minimumProfitPrice);
-    console.log(`Mobile home pricing for ${mobileHome.model}: baseCost=${baseCost}, markupPrice=${markupPrice}, minimumProfitPrice=${minimumProfitPrice}, finalPrice=${finalPrice}`);
-    return Math.round(finalPrice * 100) / 100;
+    const markup = customerMarkup?.markup_percentage || 30;
+    const finalPrice = mobileHome.price * (1 + markup / 100);
+    console.log('useCustomerPricing: Calculated price:', finalPrice, 'from base:', mobileHome.price, 'with markup:', markup);
+    return finalPrice;
   };
 
   const calculateServicePrice = (service: Service): number => {
-    const baseCost = typeof service.cost === 'number' ? service.cost : 0;
-    return calculatePrice(baseCost);
+    if (!service?.price) return 0;
+    const markup = customerMarkup?.markup_percentage || 30;
+    return service.price * (1 + markup / 100);
   };
 
-  const calculateHomeOptionPrice = (homeOption: HomeOption, homeSquareFootage?: number): number => {
-    if (homeOption.pricing_type === 'per_sqft') {
-      if (!homeSquareFootage || !homeOption.price_per_sqft) {
-        console.warn('Cannot calculate per-sqft pricing without square footage or price per sqft');
-        return 0;
-      }
-      // For per-sqft pricing, apply customer markup to the per-sqft cost, then multiply by square footage
-      const costPerSqft = homeOption.price_per_sqft;
-      const markedUpCostPerSqft = calculatePrice(costPerSqft);
-      return Math.round((markedUpCostPerSqft * homeSquareFootage) * 100) / 100;
-    } else {
-      // For fixed pricing, apply customer markup to the cost price
-      const baseCost = homeOption.cost_price || 0;
-      return calculatePrice(baseCost);
+  const calculateHomeOptionPrice = (option: HomeOption, squareFootage?: number): number => {
+    if (!option) return 0;
+    
+    const markup = customerMarkup?.markup_percentage || 30;
+    let basePrice = 0;
+
+    if (option.pricing_type === 'per_sqft' && squareFootage && option.price_per_sqft) {
+      basePrice = option.price_per_sqft * squareFootage;
+    } else if (option.pricing_type === 'fixed' && option.fixed_price) {
+      basePrice = option.fixed_price;
     }
+
+    return basePrice * (1 + markup / 100);
   };
 
   const calculateTotalPrice = (
-    mobileHome: MobileHome,
+    mobileHome: MobileHome | null,
     selectedServices: Service[] = [],
-    selectedHomeOptions: { option: HomeOption; quantity?: number }[] = []
+    selectedHomeOptions: { option: HomeOption; quantity: number }[] = []
   ): number => {
+    console.log('useCustomerPricing: calculateTotalPrice called');
+    
     const homePrice = calculateMobileHomePrice(mobileHome);
     const servicesPrice = selectedServices.reduce((total, service) => {
       return total + calculateServicePrice(service);
     }, 0);
     
-    const homeOptionsPrice = selectedHomeOptions.reduce((total, { option, quantity = 1 }) => {
-      const optionPrice = calculateHomeOptionPrice(option, mobileHome.square_footage || undefined);
+    const optionsPrice = selectedHomeOptions.reduce((total, { option, quantity }) => {
+      const optionPrice = calculateHomeOptionPrice(option, mobileHome?.square_footage || undefined);
       return total + (optionPrice * quantity);
     }, 0);
-    
-    return Math.round((homePrice + servicesPrice + homeOptionsPrice) * 100) / 100; // Round to 2 decimal places
+
+    const totalPrice = homePrice + servicesPrice + optionsPrice;
+    console.log('useCustomerPricing: Total price calculated:', totalPrice);
+    return totalPrice;
   };
 
+  console.log('useCustomerPricing: Returning hook values, loading:', loading);
+
   return {
-    markupPercentage,
-    minimumProfitPerHome,
-    customerMarkup: markupPercentage, // Add alias for backward compatibility
+    customerMarkup: customerMarkup?.markup_percentage || 30,
     loading,
-    error,
-    calculatePrice,
-    formatCalculatedPrice,
     calculateMobileHomePrice,
     calculateServicePrice,
     calculateHomeOptionPrice,

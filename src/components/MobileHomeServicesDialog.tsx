@@ -35,7 +35,13 @@ export const MobileHomeServicesDialog = ({
   onAddToCart,
   user
 }: MobileHomeServicesDialogProps) => {
-  console.log('MobileHomeServicesDialog: Rendering with mobileHome:', mobileHome?.id);
+  console.log('MobileHomeServicesDialog: Rendering with mobileHome:', mobileHome?.id, 'isOpen:', isOpen);
+  
+  // Early return if no mobile home or dialog is not open
+  if (!isOpen || !mobileHome) {
+    console.log('MobileHomeServicesDialog: Early return - isOpen:', isOpen, 'mobileHome:', !!mobileHome);
+    return null;
+  }
   
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [selectedHomeOptions, setSelectedHomeOptions] = useState<{ option: HomeOption; quantity: number }[]>([]);
@@ -75,11 +81,11 @@ export const MobileHomeServicesDialog = ({
     }
   });
 
-  // Use conditional services hook with correct parameters - only if mobileHome exists
+  // Use conditional services hook - now mobileHome is guaranteed to exist
   const { availableServices, getServicePrice } = useConditionalServices(
     allServices,
-    mobileHome?.id || '',
-    mobileHome ? [mobileHome] : [],
+    mobileHome.id,
+    [mobileHome],
     selectedServices
   );
 
@@ -87,7 +93,7 @@ export const MobileHomeServicesDialog = ({
 
   // Reset selections when dialog opens/closes or mobile home changes
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && mobileHome) {
       console.log('MobileHomeServicesDialog: Resetting selections for dialog open');
       setSelectedServices([]);
       setSelectedHomeOptions([]);
@@ -132,11 +138,6 @@ export const MobileHomeServicesDialog = ({
   };
 
   const totalPrice = calculateTotalPrice(mobileHome, getSelectedServicesData(), selectedHomeOptions);
-
-  if (!mobileHome) {
-    console.log('MobileHomeServicesDialog: No mobile home provided, returning null');
-    return null;
-  }
 
   const homeName = mobileHome.display_name || `${mobileHome.manufacturer} ${mobileHome.model}`;
   console.log('MobileHomeServicesDialog: Rendering dialog for home:', homeName);

@@ -69,11 +69,11 @@ export const MobileHomeServicesDialog = ({
     }
   });
 
-  // Use conditional services hook with correct parameters
+  // Use conditional services hook with correct parameters - only if mobileHome exists
   const { availableServices, getServicePrice } = useConditionalServices(
     allServices,
-    mobileHome.id,
-    [mobileHome],
+    mobileHome?.id || '',
+    mobileHome ? [mobileHome] : [],
     selectedServices
   );
 
@@ -83,7 +83,7 @@ export const MobileHomeServicesDialog = ({
       setSelectedServices([]);
       setSelectedHomeOptions([]);
     }
-  }, [isOpen, mobileHome.id]);
+  }, [isOpen, mobileHome?.id]);
 
   const handleServiceToggle = (serviceId: string) => {
     setSelectedServices(prev => 

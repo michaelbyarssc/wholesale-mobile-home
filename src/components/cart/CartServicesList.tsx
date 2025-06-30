@@ -71,17 +71,6 @@ export const CartServicesList = ({
     <div>
       <h4 className="font-medium mb-3">Available Services:</h4>
       
-      {/* Debug info for troubleshooting */}
-      <div className="mb-4 p-3 bg-blue-100 border rounded text-xs">
-        <strong>CART DEBUG INFO:</strong><br/>
-        Total Services Available: {services.length}<br/>
-        Services After Filtering: {availableServices.length}<br/>
-        Selected Services: {item.selectedServices.length}<br/>
-        Home Model: {item.mobileHome.model}<br/>
-        Home Width: {item.mobileHome.width_feet}ft<br/>
-        Services List: {availableServices.map(s => s.name).join(', ')}
-      </div>
-      
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {availableServices.map((service) => {
           const isSelected = item.selectedServices.includes(service.id);
@@ -95,12 +84,6 @@ export const CartServicesList = ({
           
           const homeWidth = item.mobileHome.width_feet || 0;
           const isDoubleWide = homeWidth > 16;
-          
-          // Check if this is vinyl skirting - make the check more flexible
-          const serviceName = (service.name || '').toLowerCase();
-          const isVinylSkirting = serviceName.includes('vinyl') && serviceName.includes('skirting');
-          
-          console.log(`Service ${service.name}: isVinylSkirting = ${isVinylSkirting}`);
           
           return (
             <div key={service.id} className="flex items-start space-x-3 p-2 border rounded">
@@ -118,23 +101,6 @@ export const CartServicesList = ({
                 </Label>
                 {service.description && (
                   <p className="text-xs text-gray-500 mt-1">{service.description}</p>
-                )}
-                
-                {/* Enhanced debugging info - always visible for vinyl skirting */}
-                {isVinylSkirting && (
-                  <div className="mt-2 p-2 bg-yellow-100 border-2 border-yellow-400 rounded text-xs">
-                    <strong>🐛 VINYL SKIRTING DEBUG:</strong><br/>
-                    Service Name: "{service.name}"<br/>
-                    Service ID: {service.id}<br/>
-                    Single Wide Price: {service.single_wide_price} (type: {typeof service.single_wide_price})<br/>
-                    Double Wide Price: {service.double_wide_price} (type: {typeof service.double_wide_price})<br/>
-                    Base Price: {service.price} (type: {typeof service.price})<br/>
-                    Cost Field: {service.cost} (type: {typeof service.cost})<br/>
-                    Home Width: {homeWidth}ft ({isDoubleWide ? 'Double' : 'Single'} Wide)<br/>
-                    Raw Service Cost from getServicePrice(): {serviceCost}<br/>
-                    Final Display Price after calculatePrice(): {displayPrice}<br/>
-                    Is Selected: {isSelected}
-                  </div>
                 )}
                 
                 <p className="text-sm text-gray-600 mt-1">

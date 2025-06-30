@@ -80,9 +80,11 @@ export const useConditionalServices = (
       // Use the appropriate pricing based on home width
       let price = 0;
       if (isDoubleWide) {
-        price = service.double_wide_price || service.price || 0;
+        // For double wide: use double_wide_price if it exists and is > 0, otherwise fall back to base price
+        price = (service.double_wide_price && service.double_wide_price > 0) ? service.double_wide_price : (service.price || 0);
       } else {
-        price = service.single_wide_price || service.price || 0;
+        // For single wide: use single_wide_price if it exists and is > 0, otherwise fall back to base price
+        price = (service.single_wide_price && service.single_wide_price > 0) ? service.single_wide_price : (service.price || 0);
       }
 
       console.log(`Service ${service.name} final calculated price: ${price}`);

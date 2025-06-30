@@ -18,6 +18,99 @@ import type { Database } from '@/integrations/supabase/types';
 type MobileHome = Database['public']['Tables']['mobile_homes']['Row'];
 type MobileHomeInsert = Database['public']['Tables']['mobile_homes']['Insert'];
 
+// Extract AddFormContent as a separate component outside the main component
+const AddFormContent = React.memo(({ 
+  formData, 
+  onInputChange, 
+  onSubmit 
+}: {
+  formData: {
+    manufacturer: string;
+    series: string;
+    model: string;
+    display_name: string;
+    price: string;
+    retail_price: string;
+    minimum_profit: string;
+  };
+  onInputChange: (field: string, value: string) => void;
+  onSubmit: (e: React.FormEvent) => void;
+}) => (
+  <form onSubmit={onSubmit} className="space-y-4 p-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div>
+        <Label htmlFor="manufacturer">Manufacturer</Label>
+        <Input
+          id="manufacturer"
+          value={formData.manufacturer}
+          onChange={(e) => onInputChange('manufacturer', e.target.value)}
+          required
+        />
+      </div>
+      <div>
+        <Label htmlFor="series">Series</Label>
+        <Input
+          id="series"
+          value={formData.series}
+          onChange={(e) => onInputChange('series', e.target.value)}
+          placeholder="Enter series name (e.g., Tru, Epic, Classic)"
+          required
+        />
+      </div>
+      <div>
+        <Label htmlFor="model">Model</Label>
+        <Input
+          id="model"
+          value={formData.model}
+          onChange={(e) => onInputChange('model', e.target.value)}
+          required
+        />
+      </div>
+      <div>
+        <Label htmlFor="display_name">Display Name (e.g., Bliss, Delight, Elation)</Label>
+        <Input
+          id="display_name"
+          value={formData.display_name}
+          onChange={(e) => onInputChange('display_name', e.target.value)}
+          placeholder="Enter OwnTru model name"
+          required
+        />
+      </div>
+      <div>
+        <Label htmlFor="price">Cost (Internal Price)</Label>
+        <Input
+          id="price"
+          type="number"
+          value={formData.price}
+          onChange={(e) => onInputChange('price', e.target.value)}
+          required
+        />
+      </div>
+      <div>
+        <Label htmlFor="retail_price">Retail Price (Public Display)</Label>
+        <Input
+          id="retail_price"
+          type="number"
+          value={formData.retail_price}
+          onChange={(e) => onInputChange('retail_price', e.target.value)}
+          placeholder="Enter retail price for public display"
+        />
+      </div>
+      <div className="sm:col-span-2">
+        <Label htmlFor="minimum_profit">Minimum Profit per Home</Label>
+        <Input
+          id="minimum_profit"
+          type="number"
+          value={formData.minimum_profit}
+          onChange={(e) => onInputChange('minimum_profit', e.target.value)}
+          placeholder="0"
+        />
+      </div>
+    </div>
+    <Button type="submit" className="w-full">Add Mobile Home</Button>
+  </form>
+));
+
 export const MobileHomesTab = () => {
   const { toast } = useToast();
   const isMobile = useIsMobile();
@@ -70,7 +163,7 @@ export const MobileHomesTab = () => {
     }));
   }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!formData.series.trim()) {
@@ -125,7 +218,7 @@ export const MobileHomesTab = () => {
         variant: "destructive",
       });
     }
-  };
+  }, [formData, toast, refetch]);
 
   const toggleActive = async (id: string, active: boolean) => {
     try {
@@ -237,83 +330,6 @@ export const MobileHomesTab = () => {
     }
   };
 
-  // Memoize the AddFormContent component to prevent unnecessary re-renders
-  const AddFormContent = React.memo(() => (
-    <form onSubmit={handleSubmit} className="space-y-4 p-4">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
-          <Label htmlFor="manufacturer">Manufacturer</Label>
-          <Input
-            id="manufacturer"
-            value={formData.manufacturer}
-            onChange={(e) => handleInputChange('manufacturer', e.target.value)}
-            required
-          />
-        </div>
-        <div>
-          <Label htmlFor="series">Series</Label>
-          <Input
-            id="series"
-            value={formData.series}
-            onChange={(e) => handleInputChange('series', e.target.value)}
-            placeholder="Enter series name (e.g., Tru, Epic, Classic)"
-            required
-          />
-        </div>
-        <div>
-          <Label htmlFor="model">Model</Label>
-          <Input
-            id="model"
-            value={formData.model}
-            onChange={(e) => handleInputChange('model', e.target.value)}
-            required
-          />
-        </div>
-        <div>
-          <Label htmlFor="display_name">Display Name (e.g., Bliss, Delight, Elation)</Label>
-          <Input
-            id="display_name"
-            value={formData.display_name}
-            onChange={(e) => handleInputChange('display_name', e.target.value)}
-            placeholder="Enter OwnTru model name"
-            required
-          />
-        </div>
-        <div>
-          <Label htmlFor="price">Cost (Internal Price)</Label>
-          <Input
-            id="price"
-            type="number"
-            value={formData.price}
-            onChange={(e) => handleInputChange('price', e.target.value)}
-            required
-          />
-        </div>
-        <div>
-          <Label htmlFor="retail_price">Retail Price (Public Display)</Label>
-          <Input
-            id="retail_price"
-            type="number"
-            value={formData.retail_price}
-            onChange={(e) => handleInputChange('retail_price', e.target.value)}
-            placeholder="Enter retail price for public display"
-          />
-        </div>
-        <div className="sm:col-span-2">
-          <Label htmlFor="minimum_profit">Minimum Profit per Home</Label>
-          <Input
-            id="minimum_profit"
-            type="number"
-            value={formData.minimum_profit}
-            onChange={(e) => handleInputChange('minimum_profit', e.target.value)}
-            placeholder="0"
-          />
-        </div>
-      </div>
-      <Button type="submit" className="w-full">Add Mobile Home</Button>
-    </form>
-  ));
-
   if (isLoading) {
     return (
       <Card>
@@ -346,7 +362,11 @@ export const MobileHomesTab = () => {
                     <DrawerHeader>
                       <DrawerTitle>Add New Mobile Home</DrawerTitle>
                     </DrawerHeader>
-                    <AddFormContent />
+                    <AddFormContent 
+                      formData={formData}
+                      onInputChange={handleInputChange}
+                      onSubmit={handleSubmit}
+                    />
                   </DrawerContent>
                 </Drawer>
               ) : (
@@ -361,7 +381,11 @@ export const MobileHomesTab = () => {
         <CardContent className="p-3 sm:p-6">
           {!isMobile && showAddForm && (
             <div className="mb-6 border rounded-lg">
-              <AddFormContent />
+              <AddFormContent 
+                formData={formData}
+                onInputChange={handleInputChange}
+                onSubmit={handleSubmit}
+              />
             </div>
           )}
 

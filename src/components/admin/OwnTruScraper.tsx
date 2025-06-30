@@ -14,7 +14,12 @@ interface ScrapingResult {
     totalProcessed: number;
     created: number;
     updated: number;
-    homes: Array<{ display_name: string; model: string }>;
+    homes: Array<{ 
+      display_name: string; 
+      model: string; 
+      description?: string;
+      features_count: number;
+    }>;
   };
   error?: string;
 }

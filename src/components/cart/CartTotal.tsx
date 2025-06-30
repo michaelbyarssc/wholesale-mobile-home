@@ -18,6 +18,36 @@ export const CartTotal = ({
   onConvertToEstimate,
   onCloseCart
 }: CartTotalProps) => {
+  const handleClearCart = () => {
+    console.log('🔍 CartTotal: Clear cart clicked');
+    try {
+      onClearCart();
+      console.log('🔍 CartTotal: Clear cart completed');
+    } catch (error) {
+      console.error('🔍 CartTotal: Error clearing cart:', error);
+    }
+  };
+
+  const handleConvertToEstimate = () => {
+    console.log('🔍 CartTotal: Convert to estimate clicked');
+    try {
+      onConvertToEstimate();
+      console.log('🔍 CartTotal: Convert to estimate completed');
+    } catch (error) {
+      console.error('🔍 CartTotal: Error converting to estimate:', error);
+    }
+  };
+
+  const handleCloseCart = () => {
+    console.log('🔍 CartTotal: Close cart clicked');
+    try {
+      onCloseCart();
+      console.log('🔍 CartTotal: Close cart completed');
+    } catch (error) {
+      console.error('🔍 CartTotal: Error closing cart:', error);
+    }
+  };
+
   return (
     <div className="border-t pt-4">
       <div className="flex justify-between items-center mb-4">
@@ -40,20 +70,20 @@ export const CartTotal = ({
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={onClearCart}>
+                <AlertDialogAction onClick={handleClearCart}>
                   Clear Cart
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
           <Button 
-            onClick={onConvertToEstimate}
+            onClick={handleConvertToEstimate}
             className="bg-green-600 hover:bg-green-700"
           >
             <Receipt className="h-4 w-4 mr-2" />
             Convert to Estimate
           </Button>
-          <Button onClick={onCloseCart}>
+          <Button onClick={handleCloseCart}>
             Close Cart
           </Button>
         </div>

@@ -44,6 +44,16 @@ export const CartItemCard = ({
     return 'N/A';
   };
 
+  const handleRemoveItem = () => {
+    console.log('🔍 CartItemCard: Remove item clicked for:', item.mobileHome.id);
+    try {
+      onRemoveItem(item.mobileHome.id);
+      console.log('🔍 CartItemCard: Remove item completed');
+    } catch (error) {
+      console.error('🔍 CartItemCard: Error removing item:', error);
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -69,7 +79,7 @@ export const CartItemCard = ({
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={() => onRemoveItem(item.mobileHome.id)}>
+                <AlertDialogAction onClick={handleRemoveItem}>
                   Remove Item
                 </AlertDialogAction>
               </AlertDialogFooter>

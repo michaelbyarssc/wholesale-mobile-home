@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MobileHomesShowcase } from '@/components/MobileHomesShowcase';
@@ -206,7 +205,6 @@ const Index = () => {
           updateHomeOptions={updateHomeOptions}
           clearCart={clearCart}
           setIsCartOpen={setIsCartOpen}
-          cartLoading={cartLoading}
         />
       </div>
 

@@ -272,21 +272,11 @@ export const MobileHomeServicesDialog = ({
                             {option.description && (
                               <div className="text-sm text-gray-600">{option.description}</div>
                             )}
-                            <div className="flex items-center gap-2 mt-1">
-                              <Badge variant={option.pricing_type === 'per_sqft' ? 'secondary' : 'outline'}>
-                                {option.pricing_type === 'per_sqft' ? 'Per Sq Ft' : 'Fixed Price'}
-                              </Badge>
-                            </div>
                           </div>
                         </div>
                         <div className="text-right">
                           <div className="font-semibold text-green-600">
                             {formatPrice(optionPrice)}
-                            {option.pricing_type === 'per_sqft' && (
-                              <span className="text-xs text-gray-500 block">
-                                (${option.price_per_sqft}/sq ft)
-                              </span>
-                            )}
                           </div>
                         </div>
                       </div>

@@ -1,4 +1,5 @@
 
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -90,7 +91,7 @@ export const ServicesTab = () => {
       const serviceData = {
         name: formData.name,
         description: formData.description,
-        price: parseFloat(formData.price),
+        price: parseFloat(formData.price) || 0,
         single_wide_price: parseFloat(formData.single_wide_price),
         double_wide_price: parseFloat(formData.double_wide_price),
         dependencies: formData.dependencies,
@@ -263,7 +264,6 @@ export const ServicesTab = () => {
                     type="number"
                     value={formData.price}
                     onChange={(e) => setFormData({...formData, price: e.target.value})}
-                    required
                   />
                 </div>
               </div>
@@ -436,3 +436,4 @@ export const ServicesTab = () => {
     </div>
   );
 };
+

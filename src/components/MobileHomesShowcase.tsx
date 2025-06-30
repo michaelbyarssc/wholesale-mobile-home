@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -62,8 +61,8 @@ export const MobileHomesShowcase = ({
         .from('mobile_homes')
         .select('*')
         .eq('active', true)
-        .order('series', { ascending: true })
-        .order('square_footage', { ascending: true });
+        .order('display_order', { ascending: true })
+        .order('created_at', { ascending: true });
       
       if (error) {
         console.error('Error fetching mobile homes:', error);

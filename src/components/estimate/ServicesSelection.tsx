@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -153,7 +154,7 @@ export const ServicesSelection = ({
                     key={service.id} 
                     className={`p-3 border rounded-lg ${
                       isDisabled ? 'opacity-50 bg-gray-50' : ''
-                    } ${isVinylSkirting ? 'border-2 border-yellow-400 bg-yellow-50' : ''}`}
+                    }`}
                   >
                     <div className="flex items-start space-x-3">
                       <Checkbox
@@ -167,7 +168,7 @@ export const ServicesSelection = ({
                           htmlFor={service.id} 
                           className={`font-medium cursor-pointer ${
                             isDisabled ? 'cursor-not-allowed' : ''
-                          } ${isVinylSkirting ? 'text-yellow-800' : ''}`}
+                          }`}
                         >
                           {service.name} {isVinylSkirting ? '🎯' : ''}
                         </Label>
@@ -280,3 +281,4 @@ export const ServicesSelection = ({
     </div>
   );
 };
+

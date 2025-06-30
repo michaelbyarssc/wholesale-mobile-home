@@ -47,40 +47,35 @@ export const Header = ({
   return (
     <>
       <header className="bg-white shadow-sm">
-        {/* Business Contact Bar - Moved to top of header */}
-        {(businessInfo?.business_phone || businessInfo?.business_email) && (
-          <div className="bg-blue-50 border-b border-blue-100">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="flex flex-col sm:flex-row justify-center items-center py-2 gap-2 sm:gap-6 text-sm">
-                {businessInfo.business_phone && (
-                  <a 
-                    href={`tel:${businessInfo.business_phone}`}
-                    className="flex items-center gap-1 text-blue-700 hover:text-blue-900 transition-colors"
-                  >
-                    <Phone className="h-4 w-4" />
-                    <span>{businessInfo.business_phone}</span>
-                  </a>
-                )}
-                {businessInfo.business_email && (
-                  <a 
-                    href={`mailto:${businessInfo.business_email}`}
-                    className="flex items-center gap-1 text-blue-700 hover:text-blue-900 transition-colors"
-                  >
-                    <Mail className="h-4 w-4" />
-                    <span>{businessInfo.business_email}</span>
-                  </a>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center py-3 sm:py-4 lg:py-6 gap-3 sm:gap-4">
-            <div className="flex items-center w-full sm:w-auto">
-              <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-blue-900 leading-tight">
+            <div className="flex flex-col items-start w-full sm:w-auto">
+              <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-blue-900 leading-tight mb-2">
                 {businessInfo?.business_name || 'Wholesale Homes of the Carolinas'}
               </h1>
+              {/* Contact Information */}
+              {(businessInfo?.business_phone || businessInfo?.business_email) && (
+                <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 text-sm">
+                  {businessInfo.business_phone && (
+                    <a 
+                      href={`tel:${businessInfo.business_phone}`}
+                      className="flex items-center gap-1 text-blue-700 hover:text-blue-900 transition-colors"
+                    >
+                      <Phone className="h-4 w-4" />
+                      <span>{businessInfo.business_phone}</span>
+                    </a>
+                  )}
+                  {businessInfo.business_email && (
+                    <a 
+                      href={`mailto:${businessInfo.business_email}`}
+                      className="flex items-center gap-1 text-blue-700 hover:text-blue-900 transition-colors"
+                    >
+                      <Mail className="h-4 w-4" />
+                      <span>{businessInfo.business_email}</span>
+                    </a>
+                  )}
+                </div>
+              )}
             </div>
             {!user ? (
               <Button 

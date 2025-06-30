@@ -72,12 +72,13 @@ export const useCustomerPricing = (user?: User | null) => {
   };
 
   const calculateMobileHomePrice = (mobileHome: MobileHome): number => {
-    const baseCost = typeof mobileHome.cost === 'number' ? mobileHome.cost : mobileHome.price;
+    // Use the price field as the base cost for calculations, not the internal cost field
+    const baseCost = mobileHome.price || 0;
     
     // Get the home-specific minimum profit, fallback to customer's global minimum profit, then to 0
     const homeMinProfit = mobileHome.minimum_profit || minimumProfitPerHome || 0;
     
-    // Calculate both pricing methods using the same logic as calculatePrice
+    // Calculate both pricing methods
     const markupPrice = baseCost * (1 + markupPercentage / 100);
     const minimumProfitPrice = baseCost + homeMinProfit;
     

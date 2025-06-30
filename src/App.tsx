@@ -12,7 +12,7 @@ import EstimateForm from "./pages/EstimateForm";
 import MyEstimates from "./pages/MyEstimates";
 import ApproveEstimate from "./pages/ApproveEstimate";
 import NotFound from "./pages/NotFound";
-import { ProtectedRoute } from "./components/ProtectedRoute";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
 

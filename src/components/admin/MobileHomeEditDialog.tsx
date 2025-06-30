@@ -115,6 +115,17 @@ export const MobileHomeEditDialog = ({ mobileHome, open, onClose, onSave }: Mobi
     
     for (const file of Array.from(files)) {
       try {
+        // Check if file type is supported
+        const supportedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+        if (!supportedTypes.includes(file.type)) {
+          toast({
+            title: "Unsupported File Type",
+            description: `${file.name} is not a supported image format. Please use JPG, PNG, WebP, or GIF.`,
+            variant: "destructive",
+          });
+          continue;
+        }
+
         const imageUrl = await uploadImageToStorage(file);
         
         const { error } = await supabase
@@ -139,7 +150,7 @@ export const MobileHomeEditDialog = ({ mobileHome, open, onClose, onSave }: Mobi
         console.error('Error uploading image:', error);
         toast({
           title: "Error",
-          description: "Failed to upload image.",
+          description: `Failed to upload ${file.name}.`,
           variant: "destructive",
         });
       }
@@ -510,7 +521,7 @@ export const MobileHomeEditDialog = ({ mobileHome, open, onClose, onSave }: Mobi
                 <input
                   type="file"
                   multiple
-                  accept="image/jpeg,image/jpg,image/png,image/webp,image/gif,image/avif"
+                  accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
                   onChange={handleFileUpload}
                   className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                   disabled={uploading || images.length >= 40}
@@ -630,7 +641,7 @@ export const MobileHomeEditDialog = ({ mobileHome, open, onClose, onSave }: Mobi
                   <Image className="h-8 w-8 mx-auto mb-2" />
                   <span className="text-sm">No images uploaded</span>
                   <p className="text-xs text-gray-400 mt-1">Upload up to 40 images</p>
-                  <p className="text-xs text-gray-400">Supports: JPG, PNG, WebP, GIF, AVIF</p>
+                  <p className="text-xs text-gray-400">Supports: JPG, PNG, WebP, GIF</p>
                 </div>
               </div>
             )}

@@ -157,12 +157,12 @@ serve(async (req) => {
       });
     }
 
-    // Process all available models (up to 15 to account for all 13 plus some buffer)
+    // Process all available models to get all 13 homes
     const mobileHomes: MobileHomeData[] = [];
-    const maxModels = Math.min(15, cleanUrls.length);
+    const maxModels = cleanUrls.length; // Process all found models
     let processedCount = 0;
 
-    console.log(`Processing ${maxModels} models to capture all available homes...`);
+    console.log(`Processing all ${maxModels} models to capture all homes...`);
 
     for (let i = 0; i < maxModels; i++) {
       const modelUrl = cleanUrls[i];
@@ -172,8 +172,9 @@ serve(async (req) => {
         
         // Add timeout to individual requests
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 15000); // Reduced individual timeout
+        const timeoutId = setTimeout(() => controller.abort(), 20000); // Increased timeout for individual pages
 
+        // First scrape the main model page
         const modelPageResponse = await fetch('https://api.firecrawl.dev/v0/scrape', {
           method: 'POST',
           headers: {
@@ -184,9 +185,9 @@ serve(async (req) => {
             url: modelUrl,
             formats: ['markdown', 'html'],
             onlyMainContent: true,
-            includeTags: ['h1', 'h2', 'h3', 'p', 'div', 'ul', 'li', 'span', 'td', 'th', 'table'],
+            includeTags: ['h1', 'h2', 'h3', 'p', 'div', 'ul', 'li', 'span', 'td', 'th', 'table', 'a'],
             excludeTags: ['nav', 'footer', 'header', 'script', 'style'],
-            waitFor: 2000 // Reduced wait time
+            waitFor: 2000
           }),
           signal: controller.signal
         });
@@ -248,23 +249,136 @@ serve(async (req) => {
           display_name: modelName,
         };
 
-        // Extract description with better patterns
-        const descriptionPatterns = [
-          /(?:description|about|overview)[:\s]*([^.\n]{30,300}\.?)/i,
-          /^([A-Z][^.\n]{30,300}\.)/m,
-          /\*\*[^*]+\*\*\s*([^.\n]{30,300}\.)/,
-          /<p[^>]*>([^<]{30,300}\.?)<\/p>/i,
-          /^[^#\*\[\n]+([^.\n]{30,300}\.)/m
-        ];
+        // Now scrape the "about" page for each model to get detailed description and features
+        const aboutUrl = modelUrl + '/about';
+        console.log(`Scraping about page: ${aboutUrl}`);
 
-        for (const pattern of descriptionPatterns) {
-          const descMatch = (modelMarkdown + ' ' + modelHtml).match(pattern);
-          if (descMatch && descMatch[1] && descMatch[1].length > 30 && descMatch[1].length < 400) {
-            const desc = descMatch[1].trim().replace(/[*#\[\]]/g, '').replace(/\s+/g, ' ');
-            if (!desc.includes('owntru.com') && !desc.includes('href=') && !desc.includes('](')) {
-              modelData.description = desc;
-              console.log(`Found description: ${modelData.description.substring(0, 50)}...`);
-              break;
+        try {
+          const aboutController = new AbortController();
+          const aboutTimeoutId = setTimeout(() => aboutController.abort(), 15000);
+
+          const aboutPageResponse = await fetch('https://api.firecrawl.dev/v0/scrape', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${firecrawlApiKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              url: aboutUrl,
+              formats: ['markdown', 'html'],
+              onlyMainContent: true,
+              includeTags: ['h1', 'h2', 'h3', 'p', 'div', 'ul', 'li', 'span', 'section'],
+              excludeTags: ['nav', 'footer', 'header', 'script', 'style'],
+              waitFor: 2000
+            }),
+            signal: aboutController.signal
+          });
+
+          clearTimeout(aboutTimeoutId);
+
+          if (aboutPageResponse.ok) {
+            const aboutPageData = await aboutPageResponse.json();
+            
+            if (aboutPageData.success) {
+              const aboutMarkdown = aboutPageData.data?.markdown || '';
+              const aboutHtml = aboutPageData.data?.html || '';
+              console.log(`About page content length: ${aboutMarkdown.length}`);
+
+              // Extract detailed description from about page
+              const aboutDescriptionPatterns = [
+                /(?:about|description|overview)[^.\n]*([^.\n\r]{50,500}\.?)/i,
+                /^([A-Z][^.\n\r]{50,500}\.)/m,
+                /<p[^>]*>([^<]{50,500}\.?)<\/p>/i,
+                /^\s*([A-Z][^.\n\r]{50,500}\.)/m,
+                /(?:The\s+[A-Z][a-z]+|This\s+[a-z]+)([^.\n\r]{30,400}\.)/i
+              ];
+
+              for (const pattern of aboutDescriptionPatterns) {
+                const descMatch = (aboutMarkdown + ' ' + aboutHtml).match(pattern);
+                if (descMatch && descMatch[1]) {
+                  let desc = descMatch[1].trim().replace(/[*#\[\]]/g, '').replace(/\s+/g, ' ');
+                  if (desc.length > 30 && desc.length < 600 && 
+                      !desc.includes('owntru.com') && 
+                      !desc.includes('href=') && 
+                      !desc.includes('](') &&
+                      !desc.toLowerCase().includes('cookie') &&
+                      !desc.toLowerCase().includes('website')) {
+                    modelData.description = desc;
+                    console.log(`Found about description: ${modelData.description.substring(0, 80)}...`);
+                    break;
+                  }
+                }
+              }
+
+              // Extract features from about page
+              const aboutFeaturePatterns = [
+                /(?:features|includes|amenities|highlights)[:\s]*([^.\n\r]+(?:\.[^.\n\r]+)*)/i,
+                /•\s*([^.\n\r]{10,120})/g,
+                /-\s*([^.\n\r]{10,120})/g,
+                /\*\s*([^.\n\r]{10,120})/g,
+                /<li[^>]*>([^<]{10,120})<\/li>/gi,
+                /^\s*-\s*([^.\n\r]{10,120})$/gm,
+                /([A-Z][a-z]+\s+[a-z]+(?:\s+[a-z]+)*(?:\s+with\s+[^.\n\r]+)?)/g
+              ];
+
+              const aboutFeatures: string[] = [];
+              const aboutCombinedContent = aboutMarkdown + ' ' + aboutHtml;
+              
+              for (const pattern of aboutFeaturePatterns) {
+                if (pattern.global) {
+                  let match;
+                  pattern.lastIndex = 0;
+                  while ((match = pattern.exec(aboutCombinedContent)) !== null && aboutFeatures.length < 12) {
+                    const feature = match[1].trim().replace(/[*#<>]/g, '').replace(/\s+/g, ' ');
+                    if (feature.length > 8 && feature.length < 120 && 
+                        !aboutFeatures.some(f => f.toLowerCase().includes(feature.toLowerCase()) || feature.toLowerCase().includes(f.toLowerCase())) && 
+                        !feature.includes('owntru.com') && 
+                        !feature.includes('href=') &&
+                        !feature.toLowerCase().includes('cookie') &&
+                        /[a-zA-Z]/.test(feature)) {
+                      aboutFeatures.push(feature);
+                    }
+                  }
+                } else {
+                  const match = aboutCombinedContent.match(pattern);
+                  if (match && match[1]) {
+                    const featureText = match[1].trim();
+                    const splitFeatures = featureText.split(/[,;]/).map(f => f.trim().replace(/[*#<>]/g, '')).filter(f => f.length > 8);
+                    aboutFeatures.push(...splitFeatures.slice(0, 6));
+                    break;
+                  }
+                }
+              }
+
+              if (aboutFeatures.length > 0) {
+                modelData.features = [...new Set(aboutFeatures)].slice(0, 10);
+                console.log(`Found ${aboutFeatures.length} features from about page:`, aboutFeatures.slice(0, 3));
+              }
+            }
+          }
+        } catch (aboutError) {
+          console.log(`Could not scrape about page for ${modelUrl}:`, aboutError);
+        }
+
+        // If we didn't get description or features from about page, fall back to main page
+        if (!modelData.description) {
+          const descriptionPatterns = [
+            /(?:description|about|overview)[:\s]*([^.\n]{30,300}\.?)/i,
+            /^([A-Z][^.\n]{30,300}\.)/m,
+            /\*\*[^*]+\*\*\s*([^.\n]{30,300}\.)/,
+            /<p[^>]*>([^<]{30,300}\.?)<\/p>/i,
+            /^[^#\*\[\n]+([^.\n]{30,300}\.)/m
+          ];
+
+          for (const pattern of descriptionPatterns) {
+            const descMatch = (modelMarkdown + ' ' + modelHtml).match(pattern);
+            if (descMatch && descMatch[1] && descMatch[1].length > 30 && descMatch[1].length < 400) {
+              const desc = descMatch[1].trim().replace(/[*#\[\]]/g, '').replace(/\s+/g, ' ');
+              if (!desc.includes('owntru.com') && !desc.includes('href=') && !desc.includes('](')) {
+                modelData.description = desc;
+                console.log(`Found fallback description: ${modelData.description.substring(0, 50)}...`);
+                break;
+              }
             }
           }
         }
@@ -358,54 +472,56 @@ serve(async (req) => {
           }
         }
 
-        // Extract features with improved patterns
-        const featurePatterns = [
-          /(?:features|includes|amenities)[:\s]*([^.\n]+(?:\.[^.\n]+)*)/i,
-          /•\s*([^.\n]{5,80})/g,
-          /-\s*([^.\n]{5,80})/g,
-          /\*\s*([^.\n]{5,80})/g,
-          /<li[^>]*>([^<]{5,80})<\/li>/gi,
-          /^\s*-\s*([^.\n]{5,80})$/gm
-        ];
+        // If we didn't get features from about page, try main page
+        if (!modelData.features || modelData.features.length === 0) {
+          const featurePatterns = [
+            /(?:features|includes|amenities)[:\s]*([^.\n]+(?:\.[^.\n]+)*)/i,
+            /•\s*([^.\n]{5,80})/g,
+            /-\s*([^.\n]{5,80})/g,
+            /\*\s*([^.\n]{5,80})/g,
+            /<li[^>]*>([^<]{5,80})<\/li>/gi,
+            /^\s*-\s*([^.\n]{5,80})$/gm
+          ];
 
-        const features: string[] = [];
-        const combinedContent = modelMarkdown + ' ' + modelHtml;
-        
-        for (const pattern of featurePatterns) {
-          if (pattern.global) {
-            let match;
-            pattern.lastIndex = 0; // Reset regex state
-            while ((match = pattern.exec(combinedContent)) !== null && features.length < 8) {
-              const feature = match[1].trim().replace(/[*#<>]/g, '').replace(/\s+/g, ' ');
-              if (feature.length > 5 && feature.length < 80 && 
-                  !features.includes(feature) && 
-                  !feature.includes('owntru.com') && 
-                  !feature.includes('href=')) {
-                features.push(feature);
+          const features: string[] = [];
+          const combinedContent = modelMarkdown + ' ' + modelHtml;
+          
+          for (const pattern of featurePatterns) {
+            if (pattern.global) {
+              let match;
+              pattern.lastIndex = 0;
+              while ((match = pattern.exec(combinedContent)) !== null && features.length < 8) {
+                const feature = match[1].trim().replace(/[*#<>]/g, '').replace(/\s+/g, ' ');
+                if (feature.length > 5 && feature.length < 80 && 
+                    !features.includes(feature) && 
+                    !feature.includes('owntru.com') && 
+                    !feature.includes('href=')) {
+                  features.push(feature);
+                }
+              }
+            } else {
+              const match = combinedContent.match(pattern);
+              if (match && match[1]) {
+                const featureText = match[1].trim();
+                const splitFeatures = featureText.split(/[,;]/).map(f => f.trim().replace(/[*#<>]/g, '')).filter(f => f.length > 5);
+                features.push(...splitFeatures.slice(0, 5));
+                break;
               }
             }
-          } else {
-            const match = combinedContent.match(pattern);
-            if (match && match[1]) {
-              const featureText = match[1].trim();
-              const splitFeatures = featureText.split(/[,;]/).map(f => f.trim().replace(/[*#<>]/g, '')).filter(f => f.length > 5);
-              features.push(...splitFeatures.slice(0, 5));
-              break;
-            }
           }
-        }
 
-        if (features.length > 0) {
-          modelData.features = [...new Set(features)].slice(0, 8); // Remove duplicates and limit
-          console.log(`Found ${features.length} features:`, features.slice(0, 3));
+          if (features.length > 0) {
+            modelData.features = [...new Set(features)].slice(0, 8);
+            console.log(`Found ${features.length} fallback features:`, features.slice(0, 3));
+          }
         }
 
         mobileHomes.push(modelData);
         console.log(`Successfully processed model: ${modelName}`);
         processedCount++;
 
-        // Reduced delay between requests
-        await new Promise(resolve => setTimeout(resolve, 500));
+        // Small delay between requests
+        await new Promise(resolve => setTimeout(resolve, 1000));
 
       } catch (error) {
         console.error(`Error processing model URL ${modelUrl}:`, error);

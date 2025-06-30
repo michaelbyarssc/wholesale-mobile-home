@@ -5,7 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { validatePasswordComplexity, isPasswordStrengthResponse } from '@/utils/security';
 import { PasswordChangeDialog } from '@/components/auth/PasswordChangeDialog';
 
@@ -23,10 +23,17 @@ const Auth = () => {
   const [userProfile, setUserProfile] = useState<{first_name: string, last_name: string} | null>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [showPasswordChange, setShowPasswordChange] = useState(false);
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const navigate = useNavigate();
 
   useEffect(() => {
+    // Check if this is a password reset flow
+    const type = searchParams.get('type');
+    if (type === 'recovery') {
+      setShowPasswordChange(true);
+    }
+
     // Check if current user is admin and get their profile
     const checkAdminStatus = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -99,7 +106,7 @@ const Auth = () => {
     });
 
     return () => subscription.unsubscribe();
-  }, [navigate]);
+  }, [navigate, searchParams]);
 
   const getUserDisplayName = () => {
     if (userProfile?.first_name && userProfile?.last_name) {
@@ -126,7 +133,7 @@ const Auth = () => {
       }
 
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth`,
+        redirectTo: `${window.location.origin}/auth?type=recovery`,
       });
 
       if (error) throw error;

@@ -206,7 +206,7 @@ export const MobileHomeServicesDialog = ({
               <CardContent>
                 <div className="space-y-3">
                   {availableServices.map((service) => {
-                    const finalPrice = calculateServicePrice(service);
+                    const finalPrice = calculateServicePrice(service, mobileHome);
                     const isSelected = selectedServices.includes(service.id);
                     
                     return (

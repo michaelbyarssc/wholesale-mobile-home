@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -81,10 +82,26 @@ export const useCustomerPricing = (user: User | null) => {
     return finalPrice;
   };
 
-  const calculateServicePrice = (service: Service): number => {
-    if (!service?.price) return 0;
+  const calculateServicePrice = (service: Service, mobileHome?: MobileHome | null): number => {
+    if (!service) return 0;
+    
     const markup = customerMarkup?.markup_percentage || 30;
-    return service.price * (1 + markup / 100);
+    let basePrice = service.price || 0;
+    
+    // Use single wide or double wide pricing if available and mobile home width is known
+    if (mobileHome?.width_feet) {
+      if (mobileHome.width_feet < 16 && service.single_wide_price) {
+        basePrice = service.single_wide_price;
+        console.log('useCustomerPricing: Using single wide price for service:', service.name, basePrice);
+      } else if (mobileHome.width_feet >= 16 && service.double_wide_price) {
+        basePrice = service.double_wide_price;
+        console.log('useCustomerPricing: Using double wide price for service:', service.name, basePrice);
+      }
+    }
+    
+    const finalPrice = basePrice * (1 + markup / 100);
+    console.log('useCustomerPricing: Service price calculation - Base:', basePrice, 'Final:', finalPrice);
+    return finalPrice;
   };
 
   const calculateHomeOptionPrice = (option: HomeOption, squareFootage?: number): number => {
@@ -111,7 +128,7 @@ export const useCustomerPricing = (user: User | null) => {
     
     const homePrice = calculateMobileHomePrice(mobileHome);
     const servicesPrice = selectedServices.reduce((total, service) => {
-      return total + calculateServicePrice(service);
+      return total + calculateServicePrice(service, mobileHome);
     }, 0);
     
     const optionsPrice = selectedHomeOptions.reduce((total, { option, quantity }) => {

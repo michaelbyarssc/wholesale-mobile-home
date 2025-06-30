@@ -50,10 +50,10 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Use Firecrawl to scrape the OwnTru models page with better options
-    console.log('Making request to Firecrawl API...');
+    // First, scrape the main models page to get all model links
+    console.log('Scraping main models page for model links...');
     
-    const firecrawlResponse = await fetch('https://api.firecrawl.dev/v0/scrape', {
+    const mainPageResponse = await fetch('https://api.firecrawl.dev/v0/scrape', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${firecrawlApiKey}`,
@@ -65,165 +65,299 @@ serve(async (req) => {
         onlyMainContent: true,
         includeTags: ['h1', 'h2', 'h3', 'h4', 'p', 'div', 'span', 'a'],
         excludeTags: ['nav', 'footer', 'header', 'script', 'style'],
-        waitFor: 2000 // Wait for dynamic content to load
+        waitFor: 2000
       }),
     });
 
-    if (!firecrawlResponse.ok) {
-      const errorText = await firecrawlResponse.text();
-      console.error('Firecrawl API error:', firecrawlResponse.status, errorText);
-      throw new Error(`Firecrawl API error: ${firecrawlResponse.status} ${firecrawlResponse.statusText}`);
+    if (!mainPageResponse.ok) {
+      const errorText = await mainPageResponse.text();
+      console.error('Firecrawl API error:', mainPageResponse.status, errorText);
+      throw new Error(`Firecrawl API error: ${mainPageResponse.status} ${mainPageResponse.statusText}`);
     }
 
-    const firecrawlData = await firecrawlResponse.json();
-    console.log('Firecrawl response received');
+    const mainPageData = await mainPageResponse.json();
+    console.log('Main page response received');
     
-    if (!firecrawlData.success) {
-      throw new Error(`Firecrawl failed: ${firecrawlData.error || 'Unknown error'}`);
+    if (!mainPageData.success) {
+      throw new Error(`Firecrawl failed: ${mainPageData.error || 'Unknown error'}`);
     }
 
-    const content = firecrawlData.data?.content || '';
-    const markdown = firecrawlData.data?.markdown || '';
+    const mainContent = mainPageData.data?.content || '';
+    const mainMarkdown = mainPageData.data?.markdown || '';
     
-    console.log('Content length:', content.length);
-    console.log('Markdown length:', markdown.length);
-    console.log('First 500 chars of content:', content.substring(0, 500));
-    console.log('First 500 chars of markdown:', markdown.substring(0, 500));
+    console.log('Main content length:', mainContent.length);
+    console.log('Main markdown length:', mainMarkdown.length);
 
-    // Parse the scraped data to extract mobile home information
-    const mobileHomes: MobileHomeData[] = [];
+    // Extract individual model URLs from the main page
+    const modelUrls = new Set<string>();
+    const textToAnalyze = mainMarkdown.length > mainContent.length ? mainMarkdown : mainContent;
     
-    // Try to extract model information from both content and markdown
-    const textToAnalyze = markdown.length > content.length ? markdown : content;
+    console.log('Extracting model URLs from main page...');
     
-    console.log('Analyzing text for mobile home models...');
-    
-    // Look for model patterns in the text
-    const modelPatterns = [
-      // Look for headings that might be model names
-      /^#{1,4}\s+([A-Z][a-zA-Z\s]+?)(?:\s*-|\s*\n|$)/gm,
-      // Look for strong/bold text that might be model names
-      /\*\*([A-Z][a-zA-Z\s]+?)\*\*/g,
-      // Look for text followed by square footage
-      /([A-Z][a-zA-Z\s]+?)\s+(\d{3,4})\s*(?:sq\.?\s*ft|sqft)/gi,
-      // Look for bedroom/bathroom patterns
-      /([A-Z][a-zA-Z\s]+?)\s+(\d+)\s*bed.*?(\d+)\s*bath/gi
+    // Look for links that point to individual model pages
+    const linkPatterns = [
+      /https:\/\/owntru\.com\/models\/[^\/\s)]+/g,
+      /owntru\.com\/models\/[^\/\s)]+/g,
+      /\/models\/[^\/\s)]+/g
     ];
 
-    const foundModels = new Set<string>();
-    
-    for (const pattern of modelPatterns) {
+    for (const pattern of linkPatterns) {
       let match;
       while ((match = pattern.exec(textToAnalyze)) !== null) {
-        const modelName = match[1].trim();
-        console.log('Found potential model:', modelName);
-        
-        if (modelName.length > 2 && modelName.length < 50 && !foundModels.has(modelName)) {
-          foundModels.add(modelName);
-          
-          const modelData: MobileHomeData = {
-            series: 'OwnTru',
-            model: modelName.replace(/\s+/g, ''),
-            display_name: modelName,
-          };
+        let url = match[0];
+        if (!url.startsWith('http')) {
+          url = 'https://owntru.com' + (url.startsWith('/') ? '' : '/') + url;
+        }
+        if (!url.includes('owntru.com/models/')) {
+          url = url.replace('owntru.com/', 'owntru.com/models/');
+        }
+        modelUrls.add(url);
+        console.log('Found model URL:', url);
+      }
+    }
 
-          // Try to extract additional details for this model
-          const modelContext = textToAnalyze.substring(
-            Math.max(0, match.index - 200), 
-            Math.min(textToAnalyze.length, match.index + 500)
-          );
-          
-          console.log('Model context for', modelName, ':', modelContext.substring(0, 200));
+    // If no URLs found, try a different approach - look for model names and construct URLs
+    if (modelUrls.size === 0) {
+      console.log('No direct URLs found, trying to extract model names...');
+      
+      const modelNamePatterns = [
+        /\*\*([A-Z][A-Z\s]+?)\*\*/g,
+        /^#{1,4}\s+([A-Z][A-Z\s]+?)(?:\s*$|\s*\n)/gm,
+        /([A-Z]{4,}(?:\s+[A-Z]{4,})*)/g
+      ];
 
-          // Extract square footage
-          const sqftMatch = modelContext.match(/(\d{3,4})\s*(?:sq\.?\s*ft|sqft)/i);
-          if (sqftMatch) {
-            modelData.square_footage = parseInt(sqftMatch[1]);
-            console.log('Found square footage:', modelData.square_footage);
+      const foundNames = new Set<string>();
+      
+      for (const pattern of modelNamePatterns) {
+        let match;
+        while ((match = pattern.exec(textToAnalyze)) !== null) {
+          const name = match[1].trim();
+          if (name.length >= 4 && name.length <= 20 && !name.includes('HTTP') && !name.includes('OWN')) {
+            foundNames.add(name);
+            const urlName = name.toLowerCase().replace(/\s+/g, '-');
+            const constructedUrl = `https://owntru.com/models/${urlName}/`;
+            modelUrls.add(constructedUrl);
+            console.log('Constructed model URL from name:', constructedUrl, 'for model:', name);
           }
-
-          // Extract bedrooms
-          const bedroomMatch = modelContext.match(/(\d+)\s*(?:bed|bedroom)/i);
-          if (bedroomMatch) {
-            modelData.bedrooms = parseInt(bedroomMatch[1]);
-            console.log('Found bedrooms:', modelData.bedrooms);
-          }
-
-          // Extract bathrooms
-          const bathroomMatch = modelContext.match(/(\d+(?:\.\d+)?)\s*(?:bath|bathroom)/i);
-          if (bathroomMatch) {
-            modelData.bathrooms = parseFloat(bathroomMatch[1]);
-            console.log('Found bathrooms:', modelData.bathrooms);
-          }
-
-          // Extract dimensions
-          const dimensionMatch = modelContext.match(/(\d+)(?:\s*[x×]\s*|\s+by\s+)(\d+)(?:\s*ft)?/i);
-          if (dimensionMatch) {
-            modelData.width_feet = parseInt(dimensionMatch[1]);
-            modelData.length_feet = parseInt(dimensionMatch[2]);
-            console.log('Found dimensions:', `${modelData.width_feet}x${modelData.length_feet}`);
-          }
-
-          mobileHomes.push(modelData);
-          console.log('Added mobile home:', modelData.display_name);
         }
       }
     }
 
-    console.log(`Extracted ${mobileHomes.length} mobile homes from scraped data`);
+    console.log(`Found ${modelUrls.size} potential model URLs`);
 
-    // If we didn't find any models, let's try a different approach
-    if (mobileHomes.length === 0) {
-      console.log('No models found with standard patterns, trying alternative extraction...');
-      
-      // Look for any text that might contain model information
-      const lines = textToAnalyze.split('\n').filter(line => line.trim().length > 0);
-      
-      for (let i = 0; i < Math.min(lines.length, 50); i++) {
-        const line = lines[i].trim();
-        console.log(`Line ${i}:`, line.substring(0, 100));
-        
-        // Look for lines that might be model names (capitalized words)
-        if (/^[A-Z][a-zA-Z\s]{3,30}$/.test(line) && !line.includes('http') && !line.includes('@')) {
-          console.log('Potential model found in line:', line);
-          
-          const modelData: MobileHomeData = {
-            series: 'OwnTru',
-            model: line.replace(/\s+/g, ''),
-            display_name: line,
-          };
-          
-          mobileHomes.push(modelData);
-        }
-      }
-    }
-
-    if (mobileHomes.length === 0) {
-      console.log('Still no models found. Raw content analysis:');
-      console.log('Content includes "model":', content.toLowerCase().includes('model'));
-      console.log('Content includes "home":', content.toLowerCase().includes('home'));
-      console.log('Content includes "bedroom":', content.toLowerCase().includes('bedroom'));
-      
+    if (modelUrls.size === 0) {
       return new Response(JSON.stringify({
         success: true,
-        message: 'Scrape completed but no mobile homes were found. The website structure may have changed or content may be dynamically loaded.',
+        message: 'No model URLs found on the main page. The website structure may have changed.',
         data: {
           totalProcessed: 0,
           created: 0,
           updated: 0,
           homes: [],
           debugInfo: {
-            contentLength: content.length,
-            markdownLength: markdown.length,
-            hasModelKeyword: content.toLowerCase().includes('model'),
-            hasHomeKeyword: content.toLowerCase().includes('home'),
-            firstLines: textToAnalyze.split('\n').slice(0, 10)
+            mainContentLength: mainContent.length,
+            mainMarkdownLength: mainMarkdown.length,
+            firstLines: textToAnalyze.split('\n').slice(0, 20)
           }
         }
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+
+    // Now scrape each individual model page
+    const mobileHomes: MobileHomeData[] = [];
+    let processedCount = 0;
+
+    for (const modelUrl of Array.from(modelUrls).slice(0, 15)) { // Limit to 15 to avoid timeouts
+      try {
+        console.log(`Scraping individual model page: ${modelUrl}`);
+        
+        const modelPageResponse = await fetch('https://api.firecrawl.dev/v0/scrape', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${firecrawlApiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            url: modelUrl,
+            formats: ['markdown', 'html'],
+            onlyMainContent: true,
+            includeTags: ['h1', 'h2', 'h3', 'h4', 'p', 'div', 'span', 'ul', 'li'],
+            excludeTags: ['nav', 'footer', 'header', 'script', 'style'],
+            waitFor: 3000
+          }),
+        });
+
+        if (!modelPageResponse.ok) {
+          console.error(`Failed to scrape ${modelUrl}:`, modelPageResponse.status);
+          continue;
+        }
+
+        const modelPageData = await modelPageResponse.json();
+        
+        if (!modelPageData.success) {
+          console.error(`Firecrawl failed for ${modelUrl}:`, modelPageData.error);
+          continue;
+        }
+
+        const modelContent = modelPageData.data?.content || '';
+        const modelMarkdown = modelPageData.data?.markdown || '';
+        const modelText = modelMarkdown.length > modelContent.length ? modelMarkdown : modelContent;
+        
+        console.log(`Model page content length for ${modelUrl}:`, modelText.length);
+
+        if (modelText.length < 100) {
+          console.log(`Skipping ${modelUrl} - insufficient content`);
+          continue;
+        }
+
+        // Extract model name from URL or content
+        const urlParts = modelUrl.split('/');
+        const urlModelName = urlParts[urlParts.length - 2] || urlParts[urlParts.length - 1];
+        let modelName = urlModelName.replace(/-/g, ' ').toUpperCase();
+
+        // Try to find a better model name in the content
+        const titleMatches = modelText.match(/^#{1,2}\s+([A-Z][A-Z\s]+?)(?:\s*$|\s*\n)/m) || 
+                           modelText.match(/\*\*([A-Z][A-Z\s]+?)\*\*/);
+        if (titleMatches) {
+          modelName = titleMatches[1].trim();
+        }
+
+        console.log(`Processing model: ${modelName}`);
+
+        const modelData: MobileHomeData = {
+          series: 'OwnTru',
+          model: modelName.replace(/\s+/g, ''),
+          display_name: modelName,
+        };
+
+        // Extract description
+        const descriptionPatterns = [
+          /(?:description|about|overview)[\s:]*([^.\n]+(?:\.[^.\n]+)*)/i,
+          /^([^.\n]+(?:\.[^.\n]+){0,2})/m
+        ];
+
+        for (const pattern of descriptionPatterns) {
+          const descMatch = modelText.match(pattern);
+          if (descMatch && descMatch[1] && descMatch[1].length > 20 && descMatch[1].length < 500) {
+            modelData.description = descMatch[1].trim();
+            console.log(`Found description: ${modelData.description.substring(0, 100)}...`);
+            break;
+          }
+        }
+
+        // Extract square footage
+        const sqftPatterns = [
+          /(\d{3,4})\s*(?:sq\.?\s*ft|sqft|square\s*feet)/i,
+          /(?:size|area)[\s:]*(\d{3,4})/i
+        ];
+
+        for (const pattern of sqftPatterns) {
+          const sqftMatch = modelText.match(pattern);
+          if (sqftMatch) {
+            const sqft = parseInt(sqftMatch[1]);
+            if (sqft >= 400 && sqft <= 3000) {
+              modelData.square_footage = sqft;
+              console.log(`Found square footage: ${modelData.square_footage}`);
+              break;
+            }
+          }
+        }
+
+        // Extract bedrooms
+        const bedroomPatterns = [
+          /(\d+)\s*(?:bed|bedroom)/i,
+          /(?:bed|bedroom)[\s:]*(\d+)/i
+        ];
+
+        for (const pattern of bedroomPatterns) {
+          const bedroomMatch = modelText.match(pattern);
+          if (bedroomMatch) {
+            const bedrooms = parseInt(bedroomMatch[1]);
+            if (bedrooms >= 1 && bedrooms <= 6) {
+              modelData.bedrooms = bedrooms;
+              console.log(`Found bedrooms: ${modelData.bedrooms}`);
+              break;
+            }
+          }
+        }
+
+        // Extract bathrooms
+        const bathroomPatterns = [
+          /(\d+(?:\.\d+)?)\s*(?:bath|bathroom)/i,
+          /(?:bath|bathroom)[\s:]*(\d+(?:\.\d+)?)/i
+        ];
+
+        for (const pattern of bathroomPatterns) {
+          const bathroomMatch = modelText.match(pattern);
+          if (bathroomMatch) {
+            const bathrooms = parseFloat(bathroomMatch[1]);
+            if (bathrooms >= 1 && bathrooms <= 4) {
+              modelData.bathrooms = bathrooms;
+              console.log(`Found bathrooms: ${modelData.bathrooms}`);
+              break;
+            }
+          }
+        }
+
+        // Extract dimensions
+        const dimensionPatterns = [
+          /(\d+)(?:\s*[x×]\s*|\s+by\s+)(\d+)(?:\s*ft)?/i,
+          /(?:dimensions|size)[\s:]*(\d+)(?:\s*[x×]\s*|\s+by\s+)(\d+)/i
+        ];
+
+        for (const pattern of dimensionPatterns) {
+          const dimensionMatch = modelText.match(pattern);
+          if (dimensionMatch) {
+            const dim1 = parseInt(dimensionMatch[1]);
+            const dim2 = parseInt(dimensionMatch[2]);
+            if (dim1 >= 12 && dim1 <= 32 && dim2 >= 40 && dim2 <= 80) {
+              modelData.width_feet = Math.min(dim1, dim2);
+              modelData.length_feet = Math.max(dim1, dim2);
+              console.log(`Found dimensions: ${modelData.width_feet}x${modelData.length_feet}`);
+              break;
+            }
+          }
+        }
+
+        // Extract features
+        const featurePatterns = [
+          /(?:features|includes|amenities)[\s:]*([^.\n]+(?:\.[^.\n]+)*)/i,
+          /•\s*([^.\n]+)/g,
+          /-\s*([^.\n]+)/g
+        ];
+
+        const features: string[] = [];
+        for (const pattern of featurePatterns) {
+          let match;
+          while ((match = pattern.exec(modelText)) !== null && features.length < 10) {
+            const feature = match[1].trim();
+            if (feature.length > 5 && feature.length < 100) {
+              features.push(feature);
+            }
+          }
+        }
+
+        if (features.length > 0) {
+          modelData.features = features;
+          console.log(`Found ${features.length} features`);
+        }
+
+        mobileHomes.push(modelData);
+        console.log(`Successfully processed model: ${modelName}`);
+        processedCount++;
+
+        // Small delay to be respectful to the API
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+      } catch (error) {
+        console.error(`Error processing model URL ${modelUrl}:`, error);
+        continue;
+      }
+    }
+
+    console.log(`Extracted ${mobileHomes.length} mobile homes with detailed data`);
 
     // Update or create mobile homes in database
     let updatedCount = 0;
@@ -312,7 +446,15 @@ serve(async (req) => {
         totalProcessed: mobileHomes.length,
         created: createdCount,
         updated: updatedCount,
-        homes: mobileHomes.map(h => ({ display_name: h.display_name, model: h.model })),
+        homes: mobileHomes.map(h => ({ 
+          display_name: h.display_name, 
+          model: h.model,
+          square_footage: h.square_footage,
+          bedrooms: h.bedrooms,
+          bathrooms: h.bathrooms,
+          dimensions: h.length_feet && h.width_feet ? `${h.width_feet}x${h.length_feet}` : null,
+          features_count: h.features?.length || 0
+        })),
       }
     };
 

@@ -1,13 +1,20 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { formatPrice } from '@/lib/utils';
+import { useCustomerPricing } from '@/hooks/useCustomerPricing';
 
 interface MobileHomeDetailsCardProps {
   mobileHome: any;
   homeDisplayName: string;
+  user?: any;
 }
 
-export const MobileHomeDetailsCard = ({ mobileHome, homeDisplayName }: MobileHomeDetailsCardProps) => {
+export const MobileHomeDetailsCard = ({ mobileHome, homeDisplayName, user }: MobileHomeDetailsCardProps) => {
+  const { calculateMobileHomePrice } = useCustomerPricing(user);
+  
+  const displayPrice = user ? calculateMobileHomePrice(mobileHome) : mobileHome?.price;
+  
   return (
     <Card className="mb-6 shadow-lg">
       <CardHeader className="bg-green-50 border-b">
@@ -54,7 +61,7 @@ export const MobileHomeDetailsCard = ({ mobileHome, homeDisplayName }: MobileHom
               )}
               <div className="flex justify-between items-center py-2 border-b border-gray-200">
                 <span className="font-medium text-gray-600">Base Price:</span>
-                <span className="text-lg font-bold text-green-600">${mobileHome?.price?.toLocaleString()}</span>
+                <span className="text-lg font-bold text-green-600">{formatPrice(displayPrice)}</span>
               </div>
             </div>
           </div>

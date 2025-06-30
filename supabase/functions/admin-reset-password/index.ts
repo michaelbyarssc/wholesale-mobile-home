@@ -38,21 +38,8 @@ serve(async (req) => {
     const token = authHeader.replace('Bearer ', '')
     console.log('Token extracted, length:', token.length)
     
-    // Create regular client with the user's token for auth verification
-    const supabaseRegular = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      {
-        global: {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
-      }
-    )
-    
-    // Verify the token and get user using regular client
-    const { data: { user }, error: authError } = await supabaseRegular.auth.getUser()
+    // Verify the JWT token and get user directly using admin client
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token)
     if (authError || !user) {
       console.log('Auth verification failed:', authError)
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {

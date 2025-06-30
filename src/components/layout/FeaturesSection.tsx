@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { CheckCircle, Shield, Users, Zap } from 'lucide-react';
 
@@ -6,8 +5,8 @@ export const FeaturesSection = () => {
   const features = [
     {
       icon: <CheckCircle className="h-6 w-6 sm:h-8 sm:w-8 text-green-600" />,
-      title: "Professional Estimates",
-      description: "Get accurate, detailed estimates for your mobile home needs with our professional assessment process."
+      title: "Price Match Guarantee",
+      description: "We guarantee the absolute best deal on any of our homes. Find a better price elsewhere and we'll match it - that's our promise to you."
     },
     {
       icon: <Shield className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" />,

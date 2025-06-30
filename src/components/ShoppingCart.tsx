@@ -5,6 +5,7 @@ import { ShoppingCart as CartIcon } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useCustomerPricing } from '@/hooks/useCustomerPricing';
+import { useConditionalServices } from '@/hooks/useConditionalServices';
 import { User } from '@supabase/supabase-js';
 import { useNavigate } from 'react-router-dom';
 import { CartItemCard } from './cart/CartItemCard';
@@ -76,15 +77,23 @@ export const ShoppingCart = ({
 
   const calculateItemTotal = (item: CartItem) => {
     const homePrice = calculatePrice(item.mobileHome.cost || item.mobileHome.price);
+    
+    // Use conditional services pricing for accurate service pricing
+    const mobileHomes = [item.mobileHome];
+    const { getServicePrice } = useConditionalServices(services, item.mobileHome.id, mobileHomes, item.selectedServices);
+    
     const servicesPrice = item.selectedServices.reduce((total, serviceId) => {
-      const service = services.find(s => s.id === serviceId);
-      if (!service) return total;
-      return total + calculatePrice(service.cost || service.price);
+      const serviceCost = getServicePrice(serviceId);
+      const finalPrice = calculatePrice(serviceCost);
+      console.log(`Total calc - Service ${serviceId}: serviceCost = ${serviceCost}, finalPrice = ${finalPrice}`);
+      return total + finalPrice;
     }, 0);
+    
     const homeOptionsPrice = (item.selectedHomeOptions || []).reduce((total, { option, quantity }) => {
       const optionPrice = calculateHomeOptionPrice(option, item.mobileHome.square_footage || undefined);
       return total + (optionPrice * quantity);
     }, 0);
+    
     return homePrice + servicesPrice + homeOptionsPrice;
   };
 

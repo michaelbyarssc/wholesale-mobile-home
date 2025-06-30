@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -5,15 +6,25 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { Trash2, ShoppingCart as CartIcon, Receipt } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useConditionalServices } from '@/hooks/useConditionalServices';
 import { useCustomerPricing } from '@/hooks/useCustomerPricing';
-import { CartItem } from '@/hooks/useShoppingCart';
 import { formatPrice } from '@/lib/utils';
 import { User } from '@supabase/supabase-js';
 import { useNavigate } from 'react-router-dom';
+import type { Database } from '@/integrations/supabase/types';
+
+type HomeOption = Database['public']['Tables']['home_options']['Row'];
+
+export interface CartItem {
+  id: string;
+  mobileHome: Database['public']['Tables']['mobile_homes']['Row'];
+  selectedServices: string[];
+  selectedHomeOptions: { option: HomeOption; quantity: number }[];
+}
 
 interface ShoppingCartProps {
   isOpen: boolean;
@@ -21,6 +32,7 @@ interface ShoppingCartProps {
   cartItems: CartItem[];
   onRemoveItem: (homeId: string) => void;
   onUpdateServices: (homeId: string, selectedServices: string[]) => void;
+  onUpdateHomeOptions: (homeId: string, selectedHomeOptions: { option: HomeOption; quantity: number }[]) => void;
   onClearCart: () => void;
   user?: User | null;
 }
@@ -31,11 +43,12 @@ export const ShoppingCart = ({
   cartItems,
   onRemoveItem,
   onUpdateServices,
+  onUpdateHomeOptions,
   onClearCart,
   user
 }: ShoppingCartProps) => {
   const navigate = useNavigate();
-  const { calculatePrice } = useCustomerPricing(user);
+  const { calculatePrice, calculateHomeOptionPrice } = useCustomerPricing(user);
 
   // Fetch services
   const { data: services = [] } = useQuery({
@@ -52,6 +65,21 @@ export const ShoppingCart = ({
     }
   });
 
+  // Fetch home options
+  const { data: homeOptions = [] } = useQuery({
+    queryKey: ['home-options'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('home_options')
+        .select('*')
+        .eq('active', true)
+        .order('display_order', { ascending: true });
+      
+      if (error) throw error;
+      return data;
+    }
+  });
+
   const calculateItemTotal = (item: CartItem) => {
     const homePrice = calculatePrice(item.mobileHome.cost || item.mobileHome.price);
     const servicesPrice = item.selectedServices.reduce((total, serviceId) => {
@@ -59,7 +87,11 @@ export const ShoppingCart = ({
       if (!service) return total;
       return total + calculatePrice(service.cost || service.price);
     }, 0);
-    return homePrice + servicesPrice;
+    const homeOptionsPrice = (item.selectedHomeOptions || []).reduce((total, { option, quantity }) => {
+      const optionPrice = calculateHomeOptionPrice(option, item.mobileHome.square_footage || undefined);
+      return total + (optionPrice * quantity);
+    }, 0);
+    return homePrice + servicesPrice + homeOptionsPrice;
   };
 
   const calculateGrandTotal = () => {
@@ -99,9 +131,12 @@ export const ShoppingCart = ({
                 key={item.mobileHome.id}
                 item={item}
                 services={services}
+                homeOptions={homeOptions}
                 onUpdateServices={onUpdateServices}
+                onUpdateHomeOptions={onUpdateHomeOptions}
                 onRemoveItem={onRemoveItem}
                 calculatePrice={calculatePrice}
+                calculateHomeOptionPrice={calculateHomeOptionPrice}
                 calculateItemTotal={calculateItemTotal}
                 getHomeName={getHomeName}
               />
@@ -142,9 +177,12 @@ export const ShoppingCart = ({
 interface CartItemCardProps {
   item: CartItem;
   services: any[];
+  homeOptions: any[];
   onUpdateServices: (homeId: string, selectedServices: string[]) => void;
+  onUpdateHomeOptions: (homeId: string, selectedHomeOptions: { option: HomeOption; quantity: number }[]) => void;
   onRemoveItem: (homeId: string) => void;
   calculatePrice: (cost: number) => number;
+  calculateHomeOptionPrice: (homeOption: HomeOption, homeSquareFootage?: number) => number;
   calculateItemTotal: (item: CartItem) => number;
   getHomeName: (home: any) => string;
 }
@@ -152,9 +190,12 @@ interface CartItemCardProps {
 const CartItemCard = ({
   item,
   services,
+  homeOptions,
   onUpdateServices,
+  onUpdateHomeOptions,
   onRemoveItem,
   calculatePrice,
+  calculateHomeOptionPrice,
   calculateItemTotal,
   getHomeName
 }: CartItemCardProps) => {
@@ -197,6 +238,36 @@ const CartItemCard = ({
       }
 
       onUpdateServices(item.mobileHome.id, [...item.selectedServices, serviceId]);
+    }
+  };
+
+  const handleHomeOptionToggle = (homeOption: HomeOption) => {
+    const currentOptions = item.selectedHomeOptions || [];
+    const existingIndex = currentOptions.findIndex(item => item.option.id === homeOption.id);
+    
+    if (existingIndex >= 0) {
+      // Remove the option
+      const newOptions = currentOptions.filter(item => item.option.id !== homeOption.id);
+      onUpdateHomeOptions(item.mobileHome.id, newOptions);
+    } else {
+      // Add the option with quantity 1
+      const newOptions = [...currentOptions, { option: homeOption, quantity: 1 }];
+      onUpdateHomeOptions(item.mobileHome.id, newOptions);
+    }
+  };
+
+  const updateHomeOptionQuantity = (homeOptionId: string, quantity: number) => {
+    const currentOptions = item.selectedHomeOptions || [];
+    if (quantity <= 0) {
+      const newOptions = currentOptions.filter(item => item.option.id !== homeOptionId);
+      onUpdateHomeOptions(item.mobileHome.id, newOptions);
+    } else {
+      const newOptions = currentOptions.map(item => 
+        item.option.id === homeOptionId 
+          ? { ...item, quantity }
+          : item
+      );
+      onUpdateHomeOptions(item.mobileHome.id, newOptions);
     }
   };
 
@@ -256,6 +327,66 @@ const CartItemCard = ({
                     <p className="text-sm text-gray-600 mt-1">
                       {formatPrice(displayPrice)}
                     </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div>
+          <h4 className="font-medium mb-3">Home Options:</h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {homeOptions.map((homeOption) => {
+              const selectedOption = (item.selectedHomeOptions || []).find(item => item.option.id === homeOption.id);
+              const isSelected = !!selectedOption;
+              const optionPrice = calculateHomeOptionPrice(homeOption, item.mobileHome.square_footage || undefined);
+              
+              return (
+                <div key={homeOption.id} className="flex items-start space-x-3 p-2 border rounded">
+                  <Checkbox
+                    id={`${item.mobileHome.id}-${homeOption.id}`}
+                    checked={isSelected}
+                    onCheckedChange={() => handleHomeOptionToggle(homeOption)}
+                  />
+                  <div className="flex-1">
+                    <Label 
+                      htmlFor={`${item.mobileHome.id}-${homeOption.id}`}
+                      className="font-medium cursor-pointer text-sm"
+                    >
+                      {homeOption.name}
+                    </Label>
+                    {homeOption.description && (
+                      <p className="text-xs text-gray-500 mt-1">{homeOption.description}</p>
+                    )}
+                    <p className="text-sm text-gray-600 mt-1">
+                      {homeOption.pricing_type === 'per_sqft' ? (
+                        <>
+                          {formatPrice(optionPrice)}
+                          <span className="text-xs text-gray-400 ml-1">
+                            (${calculatePrice(homeOption.price_per_sqft || 0).toFixed(2)}/sq ft)
+                          </span>
+                        </>
+                      ) : (
+                        formatPrice(optionPrice)
+                      )}
+                    </p>
+                    <Badge variant="outline" className="text-xs mt-1">
+                      {homeOption.pricing_type === 'per_sqft' ? 'Per Sq Ft' : 'Fixed Price'}
+                    </Badge>
+                    {isSelected && (
+                      <div className="flex items-center space-x-2 mt-2">
+                        <Label htmlFor={`cart-qty-${homeOption.id}`} className="text-xs">Qty:</Label>
+                        <Input
+                          id={`cart-qty-${homeOption.id}`}
+                          type="number"
+                          min="1"
+                          value={selectedOption.quantity}
+                          onChange={(e) => updateHomeOptionQuantity(homeOption.id, parseInt(e.target.value) || 1)}
+                          className="w-16 h-8 text-xs"
+                        />
+                      </div>
+                    )}
                   </div>
                 </div>
               );

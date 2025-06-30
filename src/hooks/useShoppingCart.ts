@@ -1,11 +1,15 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
+
+type HomeOption = Database['public']['Tables']['home_options']['Row'];
 
 export type CartItem = {
   id: string;
   mobileHome: Database['public']['Tables']['mobile_homes']['Row'];
   selectedServices: string[];
+  selectedHomeOptions: { option: HomeOption; quantity: number }[];
 };
 
 export const useShoppingCart = () => {
@@ -40,8 +44,12 @@ export const useShoppingCart = () => {
     }
   }, [cartItems]);
 
-  const addToCart = useCallback((mobileHome: Database['public']['Tables']['mobile_homes']['Row'], selectedServices: string[] = []) => {
-    console.log('addToCart called with:', mobileHome.id, mobileHome.model, 'services:', selectedServices);
+  const addToCart = useCallback((
+    mobileHome: Database['public']['Tables']['mobile_homes']['Row'], 
+    selectedServices: string[] = [],
+    selectedHomeOptions: { option: HomeOption; quantity: number }[] = []
+  ) => {
+    console.log('addToCart called with:', mobileHome.id, mobileHome.model, 'services:', selectedServices, 'options:', selectedHomeOptions);
     
     setCartItems(prevItems => {
       console.log('Current cart items before update:', prevItems.length);
@@ -49,12 +57,13 @@ export const useShoppingCart = () => {
       console.log('Existing item index:', existingIndex);
       
       if (existingIndex >= 0) {
-        // Item already exists, update services
-        console.log('Item already in cart, updating services');
+        // Item already exists, update services and options
+        console.log('Item already in cart, updating services and options');
         const updatedItems = [...prevItems];
         updatedItems[existingIndex] = {
           ...updatedItems[existingIndex],
-          selectedServices
+          selectedServices,
+          selectedHomeOptions
         };
         return updatedItems;
       } else {
@@ -62,9 +71,10 @@ export const useShoppingCart = () => {
         const newItem: CartItem = {
           id: mobileHome.id,
           mobileHome,
-          selectedServices
+          selectedServices,
+          selectedHomeOptions
         };
-        console.log('Adding new item to cart:', newItem.id, 'with services:', selectedServices);
+        console.log('Adding new item to cart:', newItem.id, 'with services:', selectedServices, 'and options:', selectedHomeOptions);
         const newCart = [...prevItems, newItem];
         console.log('New cart length after adding:', newCart.length);
         
@@ -83,6 +93,15 @@ export const useShoppingCart = () => {
     setCartItems(prev => prev.map(item => 
       item.mobileHome.id === homeId 
         ? { ...item, selectedServices }
+        : item
+    ));
+  }, []);
+
+  const updateHomeOptions = useCallback((homeId: string, selectedHomeOptions: { option: HomeOption; quantity: number }[]) => {
+    console.log('Updating home options for home:', homeId, selectedHomeOptions);
+    setCartItems(prev => prev.map(item => 
+      item.mobileHome.id === homeId 
+        ? { ...item, selectedHomeOptions }
         : item
     ));
   }, []);
@@ -114,6 +133,7 @@ export const useShoppingCart = () => {
     addToCart,
     removeFromCart,
     updateServices,
+    updateHomeOptions,
     clearCart,
     toggleCart,
     closeCart,

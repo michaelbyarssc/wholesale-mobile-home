@@ -13,12 +13,15 @@ import { EstimateTotal } from '@/components/estimate/EstimateTotal';
 import { ComparableHomesCard } from '@/components/estimate-approval/ComparableHomesCard';
 import { useShoppingCart } from '@/hooks/useShoppingCart';
 import { useCustomerPricing } from '@/hooks/useCustomerPricing';
+import type { Database } from '@/integrations/supabase/types';
+
+type HomeOption = Database['public']['Tables']['home_options']['Row'];
 
 const EstimateForm = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { cartItems, clearCart } = useShoppingCart();
-  const { markupPercentage, calculatePrice } = useCustomerPricing();
+  const { markupPercentage, calculatePrice, calculateHomeOptionPrice } = useCustomerPricing();
   
   const [services, setServices] = useState<any[]>([]);
   const [mobileHomes, setMobileHomes] = useState<any[]>([]);
@@ -95,6 +98,7 @@ const EstimateForm = () => {
   });
   const [selectedHome, setSelectedHome] = useState<any>(null);
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
+  const [selectedHomeOptions, setSelectedHomeOptions] = useState<{ option: HomeOption; quantity: number }[]>([]);
   const [additionalRequirements, setAdditionalRequirements] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -140,6 +144,7 @@ const EstimateForm = () => {
           delivery_address: fullAddress,
           mobile_home_id: selectedHome.id,
           selected_services: selectedServices,
+          selected_home_options: selectedHomeOptions,
           additional_requirements: additionalRequirements,
           total_amount: calculateTotal()
         }
@@ -176,6 +181,12 @@ const EstimateForm = () => {
       }
     });
 
+    // Add selected home options
+    selectedHomeOptions.forEach(({ option, quantity }) => {
+      const optionPrice = calculateHomeOptionPrice(option, selectedHome?.square_footage);
+      total += optionPrice * quantity;
+    });
+
     // Apply customer pricing if available
     if (markupPercentage) {
       total = total * (1 + markupPercentage / 100);
@@ -196,6 +207,33 @@ const EstimateForm = () => {
         ? prev.filter(id => id !== serviceId)
         : [...prev, serviceId]
     );
+  };
+
+  const handleHomeOptionToggle = (homeOption: HomeOption) => {
+    setSelectedHomeOptions(prev => {
+      const existingIndex = prev.findIndex(item => item.option.id === homeOption.id);
+      if (existingIndex >= 0) {
+        // Remove the option
+        return prev.filter(item => item.option.id !== homeOption.id);
+      } else {
+        // Add the option with quantity 1
+        return [...prev, { option: homeOption, quantity: 1 }];
+      }
+    });
+  };
+
+  const handleHomeOptionQuantityChange = (homeOptionId: string, quantity: number) => {
+    if (quantity <= 0) {
+      setSelectedHomeOptions(prev => prev.filter(item => item.option.id !== homeOptionId));
+    } else {
+      setSelectedHomeOptions(prev => 
+        prev.map(item => 
+          item.option.id === homeOptionId 
+            ? { ...item, quantity }
+            : item
+        )
+      );
+    }
   };
 
   const getAvailableServices = () => {
@@ -252,7 +290,7 @@ const EstimateForm = () => {
           />
           
           <ServicesSelection 
-            selectedHome={selectedHome?.id || ''}
+            selectedHome={selectedHome}
             availableServices={getAvailableServices()}
             selectedServices={selectedServices}
             services={services}
@@ -260,6 +298,10 @@ const EstimateForm = () => {
             calculatePrice={calculatePrice}
             getDependencies={getDependencies}
             getMissingDependencies={getMissingDependencies}
+            selectedHomeOptions={selectedHomeOptions}
+            onHomeOptionToggle={handleHomeOptionToggle}
+            onHomeOptionQuantityChange={handleHomeOptionQuantityChange}
+            user={null}
           />
 
           {/* Comparable Homes Card - with debug info */}

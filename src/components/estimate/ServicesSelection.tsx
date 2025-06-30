@@ -4,12 +4,18 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useCustomerPricing } from '@/hooks/useCustomerPricing';
+import { formatPrice } from '@/lib/utils';
 import type { Database } from '@/integrations/supabase/types';
 
 type Service = Database['public']['Tables']['services']['Row'];
+type HomeOption = Database['public']['Tables']['home_options']['Row'];
 
 interface ServicesSelectionProps {
-  selectedHome: string;
+  selectedHome: any;
   availableServices: Service[];
   selectedServices: string[];
   services: Service[];
@@ -17,6 +23,10 @@ interface ServicesSelectionProps {
   calculatePrice: (cost: number) => number;
   getDependencies: (serviceId: string) => string[];
   getMissingDependencies: (serviceId: string) => string[];
+  selectedHomeOptions?: { option: HomeOption; quantity: number }[];
+  onHomeOptionToggle?: (homeOption: HomeOption) => void;
+  onHomeOptionQuantityChange?: (homeOptionId: string, quantity: number) => void;
+  user?: any;
 }
 
 export const ServicesSelection = ({
@@ -27,8 +37,29 @@ export const ServicesSelection = ({
   onServiceToggle,
   calculatePrice,
   getDependencies,
-  getMissingDependencies
+  getMissingDependencies,
+  selectedHomeOptions = [],
+  onHomeOptionToggle,
+  onHomeOptionQuantityChange,
+  user
 }: ServicesSelectionProps) => {
+  const { calculateHomeOptionPrice } = useCustomerPricing(user);
+
+  // Fetch home options
+  const { data: homeOptions = [] } = useQuery({
+    queryKey: ['home-options'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('home_options')
+        .select('*')
+        .eq('active', true)
+        .order('display_order', { ascending: true });
+      
+      if (error) throw error;
+      return data as HomeOption[];
+    }
+  });
+
   const isServiceDisabled = (service: Service) => {
     const missingDeps = getMissingDependencies(service.id);
     return missingDeps.length > 0;
@@ -57,67 +88,154 @@ export const ServicesSelection = ({
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-blue-900">Additional Services</CardTitle>
-        {selectedHome && (
-          <p className="text-sm text-gray-600">
-            Services available for your selected mobile home
-          </p>
-        )}
-      </CardHeader>
-      <CardContent>
-        {!selectedHome ? (
-          <p className="text-gray-500 text-center py-4">
-            Please select a mobile home first to see available services
-          </p>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {availableServices.map((service) => {
-              const isDisabled = isServiceDisabled(service);
-              const serviceCost = service.cost || service.price;
-              const displayPrice = calculatePrice(serviceCost);
-              
-              return (
-                <div 
-                  key={service.id} 
-                  className={`p-3 border rounded-lg ${
-                    isDisabled ? 'opacity-50 bg-gray-50' : ''
-                  }`}
-                >
-                  <div className="flex items-start space-x-3">
-                    <Checkbox
-                      id={service.id}
-                      checked={selectedServices.includes(service.id)}
-                      onCheckedChange={() => onServiceToggle(service.id)}
-                      disabled={isDisabled}
-                    />
-                    <div className="flex-1">
-                      <Label 
-                        htmlFor={service.id} 
-                        className={`font-medium cursor-pointer ${
-                          isDisabled ? 'cursor-not-allowed' : ''
-                        }`}
-                      >
-                        {service.name}
-                      </Label>
-                      {service.description && (
-                        <p className="text-xs text-gray-500 mt-1">{service.description}</p>
-                      )}
-                      <p className="text-sm text-gray-600 mt-1">
-                        ${displayPrice.toLocaleString()}
-                      </p>
-                      <div className="flex flex-wrap gap-1 mt-2">
-                        {getServiceStatusBadges(service)}
+    <div className="space-y-6">
+      {/* Services Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-blue-900">Additional Services</CardTitle>
+          {selectedHome && (
+            <p className="text-sm text-gray-600">
+              Services available for your selected mobile home
+            </p>
+          )}
+        </CardHeader>
+        <CardContent>
+          {!selectedHome ? (
+            <p className="text-gray-500 text-center py-4">
+              Please select a mobile home first to see available services
+            </p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {availableServices.map((service) => {
+                const isDisabled = isServiceDisabled(service);
+                const serviceCost = service.cost || service.price;
+                const displayPrice = calculatePrice(serviceCost);
+                
+                return (
+                  <div 
+                    key={service.id} 
+                    className={`p-3 border rounded-lg ${
+                      isDisabled ? 'opacity-50 bg-gray-50' : ''
+                    }`}
+                  >
+                    <div className="flex items-start space-x-3">
+                      <Checkbox
+                        id={service.id}
+                        checked={selectedServices.includes(service.id)}
+                        onCheckedChange={() => onServiceToggle(service.id)}
+                        disabled={isDisabled}
+                      />
+                      <div className="flex-1">
+                        <Label 
+                          htmlFor={service.id} 
+                          className={`font-medium cursor-pointer ${
+                            isDisabled ? 'cursor-not-allowed' : ''
+                          }`}
+                        >
+                          {service.name}
+                        </Label>
+                        {service.description && (
+                          <p className="text-xs text-gray-500 mt-1">{service.description}</p>
+                        )}
+                        <p className="text-sm text-gray-600 mt-1">
+                          ${displayPrice.toLocaleString()}
+                        </p>
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {getServiceStatusBadges(service)}
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </CardContent>
-    </Card>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Home Options Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-blue-900">Home Options</CardTitle>
+          {selectedHome && (
+            <p className="text-sm text-gray-600">
+              Additional options you can add to your mobile home
+            </p>
+          )}
+        </CardHeader>
+        <CardContent>
+          {!selectedHome ? (
+            <p className="text-gray-500 text-center py-4">
+              Please select a mobile home first to see available home options
+            </p>
+          ) : homeOptions.length === 0 ? (
+            <p className="text-gray-500 text-center py-4">
+              No home options available
+            </p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {homeOptions.map((homeOption) => {
+                const selectedOption = selectedHomeOptions.find(item => item.option.id === homeOption.id);
+                const isSelected = !!selectedOption;
+                const optionPrice = calculateHomeOptionPrice(homeOption, selectedHome.square_footage || undefined);
+                
+                return (
+                  <div key={homeOption.id} className="p-3 border rounded-lg">
+                    <div className="flex items-start space-x-3">
+                      <Checkbox
+                        id={homeOption.id}
+                        checked={isSelected}
+                        onCheckedChange={() => onHomeOptionToggle?.(homeOption)}
+                      />
+                      <div className="flex-1">
+                        <Label 
+                          htmlFor={homeOption.id}
+                          className="font-medium cursor-pointer"
+                        >
+                          {homeOption.name}
+                        </Label>
+                        {homeOption.description && (
+                          <p className="text-xs text-gray-500 mt-1">{homeOption.description}</p>
+                        )}
+                        <p className="text-sm text-gray-600 mt-1">
+                          {homeOption.pricing_type === 'per_sqft' ? (
+                            <>
+                              {formatPrice(optionPrice)}
+                              <span className="text-xs text-gray-400 ml-1">
+                                (${calculatePrice(homeOption.price_per_sqft || 0).toFixed(2)}/sq ft)
+                              </span>
+                            </>
+                          ) : (
+                            formatPrice(optionPrice)
+                          )}
+                        </p>
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          <Badge variant="outline" className="text-xs">
+                            {homeOption.pricing_type === 'per_sqft' ? 'Per Sq Ft' : 'Fixed Price'}
+                          </Badge>
+                        </div>
+                        {isSelected && onHomeOptionQuantityChange && (
+                          <div className="flex items-center space-x-2 mt-2">
+                            <Label htmlFor={`qty-${homeOption.id}`} className="text-xs">Qty:</Label>
+                            <Input
+                              id={`qty-${homeOption.id}`}
+                              type="number"
+                              min="1"
+                              value={selectedOption?.quantity || 1}
+                              onChange={(e) => onHomeOptionQuantityChange(homeOption.id, parseInt(e.target.value) || 1)}
+                              className="w-16 h-8 text-xs"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 };

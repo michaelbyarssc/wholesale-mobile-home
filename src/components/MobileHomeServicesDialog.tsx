@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useConditionalServices } from '@/hooks/useConditionalServices';
@@ -15,13 +16,19 @@ import type { Database } from '@/integrations/supabase/types';
 
 type MobileHome = Database['public']['Tables']['mobile_homes']['Row'];
 type Service = Database['public']['Tables']['services']['Row'];
+type HomeOption = Database['public']['Tables']['home_options']['Row'];
 
 interface MobileHomeServicesDialogProps {
   isOpen: boolean;
   onClose: () => void;
   mobileHome: MobileHome | null;
-  onAddToCart: (home: MobileHome, selectedServices: string[]) => void;
+  onAddToCart: (home: MobileHome, selectedServices: string[], selectedHomeOptions: { option: HomeOption; quantity: number }[]) => void;
   user: any;
+}
+
+interface SelectedHomeOption {
+  option: HomeOption;
+  quantity: number;
 }
 
 export const MobileHomeServicesDialog = ({
@@ -32,7 +39,8 @@ export const MobileHomeServicesDialog = ({
   user
 }: MobileHomeServicesDialogProps) => {
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
-  const { calculatePrice } = useCustomerPricing(user);
+  const [selectedHomeOptions, setSelectedHomeOptions] = useState<SelectedHomeOption[]>([]);
+  const { calculatePrice, calculateHomeOptionPrice } = useCustomerPricing(user);
 
   // Fetch services
   const { data: services = [] } = useQuery({
@@ -46,6 +54,21 @@ export const MobileHomeServicesDialog = ({
       
       if (error) throw error;
       return data as Service[];
+    }
+  });
+
+  // Fetch home options
+  const { data: homeOptions = [] } = useQuery({
+    queryKey: ['home-options'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('home_options')
+        .select('*')
+        .eq('active', true)
+        .order('display_order', { ascending: true });
+      
+      if (error) throw error;
+      return data as HomeOption[];
     }
   });
 
@@ -98,6 +121,33 @@ export const MobileHomeServicesDialog = ({
     }
   };
 
+  const handleHomeOptionToggle = (homeOption: HomeOption) => {
+    setSelectedHomeOptions(prev => {
+      const existingIndex = prev.findIndex(item => item.option.id === homeOption.id);
+      if (existingIndex >= 0) {
+        // Remove the option
+        return prev.filter(item => item.option.id !== homeOption.id);
+      } else {
+        // Add the option with quantity 1
+        return [...prev, { option: homeOption, quantity: 1 }];
+      }
+    });
+  };
+
+  const updateHomeOptionQuantity = (homeOptionId: string, quantity: number) => {
+    if (quantity <= 0) {
+      setSelectedHomeOptions(prev => prev.filter(item => item.option.id !== homeOptionId));
+    } else {
+      setSelectedHomeOptions(prev => 
+        prev.map(item => 
+          item.option.id === homeOptionId 
+            ? { ...item, quantity }
+            : item
+        )
+      );
+    }
+  };
+
   const calculateTotal = () => {
     const homePrice = calculatePrice(mobileHome.cost || mobileHome.price);
     const servicesPrice = selectedServices.reduce((total, serviceId) => {
@@ -105,12 +155,17 @@ export const MobileHomeServicesDialog = ({
       if (!service) return total;
       return total + calculatePrice(service.cost || service.price);
     }, 0);
-    return homePrice + servicesPrice;
+    const homeOptionsPrice = selectedHomeOptions.reduce((total, { option, quantity }) => {
+      const optionPrice = calculateHomeOptionPrice(option, mobileHome.square_footage || undefined);
+      return total + (optionPrice * quantity);
+    }, 0);
+    return homePrice + servicesPrice + homeOptionsPrice;
   };
 
   const handleAddToCart = () => {
-    onAddToCart(mobileHome, selectedServices);
+    onAddToCart(mobileHome, selectedServices, selectedHomeOptions);
     setSelectedServices([]);
+    setSelectedHomeOptions([]);
     onClose();
   };
 
@@ -141,6 +196,9 @@ export const MobileHomeServicesDialog = ({
                     {mobileHome.width_feet && mobileHome.length_feet 
                       ? `${mobileHome.width_feet}' × ${mobileHome.length_feet}'` 
                       : 'N/A'}
+                    {mobileHome.square_footage && (
+                      <span className="ml-2">({mobileHome.square_footage} sq ft)</span>
+                    )}
                   </p>
                 </div>
                 <div className="text-right">
@@ -196,6 +254,80 @@ export const MobileHomeServicesDialog = ({
                             <Badge variant="outline" className="text-xs mt-1">
                               Admin Required
                             </Badge>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Home Options Selection */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Home Options</CardTitle>
+              <p className="text-sm text-gray-600">
+                Select any home options you'd like to add
+              </p>
+            </CardHeader>
+            <CardContent>
+              {homeOptions.length === 0 ? (
+                <p className="text-gray-500 text-center py-4">
+                  No home options available
+                </p>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {homeOptions.map((homeOption) => {
+                    const selectedOption = selectedHomeOptions.find(item => item.option.id === homeOption.id);
+                    const isSelected = !!selectedOption;
+                    const optionPrice = calculateHomeOptionPrice(homeOption, mobileHome.square_footage || undefined);
+                    
+                    return (
+                      <div key={homeOption.id} className="flex items-start space-x-3 p-3 border rounded">
+                        <Checkbox
+                          id={homeOption.id}
+                          checked={isSelected}
+                          onCheckedChange={() => handleHomeOptionToggle(homeOption)}
+                        />
+                        <div className="flex-1">
+                          <Label 
+                            htmlFor={homeOption.id}
+                            className="font-medium cursor-pointer"
+                          >
+                            {homeOption.name}
+                          </Label>
+                          {homeOption.description && (
+                            <p className="text-xs text-gray-500 mt-1">{homeOption.description}</p>
+                          )}
+                          <p className="text-sm text-gray-600 mt-1">
+                            {homeOption.pricing_type === 'per_sqft' ? (
+                              <>
+                                {formatPrice(optionPrice)}
+                                <span className="text-xs text-gray-400 ml-1">
+                                  (${calculatePrice(homeOption.price_per_sqft || 0).toFixed(2)}/sq ft)
+                                </span>
+                              </>
+                            ) : (
+                              formatPrice(optionPrice)
+                            )}
+                          </p>
+                          <Badge variant="outline" className="text-xs mt-1">
+                            {homeOption.pricing_type === 'per_sqft' ? 'Per Sq Ft' : 'Fixed Price'}
+                          </Badge>
+                          {isSelected && (
+                            <div className="flex items-center space-x-2 mt-2">
+                              <Label htmlFor={`qty-${homeOption.id}`} className="text-xs">Qty:</Label>
+                              <Input
+                                id={`qty-${homeOption.id}`}
+                                type="number"
+                                min="1"
+                                value={selectedOption.quantity}
+                                onChange={(e) => updateHomeOptionQuantity(homeOption.id, parseInt(e.target.value) || 1)}
+                                className="w-16 h-8 text-xs"
+                              />
+                            </div>
                           )}
                         </div>
                       </div>

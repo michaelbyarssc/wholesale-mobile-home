@@ -25,6 +25,7 @@ const Index = () => {
     addToCart,
     removeFromCart,
     updateServices,
+    updateHomeOptions,
     clearCart,
     toggleCart,
     closeCart,
@@ -167,6 +168,7 @@ const Index = () => {
           addToCart={addToCart}
           removeFromCart={removeFromCart}
           updateServices={updateServices}
+          updateHomeOptions={updateHomeOptions}
           clearCart={clearCart}
           setIsCartOpen={setIsCartOpen}
         />

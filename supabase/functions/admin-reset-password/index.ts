@@ -7,6 +7,32 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+// Function to generate a strong random password
+function generateStrongPassword(): string {
+  const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const lowercase = 'abcdefghijklmnopqrstuvwxyz';
+  const numbers = '0123456789';
+  const symbols = '!@#$%^&*()_+-=[]{}|;:,.<>?';
+  
+  const allChars = uppercase + lowercase + numbers + symbols;
+  
+  let password = '';
+  
+  // Ensure at least one character from each category
+  password += uppercase[Math.floor(Math.random() * uppercase.length)];
+  password += lowercase[Math.floor(Math.random() * lowercase.length)];
+  password += numbers[Math.floor(Math.random() * numbers.length)];
+  password += symbols[Math.floor(Math.random() * symbols.length)];
+  
+  // Fill the rest randomly (12 characters total)
+  for (let i = 4; i < 12; i++) {
+    password += allChars[Math.floor(Math.random() * allChars.length)];
+  }
+  
+  // Shuffle the password
+  return password.split('').sort(() => 0.5 - Math.random()).join('');
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -103,8 +129,8 @@ serve(async (req) => {
       })
     }
 
-    // Use provided password or default
-    const password = new_password || 'Allies123!'
+    // Use provided password or generate a strong random one
+    const password = new_password || generateStrongPassword()
 
     console.log('Updating password for user:', user_id)
 

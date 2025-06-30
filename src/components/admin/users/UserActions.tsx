@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -21,8 +20,6 @@ export const UserActions = ({ profile, onUserUpdated }: UserActionsProps) => {
   const resetUserPassword = async (userId: string, userEmail: string) => {
     try {
       setResettingPassword(userId);
-      
-      const newPassword = 'Allies123!';
 
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
@@ -33,8 +30,7 @@ export const UserActions = ({ profile, onUserUpdated }: UserActionsProps) => {
 
       const { data, error } = await supabase.functions.invoke('admin-reset-password', {
         body: {
-          user_id: userId,
-          new_password: newPassword
+          user_id: userId
         },
         headers: {
           Authorization: `Bearer ${session.access_token}`
@@ -67,7 +63,7 @@ export const UserActions = ({ profile, onUserUpdated }: UserActionsProps) => {
 
       toast({
         title: "Password reset successful",
-        description: `Password for ${userEmail} has been reset to: ${newPassword}`,
+        description: `Password for ${userEmail} has been reset to: ${data.temporaryPassword}`,
       });
 
     } catch (error: any) {
@@ -204,7 +200,7 @@ export const UserActions = ({ profile, onUserUpdated }: UserActionsProps) => {
         variant="outline"
         onClick={() => resetUserPassword(profile.user_id, profile.email)}
         disabled={resettingPassword === profile.user_id}
-        title="Reset password to Allies123!"
+        title="Reset password to a secure random password"
       >
         {resettingPassword === profile.user_id ? (
           <div className="h-3 w-3 animate-spin rounded-full border-b-2 border-current" />

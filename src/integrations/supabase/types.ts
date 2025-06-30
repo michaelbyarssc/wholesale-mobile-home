@@ -292,6 +292,7 @@ export type Database = {
           id: string
           length_feet: number | null
           manufacturer: string
+          minimum_profit: number
           model: string
           price: number
           series: string
@@ -313,6 +314,7 @@ export type Database = {
           id?: string
           length_feet?: number | null
           manufacturer?: string
+          minimum_profit?: number
           model: string
           price: number
           series: string
@@ -334,6 +336,7 @@ export type Database = {
           id?: string
           length_feet?: number | null
           manufacturer?: string
+          minimum_profit?: number
           model?: string
           price?: number
           series?: string

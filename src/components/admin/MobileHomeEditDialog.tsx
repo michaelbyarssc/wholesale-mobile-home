@@ -318,11 +318,11 @@ export const MobileHomeEditDialog = ({ mobileHome, open, onClose, onSave }: Mobi
             </div>
 
             <div>
-              <Label htmlFor="price">Price</Label>
+              <Label htmlFor="price">Cost (Internal Price)</Label>
               <div className="space-y-2">
                 {formData.price && (
                   <div className="text-sm text-gray-600 font-medium">
-                    Current Price: {formatPrice(formData.price)}
+                    Current Cost: {formatPrice(formData.price)}
                   </div>
                 )}
                 <Input
@@ -330,7 +330,25 @@ export const MobileHomeEditDialog = ({ mobileHome, open, onClose, onSave }: Mobi
                   type="number"
                   value={formData.price || ''}
                   onChange={(e) => handleInputChange('price', parseFloat(e.target.value))}
-                  placeholder="Enter price without $ or commas"
+                  placeholder="Enter internal cost without $ or commas"
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="minimum_profit">Minimum Profit per Home</Label>
+              <div className="space-y-2">
+                {formData.minimum_profit !== undefined && (
+                  <div className="text-sm text-gray-600 font-medium">
+                    Current Minimum Profit: {formatPrice(formData.minimum_profit)}
+                  </div>
+                )}
+                <Input
+                  id="minimum_profit"
+                  type="number"
+                  value={formData.minimum_profit || ''}
+                  onChange={(e) => handleInputChange('minimum_profit', parseFloat(e.target.value))}
+                  placeholder="Enter minimum profit amount"
                 />
               </div>
             </div>

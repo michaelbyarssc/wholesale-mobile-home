@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
@@ -69,8 +70,16 @@ export const useCustomerPricing = (user?: User | null) => {
   };
 
   const calculateMobileHomePrice = (mobileHome: MobileHome): number => {
-    const baseCost = typeof mobileHome.cost === 'number' ? mobileHome.cost : 0;
-    return calculatePrice(baseCost);
+    const baseCost = typeof mobileHome.cost === 'number' ? mobileHome.cost : mobileHome.price;
+    const homeMinProfit = mobileHome.minimum_profit || 0;
+    
+    // Calculate both pricing methods
+    const markupPrice = baseCost * (1 + markupPercentage / 100);
+    const minimumProfitPrice = baseCost + homeMinProfit;
+    
+    // Return the higher of the two
+    const finalPrice = Math.max(markupPrice, minimumProfitPrice);
+    return Math.round(finalPrice * 100) / 100;
   };
 
   const calculateServicePrice = (service: Service): number => {

@@ -25,7 +25,8 @@ export const MobileHomesTab = () => {
     series: '',
     model: '',
     display_name: '',
-    price: ''
+    price: '',
+    minimum_profit: ''
   });
 
   // Get customer pricing for markup calculations
@@ -77,7 +78,8 @@ export const MobileHomesTab = () => {
         series: formData.series.trim(),
         model: formData.model,
         display_name: formData.display_name,
-        price: parseFloat(formData.price)
+        price: parseFloat(formData.price),
+        minimum_profit: parseFloat(formData.minimum_profit) || 0
       };
 
       const { error } = await supabase
@@ -91,7 +93,7 @@ export const MobileHomesTab = () => {
         description: "Mobile home added successfully.",
       });
 
-      setFormData({ manufacturer: 'Clayton', series: '', model: '', display_name: '', price: '' });
+      setFormData({ manufacturer: 'Clayton', series: '', model: '', display_name: '', price: '', minimum_profit: '' });
       setShowAddForm(false);
       refetch();
     } catch (error) {
@@ -137,6 +139,16 @@ export const MobileHomesTab = () => {
 
   const getHomeName = (home: MobileHome) => {
     return home.display_name || `${home.series} ${home.model}`;
+  };
+
+  const calculateCustomerPrice = (home: MobileHome, customerMarkup: number = 30) => {
+    const baseCost = home.cost || home.price;
+    const minimumProfit = home.minimum_profit || 0;
+    
+    const markupPrice = baseCost * (1 + customerMarkup / 100);
+    const minimumPrice = baseCost + minimumProfit;
+    
+    return Math.max(markupPrice, minimumPrice);
   };
 
   const deleteImageFromStorage = async (imageUrl: string) => {
@@ -300,6 +312,16 @@ export const MobileHomesTab = () => {
                   required
                 />
               </div>
+              <div>
+                <Label htmlFor="minimum_profit">Minimum Profit per Home</Label>
+                <Input
+                  id="minimum_profit"
+                  type="number"
+                  value={formData.minimum_profit}
+                  onChange={(e) => setFormData({...formData, minimum_profit: e.target.value})}
+                  placeholder="0"
+                />
+              </div>
               <div className="col-span-2">
                 <Button type="submit" className="w-full">Add Mobile Home</Button>
               </div>
@@ -316,6 +338,7 @@ export const MobileHomesTab = () => {
                   <TableHead>Series</TableHead>
                   <TableHead>Model</TableHead>
                   <TableHead>Cost (Internal)</TableHead>
+                  <TableHead>Min Profit</TableHead>
                   <TableHead>Customer Price (30% markup)</TableHead>
                   <TableHead>Sq Ft</TableHead>
                   <TableHead>Bed/Bath</TableHead>
@@ -325,7 +348,7 @@ export const MobileHomesTab = () => {
               </TableHeader>
               <TableBody>
                 {mobileHomes.map((home) => {
-                  const customerPrice = calculatePrice(home.cost || home.price);
+                  const customerPrice = calculateCustomerPrice(home, 30);
                   return (
                     <TableRow key={home.id}>
                       <TableCell className="font-medium">{getHomeName(home)}</TableCell>
@@ -335,6 +358,9 @@ export const MobileHomesTab = () => {
                       <TableCell>{home.model}</TableCell>
                       <TableCell>
                         <span className="text-sm font-medium text-gray-600">{formatPrice(home.cost || home.price)}</span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm font-medium text-blue-600">{formatPrice(home.minimum_profit || 0)}</span>
                       </TableCell>
                       <TableCell>
                         <span className="text-sm font-medium text-green-600">{formatPrice(customerPrice)}</span>

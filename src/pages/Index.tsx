@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MobileHomesShowcase } from '@/components/MobileHomesShowcase';
@@ -22,10 +23,7 @@ const Index = () => {
   
   console.log('Index component: State initialized', { user: user?.id, isLoading });
   
-  // Use the shopping cart hook at the top level
-  const shoppingCartHook = useShoppingCart();
-  
-  // Destructure after hook call to ensure consistent hook order
+  // IMPORTANT: Call ALL hooks before any conditional logic or early returns
   const {
     cartItems,
     isCartOpen,
@@ -38,9 +36,9 @@ const Index = () => {
     closeCart,
     setIsCartOpen,
     isLoading: cartLoading,
-  } = shoppingCartHook;
+  } = useShoppingCart();
 
-  console.log('Index component: Shopping cart initialized');
+  console.log('Index component: Shopping cart initialized, items:', cartItems.length);
 
   useEffect(() => {
     console.log('Index component: Auth effect starting');
@@ -165,9 +163,10 @@ const Index = () => {
     }
   };
 
-  console.log('Index component: About to render, isLoading:', isLoading);
+  console.log('Index component: About to render, isLoading:', isLoading, 'cartLoading:', cartLoading);
 
-  if (isLoading) {
+  // Now it's safe to do conditional rendering after all hooks have been called
+  if (isLoading || cartLoading) {
     console.log('Index component: Rendering loading spinner');
     return <LoadingSpinner />;
   }

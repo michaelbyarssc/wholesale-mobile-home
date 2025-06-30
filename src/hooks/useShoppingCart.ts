@@ -31,11 +31,15 @@ export const useShoppingCart = () => {
           } else {
             console.log('Invalid cart data format, clearing cart');
             localStorage.removeItem('cart_items');
+            setCartItems([]);
           }
+        } else {
+          setCartItems([]);
         }
       } catch (error) {
         console.error('Error loading cart from localStorage:', error);
         localStorage.removeItem('cart_items'); // Clear corrupted data
+        setCartItems([]);
       } finally {
         setIsLoading(false);
       }
@@ -63,82 +67,110 @@ export const useShoppingCart = () => {
   ) => {
     console.log('addToCart called with:', mobileHome.id, mobileHome.model, 'services:', selectedServices, 'options:', selectedHomeOptions);
     
-    setCartItems(prevItems => {
-      console.log('Current cart items before update:', prevItems.length);
-      const existingIndex = prevItems.findIndex(cartItem => cartItem.mobileHome.id === mobileHome.id);
-      console.log('Existing item index:', existingIndex);
-      
-      if (existingIndex >= 0) {
-        // Item already exists, update services and options
-        console.log('Item already in cart, updating services and options');
-        const updatedItems = [...prevItems];
-        updatedItems[existingIndex] = {
-          ...updatedItems[existingIndex],
-          selectedServices,
-          selectedHomeOptions
-        };
-        return updatedItems;
-      } else {
-        // Add new item
-        const newItem: CartItem = {
-          id: mobileHome.id,
-          mobileHome,
-          selectedServices,
-          selectedHomeOptions
-        };
-        console.log('Adding new item to cart:', newItem.id, 'with services:', selectedServices, 'and options:', selectedHomeOptions);
-        const newCart = [...prevItems, newItem];
-        console.log('New cart length after adding:', newCart.length);
+    try {
+      setCartItems(prevItems => {
+        console.log('Current cart items before update:', prevItems.length);
+        const existingIndex = prevItems.findIndex(cartItem => cartItem.mobileHome.id === mobileHome.id);
+        console.log('Existing item index:', existingIndex);
         
-        return newCart;
-      }
-    });
+        if (existingIndex >= 0) {
+          // Item already exists, update services and options
+          console.log('Item already in cart, updating services and options');
+          const updatedItems = [...prevItems];
+          updatedItems[existingIndex] = {
+            ...updatedItems[existingIndex],
+            selectedServices,
+            selectedHomeOptions
+          };
+          return updatedItems;
+        } else {
+          // Add new item
+          const newItem: CartItem = {
+            id: mobileHome.id,
+            mobileHome,
+            selectedServices,
+            selectedHomeOptions
+          };
+          console.log('Adding new item to cart:', newItem.id, 'with services:', selectedServices, 'and options:', selectedHomeOptions);
+          const newCart = [...prevItems, newItem];
+          console.log('New cart length after adding:', newCart.length);
+          
+          return newCart;
+        }
+      });
+    } catch (error) {
+      console.error('Error adding to cart:', error);
+    }
   }, []);
 
   const removeFromCart = useCallback((itemId: string) => {
     console.log('Removing item from cart:', itemId);
-    setCartItems(prev => {
-      const filtered = prev.filter(item => item.mobileHome.id !== itemId);
-      console.log('Cart after removal:', filtered.length, 'items');
-      return filtered;
-    });
+    try {
+      setCartItems(prev => {
+        const filtered = prev.filter(item => item.mobileHome.id !== itemId);
+        console.log('Cart after removal:', filtered.length, 'items');
+        return filtered;
+      });
+    } catch (error) {
+      console.error('Error removing from cart:', error);
+    }
   }, []);
 
   const updateServices = useCallback((homeId: string, selectedServices: string[]) => {
     console.log('Updating services for home:', homeId, selectedServices);
-    setCartItems(prev => prev.map(item => 
-      item.mobileHome.id === homeId 
-        ? { ...item, selectedServices }
-        : item
-    ));
+    try {
+      setCartItems(prev => prev.map(item => 
+        item.mobileHome.id === homeId 
+          ? { ...item, selectedServices }
+          : item
+      ));
+    } catch (error) {
+      console.error('Error updating services:', error);
+    }
   }, []);
 
   const updateHomeOptions = useCallback((homeId: string, selectedHomeOptions: { option: HomeOption; quantity: number }[]) => {
     console.log('Updating home options for home:', homeId, selectedHomeOptions);
-    setCartItems(prev => prev.map(item => 
-      item.mobileHome.id === homeId 
-        ? { ...item, selectedHomeOptions }
-        : item
-    ));
+    try {
+      setCartItems(prev => prev.map(item => 
+        item.mobileHome.id === homeId 
+          ? { ...item, selectedHomeOptions }
+          : item
+      ));
+    } catch (error) {
+      console.error('Error updating home options:', error);
+    }
   }, []);
 
   const clearCart = useCallback(() => {
     console.log('Clearing cart');
-    setCartItems([]);
+    try {
+      setCartItems([]);
+    } catch (error) {
+      console.error('Error clearing cart:', error);
+    }
   }, []);
 
   const toggleCart = useCallback(() => {
     console.log('toggleCart called, current isCartOpen:', isCartOpen);
-    setIsCartOpen(prev => {
-      const newState = !prev;
-      console.log('Setting cart state to:', newState);
-      return newState;
-    });
+    try {
+      setIsCartOpen(prev => {
+        const newState = !prev;
+        console.log('Setting cart state to:', newState);
+        return newState;
+      });
+    } catch (error) {
+      console.error('Error toggling cart:', error);
+    }
   }, [isCartOpen]);
 
   const closeCart = useCallback(() => {
     console.log('Closing cart');
-    setIsCartOpen(false);
+    try {
+      setIsCartOpen(false);
+    } catch (error) {
+      console.error('Error closing cart:', error);
+    }
   }, []);
 
   console.log('useShoppingCart render - cart items:', cartItems.length, 'isOpen:', isCartOpen, 'isLoading:', isLoading);

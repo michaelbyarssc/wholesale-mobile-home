@@ -58,60 +58,29 @@ export const AuthForm = ({
           console.error('Error checking existing profile:', profileCheckError);
         }
 
-        // If user was denied, reset their denial status and allow re-registration
+        // If user was denied, delete their old auth user and profile first, then allow fresh signup
         if (existingProfile && existingProfile.denied) {
-          console.log('User was previously denied, resetting denial status...');
+          console.log('User was previously denied, deleting old account and allowing fresh signup...');
           
-          const { error: resetError } = await supabase
-            .from('profiles')
-            .update({
-              denied: false,
-              denied_at: null,
-              denied_by: null,
-              approved: false,
-              approved_at: null,
-              approved_by: null,
-              first_name: firstName,
-              last_name: lastName
-            })
-            .eq('user_id', existingProfile.user_id);
-
-          if (resetError) {
-            console.error('Error resetting denial status:', resetError);
-            throw new Error('Failed to reset account status');
-          }
-
-          toast({
-            title: "Account Reset",
-            description: "Your account status has been reset. You can now request approval again.",
-          });
-
-          // Send notification to admin about re-registration
           try {
-            const { error: notificationError } = await supabase.functions.invoke('send-new-user-notification', {
-              body: {
-                firstName,
-                lastName,
-                email,
-                phoneNumber,
-                isReregistration: true,
-              },
+            // Delete the existing user using admin function
+            const { error: deleteError } = await supabase.functions.invoke('admin-delete-user', {
+              body: { userId: existingProfile.user_id }
             });
 
-            if (notificationError) {
-              console.error('Notification error:', notificationError);
+            if (deleteError) {
+              console.error('Error deleting old user account:', deleteError);
+              // Continue with signup anyway, as the user might have been manually deleted
             }
-          } catch (notificationError) {
-            console.error('Failed to send admin notification:', notificationError);
+
+            toast({
+              title: "Account Reset",
+              description: "Your previous account has been reset. Creating a new account...",
+            });
+          } catch (deleteError) {
+            console.error('Failed to delete old account:', deleteError);
+            // Continue with signup anyway
           }
-
-          toast({
-            title: "Re-registration Submitted",
-            description: "Your request for approval has been submitted again. You will receive an email once approved.",
-          });
-
-          setLoading(false);
-          return;
         }
 
         // If user already exists and is not denied, check if they're already approved
@@ -133,6 +102,7 @@ export const AuthForm = ({
           return;
         }
 
+        // Proceed with normal signup process
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
@@ -160,6 +130,7 @@ export const AuthForm = ({
               lastName,
               email,
               phoneNumber,
+              isReregistration: existingProfile && existingProfile.denied,
             },
           });
 
@@ -172,9 +143,12 @@ export const AuthForm = ({
           // Continue with success message even if notification fails
         }
 
+        const isReregistration = existingProfile && existingProfile.denied;
         toast({
           title: "Account Created Successfully",
-          description: "Your account has been created and is pending admin approval. You will receive an email once approved.",
+          description: isReregistration 
+            ? "Your new account has been created and is pending admin approval. You will receive an email once approved."
+            : "Your account has been created and is pending admin approval. You will receive an email once approved.",
         });
       } else {
         // Sign in process

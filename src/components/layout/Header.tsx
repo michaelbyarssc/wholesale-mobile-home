@@ -47,6 +47,34 @@ export const Header = ({
   return (
     <>
       <header className="bg-white shadow-sm">
+        {/* Business Contact Bar - Moved to top of header */}
+        {(businessInfo?.business_phone || businessInfo?.business_email) && (
+          <div className="bg-blue-50 border-b border-blue-100">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="flex flex-col sm:flex-row justify-center items-center py-2 gap-2 sm:gap-6 text-sm">
+                {businessInfo.business_phone && (
+                  <a 
+                    href={`tel:${businessInfo.business_phone}`}
+                    className="flex items-center gap-1 text-blue-700 hover:text-blue-900 transition-colors"
+                  >
+                    <Phone className="h-4 w-4" />
+                    <span>{businessInfo.business_phone}</span>
+                  </a>
+                )}
+                {businessInfo.business_email && (
+                  <a 
+                    href={`mailto:${businessInfo.business_email}`}
+                    className="flex items-center gap-1 text-blue-700 hover:text-blue-900 transition-colors"
+                  >
+                    <Mail className="h-4 w-4" />
+                    <span>{businessInfo.business_email}</span>
+                  </a>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center py-3 sm:py-4 lg:py-6 gap-3 sm:gap-4">
             <div className="flex items-center w-full sm:w-auto">
@@ -112,28 +140,6 @@ export const Header = ({
             )}
           </div>
         </div>
-
-        {/* Business Contact Bar - Moved below the main header */}
-        {(businessInfo?.business_phone || businessInfo?.business_email) && (
-          <div className="bg-blue-50 border-t border-blue-100">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="flex flex-col sm:flex-row justify-center items-center py-2 gap-2 sm:gap-6 text-lg">
-                {businessInfo.business_phone && (
-                  <div className="flex items-center gap-1 text-blue-700">
-                    <Phone className="h-4 w-4" />
-                    <span>{businessInfo.business_phone}</span>
-                  </div>
-                )}
-                {businessInfo.business_email && (
-                  <div className="flex items-center gap-1 text-blue-700">
-                    <Mail className="h-4 w-4" />
-                    <span>{businessInfo.business_email}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
       </header>
 
       <PasswordChangeDialog

@@ -74,11 +74,11 @@ serve(async (req) => {
         if (data.success && data.data && data.data.markdown) {
           console.log('Successfully scraped OwnTru models page');
           
-          // Parse the scraped markdown content to extract model information
           const markdown = data.data.markdown;
           console.log('Scraped content length:', markdown.length);
+          console.log('Content sample:', markdown.substring(0, 500));
           
-          // Parse the scraped content
+          // Parse the scraped content with improved logic
           mobileHomes = parseOwnTruModels(markdown);
           console.log(`Parsed ${mobileHomes.length} models from scraped content`);
           
@@ -119,7 +119,6 @@ serve(async (req) => {
     // Update database
     let updatedCount = 0;
     let createdCount = 0;
-    let skippedCount = 0;
 
     for (const homeData of filteredHomes) {
       try {
@@ -204,7 +203,6 @@ serve(async (req) => {
         totalProcessed: filteredHomes.length,
         created: createdCount,
         updated: updatedCount,
-        skipped: skippedCount,
         excludedModels: ['SENSATION', 'SPLENDOR'],
         homes: filteredHomes.map(h => ({
           display_name: h.display_name,
@@ -238,24 +236,25 @@ serve(async (req) => {
   }
 });
 
-// Helper function to parse scraped markdown content
+// Helper function to parse scraped markdown content with improved logic
 function parseOwnTruModels(markdown: string): MobileHomeData[] {
   const models: MobileHomeData[] = [];
   
   console.log('Starting to parse OwnTru markdown content');
   
   try {
-    // Split content into sections by series
-    const lines = markdown.split('\n');
+    // Split content into sections and look for patterns
+    const lines = markdown.split('\n').map(line => line.trim()).filter(line => line.length > 0);
     let currentSeries = '';
     let currentModel: Partial<MobileHomeData> = {};
-    let inModelSection = false;
+    let isInModelSection = false;
     
     for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].trim();
+      const line = lines[i];
+      const nextLine = i + 1 < lines.length ? lines[i + 1] : '';
       
-      // Detect series headers (usually large headings like "# TRU SERIES" or "## ASPIRE SERIES")
-      if (line.match(/^#+\s*(TRU|ASPIRE|ELEMENT|INSPIRE|PREMIER|CLASSIC)\s*(SERIES)?/i)) {
+      // Look for series patterns (various formats)
+      if (line.match(/^#+\s*(TRU|ASPIRE|ELEMENT|INSPIRE|PREMIER|CLASSIC|ADVANTAGE|CELEBRATION|COMPASS|DELIGHT|ESSENCE|HARMONY|LEGACY|MOMENTUM|NAVIGATE|OPTIMIZE|PRECISION|QUEST|RESOLVE|SUMMIT|TRIUMPH|VELOCITY|WONDER|ZENITH)\s*(SERIES|LINE)?/i)) {
         const seriesMatch = line.match(/^#+\s*([A-Z]+)/i);
         if (seriesMatch) {
           currentSeries = seriesMatch[1].toUpperCase();
@@ -264,21 +263,31 @@ function parseOwnTruModels(markdown: string): MobileHomeData[] {
         continue;
       }
       
-      // Detect model names (usually in headings or bold text)
-      const modelMatch = line.match(/^#+\s*([A-Z][A-Z0-9\s\-]+)$|^\*\*([A-Z][A-Z0-9\s\-]+)\*\*$/i);
+      // Look for model names in various formats
+      let modelMatch = null;
+      
+      // Try different patterns for model names
+      modelMatch = line.match(/^#+\s*([A-Z][A-Z0-9\s\-]+)$/) || 
+                  line.match(/^\*\*([A-Z][A-Z0-9\s\-]+)\*\*$/) ||
+                  line.match(/^([A-Z][A-Z0-9\s\-]{2,})$/) ||
+                  line.match(/^Model:\s*([A-Z][A-Z0-9\s\-]+)$/i);
+      
       if (modelMatch && currentSeries) {
         // Save previous model if exists
         if (currentModel.model && currentModel.series) {
-          models.push(createModelData(currentModel));
+          const completedModel = createModelData(currentModel);
+          if (!['SENSATION', 'SPLENDOR'].includes(completedModel.model.toUpperCase())) {
+            models.push(completedModel);
+          }
         }
         
         // Start new model
-        const modelName = (modelMatch[1] || modelMatch[2]).trim();
+        const modelName = modelMatch[1].trim();
         
         // Skip if it's SENSATION or SPLENDOR
         if (['SENSATION', 'SPLENDOR'].includes(modelName.toUpperCase())) {
           currentModel = {};
-          inModelSection = false;
+          isInModelSection = false;
           continue;
         }
         
@@ -288,54 +297,71 @@ function parseOwnTruModels(markdown: string): MobileHomeData[] {
           display_name: `${currentSeries} ${modelName}`,
           features: []
         };
-        inModelSection = true;
+        isInModelSection = true;
         console.log(`Found model: ${modelName} in ${currentSeries} series`);
         continue;
       }
       
-      if (inModelSection && currentModel.model) {
-        // Look for specifications
-        if (line.includes('sq ft') || line.includes('square feet')) {
-          const sqftMatch = line.match(/(\d+(?:,\d+)?)\s*(?:sq|square)\s*f/i);
-          if (sqftMatch) {
-            currentModel.square_footage = parseInt(sqftMatch[1].replace(',', ''));
-          }
+      // Extract specifications when we're in a model section
+      if (isInModelSection && currentModel.model) {
+        // Square footage
+        let sqftMatch = line.match(/(\d+(?:,\d+)?)\s*(?:sq\.?\s*ft\.?|square\s*feet?)/i);
+        if (sqftMatch) {
+          currentModel.square_footage = parseInt(sqftMatch[1].replace(',', ''));
         }
         
-        if (line.includes('bedroom') || line.includes('bed')) {
-          const bedroomMatch = line.match(/(\d+)\s*(?:bed|bedroom)/i);
-          if (bedroomMatch) {
-            currentModel.bedrooms = parseInt(bedroomMatch[1]);
-          }
+        // Bedrooms
+        let bedroomMatch = line.match(/(\d+)\s*(?:bed|bedroom)/i);
+        if (bedroomMatch) {
+          currentModel.bedrooms = parseInt(bedroomMatch[1]);
         }
         
-        if (line.includes('bathroom') || line.includes('bath')) {
-          const bathroomMatch = line.match(/(\d+(?:\.\d+)?)\s*(?:bath|bathroom)/i);
-          if (bathroomMatch) {
-            currentModel.bathrooms = parseFloat(bathroomMatch[1]);
-          }
+        // Bathrooms
+        let bathroomMatch = line.match(/(\d+(?:\.\d+)?)\s*(?:bath|bathroom)/i);
+        if (bathroomMatch) {
+          currentModel.bathrooms = parseFloat(bathroomMatch[1]);
         }
         
-        // Look for dimensions (like 16x80, 28x52, etc.)
-        const dimensionMatch = line.match(/(\d+)\s*[x×]\s*(\d+)/);
+        // Dimensions
+        let dimensionMatch = line.match(/(\d+)\s*[x×]\s*(\d+)/);
         if (dimensionMatch) {
           currentModel.width_feet = parseInt(dimensionMatch[1]);
           currentModel.length_feet = parseInt(dimensionMatch[2]);
         }
         
-        // Look for features (bullet points or dashes)
-        if (line.match(/^[\-\*•]\s*(.+)$/)) {
-          const feature = line.replace(/^[\-\*•]\s*/, '').trim();
-          if (feature && feature.length > 3) {
+        // Features (bullet points, dashes, or structured lists)
+        if (line.match(/^[\-\*•·]\s*(.+)$/) || line.match(/^\d+\.\s*(.+)$/)) {
+          const feature = line.replace(/^[\-\*•·\d\.]\s*/, '').trim();
+          if (feature && feature.length > 3 && !feature.match(/^\d+\s*(sq|bed|bath|x|×)/i)) {
             currentModel.features = currentModel.features || [];
-            currentModel.features.push(feature);
+            if (!currentModel.features.includes(feature)) {
+              currentModel.features.push(feature);
+            }
           }
         }
         
-        // Look for descriptions (longer text lines)
-        if (line.length > 20 && !line.includes(':') && !line.match(/^[\-\*•#]/) && line.match(/[a-z]/)) {
+        // Description (longer descriptive text)
+        if (line.length > 30 && !line.includes(':') && !line.match(/^[\-\*•#\d]/) && 
+            line.match(/[a-z]/) && !line.match(/\d+\s*(sq|bed|bath|x|×)/i)) {
           if (!currentModel.description) {
             currentModel.description = line;
+          }
+        }
+        
+        // Look for specs in structured format
+        if (line.includes(':')) {
+          const [key, value] = line.split(':').map(s => s.trim());
+          if (key.match(/sq/i) && value.match(/\d+/)) {
+            const sqft = value.match(/(\d+(?:,\d+)?)/);
+            if (sqft) currentModel.square_footage = parseInt(sqft[1].replace(',', ''));
+          }
+          if (key.match(/bed/i) && value.match(/\d+/)) {
+            const beds = value.match(/(\d+)/);
+            if (beds) currentModel.bedrooms = parseInt(beds[1]);
+          }
+          if (key.match(/bath/i) && value.match(/\d+/)) {
+            const baths = value.match(/(\d+(?:\.\d+)?)/);
+            if (baths) currentModel.bathrooms = parseFloat(baths[1]);
           }
         }
       }
@@ -343,7 +369,10 @@ function parseOwnTruModels(markdown: string): MobileHomeData[] {
     
     // Don't forget the last model
     if (currentModel.model && currentModel.series) {
-      models.push(createModelData(currentModel));
+      const completedModel = createModelData(currentModel);
+      if (!['SENSATION', 'SPLENDOR'].includes(completedModel.model.toUpperCase())) {
+        models.push(completedModel);
+      }
     }
     
     console.log(`Successfully parsed ${models.length} models`);

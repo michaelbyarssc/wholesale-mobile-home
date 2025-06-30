@@ -38,11 +38,24 @@ serve(async (req) => {
     const token = authHeader.replace('Bearer ', '')
     console.log('Token extracted, length:', token.length)
     
-    // Verify the JWT token and get user directly using admin client
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token)
+    // Verify the JWT token by creating a client with the token
+    const supabaseWithToken = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      {
+        global: {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      }
+    )
+
+    // Get the user using the token-authenticated client
+    const { data: { user }, error: authError } = await supabaseWithToken.auth.getUser()
     if (authError || !user) {
       console.log('Auth verification failed:', authError)
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+      return new Response(JSON.stringify({ error: 'Unauthorized - Invalid token' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
@@ -50,7 +63,7 @@ serve(async (req) => {
 
     console.log('User authenticated:', user.id)
 
-    // Check if user is admin using the is_admin function
+    // Check if user is admin using the is_admin function with admin client
     const { data: isAdmin, error: adminError } = await supabaseAdmin.rpc('is_admin', { user_id: user.id })
     if (adminError) {
       console.log('Admin check error:', adminError)

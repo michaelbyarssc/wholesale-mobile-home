@@ -79,8 +79,47 @@ export const MobileHomeEditDialog = ({ mobileHome, open, onClose, onSave }: Mobi
     }));
   };
 
+  const convertToJpg = async (file: File): Promise<File> => {
+    return new Promise((resolve, reject) => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const img = new Image();
+      
+      img.onload = () => {
+        canvas.width = img.width;
+        canvas.height = img.height;
+        
+        // Draw white background first (for transparency)
+        if (ctx) {
+          ctx.fillStyle = '#FFFFFF';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          
+          // Draw the image
+          ctx.drawImage(img, 0, 0);
+          
+          canvas.toBlob((blob) => {
+            if (blob) {
+              const convertedFile = new File([blob], file.name.replace(/\.[^/.]+$/, '.jpg'), {
+                type: 'image/jpeg',
+                lastModified: Date.now(),
+              });
+              resolve(convertedFile);
+            } else {
+              reject(new Error('Failed to convert image'));
+            }
+          }, 'image/jpeg', 0.9);
+        } else {
+          reject(new Error('Failed to get canvas context'));
+        }
+      };
+      
+      img.onerror = () => reject(new Error('Failed to load image'));
+      img.src = URL.createObjectURL(file);
+    });
+  };
+
   const uploadImageToStorage = async (file: File): Promise<string> => {
-    const fileExt = file.name.split('.').pop();
+    const fileExt = 'jpg'; // Always use jpg extension after conversion
     const fileName = `${mobileHome!.id}/${Date.now()}.${fileExt}`;
     
     const { data, error } = await supabase.storage
@@ -116,17 +155,36 @@ export const MobileHomeEditDialog = ({ mobileHome, open, onClose, onSave }: Mobi
     for (const file of Array.from(files)) {
       try {
         // Check if file type is supported
-        const supportedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+        const supportedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif', 'image/avif'];
         if (!supportedTypes.includes(file.type)) {
           toast({
             title: "Unsupported File Type",
-            description: `${file.name} is not a supported image format. Please use JPG, PNG, WebP, or GIF.`,
+            description: `${file.name} is not a supported image format. Please use JPG, PNG, WebP, GIF, or AVIF.`,
             variant: "destructive",
           });
           continue;
         }
 
-        const imageUrl = await uploadImageToStorage(file);
+        let fileToUpload = file;
+        let conversionMessage = '';
+
+        // Convert to JPG if not already JPG
+        if (file.type !== 'image/jpeg' && !file.name.toLowerCase().endsWith('.jpg')) {
+          try {
+            fileToUpload = await convertToJpg(file);
+            conversionMessage = ` (converted from ${file.type.split('/')[1].toUpperCase()} to JPG)`;
+          } catch (conversionError) {
+            console.error('Error converting image:', conversionError);
+            toast({
+              title: "Conversion Error",
+              description: `Failed to convert ${file.name} to JPG format.`,
+              variant: "destructive",
+            });
+            continue;
+          }
+        }
+
+        const imageUrl = await uploadImageToStorage(fileToUpload);
         
         const { error } = await supabase
           .from('mobile_home_images')
@@ -142,7 +200,7 @@ export const MobileHomeEditDialog = ({ mobileHome, open, onClose, onSave }: Mobi
         
         toast({
           title: "Success",
-          description: "Image uploaded successfully.",
+          description: `Image uploaded successfully${conversionMessage}.`,
         });
         
         await fetchImages();
@@ -521,14 +579,14 @@ export const MobileHomeEditDialog = ({ mobileHome, open, onClose, onSave }: Mobi
                 <input
                   type="file"
                   multiple
-                  accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
+                  accept="image/jpeg,image/jpg,image/png,image/webp,image/gif,image/avif"
                   onChange={handleFileUpload}
                   className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                   disabled={uploading || images.length >= 40}
                 />
                 <Button size="sm" disabled={uploading || images.length >= 40}>
                   <Upload className="h-4 w-4 mr-1" />
-                  {uploading ? 'Uploading...' : 'Upload Images'}
+                  {uploading ? 'Converting & Uploading...' : 'Upload Images'}
                 </Button>
               </div>
             </div>
@@ -538,6 +596,18 @@ export const MobileHomeEditDialog = ({ mobileHome, open, onClose, onSave }: Mobi
                 Maximum of 40 images reached. Delete some images to upload new ones.
               </p>
             )}
+            
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+              <div className="flex items-center space-x-2 text-blue-700">
+                <Upload className="h-4 w-4" />
+                <span className="text-sm font-medium">Auto-conversion enabled:</span>
+              </div>
+              <div className="text-xs text-blue-600 mt-1 space-y-1">
+                <p>• All images automatically converted to JPG format</p>
+                <p>• Supports: JPG, PNG, WebP, GIF, AVIF uploads</p>
+                <p>• Transparent backgrounds become white</p>
+              </div>
+            </div>
             
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
               <div className="flex items-center space-x-2 text-blue-700">
@@ -674,7 +744,7 @@ export const MobileHomeEditDialog = ({ mobileHome, open, onClose, onSave }: Mobi
                   <Image className="h-8 w-8 mx-auto mb-2" />
                   <span className="text-sm">No images uploaded</span>
                   <p className="text-xs text-gray-400 mt-1">Upload up to 40 images</p>
-                  <p className="text-xs text-gray-400">Supports: JPG, PNG, WebP, GIF</p>
+                  <p className="text-xs text-gray-400">Auto-converts to JPG format</p>
                 </div>
               </div>
             )}

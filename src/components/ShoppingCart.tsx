@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
@@ -275,21 +274,6 @@ const CartItemCard = ({
     }
   };
 
-  const updateHomeOptionQuantity = (homeOptionId: string, quantity: number) => {
-    const currentOptions = item.selectedHomeOptions || [];
-    if (quantity <= 0) {
-      const newOptions = currentOptions.filter(item => item.option.id !== homeOptionId);
-      onUpdateHomeOptions(item.mobileHome.id, newOptions);
-    } else {
-      const newOptions = currentOptions.map(item => 
-        item.option.id === homeOptionId 
-          ? { ...item, quantity }
-          : item
-      );
-      onUpdateHomeOptions(item.mobileHome.id, newOptions);
-    }
-  };
-
   const formatSize = (home: any) => {
     if (home.length_feet && home.width_feet) {
       return `${home.width_feet}x${home.length_feet}`;
@@ -410,19 +394,6 @@ const CartItemCard = ({
                     <Badge variant="outline" className="text-xs mt-1">
                       {homeOption.pricing_type === 'per_sqft' ? 'Per Sq Ft' : 'Fixed Price'}
                     </Badge>
-                    {isSelected && (
-                      <div className="flex items-center space-x-2 mt-2">
-                        <Label htmlFor={`cart-qty-${homeOption.id}`} className="text-xs">Qty:</Label>
-                        <Input
-                          id={`cart-qty-${homeOption.id}`}
-                          type="number"
-                          min="1"
-                          value={selectedOption.quantity}
-                          onChange={(e) => updateHomeOptionQuantity(homeOption.id, parseInt(e.target.value) || 1)}
-                          className="w-16 h-8 text-xs"
-                        />
-                      </div>
-                    )}
                   </div>
                 </div>
               );

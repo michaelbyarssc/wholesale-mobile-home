@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Plus, Edit, Trash2, Save, X } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
@@ -19,6 +20,8 @@ interface HomeOption {
   cost_price: number;
   markup_percentage: number;
   calculated_price: number | null;
+  pricing_type: string;
+  price_per_sqft: number | null;
   active: boolean;
   display_order: number;
   created_at: string;
@@ -30,6 +33,8 @@ interface HomeOptionForm {
   description: string;
   cost_price: number;
   markup_percentage: number;
+  pricing_type: string;
+  price_per_sqft: number;
   active: boolean;
   display_order: number;
 }
@@ -42,6 +47,8 @@ export const HomeOptionsTab = () => {
     description: '',
     cost_price: 0,
     markup_percentage: 0,
+    pricing_type: 'fixed',
+    price_per_sqft: 0,
     active: true,
     display_order: 0
   });
@@ -161,6 +168,8 @@ export const HomeOptionsTab = () => {
       description: '',
       cost_price: 0,
       markup_percentage: 0,
+      pricing_type: 'fixed',
+      price_per_sqft: 0,
       active: true,
       display_order: 0
     });
@@ -173,6 +182,8 @@ export const HomeOptionsTab = () => {
       description: option.description || '',
       cost_price: option.cost_price,
       markup_percentage: option.markup_percentage,
+      pricing_type: option.pricing_type || 'fixed',
+      price_per_sqft: option.price_per_sqft || 0,
       active: option.active,
       display_order: option.display_order
     });
@@ -199,6 +210,101 @@ export const HomeOptionsTab = () => {
       style: 'currency',
       currency: 'USD',
     }).format(price);
+  };
+
+  const renderPricingDisplay = (option: HomeOption) => {
+    if (option.pricing_type === 'per_sqft') {
+      return (
+        <div>
+          <span className="text-gray-500">Per Sq Ft:</span>
+          <div className="font-medium text-blue-600">{formatPrice(option.price_per_sqft)}/sq ft</div>
+        </div>
+      );
+    } else {
+      return (
+        <div>
+          <span className="text-gray-500">Fixed Price:</span>
+          <div className="font-medium text-green-600">{formatPrice(option.calculated_price)}</div>
+        </div>
+      );
+    }
+  };
+
+  const renderPricingForm = (isEdit = false) => {
+    const idPrefix = isEdit ? 'edit-' : '';
+    
+    return (
+      <>
+        <div>
+          <Label htmlFor={`${idPrefix}pricing-type`}>Pricing Type</Label>
+          <Select
+            value={formData.pricing_type}
+            onValueChange={(value) => setFormData({ ...formData, pricing_type: value })}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select pricing type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="fixed">Fixed Price</SelectItem>
+              <SelectItem value="per_sqft">Price Per Square Foot</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {formData.pricing_type === 'fixed' ? (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <Label htmlFor={`${idPrefix}cost-price`}>Cost Price *</Label>
+              <Input
+                id={`${idPrefix}cost-price`}
+                type="number"
+                step="0.01"
+                min="0"
+                value={formData.cost_price}
+                onChange={(e) => setFormData({ ...formData, cost_price: parseFloat(e.target.value) || 0 })}
+                placeholder="0.00"
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor={`${idPrefix}markup`}>Markup %</Label>
+              <Input
+                id={`${idPrefix}markup`}
+                type="number"
+                step="0.01"
+                min="0"
+                value={formData.markup_percentage}
+                onChange={(e) => setFormData({ ...formData, markup_percentage: parseFloat(e.target.value) || 0 })}
+                placeholder="0.00"
+              />
+            </div>
+            <div>
+              <Label>Calculated Price</Label>
+              <div className="mt-2 p-2 bg-gray-50 rounded border text-sm font-medium">
+                {formatPrice(formData.cost_price * (1 + formData.markup_percentage / 100))}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div>
+            <Label htmlFor={`${idPrefix}price-per-sqft`}>Price Per Square Foot *</Label>
+            <Input
+              id={`${idPrefix}price-per-sqft`}
+              type="number"
+              step="0.01"
+              min="0"
+              value={formData.price_per_sqft}
+              onChange={(e) => setFormData({ ...formData, price_per_sqft: parseFloat(e.target.value) || 0 })}
+              placeholder="0.00"
+              required
+            />
+            <p className="text-sm text-gray-500 mt-1">
+              This will be multiplied by the home's square footage to calculate the final price.
+            </p>
+          </div>
+        )}
+      </>
+    );
   };
 
   if (isLoading) {
@@ -249,7 +355,7 @@ export const HomeOptionsTab = () => {
                         id="name"
                         value={formData.name}
                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                        placeholder="e.g., Extended Warranty"
+                        placeholder="e.g., OSB Flooring"
                         required
                       />
                     </div>
@@ -279,39 +385,7 @@ export const HomeOptionsTab = () => {
                     />
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <Label htmlFor="cost_price">Cost Price *</Label>
-                      <Input
-                        id="cost_price"
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={formData.cost_price}
-                        onChange={(e) => setFormData({ ...formData, cost_price: parseFloat(e.target.value) || 0 })}
-                        placeholder="0.00"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="markup_percentage">Markup %</Label>
-                      <Input
-                        id="markup_percentage"
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={formData.markup_percentage}
-                        onChange={(e) => setFormData({ ...formData, markup_percentage: parseFloat(e.target.value) || 0 })}
-                        placeholder="0.00"
-                      />
-                    </div>
-                    <div>
-                      <Label>Calculated Price</Label>
-                      <div className="mt-2 p-2 bg-gray-50 rounded border text-sm font-medium">
-                        {formatPrice(formData.cost_price * (1 + formData.markup_percentage / 100))}
-                      </div>
-                    </div>
-                  </div>
+                  {renderPricingForm()}
 
                   <div className="flex justify-end space-x-2">
                     <Button type="button" variant="outline" onClick={cancelEditing}>
@@ -376,37 +450,7 @@ export const HomeOptionsTab = () => {
                           />
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          <div>
-                            <Label htmlFor="edit-cost-price">Cost Price *</Label>
-                            <Input
-                              id="edit-cost-price"
-                              type="number"
-                              step="0.01"
-                              min="0"
-                              value={formData.cost_price}
-                              onChange={(e) => setFormData({ ...formData, cost_price: parseFloat(e.target.value) || 0 })}
-                              required
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="edit-markup">Markup %</Label>
-                            <Input
-                              id="edit-markup"
-                              type="number"
-                              step="0.01"
-                              min="0"
-                              value={formData.markup_percentage}
-                              onChange={(e) => setFormData({ ...formData, markup_percentage: parseFloat(e.target.value) || 0 })}
-                            />
-                          </div>
-                          <div>
-                            <Label>Calculated Price</Label>
-                            <div className="mt-2 p-2 bg-gray-50 rounded border text-sm font-medium">
-                              {formatPrice(formData.cost_price * (1 + formData.markup_percentage / 100))}
-                            </div>
-                          </div>
-                        </div>
+                        {renderPricingForm(true)}
 
                         <div className="flex justify-end space-x-2">
                           <Button type="button" variant="outline" onClick={cancelEditing}>
@@ -431,6 +475,13 @@ export const HomeOptionsTab = () => {
                             }`}>
                               {option.active ? 'Active' : 'Inactive'}
                             </span>
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                              option.pricing_type === 'per_sqft'
+                                ? 'bg-blue-100 text-blue-800'
+                                : 'bg-purple-100 text-purple-800'
+                            }`}>
+                              {option.pricing_type === 'per_sqft' ? 'Per Sq Ft' : 'Fixed Price'}
+                            </span>
                           </div>
                           
                           {option.description && (
@@ -438,18 +489,24 @@ export const HomeOptionsTab = () => {
                           )}
                           
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                            <div>
-                              <span className="text-gray-500">Cost Price:</span>
-                              <div className="font-medium">{formatPrice(option.cost_price)}</div>
-                            </div>
-                            <div>
-                              <span className="text-gray-500">Markup:</span>
-                              <div className="font-medium">{option.markup_percentage}%</div>
-                            </div>
-                            <div>
-                              <span className="text-gray-500">Selling Price:</span>
-                              <div className="font-medium text-green-600">{formatPrice(option.calculated_price)}</div>
-                            </div>
+                            {option.pricing_type === 'fixed' ? (
+                              <>
+                                <div>
+                                  <span className="text-gray-500">Cost Price:</span>
+                                  <div className="font-medium">{formatPrice(option.cost_price)}</div>
+                                </div>
+                                <div>
+                                  <span className="text-gray-500">Markup:</span>
+                                  <div className="font-medium">{option.markup_percentage}%</div>
+                                </div>
+                              </>
+                            ) : (
+                              <div>
+                                <span className="text-gray-500">Cost per Sq Ft:</span>
+                                <div className="font-medium">{formatPrice(option.price_per_sqft)}</div>
+                              </div>
+                            )}
+                            {renderPricingDisplay(option)}
                           </div>
                         </div>
                         

@@ -188,6 +188,8 @@ export type Database = {
           id: string
           markup_percentage: number
           name: string
+          price_per_sqft: number | null
+          pricing_type: string
           updated_at: string
         }
         Insert: {
@@ -200,6 +202,8 @@ export type Database = {
           id?: string
           markup_percentage?: number
           name: string
+          price_per_sqft?: number | null
+          pricing_type?: string
           updated_at?: string
         }
         Update: {
@@ -212,6 +216,8 @@ export type Database = {
           id?: string
           markup_percentage?: number
           name?: string
+          price_per_sqft?: number | null
+          pricing_type?: string
           updated_at?: string
         }
         Relationships: []

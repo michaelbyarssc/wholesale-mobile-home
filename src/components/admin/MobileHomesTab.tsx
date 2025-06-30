@@ -3,14 +3,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { MobileHomeEditDialog } from './MobileHomeEditDialog';
-import { Edit, Trash2 } from 'lucide-react';
-import { formatPrice } from '@/lib/utils';
-import { useCustomerPricing } from '@/hooks/useCustomerPricing';
+import { MobileHomesDragDrop } from './MobileHomesDragDrop';
 import type { Database } from '@/integrations/supabase/types';
 
 type MobileHome = Database['public']['Tables']['mobile_homes']['Row'];
@@ -29,16 +26,14 @@ export const MobileHomesTab = () => {
     minimum_profit: ''
   });
 
-  // Get customer pricing for markup calculations
-  const { calculatePrice } = useCustomerPricing(null); // null for admin view
-
   const { data: mobileHomes = [], isLoading, refetch } = useQuery({
     queryKey: ['admin-mobile-homes'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('mobile_homes')
         .select('*')
-        .order('series', { ascending: true });
+        .order('display_order', { ascending: true })
+        .order('created_at', { ascending: true });
       
       if (error) throw error;
       return data as MobileHome[];
@@ -73,13 +68,23 @@ export const MobileHomesTab = () => {
     }
     
     try {
+      // Get the next display_order value
+      const { data: maxOrderData } = await supabase
+        .from('mobile_homes')
+        .select('display_order')
+        .order('display_order', { ascending: false })
+        .limit(1);
+        
+      const nextOrder = (maxOrderData?.[0]?.display_order || 0) + 1;
+
       const insertData: MobileHomeInsert = {
         manufacturer: formData.manufacturer,
         series: formData.series.trim(),
         model: formData.model,
         display_name: formData.display_name,
         price: parseFloat(formData.price),
-        minimum_profit: parseFloat(formData.minimum_profit) || 0
+        minimum_profit: parseFloat(formData.minimum_profit) || 0,
+        display_order: nextOrder
       };
 
       const { error } = await supabase
@@ -128,27 +133,6 @@ export const MobileHomesTab = () => {
         variant: "destructive",
       });
     }
-  };
-
-  const formatSize = (home: MobileHome) => {
-    if (home.length_feet && home.width_feet) {
-      return `${home.width_feet}x${home.length_feet}`;
-    }
-    return 'N/A';
-  };
-
-  const getHomeName = (home: MobileHome) => {
-    return home.display_name || `${home.series} ${home.model}`;
-  };
-
-  const calculateCustomerPrice = (home: MobileHome, customerMarkup: number = 30) => {
-    const baseCost = home.cost || home.price;
-    const minimumProfit = home.minimum_profit || 0;
-    
-    const markupPrice = baseCost * (1 + customerMarkup / 100);
-    const minimumPrice = baseCost + minimumProfit;
-    
-    return Math.max(markupPrice, minimumPrice);
   };
 
   const deleteImageFromStorage = async (imageUrl: string) => {
@@ -328,85 +312,13 @@ export const MobileHomesTab = () => {
             </form>
           )}
 
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Size</TableHead>
-                  <TableHead>Manufacturer</TableHead>
-                  <TableHead>Series</TableHead>
-                  <TableHead>Model</TableHead>
-                  <TableHead>Cost (Internal)</TableHead>
-                  <TableHead>Min Profit</TableHead>
-                  <TableHead>Customer Price (30% markup)</TableHead>
-                  <TableHead>Sq Ft</TableHead>
-                  <TableHead>Bed/Bath</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {mobileHomes.map((home) => {
-                  const customerPrice = calculateCustomerPrice(home, 30);
-                  return (
-                    <TableRow key={home.id}>
-                      <TableCell className="font-medium">{getHomeName(home)}</TableCell>
-                      <TableCell>{formatSize(home)}</TableCell>
-                      <TableCell>{home.manufacturer}</TableCell>
-                      <TableCell>{home.series}</TableCell>
-                      <TableCell>{home.model}</TableCell>
-                      <TableCell>
-                        <span className="text-sm font-medium text-gray-600">{formatPrice(home.cost || home.price)}</span>
-                      </TableCell>
-                      <TableCell>
-                        <span className="text-sm font-medium text-blue-600">{formatPrice(home.minimum_profit || 0)}</span>
-                      </TableCell>
-                      <TableCell>
-                        <span className="text-sm font-medium text-green-600">{formatPrice(customerPrice)}</span>
-                      </TableCell>
-                      <TableCell>{home.square_footage || 'N/A'}</TableCell>
-                      <TableCell>
-                        {home.bedrooms || 'N/A'}/{home.bathrooms || 'N/A'}
-                      </TableCell>
-                      <TableCell>
-                        <span className={`px-2 py-1 rounded-full text-xs ${
-                          home.active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                        }`}>
-                          {home.active ? 'Active' : 'Inactive'}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex space-x-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => setEditingHome(home)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => toggleActive(home.id, home.active)}
-                          >
-                            {home.active ? 'Deactivate' : 'Activate'}
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            onClick={() => deleteMobileHome(home.id, getHomeName(home))}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div>
+          <MobileHomesDragDrop
+            mobileHomes={mobileHomes}
+            onEdit={setEditingHome}
+            onDelete={deleteMobileHome}
+            onToggleActive={toggleActive}
+            onRefetch={refetch}
+          />
         </CardContent>
       </Card>
 

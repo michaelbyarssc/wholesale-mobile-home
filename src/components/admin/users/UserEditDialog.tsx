@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -95,11 +96,14 @@ export const UserEditDialog = ({ profile, onUserUpdated }: UserEditDialogProps) 
 
       // Update role if user is super admin
       if (isSuperAdmin) {
+        // Ensure the role is a valid enum value
+        const validRole = formData.role as 'user' | 'admin' | 'super_admin';
+        
         const { error: roleError } = await supabase
           .from('user_roles')
           .upsert({
             user_id: profile.user_id,
-            role: formData.role
+            role: validRole
           });
 
         if (roleError) {

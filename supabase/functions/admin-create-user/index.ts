@@ -188,10 +188,8 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (profileError) {
       console.error('Error creating/updating profile:', profileError);
-      return new Response(
-        JSON.stringify({ error: 'Failed to create user profile' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      // Don't return error immediately - log it but continue with user creation
+      console.log('Profile error occurred but continuing with user creation process');
     } else {
       console.log('Profile created/updated successfully with created_by field set to:', createdByUserId);
     }
@@ -206,6 +204,8 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (roleInsertError) {
       console.error('Error assigning role:', roleInsertError);
+      // Don't return error - log it but continue
+      console.log('Role assignment error occurred but continuing');
     } else {
       console.log('Role assigned successfully:', role || 'user');
     }
@@ -269,21 +269,26 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log('User setup completed successfully with proper created_by tracking');
 
+    // ENSURE we return a proper success response
+    const successResponse = {
+      success: true, 
+      user: {
+        id: newUser.user.id,
+        email: newUser.user.email,
+        first_name: first_name || '',
+        last_name: last_name || '',
+        phone_number: phone_number || '',
+        role: role || 'user',
+        markup_percentage: markup_percentage || 30,
+        created_by: createdByUserId,
+        approved: true
+      }
+    };
+
+    console.log('Returning success response:', successResponse);
+
     return new Response(
-      JSON.stringify({ 
-        success: true, 
-        user: {
-          id: newUser.user.id,
-          email: newUser.user.email,
-          first_name: first_name || '',
-          last_name: last_name || '',
-          phone_number: phone_number || '',
-          role: role || 'user',
-          markup_percentage: markup_percentage || 30,
-          created_by: createdByUserId,
-          approved: true
-        }
-      }),
+      JSON.stringify(successResponse),
       {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }

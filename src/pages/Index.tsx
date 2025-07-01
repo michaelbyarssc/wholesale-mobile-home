@@ -102,13 +102,26 @@ const Index = () => {
           details: error.details,
           hint: error.hint
         });
+        
+        // If no profile exists, create a basic one
+        if (error.code === 'PGRST116') {
+          console.log('ℹ️ No profile found, user may need to complete profile setup');
+          setUserProfile({ first_name: 'User', last_name: '' });
+        }
         return;
       }
 
       console.log('✅ User profile fetched successfully:', data);
+      console.log('✅ Profile data structure:', {
+        first_name: data?.first_name,
+        last_name: data?.last_name,
+        type: typeof data
+      });
       setUserProfile(data);
     } catch (error) {
       console.error('❌ Exception in fetchUserProfile:', error);
+      // Fallback to basic profile
+      setUserProfile({ first_name: 'User', last_name: '' });
     }
   };
 

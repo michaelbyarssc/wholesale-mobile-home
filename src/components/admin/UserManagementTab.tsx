@@ -39,9 +39,6 @@ export const UserManagementTab = () => {
       setIsSuperAdmin(userIsSuperAdmin);
       console.log('UserManagementTab: User role:', roleData?.role, 'isSuperAdmin:', userIsSuperAdmin);
       
-      // Check specifically for support@michaelbyars.com
-      await checkSpecificUser();
-      
       // Fetch user profiles after determining role
       fetchUserProfiles(session.user.id, userIsSuperAdmin);
     } catch (error) {
@@ -54,44 +51,6 @@ export const UserManagementTab = () => {
     }
   };
 
-  const checkSpecificUser = async () => {
-    try {
-      console.log('=== CHECKING FOR support@michaelbyars.com ===');
-      
-      // Check in profiles table
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('email', 'support@michaelbyars.com');
-      
-      console.log('Profile query result:', { profileData, profileError });
-      
-      // Check in auth.users table via edge function or RPC if possible
-      // Note: We can't directly query auth.users, but we can check if there are any user_roles
-      const { data: roleData, error: roleError } = await supabase
-        .from('user_roles')
-        .select('*')
-        .in('user_id', ['2cdfc4ae-d8cc-4890-a1be-132cfbdd87d0', '91f386de-c98e-4906-b388-baa1a09af57e']);
-      
-      console.log('Role data for known users:', { roleData, roleError });
-      
-      // Get all profiles to see what's in the database
-      const { data: allProfiles, error: allError } = await supabase
-        .from('profiles')
-        .select('email, user_id, created_by, approved, denied');
-      
-      console.log('All profiles in database:', allProfiles);
-      console.log('Total profiles count:', allProfiles?.length);
-      
-      // Check if support@michaelbyars.com exists in any form
-      const supportUser = allProfiles?.find(p => p.email === 'support@michaelbyars.com');
-      console.log('Found support@michaelbyars.com?', supportUser);
-      
-    } catch (error) {
-      console.error('Error checking specific user:', error);
-    }
-  };
-
   const fetchUserProfiles = async (currentUserId?: string, userIsSuperAdmin?: boolean) => {
     try {
       setLoading(true);
@@ -101,12 +60,13 @@ export const UserManagementTab = () => {
         .from('profiles')
         .select('user_id, email, first_name, last_name, phone_number, created_at, approved, approved_at, denied, created_by');
 
-      // If not super admin, only show users created by current admin
+      // Super admins see ALL users, regular admins only see users they created
       if (!userIsSuperAdmin && currentUserId) {
         console.log('Regular admin - filtering profiles by created_by:', currentUserId);
         profileQuery = profileQuery.eq('created_by', currentUserId);
-      } else {
+      } else if (userIsSuperAdmin) {
         console.log('Super admin - fetching ALL profiles without filtering');
+        // No filtering for super admins - they see everyone
       }
 
       const { data: profileData, error: profileError } = await profileQuery;
@@ -143,7 +103,7 @@ export const UserManagementTab = () => {
       // Separate users: approved users and pending users (not approved and not denied)
       const approvedUsers = profileData?.filter(profile => profile.approved === true) || [];
       
-      // For pending users, we need different logic for super admins vs regular admins
+      // For pending users, super admins see ALL pending users, regular admins only see theirs
       let pendingUsers;
       if (userIsSuperAdmin) {
         // Super admins see ALL pending users, regardless of created_by

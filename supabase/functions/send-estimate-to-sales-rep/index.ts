@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { Resend } from 'npm:resend@2.0.0'
@@ -130,7 +129,6 @@ serve(async (req) => {
   <li><strong>Name:</strong> ${customerInfo.name}</li>
   <li><strong>Email:</strong> ${customerInfo.email}</li>
   <li><strong>Phone:</strong> ${customerInfo.phone}</li>
-  <li><strong>Customer Markup:</strong> ${customerMarkup}%</li>
 </ul>
 
 <h3>Cart Details:</h3>
@@ -222,7 +220,7 @@ serve(async (req) => {
 
 <p>This estimate was generated from the customer's shopping cart and requires your review.</p>
 <p>Please contact the customer to discuss next steps.</p>
-<p><em>Note: All prices shown include the customer's ${customerMarkup}% markup and reflect what the customer sees on the website. All prices are rounded down to the nearest whole dollar.</em></p>
+<p><em>Note: All prices shown reflect what the customer sees on the website. All prices are rounded down to the nearest whole dollar.</em></p>
 `
 
     console.log('🔍 send-estimate-to-sales-rep: Sending email to:', sales_rep_email)

@@ -44,8 +44,21 @@ export const MobileHomesShowcase = ({
 
   const { mobileHomes, homeImages, isLoading, imagesLoading, error, refetch } = useMobileHomesData();
 
+  // Add debugging for mobile homes
+  React.useEffect(() => {
+    console.log('🏠 MobileHomesShowcase: Current state', {
+      mobileHomesCount: mobileHomes.length,
+      homeImagesCount: homeImages.length,
+      isLoading,
+      imagesLoading,
+      error: error?.message,
+      user: user?.email
+    });
+  }, [mobileHomes, homeImages, isLoading, imagesLoading, error, user]);
+
   // Memoize filtered homes to prevent unnecessary recalculations
   const filteredHomes = useMemo(() => {
+    console.log('🏠 Filtering homes:', { total: mobileHomes.length, filter: widthFilter });
     if (widthFilter === 'single') {
       return mobileHomes.filter(home => !home.width_feet || home.width_feet < 16);
     }
@@ -57,11 +70,13 @@ export const MobileHomesShowcase = ({
 
   // Memoize unique series calculation
   const uniqueSeries = useMemo(() => {
-    return [...new Set(filteredHomes.map(home => home.series))].sort((a, b) => {
+    const series = [...new Set(filteredHomes.map(home => home.series))].sort((a, b) => {
       if (a === 'Tru') return -1;
       if (b === 'Tru') return 1;
       return a.localeCompare(b);
     });
+    console.log('🏠 Unique series:', series);
+    return series;
   }, [filteredHomes]);
 
   // Memoize image lookup function
@@ -73,6 +88,7 @@ export const MobileHomesShowcase = ({
   React.useEffect(() => {
     if (uniqueSeries.length > 0 && !activeTab) {
       const defaultTab = uniqueSeries[0];
+      console.log('🏠 Setting default tab:', defaultTab);
       setActiveTab(defaultTab);
     }
   }, [uniqueSeries, activeTab]);
@@ -88,6 +104,7 @@ export const MobileHomesShowcase = ({
 
   // Show error state
   if (error) {
+    console.error('🏠 MobileHomesShowcase error:', error);
     return (
       <MobileHomesDebugPanel
         user={user}
@@ -100,6 +117,7 @@ export const MobileHomesShowcase = ({
 
   // Show loading state
   if (isLoading) {
+    console.log('🏠 MobileHomesShowcase showing loading state');
     return (
       <MobileHomesLoadingState
         user={user}
@@ -111,6 +129,7 @@ export const MobileHomesShowcase = ({
 
   // Show empty state
   if (mobileHomes.length === 0) {
+    console.log('🏠 MobileHomesShowcase showing empty state');
     return (
       <MobileHomesEmptyState
         user={user}
@@ -118,6 +137,8 @@ export const MobileHomesShowcase = ({
       />
     );
   }
+
+  console.log('🏠 MobileHomesShowcase rendering with homes:', mobileHomes.length);
 
   return (
     <section className="py-20 bg-amber-50" id="mobile-homes">

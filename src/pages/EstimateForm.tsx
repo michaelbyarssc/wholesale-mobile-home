@@ -28,8 +28,14 @@ const EstimateForm = () => {
   useEffect(() => {
     fetchServices();
     fetchMobileHomes();
-    loadCartDataIfAvailable();
   }, []);
+
+  // Load cart data after mobile homes are fetched
+  useEffect(() => {
+    if (mobileHomes.length > 0) {
+      loadCartDataIfAvailable();
+    }
+  }, [mobileHomes]);
 
   const loadCartDataIfAvailable = () => {
     try {
@@ -42,17 +48,27 @@ const EstimateForm = () => {
         if (cartData && cartData.length > 0) {
           const firstCartItem = cartData[0];
           
-          // Set the mobile home from cart
-          setSelectedHome(firstCartItem.mobileHome);
+          // Find the mobile home in our fetched list by ID to ensure we have the complete object
+          const homeFromList = mobileHomes.find(home => home.id === firstCartItem.mobileHome.id);
+          if (homeFromList) {
+            setSelectedHome(homeFromList);
+            console.log('Set selected home from cart:', homeFromList);
+          } else {
+            // Fallback to the cart data if not found in list
+            setSelectedHome(firstCartItem.mobileHome);
+            console.log('Using cart mobile home data as fallback:', firstCartItem.mobileHome);
+          }
           
           // Set the services from cart
           if (firstCartItem.selectedServices && firstCartItem.selectedServices.length > 0) {
             setSelectedServices(firstCartItem.selectedServices);
+            console.log('Set selected services from cart:', firstCartItem.selectedServices);
           }
           
           // Set the home options from cart
           if (firstCartItem.selectedHomeOptions && firstCartItem.selectedHomeOptions.length > 0) {
             setSelectedHomeOptions(firstCartItem.selectedHomeOptions);
+            console.log('Set selected home options from cart:', firstCartItem.selectedHomeOptions);
           }
           
           // Clear the cart data from localStorage since we've loaded it

@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.0";
 
@@ -168,12 +167,12 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log('User created successfully:', newUser.user.id);
 
-    // CRITICAL FIX: Create profile with proper created_by field set to the admin who created the user
-    console.log('Creating profile with created_by field properly set to:', createdByUserId);
+    // CRITICAL FIX: Use UPSERT instead of INSERT to handle cases where profile might already exist from triggers
+    console.log('Creating/updating profile with created_by field properly set to:', createdByUserId);
     
     const { error: profileError } = await supabaseAdmin
       .from('profiles')
-      .insert({
+      .upsert({
         user_id: newUser.user.id,
         email: email,
         first_name: first_name || '',
@@ -183,16 +182,18 @@ const handler = async (req: Request): Promise<Response> => {
         approved_at: new Date().toISOString(),
         approved_by: user.id,
         created_by: createdByUserId // CRITICAL: This ensures the creator is properly logged
+      }, {
+        onConflict: 'user_id'
       });
 
     if (profileError) {
-      console.error('Error creating profile:', profileError);
+      console.error('Error creating/updating profile:', profileError);
       return new Response(
         JSON.stringify({ error: 'Failed to create user profile' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     } else {
-      console.log('Profile created successfully with created_by field set to:', createdByUserId);
+      console.log('Profile created/updated successfully with created_by field set to:', createdByUserId);
     }
 
     // Assign role - default to 'user' if not specified

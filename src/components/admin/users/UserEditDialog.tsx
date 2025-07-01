@@ -14,6 +14,7 @@ export interface UserProfile {
   email: string;
   first_name: string | null;
   last_name: string | null;
+  phone_number: string | null;
   role: string | null;
   created_at: string;
   markup_percentage: number;

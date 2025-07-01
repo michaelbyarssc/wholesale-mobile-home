@@ -103,7 +103,7 @@ export const UserManagementTab = () => {
 
       // If not super admin, only show users created by current admin
       if (!userIsSuperAdmin && currentUserId) {
-        console.log('Filtering profiles by created_by:', currentUserId);
+        console.log('Regular admin - filtering profiles by created_by:', currentUserId);
         profileQuery = profileQuery.eq('created_by', currentUserId);
       } else {
         console.log('Super admin - fetching ALL profiles without filtering');
@@ -142,9 +142,24 @@ export const UserManagementTab = () => {
 
       // Separate users: approved users and pending users (not approved and not denied)
       const approvedUsers = profileData?.filter(profile => profile.approved === true) || [];
-      const pendingUsers = profileData?.filter(profile => profile.approved !== true && profile.denied !== true) || [];
+      
+      // For pending users, we need different logic for super admins vs regular admins
+      let pendingUsers;
+      if (userIsSuperAdmin) {
+        // Super admins see ALL pending users, regardless of created_by
+        pendingUsers = profileData?.filter(profile => profile.approved !== true && profile.denied !== true) || [];
+        console.log('Super admin - showing ALL pending users');
+      } else {
+        // Regular admins only see pending users they created
+        pendingUsers = profileData?.filter(profile => 
+          profile.approved !== true && 
+          profile.denied !== true && 
+          profile.created_by === currentUserId
+        ) || [];
+        console.log('Regular admin - showing only pending users created by current admin');
+      }
 
-      console.log('Approved users (including admin-created):', approvedUsers.length);
+      console.log('Approved users:', approvedUsers.length);
       console.log('Approved users details:', approvedUsers.map(u => ({ email: u.email, approved: u.approved, created_by: u.created_by })));
       console.log('Pending users:', pendingUsers.length);
       console.log('Pending users details:', pendingUsers.map(u => ({ email: u.email, approved: u.approved, denied: u.denied, created_by: u.created_by })));
@@ -214,7 +229,7 @@ export const UserManagementTab = () => {
         approved_at: null
       }));
 
-      console.log('Final approved users data (including admin-created):', combinedApprovedData);
+      console.log('Final approved users data:', combinedApprovedData);
       console.log('Final pending users data:', pendingUsersData);
 
       setUserProfiles(combinedApprovedData);

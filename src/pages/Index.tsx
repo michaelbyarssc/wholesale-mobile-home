@@ -42,13 +42,23 @@ const Index = () => {
     // Get initial session
     const getInitialSession = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        console.log('🔍 Getting initial session...');
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('❌ Error getting session:', error);
+          return;
+        }
+        
         if (session?.user) {
+          console.log('✅ Initial session found, user:', session.user.email);
           setUser(session.user);
           await fetchUserProfile(session.user.id);
+        } else {
+          console.log('ℹ️ No initial session found');
         }
       } catch (error) {
-        console.error('Error getting initial session:', error);
+        console.error('❌ Error in getInitialSession:', error);
       } finally {
         setIsLoading(false);
       }
@@ -58,7 +68,7 @@ const Index = () => {
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth state changed:', event, session?.user?.email);
+      console.log('🔄 Auth state changed:', event, session?.user?.email);
       
       if (session?.user) {
         setUser(session.user);
@@ -76,6 +86,8 @@ const Index = () => {
 
   const fetchUserProfile = async (userId: string) => {
     try {
+      console.log('👤 Fetching user profile for ID:', userId);
+      
       const { data, error } = await supabase
         .from('profiles')
         .select('first_name, last_name')
@@ -83,13 +95,20 @@ const Index = () => {
         .single();
 
       if (error) {
-        console.error('Error fetching user profile:', error);
+        console.error('❌ Error fetching user profile:', error);
+        console.error('❌ Error details:', {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint
+        });
         return;
       }
 
+      console.log('✅ User profile fetched successfully:', data);
       setUserProfile(data);
     } catch (error) {
-      console.error('Error in fetchUserProfile:', error);
+      console.error('❌ Exception in fetchUserProfile:', error);
     }
   };
 

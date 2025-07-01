@@ -18,21 +18,42 @@ export const useMobileHomesData = () => {
   const { data: mobileHomes = [], isLoading, error, refetch } = useQuery({
     queryKey: ['mobile-homes'],
     queryFn: async () => {
-      console.log('🚀 Fetching mobile homes...');
+      console.log('🚀 Starting mobile homes query...');
       
-      const { data, error } = await supabase
-        .from('mobile_homes')
-        .select('*')
-        .eq('active', true)
-        .order('display_order', { ascending: true });
-      
-      if (error) {
-        console.error('❌ Mobile homes query error:', error);
-        throw new Error(`Failed to fetch mobile homes: ${error.message}`);
+      try {
+        const startTime = Date.now();
+        console.log('📡 Making Supabase request...');
+        
+        const { data, error } = await supabase
+          .from('mobile_homes')
+          .select('*')
+          .eq('active', true)
+          .order('display_order', { ascending: true });
+        
+        const endTime = Date.now();
+        console.log(`⏱️ Query completed in ${endTime - startTime}ms`);
+        
+        if (error) {
+          console.error('❌ Mobile homes query error:', error);
+          console.error('❌ Error details:', {
+            code: error.code,
+            message: error.message,
+            details: error.details,
+            hint: error.hint
+          });
+          throw new Error(`Failed to fetch mobile homes: ${error.message}`);
+        }
+        
+        console.log('✅ Mobile homes query successful:', {
+          rowCount: data?.length || 0,
+          firstRow: data?.[0] || null
+        });
+        
+        return (data || []) as MobileHome[];
+      } catch (error) {
+        console.error('❌ Exception in mobile homes query:', error);
+        throw error;
       }
-      
-      console.log('✅ Mobile homes fetched successfully:', data?.length || 0);
-      return (data || []) as MobileHome[];
     },
     staleTime: 2 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
@@ -45,22 +66,35 @@ export const useMobileHomesData = () => {
   const { data: homeImages = [], isLoading: imagesLoading } = useQuery({
     queryKey: ['mobile-home-images'],
     queryFn: async () => {
-      console.log('🖼️ Fetching mobile home images...');
+      console.log('🖼️ Starting mobile home images query...');
       
-      const { data, error } = await supabase
-        .from('mobile_home_images')
-        .select('*')
-        .order('mobile_home_id')
-        .order('image_type')
-        .order('display_order');
-      
-      if (error) {
-        console.error('❌ Images query error:', error);
-        throw new Error(`Failed to fetch images: ${error.message}`);
+      try {
+        const startTime = Date.now();
+        
+        const { data, error } = await supabase
+          .from('mobile_home_images')
+          .select('*')
+          .order('mobile_home_id')
+          .order('image_type')
+          .order('display_order');
+        
+        const endTime = Date.now();
+        console.log(`⏱️ Images query completed in ${endTime - startTime}ms`);
+        
+        if (error) {
+          console.error('❌ Images query error:', error);
+          throw new Error(`Failed to fetch images: ${error.message}`);
+        }
+        
+        console.log('✅ Images query successful:', {
+          rowCount: data?.length || 0
+        });
+        
+        return (data || []) as MobileHomeImage[];
+      } catch (error) {
+        console.error('❌ Exception in images query:', error);
+        throw error;
       }
-      
-      console.log('✅ Images fetched successfully:', data?.length || 0);
-      return (data || []) as MobileHomeImage[];
     },
     staleTime: 5 * 60 * 1000,
     gcTime: 15 * 60 * 1000,
@@ -70,12 +104,13 @@ export const useMobileHomesData = () => {
     refetchOnReconnect: false,
   });
 
-  console.log('🏁 Final state:', {
+  console.log('🏁 useMobileHomesData state:', {
     mobileHomesCount: mobileHomes.length,
     homeImagesCount: homeImages.length,
     isLoading,
     imagesLoading,
-    hasError: !!error
+    hasError: !!error,
+    errorMessage: error?.message
   });
 
   return {

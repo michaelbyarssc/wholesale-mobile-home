@@ -23,10 +23,10 @@ export const UserManagementTab = () => {
       setLoading(true);
       console.log('Fetching user profiles...');
       
-      // Fetch all user profiles including approval status
+      // Fetch all user profiles including approval status and phone number
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
-        .select('user_id, email, first_name, last_name, created_at, approved, approved_at, denied');
+        .select('user_id, email, first_name, last_name, phone_number, created_at, approved, approved_at, denied');
 
       if (profileError) {
         console.error('Error fetching profiles:', profileError);
@@ -72,6 +72,7 @@ export const UserManagementTab = () => {
           email: profile.email || 'No email',
           first_name: profile.first_name || null,
           last_name: profile.last_name || null,
+          phone_number: profile.phone_number || null,
           role: role?.role || null,
           created_at: profile.created_at || new Date().toISOString(),
           markup_percentage: markup?.markup_percentage || 0,
@@ -87,6 +88,7 @@ export const UserManagementTab = () => {
         email: profile.email || 'No email',
         first_name: profile.first_name || null,
         last_name: profile.last_name || null,
+        phone_number: profile.phone_number || null,
         role: null,
         created_at: profile.created_at || new Date().toISOString(),
         markup_percentage: 0,

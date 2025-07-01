@@ -30,6 +30,13 @@ export const UserTableRow = ({ profile, onUserUpdated }: UserTableRowProps) => {
         </div>
       </TableCell>
       <TableCell>
+        <div className="text-sm">
+          {profile.phone_number || (
+            <span className="text-gray-400 italic">No phone</span>
+          )}
+        </div>
+      </TableCell>
+      <TableCell>
         {profile.role ? (
           <Badge variant={profile.role === 'admin' ? "default" : "secondary"}>
             {profile.role === 'admin' ? (

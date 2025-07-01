@@ -58,34 +58,89 @@ export const MobileHomesShowcase = ({
   console.log('🔍 MobileHomesShowcase render - cart items from props:', cartItems.length);
   console.log('🔍 MobileHomesShowcase - selectedHomeForServices:', selectedHomeForServices?.id);
 
-  const { data: mobileHomes = [], isLoading, error } = useQuery({
+  const { data: mobileHomes = [], isLoading, error, refetch } = useQuery({
     queryKey: ['public-mobile-homes'],
     queryFn: async () => {
-      console.log('🔍 Fetching mobile homes from database...');
+      console.log('🔍 Starting mobile homes fetch...');
+      console.log('🔍 Supabase client status:', !!supabase);
       
       try {
+        // Test basic connection first
+        const { data: connectionTest, error: connectionError } = await supabase
+          .from('mobile_homes')
+          .select('count')
+          .limit(1);
+        
+        console.log('🔍 Connection test result:', { data: connectionTest, error: connectionError });
+        
+        if (connectionError) {
+          console.error('🔍 Connection test failed:', connectionError);
+          throw new Error(`Database connection failed: ${connectionError.message}`);
+        }
+
+        // Now fetch the actual data
+        console.log('🔍 Fetching mobile homes data...');
         const { data, error } = await supabase
           .from('mobile_homes')
-          .select('*')
+          .select(`
+            id,
+            model,
+            manufacturer,
+            series,
+            price,
+            retail_price,
+            cost,
+            minimum_profit,
+            display_name,
+            description,
+            bedrooms,
+            bathrooms,
+            square_footage,
+            width_feet,
+            length_feet,
+            features,
+            exterior_image_url,
+            floor_plan_image_url,
+            active,
+            display_order,
+            created_at,
+            updated_at
+          `)
           .eq('active', true)
           .order('display_order', { ascending: true });
         
+        console.log('🔍 Raw query result:', { data, error });
+        console.log('🔍 Data length:', data?.length);
+        console.log('🔍 First item:', data?.[0]);
+        
         if (error) {
-          console.error('🔍 Error fetching mobile homes:', error);
-          throw error;
+          console.error('🔍 Query error details:', {
+            message: error.message,
+            details: error.details,
+            hint: error.hint,
+            code: error.code
+          });
+          throw new Error(`Failed to fetch mobile homes: ${error.message}`);
         }
         
-        console.log('🔍 Mobile homes fetched successfully:', data?.length || 0, 'homes');
-        console.log('🔍 First home data sample:', data?.[0]);
+        if (!data) {
+          console.warn('🔍 No data returned from query');
+          return [];
+        }
         
+        console.log('🔍 Successfully fetched mobile homes:', data.length);
         return data as MobileHome[];
-      } catch (err) {
-        console.error('🔍 Database query failed:', err);
+      } catch (err: any) {
+        console.error('🔍 Mobile homes fetch failed:', err);
+        console.error('🔍 Error stack:', err.stack);
         throw err;
       }
     },
-    retry: 3,
-    retryDelay: 1000,
+    retry: (failureCount, error) => {
+      console.log('🔍 Query retry attempt:', failureCount, error?.message);
+      return failureCount < 3;
+    },
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
 
   const { data: homeImages = [], isLoading: imagesLoading } = useQuery({
@@ -118,10 +173,26 @@ export const MobileHomesShowcase = ({
             <h3 className="text-3xl font-bold text-gray-900 mb-4">
               Our Mobile Home Models
             </h3>
-            <div className="bg-red-50 border border-red-200 rounded-lg p-6">
-              <p className="text-red-600 font-medium">Unable to load mobile homes</p>
-              <p className="text-red-500 text-sm mt-2">Please refresh the page or contact support if the issue persists.</p>
-              <p className="text-gray-500 text-xs mt-2">Error: {error.message}</p>
+            <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-2xl mx-auto">
+              <p className="text-red-600 font-medium mb-2">Unable to load mobile homes</p>
+              <p className="text-red-500 text-sm mb-4">
+                We're experiencing technical difficulties. Please try refreshing the page.
+              </p>
+              <Button 
+                onClick={() => refetch()} 
+                variant="outline" 
+                className="mr-2"
+              >
+                Try Again
+              </Button>
+              <details className="mt-4 text-left">
+                <summary className="cursor-pointer text-sm text-gray-600 hover:text-gray-800">
+                  Technical Details
+                </summary>
+                <pre className="text-xs text-gray-500 mt-2 bg-gray-100 p-2 rounded overflow-auto">
+                  {error.message}
+                </pre>
+              </details>
             </div>
           </div>
         </div>
@@ -365,10 +436,11 @@ export const MobileHomesShowcase = ({
             <h3 className="text-3xl font-bold text-gray-900 mb-4">
               Our Mobile Home Models
             </h3>
-            <div className="flex items-center justify-center">
+            <div className="flex items-center justify-center space-x-2">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-              <span className="ml-2">Loading models...</span>
+              <span className="text-lg">Loading our amazing mobile home models...</span>
             </div>
+            <p className="text-gray-600 mt-2">This should only take a moment</p>
           </div>
         </div>
       </section>
@@ -383,10 +455,15 @@ export const MobileHomesShowcase = ({
             <h3 className="text-3xl font-bold text-gray-900 mb-4">
               Our Mobile Home Models
             </h3>
-            <p className="text-lg text-gray-600">No mobile homes available at this time.</p>
-            <p className="text-sm text-gray-500 mt-2">
-              Please check back later or contact us for more information.
-            </p>
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 max-w-2xl mx-auto">
+              <p className="text-yellow-800 font-medium mb-2">No mobile homes available</p>
+              <p className="text-yellow-700 text-sm mb-4">
+                We're currently updating our inventory. Please check back soon or contact us for availability.
+              </p>
+              <Button onClick={() => refetch()} variant="outline">
+                Refresh
+              </Button>
+            </div>
           </div>
         </div>
       </section>

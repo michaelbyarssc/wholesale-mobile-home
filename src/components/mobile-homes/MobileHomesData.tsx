@@ -19,8 +19,7 @@ export const useMobileHomesData = () => {
     queryKey: ['mobile-homes'],
     queryFn: async () => {
       console.log('🚀 Starting mobile homes query...');
-      console.log('🔍 Supabase client URL:', supabase.supabaseUrl);
-      console.log('🔍 Supabase client key (first 20 chars):', supabase.supabaseKey.substring(0, 20));
+      console.log('🔍 Supabase client initialized successfully');
       
       try {
         const startTime = Date.now();

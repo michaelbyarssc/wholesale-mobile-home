@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -29,7 +28,46 @@ const EstimateForm = () => {
   useEffect(() => {
     fetchServices();
     fetchMobileHomes();
+    loadCartDataIfAvailable();
   }, []);
+
+  const loadCartDataIfAvailable = () => {
+    try {
+      // Check if we have cart data in localStorage (from the cart)
+      const cartForEstimate = localStorage.getItem('cart_for_estimate');
+      if (cartForEstimate) {
+        const cartData = JSON.parse(cartForEstimate);
+        console.log('Loading cart data for estimate:', cartData);
+        
+        if (cartData && cartData.length > 0) {
+          const firstCartItem = cartData[0];
+          
+          // Set the mobile home from cart
+          setSelectedHome(firstCartItem.mobileHome);
+          
+          // Set the services from cart
+          if (firstCartItem.selectedServices && firstCartItem.selectedServices.length > 0) {
+            setSelectedServices(firstCartItem.selectedServices);
+          }
+          
+          // Set the home options from cart
+          if (firstCartItem.selectedHomeOptions && firstCartItem.selectedHomeOptions.length > 0) {
+            setSelectedHomeOptions(firstCartItem.selectedHomeOptions);
+          }
+          
+          // Clear the cart data from localStorage since we've loaded it
+          localStorage.removeItem('cart_for_estimate');
+          
+          toast({
+            title: "Cart Data Loaded",
+            description: "Your cart selections have been imported into the estimate form.",
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error loading cart data:', error);
+    }
+  };
 
   const fetchServices = async () => {
     try {
@@ -141,7 +179,7 @@ const EstimateForm = () => {
           customer_name: customerInfo.name,
           customer_email: customerInfo.email,
           customer_phone: customerInfo.phone,
-          delivery_address: fullAddress,
+          delivery_address: getFullAddress(),
           mobile_home_id: selectedHome.id,
           selected_services: selectedServices,
           selected_home_options: selectedHomeOptions,

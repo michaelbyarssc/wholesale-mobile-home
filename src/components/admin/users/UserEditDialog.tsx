@@ -38,7 +38,6 @@ export const UserEditDialog = ({ profile, onUserUpdated }: UserEditDialogProps) 
     last_name: profile.last_name || '',
     phone_number: profile.phone_number || '',
     role: profile.role || 'user',
-    markup_percentage: profile.markup_percentage || 0,
   });
   const { toast } = useToast();
 
@@ -65,7 +64,7 @@ export const UserEditDialog = ({ profile, onUserUpdated }: UserEditDialogProps) 
     }
   };
 
-  const handleInputChange = (field: string, value: string | number) => {
+  const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
@@ -115,24 +114,6 @@ export const UserEditDialog = ({ profile, onUserUpdated }: UserEditDialogProps) 
           });
           return;
         }
-      }
-
-      // Update markup
-      const { error: markupError } = await supabase
-        .from('customer_markups')
-        .upsert({
-          user_id: profile.user_id,
-          markup_percentage: formData.markup_percentage
-        });
-
-      if (markupError) {
-        console.error('Error updating markup:', markupError);
-        toast({
-          title: "Error",
-          description: "Failed to update markup percentage",
-          variant: "destructive",
-        });
-        return;
       }
 
       toast({
@@ -207,15 +188,6 @@ export const UserEditDialog = ({ profile, onUserUpdated }: UserEditDialogProps) 
               </Select>
             </div>
           )}
-          <div>
-            <Label htmlFor="markup_percentage">Markup Percentage</Label>
-            <Input
-              id="markup_percentage"
-              type="number"
-              value={formData.markup_percentage}
-              onChange={(e) => handleInputChange('markup_percentage', Number(e.target.value))}
-            />
-          </div>
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Cancel

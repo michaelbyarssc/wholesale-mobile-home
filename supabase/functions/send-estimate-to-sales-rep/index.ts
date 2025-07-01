@@ -121,11 +121,11 @@ serve(async (req) => {
   <ul>
     <li><strong>Size:</strong> ${homeSize}</li>
     <li><strong>Bed/Bath:</strong> ${bedBath}</li>
-    <li><strong>Price:</strong> $${homePrice.toLocaleString()}</li>
+    <li><strong>Home Price:</strong> $${homePrice.toLocaleString()}</li>
   </ul>
 `
 
-      // Add selected services
+      // Add selected services with proper pricing
       if (item.selectedServices && item.selectedServices.length > 0) {
         emailContent += `<h5>Selected Services:</h5><ul>`
         item.selectedServices.forEach((serviceId: string) => {
@@ -136,27 +136,32 @@ serve(async (req) => {
             const isDoubleWide = homeWidth > 16
             const servicePrice = isDoubleWide ? (service.double_wide_price || service.price) : (service.single_wide_price || service.price)
             
-            emailContent += `<li>${service.name}: $${servicePrice.toLocaleString()}</li>`
+            emailContent += `<li><strong>${service.name}:</strong> $${servicePrice.toLocaleString()}</li>`
           }
         })
         emailContent += `</ul>`
       }
 
-      // Add selected home options
+      // Add selected home options with proper pricing
       if (item.selectedHomeOptions && item.selectedHomeOptions.length > 0) {
         emailContent += `<h5>Selected Options:</h5><ul>`
         item.selectedHomeOptions.forEach((selectedOption: any) => {
           const option = selectedOption.option
           const quantity = selectedOption.quantity || 1
           
-          // Calculate option price
-          let optionPrice = option.cost_price || 0
+          // Calculate option price based on pricing type
+          let optionPrice = 0
           if (option.pricing_type === 'per_sqft' && home.square_footage) {
             optionPrice = (option.price_per_sqft || 0) * home.square_footage
+          } else {
+            // Fixed pricing
+            optionPrice = option.cost_price || 0
           }
           
           const totalOptionPrice = optionPrice * quantity
-          const displayText = quantity > 1 ? `${option.name} (x${quantity}): $${totalOptionPrice.toLocaleString()}` : `${option.name}: $${totalOptionPrice.toLocaleString()}`
+          const displayText = quantity > 1 
+            ? `<strong>${option.name}</strong> (x${quantity}): $${totalOptionPrice.toLocaleString()}` 
+            : `<strong>${option.name}:</strong> $${totalOptionPrice.toLocaleString()}`
           
           emailContent += `<li>${displayText}</li>`
         })

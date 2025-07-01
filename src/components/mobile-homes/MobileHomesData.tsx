@@ -1,4 +1,3 @@
-
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
@@ -20,8 +19,7 @@ export const useMobileHomesData = () => {
     queryFn: async () => {
       console.log('🔍 STARTING DETAILED MOBILE HOMES FETCH DEBUG');
       console.log('📊 Supabase client configured:', !!supabase);
-      console.log('🔑 Supabase URL:', supabase.supabaseUrl);
-      console.log('🔑 Supabase Key (first 20 chars):', supabase.supabaseKey?.substring(0, 20) + '...');
+      console.log('🔑 Using Supabase client for database queries');
       
       try {
         // Step 1: Test basic connection

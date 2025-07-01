@@ -65,13 +65,15 @@ export const UserForm = ({ onUserCreated }: UserFormProps) => {
         throw new Error('Not authenticated');
       }
 
+      console.log('Creating user with created_by:', session.user.id);
+
       const { data, error } = await supabase.functions.invoke('admin-create-user', {
         body: {
           email: newUserEmail,
           password: tempPassword,
           role: newUserRole,
           markup_percentage: 30,
-          created_by: session.user.id // Set the created_by field
+          created_by: session.user.id
         }
       });
 
@@ -81,6 +83,8 @@ export const UserForm = ({ onUserCreated }: UserFormProps) => {
         throw new Error(data.error);
       }
 
+      console.log('User created successfully:', data);
+
       toast({
         title: "User created",
         description: `User ${newUserEmail} created with ${newUserRole} role. Password: Wholesale2025!`,
@@ -88,6 +92,8 @@ export const UserForm = ({ onUserCreated }: UserFormProps) => {
 
       setNewUserEmail('');
       setNewUserRole('user');
+      
+      // Call the callback to refresh the user list
       onUserCreated();
     } catch (error: any) {
       console.error('Error creating user:', error);

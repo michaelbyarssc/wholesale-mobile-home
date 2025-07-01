@@ -26,6 +26,7 @@ export const UserManagementTab = () => {
       if (!session?.user) return;
 
       setCurrentUser(session.user);
+      console.log('UserManagementTab: Current user ID:', session.user.id);
 
       // Check if user is super admin
       const { data: roleData } = await supabase
@@ -36,6 +37,7 @@ export const UserManagementTab = () => {
 
       const userIsSuperAdmin = roleData?.role === 'super_admin';
       setIsSuperAdmin(userIsSuperAdmin);
+      console.log('UserManagementTab: User role:', roleData?.role, 'isSuperAdmin:', userIsSuperAdmin);
       
       // Fetch user profiles after determining role
       fetchUserProfiles(session.user.id, userIsSuperAdmin);
@@ -52,7 +54,7 @@ export const UserManagementTab = () => {
   const fetchUserProfiles = async (currentUserId?: string, userIsSuperAdmin?: boolean) => {
     try {
       setLoading(true);
-      console.log('Fetching user profiles...');
+      console.log('Fetching user profiles for user:', currentUserId, 'isSuperAdmin:', userIsSuperAdmin);
       
       let profileQuery = supabase
         .from('profiles')
@@ -60,6 +62,7 @@ export const UserManagementTab = () => {
 
       // If not super admin, only show users created by current admin
       if (!userIsSuperAdmin && currentUserId) {
+        console.log('Filtering profiles by created_by:', currentUserId);
         profileQuery = profileQuery.eq('created_by', currentUserId);
       }
 
@@ -75,28 +78,44 @@ export const UserManagementTab = () => {
         return;
       }
 
-      console.log('Profiles data:', profileData);
+      console.log('Raw profiles data:', profileData);
+      console.log('Profiles found:', profileData?.length || 0);
 
       // Separate approved users, pending users (not approved and not denied), and denied users
       const approvedUsers = profileData?.filter(profile => profile.approved) || [];
       const pendingUsers = profileData?.filter(profile => !profile.approved && !profile.denied) || [];
 
+      console.log('Approved users:', approvedUsers.length);
+      console.log('Pending users:', pendingUsers.length);
+
       // Fetch user roles for approved users
-      const { data: roleData, error: roleError } = await supabase
-        .from('user_roles')
-        .select('user_id, role, created_at');
+      const approvedUserIds = approvedUsers.map(profile => profile.user_id);
+      let roleData = [];
+      let markupData = [];
 
-      if (roleError) {
-        console.error('Error fetching user roles:', roleError);
-      }
+      if (approvedUserIds.length > 0) {
+        const { data: roleResult, error: roleError } = await supabase
+          .from('user_roles')
+          .select('user_id, role, created_at')
+          .in('user_id', approvedUserIds);
 
-      // Fetch customer markups for approved users
-      const { data: markupData, error: markupError } = await supabase
-        .from('customer_markups')
-        .select('user_id, markup_percentage, minimum_profit_per_home');
+        if (roleError) {
+          console.error('Error fetching user roles:', roleError);
+        } else {
+          roleData = roleResult || [];
+        }
 
-      if (markupError) {
-        console.error('Error fetching markups:', markupError);
+        // Fetch customer markups for approved users
+        const { data: markupResult, error: markupError } = await supabase
+          .from('customer_markups')
+          .select('user_id, markup_percentage, minimum_profit_per_home')
+          .in('user_id', approvedUserIds);
+
+        if (markupError) {
+          console.error('Error fetching markups:', markupError);
+        } else {
+          markupData = markupResult || [];
+        }
       }
 
       // Process approved users with role and markup info
@@ -134,6 +153,9 @@ export const UserManagementTab = () => {
         approved_at: null
       }));
 
+      console.log('Final approved users data:', combinedApprovedData);
+      console.log('Final pending users data:', pendingUsersData);
+
       setUserProfiles(combinedApprovedData);
       setPendingApprovals(pendingUsersData);
     } catch (error) {
@@ -149,6 +171,7 @@ export const UserManagementTab = () => {
   };
 
   const handleUserUpdated = () => {
+    console.log('User updated, refreshing data...');
     if (currentUser) {
       fetchUserProfiles(currentUser.id, isSuperAdmin);
     }

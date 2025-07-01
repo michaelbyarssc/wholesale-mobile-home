@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -35,7 +35,38 @@ export const UserEditDialog = ({ profile, onUserUpdated }: UserEditDialogProps) 
   const [lastName, setLastName] = useState(profile.last_name || '');
   const [phoneNumber, setPhoneNumber] = useState(profile.phone_number || '');
   const [role, setRole] = useState<'admin' | 'user' | 'super_admin'>(profile.role as 'admin' | 'user' | 'super_admin' || 'user');
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const { toast } = useToast();
+
+  useEffect(() => {
+    checkCurrentUserRole();
+  }, []);
+
+  const checkCurrentUserRole = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) return;
+
+      // Check if user is super admin - get all roles for the user
+      const { data: roleData, error: roleError } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', session.user.id);
+
+      if (roleError) {
+        console.error('Error fetching user roles:', roleError);
+        return;
+      }
+
+      // Check if user has super_admin role
+      const userIsSuperAdmin = roleData?.some(r => r.role === 'super_admin') || false;
+      setIsSuperAdmin(userIsSuperAdmin);
+      
+      console.log('UserEditDialog: User is super admin:', userIsSuperAdmin);
+    } catch (error) {
+      console.error('Error checking user role:', error);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,8 +86,8 @@ export const UserEditDialog = ({ profile, onUserUpdated }: UserEditDialogProps) 
 
       if (profileError) throw profileError;
 
-      // Update role if it exists and has changed
-      if (profile.role !== role) {
+      // Update role only if current user is super admin and role has changed
+      if (isSuperAdmin && profile.role !== role) {
         if (profile.role) {
           // Update existing role
           const { error: roleUpdateError } = await supabase
@@ -146,19 +177,21 @@ export const UserEditDialog = ({ profile, onUserUpdated }: UserEditDialogProps) 
               className="bg-gray-100"
             />
           </div>
-          <div>
-            <Label htmlFor="role">Role</Label>
-            <Select value={role} onValueChange={(value: 'admin' | 'user' | 'super_admin') => setRole(value)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="user">User</SelectItem>
-                <SelectItem value="admin">Admin</SelectItem>
-                <SelectItem value="super_admin">Super Admin</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          {isSuperAdmin && (
+            <div>
+              <Label htmlFor="role">Role</Label>
+              <Select value={role} onValueChange={(value: 'admin' | 'user' | 'super_admin') => setRole(value)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="user">User</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="super_admin">Super Admin</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Cancel

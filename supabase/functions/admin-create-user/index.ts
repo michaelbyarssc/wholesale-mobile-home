@@ -12,6 +12,7 @@ interface CreateUserRequest {
   password: string;
   first_name?: string;
   last_name?: string;
+  phone_number?: string;
   role?: 'admin' | 'user';
   markup_percentage?: number;
   created_by?: string;
@@ -79,7 +80,7 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    const { email, password, first_name, last_name, role, markup_percentage, created_by }: CreateUserRequest = await req.json();
+    const { email, password, first_name, last_name, phone_number, role, markup_percentage, created_by }: CreateUserRequest = await req.json();
 
     if (!email || !password) {
       return new Response(
@@ -96,7 +97,7 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    console.log('Creating user:', { email, role: role || 'user', markup_percentage: markup_percentage || 30, created_by: user.id });
+    console.log('Creating user:', { email, first_name, last_name, phone_number, role: role || 'user', markup_percentage: markup_percentage || 30, created_by: user.id });
 
     // Create user using admin API
     const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
@@ -105,7 +106,8 @@ const handler = async (req: Request): Promise<Response> => {
       email_confirm: true, // Skip email confirmation
       user_metadata: {
         first_name: first_name || '',
-        last_name: last_name || ''
+        last_name: last_name || '',
+        phone_number: phone_number || ''
       }
     });
 
@@ -137,6 +139,7 @@ const handler = async (req: Request): Promise<Response> => {
         email: email,
         first_name: first_name || '',
         last_name: last_name || '',
+        phone_number: phone_number || '',
         approved: true, // Auto-approve users created by admins
         approved_at: new Date().toISOString(),
         approved_by: user.id,
@@ -183,7 +186,16 @@ const handler = async (req: Request): Promise<Response> => {
         action: 'USER_CREATED',
         table_name: 'auth.users',
         record_id: newUser.user.id,
-        new_values: { email, role: role || 'user', markup_percentage: markup_percentage || 30, created_by: createdByUserId, approved: true }
+        new_values: { 
+          email, 
+          first_name: first_name || '', 
+          last_name: last_name || '', 
+          phone_number: phone_number || '', 
+          role: role || 'user', 
+          markup_percentage: markup_percentage || 30, 
+          created_by: createdByUserId, 
+          approved: true 
+        }
       });
     } catch (auditError) {
       console.error('Failed to log admin action:', auditError);
@@ -198,6 +210,9 @@ const handler = async (req: Request): Promise<Response> => {
         user: {
           id: newUser.user.id,
           email: newUser.user.email,
+          first_name: first_name || '',
+          last_name: last_name || '',
+          phone_number: phone_number || '',
           role: role || 'user',
           markup_percentage: markup_percentage || 30,
           created_by: createdByUserId,

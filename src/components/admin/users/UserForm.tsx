@@ -15,6 +15,9 @@ interface UserFormProps {
 
 export const UserForm = ({ onUserCreated }: UserFormProps) => {
   const [newUserEmail, setNewUserEmail] = useState('');
+  const [newUserFirstName, setNewUserFirstName] = useState('');
+  const [newUserLastName, setNewUserLastName] = useState('');
+  const [newUserPhoneNumber, setNewUserPhoneNumber] = useState('');
   const [newUserRole, setNewUserRole] = useState<'admin' | 'user'>('user');
   const [creatingUser, setCreatingUser] = useState(false);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
@@ -46,10 +49,10 @@ export const UserForm = ({ onUserCreated }: UserFormProps) => {
   const createUserDirectly = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!newUserEmail) {
+    if (!newUserEmail || !newUserFirstName || !newUserLastName) {
       toast({
         title: "Error",
-        description: "Please enter an email address",
+        description: "Please fill in all required fields (Email, First Name, Last Name)",
         variant: "destructive",
       });
       return;
@@ -71,6 +74,9 @@ export const UserForm = ({ onUserCreated }: UserFormProps) => {
         body: {
           email: newUserEmail,
           password: tempPassword,
+          first_name: newUserFirstName,
+          last_name: newUserLastName,
+          phone_number: newUserPhoneNumber,
           role: newUserRole,
           markup_percentage: 30,
           created_by: session.user.id
@@ -86,11 +92,14 @@ export const UserForm = ({ onUserCreated }: UserFormProps) => {
       console.log('User created successfully:', data);
 
       toast({
-        title: "User created",
-        description: `User ${newUserEmail} created with ${newUserRole} role. Password: Wholesale2025!`,
+        title: "User created and approved",
+        description: `User ${newUserFirstName} ${newUserLastName} (${newUserEmail}) created with ${newUserRole} role and automatically approved. Password: Wholesale2025!`,
       });
 
       setNewUserEmail('');
+      setNewUserFirstName('');
+      setNewUserLastName('');
+      setNewUserPhoneNumber('');
       setNewUserRole('user');
       
       // Call the callback to refresh the user list
@@ -117,9 +126,33 @@ export const UserForm = ({ onUserCreated }: UserFormProps) => {
       </CardHeader>
       <CardContent>
         <form onSubmit={createUserDirectly} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="md:col-span-2">
-              <Label htmlFor="email">Email Address</Label>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="firstName">First Name *</Label>
+              <Input
+                id="firstName"
+                type="text"
+                value={newUserFirstName}
+                onChange={(e) => setNewUserFirstName(e.target.value)}
+                placeholder="John"
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="lastName">Last Name *</Label>
+              <Input
+                id="lastName"
+                type="text"
+                value={newUserLastName}
+                onChange={(e) => setNewUserLastName(e.target.value)}
+                placeholder="Doe"
+                required
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="email">Email Address *</Label>
               <Input
                 id="email"
                 type="email"
@@ -129,6 +162,18 @@ export const UserForm = ({ onUserCreated }: UserFormProps) => {
                 required
               />
             </div>
+            <div>
+              <Label htmlFor="phoneNumber">Phone Number</Label>
+              <Input
+                id="phoneNumber"
+                type="tel"
+                value={newUserPhoneNumber}
+                onChange={(e) => setNewUserPhoneNumber(e.target.value)}
+                placeholder="(555) 123-4567"
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label htmlFor="role">Role</Label>
               <Select value={newUserRole} onValueChange={(value: 'admin' | 'user') => setNewUserRole(value)}>
@@ -145,9 +190,10 @@ export const UserForm = ({ onUserCreated }: UserFormProps) => {
             </div>
           </div>
           <div className="flex items-center justify-between">
-            <p className="text-sm text-gray-600">
-              User will be created with password: <strong>Wholesale2025!</strong>
-            </p>
+            <div className="text-sm text-gray-600">
+              <p><strong>Password:</strong> Wholesale2025!</p>
+              <p className="text-green-600 font-medium">Users created by admins are automatically approved</p>
+            </div>
             <Button type="submit" disabled={creatingUser}>
               {creatingUser ? "Creating..." : "Create User"}
             </Button>

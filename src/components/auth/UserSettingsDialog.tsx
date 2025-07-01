@@ -62,46 +62,24 @@ export const UserSettingsDialog = ({ user, userProfile, onProfileUpdated }: User
 
     setLoading(true);
     try {
-      // Check if profile exists first
-      const { data: existingProfile, error: checkError } = await supabase
+      // Use upsert with the on_conflict option to handle both insert and update
+      const { error: profileError } = await supabase
         .from('profiles')
-        .select('id')
-        .eq('user_id', user.id)
-        .maybeSingle();
+        .upsert({
+          user_id: user.id,
+          first_name: firstName.trim() || null,
+          last_name: lastName.trim() || null,
+          phone_number: phoneNumber.trim() || null,
+          email: email.trim(),
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'user_id',
+          ignoreDuplicates: false
+        });
 
-      if (checkError) {
-        console.error('Error checking existing profile:', checkError);
-        throw checkError;
-      }
-
-      if (existingProfile) {
-        // Update existing profile
-        const { error: updateError } = await supabase
-          .from('profiles')
-          .update({
-            first_name: firstName.trim() || null,
-            last_name: lastName.trim() || null,
-            phone_number: phoneNumber.trim() || null,
-            email: email.trim(),
-            updated_at: new Date().toISOString()
-          })
-          .eq('user_id', user.id);
-
-        if (updateError) throw updateError;
-      } else {
-        // Insert new profile
-        const { error: insertError } = await supabase
-          .from('profiles')
-          .insert({
-            user_id: user.id,
-            first_name: firstName.trim() || null,
-            last_name: lastName.trim() || null,
-            phone_number: phoneNumber.trim() || null,
-            email: email.trim(),
-            updated_at: new Date().toISOString()
-          });
-
-        if (insertError) throw insertError;
+      if (profileError) {
+        console.error('Profile update error:', profileError);
+        throw profileError;
       }
 
       // Update email in auth if it's different

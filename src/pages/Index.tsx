@@ -140,6 +140,7 @@ const Index = () => {
       />
       <FeaturesSection />
       <CTASection user={user} />
+      <PriceMatchAlert />
       <Footer />
       
       <PhoneNumberDialog

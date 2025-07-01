@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Header } from '@/components/layout/Header';
 import { HeroSection } from '@/components/layout/HeroSection';
@@ -17,6 +18,7 @@ const Index = () => {
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<{ first_name?: string, last_name?: string } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [authChecked, setAuthChecked] = useState(false);
   const { toast } = useToast();
 
   const {
@@ -39,54 +41,86 @@ const Index = () => {
   } = usePhoneNumberCheck();
 
   useEffect(() => {
-    // Get initial session
-    const getInitialSession = async () => {
+    let mounted = true;
+
+    const checkAuthState = async () => {
       try {
-        console.log('🔍 Getting initial session...');
+        console.log('🔍 Index: Checking initial auth state...');
+        
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
-          console.error('❌ Error getting session:', error);
+          console.error('❌ Index: Error getting session:', error);
+          if (mounted) {
+            setUser(null);
+            setUserProfile(null);
+            clearCart();
+            setIsLoading(false);
+            setAuthChecked(true);
+          }
           return;
         }
-        
-        if (session?.user) {
-          console.log('✅ Initial session found, user:', session.user.email);
-          setUser(session.user);
-          await fetchUserProfile(session.user.id);
-        } else {
-          console.log('ℹ️ No initial session found');
+
+        if (mounted) {
+          if (session?.user) {
+            console.log('✅ Index: User found:', session.user.email);
+            setUser(session.user);
+            await fetchUserProfile(session.user.id);
+          } else {
+            console.log('ℹ️ Index: No session found');
+            setUser(null);
+            setUserProfile(null);
+            clearCart();
+          }
+          setIsLoading(false);
+          setAuthChecked(true);
         }
       } catch (error) {
-        console.error('❌ Error in getInitialSession:', error);
-      } finally {
-        setIsLoading(false);
+        console.error('❌ Index: Exception in auth check:', error);
+        if (mounted) {
+          setUser(null);
+          setUserProfile(null);
+          clearCart();
+          setIsLoading(false);
+          setAuthChecked(true);
+        }
       }
     };
 
-    getInitialSession();
+    if (!authChecked) {
+      checkAuthState();
+    }
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('🔄 Auth state changed:', event, session?.user?.email);
+      console.log('🔄 Index: Auth state changed:', event, session?.user?.email);
+      
+      if (!mounted) return;
       
       if (session?.user) {
         setUser(session.user);
         await fetchUserProfile(session.user.id);
       } else {
+        console.log('🔄 Index: User logged out, clearing state');
         setUser(null);
         setUserProfile(null);
         clearCart();
       }
-      setIsLoading(false);
+      
+      if (event !== 'INITIAL_SESSION') {
+        setIsLoading(false);
+      }
     });
 
-    return () => subscription.unsubscribe();
-  }, []);
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, [authChecked, clearCart]);
 
   const fetchUserProfile = async (userId: string) => {
     try {
-      console.log('👤 Fetching user profile for ID:', userId);
+      console.log('👤 Index: Fetching user profile for ID:', userId);
       
       const { data, error } = await supabase
         .from('profiles')
@@ -95,48 +129,50 @@ const Index = () => {
         .single();
 
       if (error) {
-        console.error('❌ Error fetching user profile:', error);
-        console.error('❌ Error details:', {
-          code: error.code,
-          message: error.message,
-          details: error.details,
-          hint: error.hint
-        });
+        console.error('❌ Index: Error fetching user profile:', error);
         
-        // If no profile exists, create a basic one
         if (error.code === 'PGRST116') {
-          console.log('ℹ️ No profile found, user may need to complete profile setup');
+          console.log('ℹ️ Index: No profile found, setting default');
+          setUserProfile({ first_name: 'User', last_name: '' });
+        } else {
+          // For other errors, set a fallback
           setUserProfile({ first_name: 'User', last_name: '' });
         }
         return;
       }
 
-      console.log('✅ User profile fetched successfully:', data);
-      console.log('✅ Profile data structure:', {
-        first_name: data?.first_name,
-        last_name: data?.last_name,
-        type: typeof data
-      });
+      console.log('✅ Index: User profile fetched successfully:', data);
       setUserProfile(data);
     } catch (error) {
-      console.error('❌ Exception in fetchUserProfile:', error);
-      // Fallback to basic profile
+      console.error('❌ Index: Exception in fetchUserProfile:', error);
       setUserProfile({ first_name: 'User', last_name: '' });
     }
   };
 
   const handleLogout = async () => {
     try {
+      console.log('🚪 Index: Starting logout process...');
       setIsLoading(true);
+      
       const { error } = await supabase.auth.signOut();
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Index: Logout error:', error);
+        throw error;
+      }
+      
+      console.log('✅ Index: Logout successful');
+      
+      // Clear state immediately
+      setUser(null);
+      setUserProfile(null);
+      clearCart();
       
       toast({
         title: "Logged out successfully",
         description: "You have been signed out of your account.",
       });
     } catch (error: any) {
-      console.error('Logout error:', error);
+      console.error('❌ Index: Logout failed:', error);
       toast({
         title: "Logout failed",
         description: error.message || "Failed to log out",
@@ -146,6 +182,13 @@ const Index = () => {
       setIsLoading(false);
     }
   };
+
+  console.log('🏠 Index: Current state:', {
+    user: user?.email,
+    userProfile,
+    isLoading,
+    authChecked
+  });
 
   return (
     <div className="min-h-screen bg-white">

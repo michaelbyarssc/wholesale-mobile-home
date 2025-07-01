@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
@@ -27,7 +28,6 @@ const Auth = () => {
 
   useEffect(() => {
     let mounted = true;
-    let hasProcessedInitialAuth = false;
 
     const checkAuthAndRedirect = async () => {
       try {
@@ -42,8 +42,7 @@ const Auth = () => {
           return;
         }
 
-        if (session?.user && mounted && !hasProcessedInitialAuth) {
-          hasProcessedInitialAuth = true;
+        if (session?.user && mounted) {
           console.log('✅ Auth: User is logged in, checking admin status...');
           setCurrentUser(session.user);
           
@@ -98,11 +97,7 @@ const Auth = () => {
       
       if (!mounted) return;
       
-      // Avoid processing the same session multiple times
-      if (event === 'INITIAL_SESSION') return;
-      
-      if (session?.user && !hasProcessedInitialAuth) {
-        hasProcessedInitialAuth = true;
+      if (session?.user && event === 'SIGNED_IN') {
         setCurrentUser(session.user);
         // Check admin status and redirect
         try {
@@ -122,7 +117,7 @@ const Auth = () => {
           console.error('❌ Auth: Error checking role on auth change:', error);
           navigate('/');
         }
-      } else if (!session?.user) {
+      } else if (!session?.user && event === 'SIGNED_OUT') {
         setCurrentUser(null);
         setCheckingAuth(false);
       }

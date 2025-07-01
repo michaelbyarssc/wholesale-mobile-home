@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { MobileHomeEditDialog } from './MobileHomeEditDialog';
@@ -113,6 +113,7 @@ const AddFormContent = React.memo(({
 
 export const MobileHomesTab = () => {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const isMobile = useIsMobile();
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingHome, setEditingHome] = useState<MobileHome | null>(null);
@@ -207,6 +208,12 @@ export const MobileHomesTab = () => {
         description: "Mobile home added successfully.",
       });
 
+      // Invalidate all mobile home related queries
+      queryClient.invalidateQueries({ queryKey: ['admin-mobile-homes'] });
+      queryClient.invalidateQueries({ queryKey: ['public-mobile-homes'] });
+      queryClient.invalidateQueries({ queryKey: ['mobile-home-series'] });
+      queryClient.invalidateQueries({ queryKey: ['mobile-homes-for-conditions'] });
+
       setFormData({ manufacturer: 'Clayton', series: '', model: '', display_name: '', price: '', retail_price: '', minimum_profit: '' });
       setShowAddForm(false);
       refetch();
@@ -228,6 +235,10 @@ export const MobileHomesTab = () => {
         .eq('id', id);
 
       if (error) throw error;
+      
+      // Invalidate public mobile homes query to update home page
+      queryClient.invalidateQueries({ queryKey: ['public-mobile-homes'] });
+      
       refetch();
       
       toast({
@@ -318,6 +329,13 @@ export const MobileHomesTab = () => {
         title: "Success",
         description: `Mobile home "${homeName}" deleted successfully.`,
       });
+
+      // Invalidate all mobile home related queries
+      queryClient.invalidateQueries({ queryKey: ['admin-mobile-homes'] });
+      queryClient.invalidateQueries({ queryKey: ['public-mobile-homes'] });
+      queryClient.invalidateQueries({ queryKey: ['mobile-home-images'] });
+      queryClient.invalidateQueries({ queryKey: ['mobile-home-series'] });
+      queryClient.invalidateQueries({ queryKey: ['mobile-homes-for-conditions'] });
 
       refetch();
     } catch (error) {

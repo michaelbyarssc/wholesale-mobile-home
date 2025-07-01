@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
+import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { GripVertical, Edit, Trash2, Eye, EyeOff, MoreVertical } from 'lucide-react';
@@ -29,6 +30,7 @@ export const MobileHomesDragDrop = ({
   onRefetch
 }: MobileHomesDragDropProps) => {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const isMobile = useIsMobile();
 
   const handleDragEnd = async (result: DropResult) => {
@@ -54,6 +56,9 @@ export const MobileHomesDragDrop = ({
         if (error) throw error;
       }
 
+      // Invalidate public mobile homes query to update home page order
+      queryClient.invalidateQueries({ queryKey: ['public-mobile-homes'] });
+      
       onRefetch();
       toast({
         title: "Success",

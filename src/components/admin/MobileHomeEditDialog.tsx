@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
+import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { MobileHomeBasicForm } from './mobile-home-edit/MobileHomeBasicForm';
 import { MobileHomeImageManager } from './mobile-home-edit/MobileHomeImageManager';
@@ -19,6 +20,7 @@ interface MobileHomeEditDialogProps {
 
 export const MobileHomeEditDialog = ({ mobileHome, open, onClose, onSave }: MobileHomeEditDialogProps) => {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [formData, setFormData] = useState<Partial<MobileHome>>({});
   const [features, setFeatures] = useState<string>('');
 
@@ -66,6 +68,13 @@ export const MobileHomeEditDialog = ({ mobileHome, open, onClose, onSave }: Mobi
         title: "Success",
         description: "Mobile home updated successfully.",
       });
+
+      // Invalidate all mobile home related queries to ensure data sync
+      queryClient.invalidateQueries({ queryKey: ['admin-mobile-homes'] });
+      queryClient.invalidateQueries({ queryKey: ['public-mobile-homes'] });
+      queryClient.invalidateQueries({ queryKey: ['mobile-home-images'] });
+      queryClient.invalidateQueries({ queryKey: ['mobile-home-series'] });
+      queryClient.invalidateQueries({ queryKey: ['mobile-homes-for-conditions'] });
 
       onSave();
       onClose();

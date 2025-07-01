@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
+import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { DropResult } from '@hello-pangea/dnd';
 import { ImageUploadSection } from './ImageUploadSection';
@@ -23,6 +24,7 @@ interface MobileHomeImageManagerProps {
 
 export const MobileHomeImageManager = ({ mobileHome }: MobileHomeImageManagerProps) => {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [images, setImages] = useState<MobileHomeImage[]>([]);
   const [uploading, setUploading] = useState(false);
   const [editingLabel, setEditingLabel] = useState<string | null>(null);
@@ -170,6 +172,9 @@ export const MobileHomeImageManager = ({ mobileHome }: MobileHomeImageManagerPro
           description: `Image uploaded successfully${conversionMessage}.`,
         });
         
+        // Invalidate mobile home images query for public page
+        queryClient.invalidateQueries({ queryKey: ['mobile-home-images'] });
+        
         await fetchImages();
       } catch (error) {
         console.error('Error uploading image:', error);
@@ -221,6 +226,9 @@ export const MobileHomeImageManager = ({ mobileHome }: MobileHomeImageManagerPro
         description: "Image deleted successfully.",
       });
       
+      // Invalidate mobile home images query for public page
+      queryClient.invalidateQueries({ queryKey: ['mobile-home-images'] });
+      
       await fetchImages();
     } catch (error) {
       console.error('Error deleting image:', error);
@@ -254,6 +262,9 @@ export const MobileHomeImageManager = ({ mobileHome }: MobileHomeImageManagerPro
         title: "Success",
         description: "Image label updated successfully.",
       });
+      
+      // Invalidate mobile home images query for public page
+      queryClient.invalidateQueries({ queryKey: ['mobile-home-images'] });
     } catch (error) {
       console.error('Error updating label:', error);
       toast({
@@ -309,6 +320,9 @@ export const MobileHomeImageManager = ({ mobileHome }: MobileHomeImageManagerPro
         title: "Success",
         description: "Image order updated successfully.",
       });
+      
+      // Invalidate mobile home images query for public page
+      queryClient.invalidateQueries({ queryKey: ['mobile-home-images'] });
     } catch (error) {
       console.error('Error updating image order:', error);
       toast({

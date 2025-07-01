@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,7 +19,7 @@ import { HomeOptionsTab } from '@/components/admin/HomeOptionsTab';
 const Admin = () => {
   const [user, setUser] = useState<any>(null);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
-  const [activeTab, setActiveTab] = useState('estimates');
+  const [activeTab, setActiveTab] = useState('mobile-homes');
   const [roleLoading, setRoleLoading] = useState(true);
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -112,13 +111,6 @@ const Admin = () => {
                 <SheetContent side="left" className="w-80">
                   <div className="flex flex-col space-y-4 mt-8">
                     <Button
-                      variant={activeTab === 'estimates' ? 'default' : 'ghost'}
-                      className="justify-start"
-                      onClick={() => setActiveTab('estimates')}
-                    >
-                      Estimates
-                    </Button>
-                    <Button
                       variant={activeTab === 'mobile-homes' ? 'default' : 'ghost'}
                       className="justify-start"
                       onClick={() => setActiveTab('mobile-homes')}
@@ -207,8 +199,7 @@ const Admin = () => {
 
       <div className="container mx-auto px-4 py-4 md:py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className={`hidden md:grid w-full ${isSuperAdmin ? 'grid-cols-8' : 'grid-cols-7'}`}>
-            <TabsTrigger value="estimates">Estimates</TabsTrigger>
+          <TabsList className={`hidden md:grid w-full ${isSuperAdmin ? 'grid-cols-7' : 'grid-cols-6'}`}>
             <TabsTrigger value="mobile-homes">Mobile Homes</TabsTrigger>
             <TabsTrigger value="services">Services</TabsTrigger>
             <TabsTrigger value="home-options">Home Options</TabsTrigger>
@@ -219,10 +210,6 @@ const Admin = () => {
             <TabsTrigger value="settings">Settings</TabsTrigger>
             <TabsTrigger value="audit">Audit Log</TabsTrigger>
           </TabsList>
-
-          <TabsContent value="estimates">
-            <EstimatesTab />
-          </TabsContent>
 
           <TabsContent value="mobile-homes">
             <MobileHomesTab />

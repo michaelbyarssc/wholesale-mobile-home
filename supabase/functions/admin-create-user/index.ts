@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.0";
 
@@ -116,8 +115,17 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Use the authenticated admin user's ID as created_by (this is the key fix)
+    // Get the creating admin's markup info for tiered pricing
+    const { data: creatingAdminMarkup } = await supabaseAdmin
+      .from('customer_markups')
+      .select('markup_percentage, tier_level')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
     const createdByUserId = user.id;
+    console.log('Creating user with tiered pricing - Admin markup:', creatingAdminMarkup?.markup_percentage);
+
+    // Use the authenticated admin user's ID as created_by (this is the key fix)
     console.log('Creating user with details:', { 
       email, 
       first_name, 
@@ -158,8 +166,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log('User created successfully:', newUser.user.id);
 
-    // CRITICAL FIX: Create profile with explicit approved: true (not null)
-    // This ensures the user is auto-approved and won't appear in pending approvals
+    // Create profile with explicit approved: true (not null)
     console.log('Creating profile with created_by:', createdByUserId, 'and EXPLICIT auto-approval (approved: true)');
     
     const { error: profileError } = await supabaseAdmin
@@ -170,7 +177,7 @@ const handler = async (req: Request): Promise<Response> => {
         first_name: first_name || '',
         last_name: last_name || '',
         phone_number: phone_number || '',
-        approved: true, // EXPLICIT true, not null - this is the key fix
+        approved: true,
         approved_at: new Date().toISOString(),
         approved_by: user.id,
         created_by: createdByUserId
@@ -178,7 +185,6 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (profileError) {
       console.error('Error creating profile:', profileError);
-      // Don't fail the entire request, but log the error
     } else {
       console.log('Profile created successfully with EXPLICIT auto-approval (approved: true) and correct created_by');
     }
@@ -197,19 +203,38 @@ const handler = async (req: Request): Promise<Response> => {
       console.log('Role assigned successfully:', role || 'user');
     }
 
-    // Create customer markup - default to 30% if not specified
+    // Create tiered customer markup based on creating admin's pricing
+    let tierLevel = 'user';
+    let parentMarkup = 30; // Default fallback
+
+    if (creatingAdminMarkup) {
+      // If created by admin, inherit their tier structure
+      if (creatingAdminMarkup.tier_level === 'super_admin') {
+        tierLevel = 'admin';
+        parentMarkup = creatingAdminMarkup.markup_percentage;
+      } else if (creatingAdminMarkup.tier_level === 'admin') {
+        tierLevel = 'user';
+        parentMarkup = creatingAdminMarkup.markup_percentage;
+      }
+    }
+
+    console.log('Setting up tiered pricing - Tier:', tierLevel, 'Parent markup:', parentMarkup);
+
     const { error: markupError } = await supabaseAdmin
       .from('customer_markups')
       .insert({
         user_id: newUser.user.id,
         markup_percentage: markup_percentage || 30,
-        created_by: createdByUserId
+        tier_level: tierLevel,
+        created_by: createdByUserId,
+        // Store reference to parent admin's markup for tiered pricing
+        super_admin_markup_percentage: parentMarkup
       });
 
     if (markupError) {
       console.error('Error creating markup:', markupError);
     } else {
-      console.log('Markup created successfully:', markup_percentage || 30);
+      console.log('Tiered markup created successfully - User markup:', markup_percentage || 30, 'Base markup:', parentMarkup);
     }
 
     // Log admin action

@@ -22,7 +22,6 @@ export const UserTable = ({ userProfiles, onUserUpdated }: UserTableProps) => {
             <TableHeader>
               <TableRow>
                 <TableHead>User</TableHead>
-                <TableHead>Phone</TableHead>
                 <TableHead>Role</TableHead>
                 <TableHead>Markup %</TableHead>
                 <TableHead>Registered</TableHead>
@@ -32,7 +31,7 @@ export const UserTable = ({ userProfiles, onUserUpdated }: UserTableProps) => {
             <TableBody>
               {userProfiles.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                  <TableCell colSpan={5} className="text-center py-8 text-gray-500">
                     No registered users found
                   </TableCell>
                 </TableRow>

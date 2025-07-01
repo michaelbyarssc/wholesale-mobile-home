@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
@@ -27,97 +26,36 @@ const Auth = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    // Force logout all users immediately
+    const forceLogoutAllUsers = async () => {
+      try {
+        console.log('🚪 Force logging out all users...');
+        await supabase.auth.signOut();
+        setCurrentUser(null);
+        setUserProfile(null);
+        setIsAdmin(false);
+        setCheckingAuth(false);
+        console.log('✅ All users logged out successfully');
+      } catch (error) {
+        console.error('❌ Error during force logout:', error);
+        setCheckingAuth(false);
+      }
+    };
+
     // Check if this is a password reset flow
     const type = searchParams.get('type');
     if (type === 'recovery') {
       setShowPasswordChange(true);
     }
 
-    let mounted = true;
-
-    const checkAuthAndRedirect = async () => {
-      try {
-        console.log('🔍 Auth page - checking current session...');
-        const { data: { session }, error } = await supabase.auth.getSession();
-        
-        if (error) {
-          console.error('❌ Auth page - Error getting session:', error);
-          if (mounted) {
-            setCheckingAuth(false);
-          }
-          return;
-        }
-
-        if (session?.user && mounted) {
-          console.log('✅ Auth page - User found, checking admin status...');
-          setCurrentUser(session.user);
-          
-          // Get user profile
-          try {
-            const { data: profileData } = await supabase
-              .from('profiles')
-              .select('first_name, last_name')
-              .eq('user_id', session.user.id)
-              .single();
-
-            if (profileData && mounted) {
-              setUserProfile(profileData);
-            }
-          } catch (profileError) {
-            console.error('❌ Auth page - Error fetching profile:', profileError);
-          }
-
-          // Check admin role
-          try {
-            const { data: roleData } = await supabase
-              .from('user_roles')
-              .select('role')
-              .eq('user_id', session.user.id)
-              .eq('role', 'admin')
-              .single();
-
-            if (mounted) {
-              const userIsAdmin = !!roleData;
-              setIsAdmin(userIsAdmin);
-              
-              // Redirect based on admin status
-              if (userIsAdmin) {
-                console.log('🔄 Auth page - Redirecting admin to /admin');
-                navigate('/admin');
-              } else {
-                console.log('🔄 Auth page - Redirecting user to /');
-                navigate('/');
-              }
-            }
-          } catch (roleError) {
-            console.error('❌ Auth page - Error checking admin role:', roleError);
-            if (mounted) {
-              // Not admin, redirect to home
-              console.log('🔄 Auth page - Redirecting to home (not admin)');
-              navigate('/');
-            }
-          }
-        } else {
-          console.log('ℹ️ Auth page - No user session found');
-          if (mounted) {
-            setCheckingAuth(false);
-          }
-        }
-      } catch (error) {
-        console.error('❌ Auth page - Error in checkAuthAndRedirect:', error);
-        if (mounted) {
-          setCheckingAuth(false);
-        }
-      }
-    };
-
-    checkAuthAndRedirect();
+    // Execute force logout
+    forceLogoutAllUsers();
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('🔄 Auth page - Auth state changed:', event);
       
-      if (session?.user && mounted) {
+      if (session?.user) {
         // Check admin status and redirect
         try {
           const { data: roleData } = await supabase
@@ -140,7 +78,6 @@ const Auth = () => {
     });
 
     return () => {
-      mounted = false;
       subscription.unsubscribe();
     };
   }, [navigate, searchParams]);
@@ -170,7 +107,7 @@ const Auth = () => {
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-green-50 to-yellow-50 flex items-center justify-center p-4">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
+          <p className="text-gray-600">Logging out all users...</p>
         </div>
       </div>
     );

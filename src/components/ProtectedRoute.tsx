@@ -19,6 +19,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [hasCheckedAuth, setHasCheckedAuth] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -33,6 +34,8 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
           console.error('❌ ProtectedRoute: Error getting session:', error);
           if (requireAuth && mounted) {
             navigate('/auth');
+          } else if (mounted) {
+            setLoading(false);
           }
           return;
         }
@@ -55,6 +58,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
         } else {
           if (mounted) {
             setLoading(false);
+            setHasCheckedAuth(true);
           }
         }
       } catch (error) {
@@ -63,6 +67,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
           navigate('/auth');
         } else if (mounted) {
           setLoading(false);
+          setHasCheckedAuth(true);
         }
       }
     };
@@ -105,12 +110,15 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
       } finally {
         if (mounted) {
           setLoading(false);
+          setHasCheckedAuth(true);
         }
       }
     };
 
-    // Check current session first
-    checkAuth();
+    // Only check auth if we haven't already
+    if (!hasCheckedAuth) {
+      checkAuth();
+    }
 
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -121,6 +129,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
         const currentUser = session?.user ?? null;
         setUser(currentUser);
         
+        // Only redirect if this is not the initial session event
         if (requireAuth && !currentUser && event !== 'INITIAL_SESSION') {
           console.log('🔍 ProtectedRoute: Auth required but no user, redirecting to auth');
           navigate('/auth');
@@ -128,9 +137,9 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
         }
         
         // Check admin status if user exists and adminOnly is required
-        if (currentUser && adminOnly) {
+        if (currentUser && adminOnly && event !== 'INITIAL_SESSION') {
           checkAdminStatus(currentUser.id);
-        } else if (!adminOnly) {
+        } else if (!adminOnly && event !== 'INITIAL_SESSION') {
           setLoading(false);
         }
       }
@@ -140,7 +149,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
       mounted = false;
       subscription.unsubscribe();
     };
-  }, [navigate, requireAuth, adminOnly]);
+  }, [navigate, requireAuth, adminOnly, hasCheckedAuth]);
 
   if (loading) {
     return <LoadingSpinner />;

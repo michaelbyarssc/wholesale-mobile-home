@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -22,10 +21,13 @@ const Admin = () => {
   const [loading, setLoading] = useState(true);
   const [debugInfo, setDebugInfo] = useState<any>({});
   const [activeTab, setActiveTab] = useState('estimates');
+  const [authChecked, setAuthChecked] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
   useEffect(() => {
+    let mounted = true;
+
     const checkAuth = async () => {
       try {
         console.log('🔍 Admin: Starting auth check...');
@@ -35,11 +37,15 @@ const Admin = () => {
         
         if (!user) {
           console.log('🔍 Admin: No user found, redirecting to auth');
-          navigate('/auth');
+          if (mounted) {
+            navigate('/auth');
+          }
           return;
         }
 
-        setUser(user);
+        if (mounted) {
+          setUser(user);
+        }
 
         // Check if user is admin
         console.log('🔍 Admin: Checking admin role for user:', user.id);
@@ -62,44 +68,54 @@ const Admin = () => {
         console.log('🔍 Admin: All user roles:', userRoles);
         console.log('🔍 Admin: User roles error:', userRolesError);
 
-        setDebugInfo({
-          userId: user.id,
-          userEmail: user.email,
-          roleData,
-          roleError: roleError?.message,
-          userRoles,
-          userRolesError: userRolesError?.message,
-          hasAdminRole: !!roleData
-        });
+        if (mounted) {
+          setDebugInfo({
+            userId: user.id,
+            userEmail: user.email,
+            roleData,
+            roleError: roleError?.message,
+            userRoles,
+            userRolesError: userRolesError?.message,
+            hasAdminRole: !!roleData
+          });
 
-        if (!roleData) {
-          console.log('🔍 Admin: User is not admin');
-          setIsAdmin(false);
+          if (!roleData) {
+            console.log('🔍 Admin: User is not admin');
+            setIsAdmin(false);
+          } else {
+            console.log('🔍 Admin: User is admin, setting up dashboard');
+            setIsAdmin(true);
+          }
+          
           setLoading(false);
-          return;
+          setAuthChecked(true);
         }
-
-        console.log('🔍 Admin: User is admin, setting up dashboard');
-        setIsAdmin(true);
-        setLoading(false);
       } catch (error) {
         console.error('🔍 Admin: Error in auth check:', error);
-        setLoading(false);
+        if (mounted) {
+          setLoading(false);
+          setAuthChecked(true);
+        }
       }
     };
 
-    checkAuth();
+    if (!authChecked) {
+      checkAuth();
+    }
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       console.log('🔍 Admin: Auth state changed:', event);
-      if (!session?.user) {
+      if (!session?.user && mounted) {
         navigate('/auth');
       }
     });
 
-    return () => subscription.unsubscribe();
-  }, [navigate, toast]);
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, [navigate, toast, authChecked]);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();

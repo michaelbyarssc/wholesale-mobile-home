@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
@@ -28,6 +27,7 @@ const Auth = () => {
 
   useEffect(() => {
     let mounted = true;
+    let hasProcessedInitialAuth = false;
 
     const checkAuthAndRedirect = async () => {
       try {
@@ -42,7 +42,8 @@ const Auth = () => {
           return;
         }
 
-        if (session?.user && mounted) {
+        if (session?.user && mounted && !hasProcessedInitialAuth) {
+          hasProcessedInitialAuth = true;
           console.log('✅ Auth: User is logged in, checking admin status...');
           setCurrentUser(session.user);
           
@@ -85,10 +86,11 @@ const Auth = () => {
     if (type === 'recovery') {
       setShowPasswordChange(true);
       setCheckingAuth(false);
-    } else {
-      // Check existing session
-      checkAuthAndRedirect();
+      return;
     }
+
+    // Check existing session
+    checkAuthAndRedirect();
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -96,7 +98,11 @@ const Auth = () => {
       
       if (!mounted) return;
       
-      if (session?.user) {
+      // Avoid processing the same session multiple times
+      if (event === 'INITIAL_SESSION') return;
+      
+      if (session?.user && !hasProcessedInitialAuth) {
+        hasProcessedInitialAuth = true;
         setCurrentUser(session.user);
         // Check admin status and redirect
         try {
@@ -116,7 +122,7 @@ const Auth = () => {
           console.error('❌ Auth: Error checking role on auth change:', error);
           navigate('/');
         }
-      } else {
+      } else if (!session?.user) {
         setCurrentUser(null);
         setCheckingAuth(false);
       }

@@ -44,41 +44,43 @@ export const UserTable = ({ userProfiles, onUserUpdated }: UserTableProps) => {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Registered Users</CardTitle>
+      <CardHeader className="pb-4">
+        <CardTitle className="text-lg sm:text-xl">Registered Users</CardTitle>
       </CardHeader>
-      <CardContent>
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>User</TableHead>
-                <TableHead>Phone</TableHead>
-                {isSuperAdmin && <TableHead>Role</TableHead>}
-                <TableHead>Markup %</TableHead>
-                {isSuperAdmin && <TableHead>Created By</TableHead>}
-                <TableHead>Registered</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {userProfiles.length === 0 ? (
+      <CardContent className="px-2 sm:px-6">
+        <div className="rounded-md border overflow-hidden">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={isSuperAdmin ? 7 : 5} className="text-center py-8 text-gray-500">
-                    No registered users found
-                  </TableCell>
+                  <TableHead className="min-w-[200px] sm:min-w-0">User</TableHead>
+                  <TableHead className="hidden sm:table-cell">Phone</TableHead>
+                  {isSuperAdmin && <TableHead className="hidden md:table-cell">Role</TableHead>}
+                  <TableHead className="hidden lg:table-cell">Markup %</TableHead>
+                  {isSuperAdmin && <TableHead className="hidden xl:table-cell">Created By</TableHead>}
+                  <TableHead className="hidden sm:table-cell">Registered</TableHead>
+                  <TableHead className="text-right min-w-[100px]">Actions</TableHead>
                 </TableRow>
-              ) : (
-                userProfiles.map((profile) => (
-                  <UserTableRow 
-                    key={profile.user_id} 
-                    profile={profile} 
-                    onUserUpdated={onUserUpdated}
-                  />
-                ))
-              )}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {userProfiles.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                      No registered users found
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  userProfiles.map((profile) => (
+                    <UserTableRow 
+                      key={profile.user_id} 
+                      profile={profile} 
+                      onUserUpdated={onUserUpdated}
+                    />
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </div>
       </CardContent>
     </Card>

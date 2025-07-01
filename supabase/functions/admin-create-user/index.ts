@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.0";
 
@@ -122,10 +123,11 @@ const handler = async (req: Request): Promise<Response> => {
       .eq('user_id', user.id)
       .maybeSingle();
 
+    // CRITICAL FIX: Use the authenticated admin user's ID as created_by
     const createdByUserId = user.id;
+    console.log('Creating user with created_by field properly set to:', createdByUserId);
     console.log('Creating user with tiered pricing - Admin markup:', creatingAdminMarkup?.markup_percentage);
 
-    // Use the authenticated admin user's ID as created_by (this is the key fix)
     console.log('Creating user with details:', { 
       email, 
       first_name, 
@@ -166,8 +168,8 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log('User created successfully:', newUser.user.id);
 
-    // Create profile with explicit approved: true (not null)
-    console.log('Creating profile with created_by:', createdByUserId, 'and EXPLICIT auto-approval (approved: true)');
+    // CRITICAL FIX: Create profile with proper created_by field set to the admin who created the user
+    console.log('Creating profile with created_by field properly set to:', createdByUserId);
     
     const { error: profileError } = await supabaseAdmin
       .from('profiles')
@@ -180,13 +182,17 @@ const handler = async (req: Request): Promise<Response> => {
         approved: true,
         approved_at: new Date().toISOString(),
         approved_by: user.id,
-        created_by: createdByUserId
+        created_by: createdByUserId // CRITICAL: This ensures the creator is properly logged
       });
 
     if (profileError) {
       console.error('Error creating profile:', profileError);
+      return new Response(
+        JSON.stringify({ error: 'Failed to create user profile' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     } else {
-      console.log('Profile created successfully with EXPLICIT auto-approval (approved: true) and correct created_by');
+      console.log('Profile created successfully with created_by field set to:', createdByUserId);
     }
 
     // Assign role - default to 'user' if not specified
@@ -252,7 +258,7 @@ const handler = async (req: Request): Promise<Response> => {
           role: role || 'user', 
           markup_percentage: markup_percentage || 30, 
           created_by: createdByUserId, 
-          approved: true // Log that it was auto-approved
+          approved: true
         }
       });
       console.log('Admin action logged successfully');
@@ -260,7 +266,7 @@ const handler = async (req: Request): Promise<Response> => {
       console.error('Failed to log admin action:', auditError);
     }
 
-    console.log('User setup completed successfully with EXPLICIT auto-approval');
+    console.log('User setup completed successfully with proper created_by tracking');
 
     return new Response(
       JSON.stringify({ 
@@ -274,7 +280,7 @@ const handler = async (req: Request): Promise<Response> => {
           role: role || 'user',
           markup_percentage: markup_percentage || 30,
           created_by: createdByUserId,
-          approved: true // Confirm it's auto-approved
+          approved: true
         }
       }),
       {

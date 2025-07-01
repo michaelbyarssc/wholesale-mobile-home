@@ -44,29 +44,48 @@ export const MobileHomesShowcase = ({
 
   const { mobileHomes, homeImages, isLoading, imagesLoading, error, refetch } = useMobileHomesData();
 
-  // Add debugging for mobile homes
+  // Enhanced debugging
   React.useEffect(() => {
-    console.log('🏠 MobileHomesShowcase: Current state', {
-      mobileHomesCount: mobileHomes.length,
-      homeImagesCount: homeImages.length,
+    console.log('🏠 MobileHomesShowcase: Detailed state check', {
+      mobileHomesArray: mobileHomes,
+      mobileHomesType: typeof mobileHomes,
+      mobileHomesIsArray: Array.isArray(mobileHomes),
+      mobileHomesCount: mobileHomes?.length || 0,
+      homeImagesCount: homeImages?.length || 0,
       isLoading,
       imagesLoading,
       error: error?.message,
-      user: user?.email
+      user: user?.email,
+      rawMobileHomes: JSON.stringify(mobileHomes, null, 2)
     });
   }, [mobileHomes, homeImages, isLoading, imagesLoading, error, user]);
 
-  // Memoize filtered homes to prevent unnecessary recalculations
-  const filteredHomes = useMemo(() => {
-    console.log('🏠 Filtering homes:', { total: mobileHomes.length, filter: widthFilter });
-    if (widthFilter === 'single') {
-      return mobileHomes.filter(home => !home.width_feet || home.width_feet < 16);
-    }
-    if (widthFilter === 'double') {
-      return mobileHomes.filter(home => home.width_feet && home.width_feet >= 16);
+  // Safely handle mobileHomes array
+  const safeMobileHomes = useMemo(() => {
+    console.log('🏠 Processing safeMobileHomes:', {
+      mobileHomes,
+      isArray: Array.isArray(mobileHomes),
+      length: mobileHomes?.length
+    });
+    
+    if (!mobileHomes || !Array.isArray(mobileHomes)) {
+      console.warn('🏠 mobileHomes is not a valid array:', mobileHomes);
+      return [];
     }
     return mobileHomes;
-  }, [mobileHomes, widthFilter]);
+  }, [mobileHomes]);
+
+  // Memoize filtered homes to prevent unnecessary recalculations
+  const filteredHomes = useMemo(() => {
+    console.log('🏠 Filtering homes:', { total: safeMobileHomes.length, filter: widthFilter });
+    if (widthFilter === 'single') {
+      return safeMobileHomes.filter(home => !home.width_feet || home.width_feet < 16);
+    }
+    if (widthFilter === 'double') {
+      return safeMobileHomes.filter(home => home.width_feet && home.width_feet >= 16);
+    }
+    return safeMobileHomes;
+  }, [safeMobileHomes, widthFilter]);
 
   // Memoize unique series calculation
   const uniqueSeries = useMemo(() => {
@@ -108,7 +127,12 @@ export const MobileHomesShowcase = ({
     return (
       <MobileHomesDebugPanel
         user={user}
-        debugInfo={[`Error: ${error.message}`]}
+        debugInfo={[
+          `Error: ${error.message}`,
+          `Mobile Homes Count: ${safeMobileHomes.length}`,
+          `Is Loading: ${isLoading}`,
+          `Images Loading: ${imagesLoading}`
+        ]}
         error={error}
         onRefetch={refetch}
       />
@@ -121,14 +145,18 @@ export const MobileHomesShowcase = ({
     return (
       <MobileHomesLoadingState
         user={user}
-        debugInfo={[`Loading mobile homes...`, `User: ${user?.email || 'Not logged in'}`]}
+        debugInfo={[
+          `Loading mobile homes...`, 
+          `User: ${user?.email || 'Not logged in'}`,
+          `Query state: isLoading=${isLoading}, imagesLoading=${imagesLoading}`
+        ]}
         onRefetch={refetch}
       />
     );
   }
 
   // Show empty state
-  if (mobileHomes.length === 0) {
+  if (safeMobileHomes.length === 0) {
     console.log('🏠 MobileHomesShowcase showing empty state');
     return (
       <MobileHomesEmptyState
@@ -138,7 +166,7 @@ export const MobileHomesShowcase = ({
     );
   }
 
-  console.log('🏠 MobileHomesShowcase rendering with homes:', mobileHomes.length);
+  console.log('🏠 MobileHomesShowcase rendering with homes:', safeMobileHomes.length);
 
   return (
     <section className="py-20 bg-amber-50" id="mobile-homes">
@@ -170,7 +198,7 @@ export const MobileHomesShowcase = ({
                     : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'
                 }`}
               >
-                All Homes ({mobileHomes.length})
+                All Homes ({safeMobileHomes.length})
               </button>
               <button
                 onClick={() => setWidthFilter('single')}
@@ -180,7 +208,7 @@ export const MobileHomesShowcase = ({
                     : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'
                 }`}
               >
-                Single Wide ({mobileHomes.filter(h => !h.width_feet || h.width_feet < 16).length})
+                Single Wide ({safeMobileHomes.filter(h => !h.width_feet || h.width_feet < 16).length})
               </button>
               <button
                 onClick={() => setWidthFilter('double')}
@@ -190,7 +218,7 @@ export const MobileHomesShowcase = ({
                     : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'
                 }`}
               >
-                Double Wide ({mobileHomes.filter(h => h.width_feet && h.width_feet >= 16).length})
+                Double Wide ({safeMobileHomes.filter(h => h.width_feet && h.width_feet >= 16).length})
               </button>
             </div>
           </div>
@@ -202,6 +230,12 @@ export const MobileHomesShowcase = ({
             <p className="text-sm text-gray-500 mt-2">
               Try selecting a different width category above.
             </p>
+            <div className="mt-4 p-4 bg-gray-100 rounded-lg">
+              <p className="text-sm font-medium">Debug Info:</p>
+              <p className="text-xs">Total homes: {safeMobileHomes.length}</p>
+              <p className="text-xs">Filtered homes: {filteredHomes.length}</p>
+              <p className="text-xs">Filter: {widthFilter}</p>
+            </div>
           </div>
         ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">

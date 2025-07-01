@@ -25,7 +25,6 @@ export const EmailTemplates: React.FC<EmailTemplatesProps> = ({
           <Label htmlFor="estimate_email_template">Email Template</Label>
           <Textarea
             id="estimate_email_template"
-            name="estimate_email_template"
             value={settings.estimate_email_template || ''}
             onChange={(e) => onInputChange('estimate_email_template', e.target.value)}
             onBlur={(e) => onUpdateSetting('estimate_email_template', e.target.value)}
@@ -38,7 +37,6 @@ export const EmailTemplates: React.FC<EmailTemplatesProps> = ({
           <Label htmlFor="estimate_sms_template">SMS Template</Label>
           <Textarea
             id="estimate_sms_template"
-            name="estimate_sms_template"
             value={settings.estimate_sms_template || ''}
             onChange={(e) => onInputChange('estimate_sms_template', e.target.value)}
             onBlur={(e) => onUpdateSetting('estimate_sms_template', e.target.value)}

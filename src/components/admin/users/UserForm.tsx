@@ -88,22 +88,20 @@ export const UserForm = ({ onUserCreated }: UserFormProps) => {
         <form onSubmit={createUserDirectly} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="md:col-span-2">
-              <Label htmlFor="new-user-email">Email Address</Label>
+              <Label htmlFor="email">Email Address</Label>
               <Input
-                id="new-user-email"
-                name="new-user-email"
+                id="email"
                 type="email"
                 value={newUserEmail}
                 onChange={(e) => setNewUserEmail(e.target.value)}
                 placeholder="user@example.com"
                 required
-                aria-required="true"
               />
             </div>
             <div>
-              <Label htmlFor="new-user-role">Role</Label>
+              <Label htmlFor="role">Role</Label>
               <Select value={newUserRole} onValueChange={(value: 'admin' | 'user') => setNewUserRole(value)}>
-                <SelectTrigger id="new-user-role" name="new-user-role" aria-label="Select user role">
+                <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
@@ -18,7 +19,7 @@ const Auth = () => {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [loading, setLoading] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [checkingAuth, setCheckingAuth] = useState(true);
+  const [checkingAdminStatus, setCheckingAdminStatus] = useState(true);
   const [userProfile, setUserProfile] = useState<{first_name: string, last_name: string} | null>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [showPasswordChange, setShowPasswordChange] = useState(false);
@@ -26,59 +27,85 @@ const Auth = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    console.log('🔍 Auth: Component mounted, starting auth check...');
-    
-    // Check if this is a password recovery flow first
+    // Check if this is a password reset flow
     const type = searchParams.get('type');
     if (type === 'recovery') {
-      console.log('🔍 Auth: Password recovery flow detected');
       setShowPasswordChange(true);
-      setCheckingAuth(false);
-      return;
     }
 
-    // Check current session
-    const checkSession = async () => {
-      try {
-        const { data: { session }, error } = await supabase.auth.getSession();
-        
-        if (error) {
-          console.error('❌ Auth: Error getting session:', error);
-          setCheckingAuth(false);
-          return;
+    // Check if current user is admin and get their profile
+    const checkAdminStatus = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setCurrentUser(user);
+        // Get user profile
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('first_name, last_name')
+          .eq('user_id', user.id)
+          .single();
+
+        if (profileData) {
+          setUserProfile(profileData);
         }
 
-        if (session?.user) {
-          console.log('✅ Auth: User found, checking role and redirecting...');
-          setCurrentUser(session.user);
+        // Check admin role
+        const { data: roleData } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', user.id)
+          .eq('role', 'admin')
+          .single();
 
-          // Check if user is admin
-          const { data: roleData } = await supabase
-            .from('user_roles')
-            .select('role')
-            .eq('user_id', session.user.id)
-            .eq('role', 'admin')
-            .single();
-
-          if (roleData) {
-            console.log('🔍 Auth: Admin user - redirecting to admin');
-            navigate('/admin');
-          } else {
-            console.log('🔍 Auth: Regular user - redirecting to home');
-            navigate('/');
-          }
-        } else {
-          console.log('ℹ️ Auth: No session found - showing auth form');
-          setCheckingAuth(false);
-        }
-      } catch (error) {
-        console.error('❌ Auth: Error in session check:', error);
-        setCheckingAuth(false);
+        setIsAdmin(!!roleData);
       }
+      setCheckingAdminStatus(false);
     };
 
-    checkSession();
-  }, [searchParams, navigate]);
+    checkAdminStatus();
+
+    // Check if user is already logged in and redirect appropriately
+    const checkUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        // Check if user is admin
+        const { data: roleData } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', user.id)
+          .eq('role', 'admin')
+          .single();
+
+        if (roleData) {
+          navigate('/admin');
+        } else {
+          navigate('/');
+        }
+      }
+    };
+    checkUser();
+
+    // Listen for auth changes and redirect appropriately
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session?.user) {
+        // Check if user is admin
+        const { data: roleData } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', session.user.id)
+          .eq('role', 'admin')
+          .single();
+
+        if (roleData) {
+          navigate('/admin');
+        } else {
+          navigate('/');
+        }
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [navigate, searchParams]);
 
   const resetForm = () => {
     setEmail('');
@@ -100,15 +127,12 @@ const Auth = () => {
     resetForm();
   };
 
-  console.log('🔍 Auth: Render state - checkingAuth:', checkingAuth, 'currentUser:', !!currentUser);
-
-  if (checkingAuth) {
+  if (checkingAdminStatus) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-green-50 to-yellow-50 flex items-center justify-center p-4">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Checking authentication...</p>
-          <p className="text-xs text-gray-500 mt-2">Please wait...</p>
+          <p className="text-gray-600">Loading...</p>
         </div>
       </div>
     );

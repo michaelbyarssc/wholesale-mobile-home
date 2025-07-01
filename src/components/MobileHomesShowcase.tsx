@@ -1,19 +1,31 @@
-
-import React, { useState, useCallback, useMemo } from 'react';
-import { Tabs, TabsContent } from '@/components/ui/tabs';
+import React, { useState, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Home, Bed, Bath, Maximize, Ruler } from 'lucide-react';
+import { MobileHomeImageCarousel } from './MobileHomeImageCarousel';
 import { MobileHomeServicesDialog } from './MobileHomeServicesDialog';
 import { ShoppingCart } from './ShoppingCart';
-import { MobileHomesDebugPanel } from './mobile-homes/MobileHomesDebugPanel';
-import { MobileHomesLoadingState } from './mobile-homes/MobileHomesLoadingState';
-import { MobileHomesEmptyState } from './mobile-homes/MobileHomesEmptyState';
-import { MobileHomeCard } from './mobile-homes/MobileHomeCard';
-import { useMobileHomesData } from './mobile-homes/MobileHomesData';
+import { useCustomerPricing } from '@/hooks/useCustomerPricing';
 import { CartItem } from '@/hooks/useShoppingCart';
 import { User } from '@supabase/supabase-js';
+import { formatPrice } from '@/lib/utils';
 import type { Database } from '@/integrations/supabase/types';
 
 type MobileHome = Database['public']['Tables']['mobile_homes']['Row'];
 type HomeOption = Database['public']['Tables']['home_options']['Row'];
+
+interface MobileHomeImage {
+  id: string;
+  mobile_home_id: string;
+  image_url: string;
+  image_type: string;
+  display_order: number;
+  alt_text: string | null;
+}
 
 interface MobileHomesShowcaseProps {
   user?: User | null;
@@ -41,135 +53,320 @@ export const MobileHomesShowcase = ({
   const [activeTab, setActiveTab] = useState('');
   const [widthFilter, setWidthFilter] = useState<'all' | 'single' | 'double'>('all');
   const [selectedHomeForServices, setSelectedHomeForServices] = useState<MobileHome | null>(null);
+  const { calculateMobileHomePrice, loading: pricingLoading } = useCustomerPricing(user);
+  
+  console.log('🔍 MobileHomesShowcase render - cart items from props:', cartItems.length);
+  console.log('🔍 MobileHomesShowcase - selectedHomeForServices:', selectedHomeForServices?.id);
 
-  const { mobileHomes, homeImages, isLoading, imagesLoading, error, refetch } = useMobileHomesData();
-
-  // Enhanced debugging
-  React.useEffect(() => {
-    console.log('🏠 MobileHomesShowcase: Detailed state check', {
-      mobileHomesArray: mobileHomes,
-      mobileHomesType: typeof mobileHomes,
-      mobileHomesIsArray: Array.isArray(mobileHomes),
-      mobileHomesCount: mobileHomes?.length || 0,
-      homeImagesCount: homeImages?.length || 0,
-      isLoading,
-      imagesLoading,
-      error: error?.message,
-      user: user?.email,
-      rawMobileHomes: JSON.stringify(mobileHomes, null, 2)
-    });
-  }, [mobileHomes, homeImages, isLoading, imagesLoading, error, user]);
-
-  // Safely handle mobileHomes array
-  const safeMobileHomes = useMemo(() => {
-    console.log('🏠 Processing safeMobileHomes:', {
-      mobileHomes,
-      isArray: Array.isArray(mobileHomes),
-      length: mobileHomes?.length
-    });
-    
-    if (!mobileHomes || !Array.isArray(mobileHomes)) {
-      console.warn('🏠 mobileHomes is not a valid array:', mobileHomes);
-      return [];
+  const { data: mobileHomes = [], isLoading } = useQuery({
+    queryKey: ['public-mobile-homes'],
+    queryFn: async () => {
+      console.log('Fetching mobile homes...');
+      
+      const { data, error } = await supabase
+        .from('mobile_homes')
+        .select('*')
+        .eq('active', true)
+        .order('display_order', { ascending: true })
+        .order('created_at', { ascending: true });
+      
+      if (error) {
+        console.error('Error fetching mobile homes:', error);
+        throw error;
+      }
+      
+      console.log('Mobile homes fetched:', data?.length || 0);
+      console.log('Active homes data:', data);
+      
+      return data as MobileHome[];
     }
-    return mobileHomes;
-  }, [mobileHomes]);
+  });
 
-  // Memoize filtered homes to prevent unnecessary recalculations
-  const filteredHomes = useMemo(() => {
-    console.log('🏠 Filtering homes:', { total: safeMobileHomes.length, filter: widthFilter });
+  const { data: homeImages = [], isLoading: imagesLoading } = useQuery({
+    queryKey: ['mobile-home-images'],
+    queryFn: async () => {
+      console.log('Fetching mobile home images...');
+      const { data, error } = await supabase
+        .from('mobile_home_images')
+        .select('*')
+        .order('mobile_home_id')
+        .order('image_type')
+        .order('display_order');
+      
+      if (error) {
+        console.error('Error fetching mobile home images:', error);
+        throw error;
+      }
+      console.log('Mobile home images fetched:', data?.length || 0);
+      return data as MobileHomeImage[];
+    }
+  });
+
+  // Filter homes based on width
+  const getFilteredHomes = (homes: MobileHome[]) => {
     if (widthFilter === 'single') {
-      return safeMobileHomes.filter(home => !home.width_feet || home.width_feet < 16);
+      return homes.filter(home => !home.width_feet || home.width_feet < 16);
     }
     if (widthFilter === 'double') {
-      return safeMobileHomes.filter(home => home.width_feet && home.width_feet >= 16);
+      return homes.filter(home => home.width_feet && home.width_feet >= 16);
     }
-    return safeMobileHomes;
-  }, [safeMobileHomes, widthFilter]);
+    return homes;
+  };
 
-  // Memoize unique series calculation
-  const uniqueSeries = useMemo(() => {
-    const series = [...new Set(filteredHomes.map(home => home.series))].sort((a, b) => {
-      if (a === 'Tru') return -1;
-      if (b === 'Tru') return 1;
-      return a.localeCompare(b);
-    });
-    console.log('🏠 Unique series:', series);
-    return series;
-  }, [filteredHomes]);
+  const filteredHomes = getFilteredHomes(mobileHomes);
 
-  // Memoize image lookup function
-  const getHomeImages = useCallback((homeId: string) => {
-    return homeImages.filter(image => image.mobile_home_id === homeId);
-  }, [homeImages]);
+  // Get unique series from the filtered mobile homes data and sort with Tru first
+  const uniqueSeries = [...new Set(filteredHomes.map(home => home.series))].sort((a, b) => {
+    if (a === 'Tru') return -1;
+    if (b === 'Tru') return 1;
+    return a.localeCompare(b);
+  });
 
+  console.log('Unique series found:', uniqueSeries);
+  
   // Set the first series as the default active tab
   React.useEffect(() => {
     if (uniqueSeries.length > 0 && !activeTab) {
       const defaultTab = uniqueSeries[0];
-      console.log('🏠 Setting default tab:', defaultTab);
+      console.log('Setting default tab to:', defaultTab);
       setActiveTab(defaultTab);
     }
   }, [uniqueSeries, activeTab]);
 
+  const getHomeImages = (homeId: string) => {
+    const images = homeImages.filter(image => image.mobile_home_id === homeId);
+    return images;
+  };
+
+  const getHomeName = (home: MobileHome) => {
+    return home.display_name || `${home.manufacturer} ${home.model}`;
+  };
+
+  const getHomeFeatures = (features: any): string[] => {
+    if (!features) return [];
+    if (Array.isArray(features)) {
+      return features.filter(feature => typeof feature === 'string');
+    }
+    return [];
+  };
+
   const handleAddToCart = useCallback((home: MobileHome) => {
+    console.log('🔍 Add to cart button clicked for:', home.id, home.model);
+    console.log('🔍 Setting selectedHomeForServices to:', home);
     setSelectedHomeForServices(home);
   }, []);
 
   const handleAddToCartWithServices = useCallback((home: MobileHome, selectedServices: string[], selectedHomeOptions: { option: HomeOption; quantity: number }[] = []) => {
+    console.log('🔍 Adding to cart with services and options:', {
+      homeId: home.id,
+      selectedServices,
+      selectedHomeOptions
+    });
     addToCart(home, selectedServices, selectedHomeOptions);
     setSelectedHomeForServices(null);
   }, [addToCart]);
 
-  // Show error state
-  if (error) {
-    console.error('🏠 MobileHomesShowcase error:', error);
+  const renderHomeCard = (home: MobileHome, index: number) => {
+    const homeImageList = getHomeImages(home.id);
+    const isInCart = cartItems.some(item => item.mobileHome.id === home.id);
+    const homeFeatures = getHomeFeatures(home.features);
+    
     return (
-      <MobileHomesDebugPanel
-        user={user}
-        debugInfo={[
-          `Error: ${error.message}`,
-          `Mobile Homes Count: ${safeMobileHomes.length}`,
-          `Is Loading: ${isLoading}`,
-          `Images Loading: ${imagesLoading}`
-        ]}
-        error={error}
-        onRefetch={refetch}
-      />
-    );
-  }
+      <Card key={home.id} className="overflow-hidden hover:shadow-lg transition-shadow">
+        <CardHeader className="pb-4">
+          <div className="flex justify-between items-start">
+            <CardTitle className="text-xl font-bold text-gray-900">
+              {getHomeName(home)}
+            </CardTitle>
+            <div className="flex items-center gap-2">
+              <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                {home.series} Series
+              </Badge>
+              {user && isInCart && (
+                <Badge variant="default" className="bg-green-100 text-green-800">
+                  In Cart
+                </Badge>
+              )}
+            </div>
+          </div>
+          {home.description && (
+            <p className="text-gray-600 text-sm mt-2">{home.description}</p>
+          )}
+          
+          {/* Pricing Display Logic - Always use calculated pricing for logged in users */}
+          {user ? (
+            // Logged in users (including admins) see their calculated pricing
+            !pricingLoading ? (
+              <div className="mt-2">
+                <span className="text-2xl font-bold text-green-600">
+                  {formatPrice(calculateMobileHomePrice(home))}
+                </span>
+                <p className="text-sm text-gray-500 mt-1">Your price</p>
+              </div>
+            ) : (
+              <div className="mt-2">
+                <span className="text-lg text-gray-500 italic">Loading your pricing...</span>
+              </div>
+            )
+          ) : (
+            // Non-logged in users see retail price or login prompt
+            home.retail_price ? (
+              <div className="mt-2">
+                <p className="text-sm text-blue-600 mb-1">Starting at:</p>
+                <span className="text-2xl font-bold text-blue-600">{formatPrice(home.retail_price)}</span>
+                <p className="text-sm text-gray-500 mt-1">
+                  <span className="text-blue-600 font-medium cursor-pointer hover:underline" onClick={() => window.location.href = '/auth'}>Login to see your price</span>
+                </p>
+              </div>
+            ) : (
+              <div className="mt-2">
+                <span className="text-lg text-gray-500 italic">Login to view pricing</span>
+              </div>
+            )
+          )}
+        </CardHeader>
+        
+        <CardContent className="space-y-4">
+          {/* Home Image Carousel */}
+          <MobileHomeImageCarousel 
+            images={homeImageList} 
+            homeModel={getHomeName(home)}
+          />
 
-  // Show loading state
+          {/* Specifications Grid */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="flex flex-col items-center text-center text-sm">
+              <div className="flex items-center space-x-1 text-gray-600 mb-1">
+                <Maximize className="h-4 w-4 text-blue-600" />
+                <span>Square Footage:</span>
+              </div>
+              <span className="font-semibold text-lg">{home.square_footage || 'N/A'} sq ft</span>
+            </div>
+            
+            <div className="flex flex-col items-center text-center text-sm">
+              <div className="flex items-center space-x-1 text-gray-600 mb-1">
+                <Ruler className="h-4 w-4 text-blue-600" />
+                <span>Dimensions:</span>
+              </div>
+              <span className="font-semibold text-lg">
+                {home.length_feet && home.width_feet 
+                  ? `${home.width_feet}' × ${home.length_feet}'` 
+                  : 'N/A'}
+              </span>
+            </div>
+            
+            <div className="flex items-center space-x-2 text-sm">
+              <Bed className="h-4 w-4 text-blue-600" />
+              <span className="text-gray-600">Bedrooms:</span>
+              <span className="font-semibold">{home.bedrooms || 'N/A'}</span>
+            </div>
+            
+            <div className="flex items-center space-x-2 text-sm">
+              <Bath className="h-4 w-4 text-blue-600" />
+              <span className="text-gray-600">Bathrooms:</span>
+              <span className="font-semibold">{home.bathrooms || 'N/A'}</span>
+            </div>
+          </div>
+
+          {/* Features */}
+          {homeFeatures.length > 0 && (
+            <div>
+              <h4 className="font-semibold text-gray-900 mb-2 flex items-center">
+                <Home className="h-4 w-4 mr-2 text-blue-600" />
+                Key Features
+              </h4>
+              <div className="grid grid-cols-1 gap-1">
+                {homeFeatures.map((feature, index) => (
+                  <div key={index} className="flex items-center text-sm text-gray-600">
+                    <span className="w-2 h-2 bg-blue-600 rounded-full mr-2"></span>
+                    {feature}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Add to Cart Button - Only show for logged in users */}
+          {user ? (
+            <Button 
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('🔍 Button clicked for home:', home.id);
+                handleAddToCart(home);
+              }}
+              className="w-full"
+              variant={isInCart ? "outline" : "default"}
+              type="button"
+            >
+              {isInCart ? 'Update in Cart' : 'Add to Cart'}
+            </Button>
+          ) : (
+            <Button 
+              onClick={() => window.location.href = '/auth'}
+              className="w-full"
+              variant="outline"
+              type="button"
+            >
+              Login to Add to Cart
+            </Button>
+          )}
+        </CardContent>
+      </Card>
+    );
+  };
+
+  console.log('Render state:', { 
+    isLoading, 
+    imagesLoading, 
+    pricingLoading,
+    homeCount: mobileHomes.length, 
+    imageCount: homeImages.length,
+    uniqueSeries,
+    activeTab,
+    cartItemsCount: cartItems.length,
+    widthFilter,
+    filteredHomesCount: filteredHomes.length
+  });
+
   if (isLoading) {
-    console.log('🏠 MobileHomesShowcase showing loading state');
     return (
-      <MobileHomesLoadingState
-        user={user}
-        debugInfo={[
-          `Loading mobile homes...`, 
-          `User: ${user?.email || 'Not logged in'}`,
-          `Query state: isLoading=${isLoading}, imagesLoading=${imagesLoading}`
-        ]}
-        onRefetch={refetch}
-      />
+      <section className="py-20 bg-amber-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h3 className="text-3xl font-bold text-gray-900 mb-4">
+              Our Mobile Home Models
+            </h3>
+            <div className="flex items-center justify-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              <span className="ml-2">Loading models...</span>
+            </div>
+          </div>
+        </div>
+      </section>
     );
   }
 
-  // Show empty state
-  if (safeMobileHomes.length === 0) {
-    console.log('🏠 MobileHomesShowcase showing empty state');
+  if (mobileHomes.length === 0) {
     return (
-      <MobileHomesEmptyState
-        user={user}
-        onRefetch={refetch}
-      />
+      <section className="py-20 bg-amber-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h3 className="text-3xl font-bold text-gray-900 mb-4">
+              Our Mobile Home Models
+            </h3>
+            <p className="text-lg text-gray-600">No mobile homes available at this time.</p>
+            <p className="text-sm text-gray-500 mt-2">
+              Please check back later or contact us for more information.
+            </p>
+          </div>
+        </div>
+      </section>
     );
   }
-
-  console.log('🏠 MobileHomesShowcase rendering with homes:', safeMobileHomes.length);
 
   return (
-    <section className="py-20 bg-amber-50" id="mobile-homes">
+    <section className="py-20 bg-amber-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
           <h3 className="text-3xl font-bold text-gray-900 mb-4">
@@ -198,7 +395,7 @@ export const MobileHomesShowcase = ({
                     : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'
                 }`}
               >
-                All Homes ({safeMobileHomes.length})
+                All Homes ({mobileHomes.length})
               </button>
               <button
                 onClick={() => setWidthFilter('single')}
@@ -208,7 +405,7 @@ export const MobileHomesShowcase = ({
                     : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'
                 }`}
               >
-                Single Wide ({safeMobileHomes.filter(h => !h.width_feet || h.width_feet < 16).length})
+                Single Wide ({mobileHomes.filter(h => !h.width_feet || h.width_feet < 16).length})
               </button>
               <button
                 onClick={() => setWidthFilter('double')}
@@ -218,7 +415,7 @@ export const MobileHomesShowcase = ({
                     : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'
                 }`}
               >
-                Double Wide ({safeMobileHomes.filter(h => h.width_feet && h.width_feet >= 16).length})
+                Double Wide ({mobileHomes.filter(h => h.width_feet && h.width_feet >= 16).length})
               </button>
             </div>
           </div>
@@ -230,12 +427,6 @@ export const MobileHomesShowcase = ({
             <p className="text-sm text-gray-500 mt-2">
               Try selecting a different width category above.
             </p>
-            <div className="mt-4 p-4 bg-gray-100 rounded-lg">
-              <p className="text-sm font-medium">Debug Info:</p>
-              <p className="text-xs">Total homes: {safeMobileHomes.length}</p>
-              <p className="text-xs">Filtered homes: {filteredHomes.length}</p>
-              <p className="text-xs">Filter: {widthFilter}</p>
-            </div>
           </div>
         ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -262,26 +453,13 @@ export const MobileHomesShowcase = ({
 
             {uniqueSeries.map((series) => {
               const seriesHomes = filteredHomes.filter(home => home.series === series);
+              console.log(`Rendering ${series} series with ${seriesHomes.length} homes:`, seriesHomes);
               
               return (
                 <TabsContent key={series} value={series}>
                   <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
                     {seriesHomes.length > 0 ? (
-                      seriesHomes.map((home) => {
-                        const homeImageList = getHomeImages(home.id);
-                        const isInCart = cartItems.some(item => item.mobileHome.id === home.id);
-                        
-                        return (
-                          <MobileHomeCard
-                            key={home.id}
-                            home={home}
-                            homeImages={homeImageList}
-                            isInCart={isInCart}
-                            user={user}
-                            onAddToCart={handleAddToCart}
-                          />
-                        );
-                      })
+                      seriesHomes.map((home, index) => renderHomeCard(home, index))
                     ) : (
                       <div className="col-span-full text-center py-8">
                         <p className="text-gray-500">No {series} series models available for the selected width category.</p>
@@ -310,7 +488,10 @@ export const MobileHomesShowcase = ({
             
             <MobileHomeServicesDialog
               isOpen={!!selectedHomeForServices}
-              onClose={() => setSelectedHomeForServices(null)}
+              onClose={() => {
+                console.log('🔍 Closing MobileHomeServicesDialog');
+                setSelectedHomeForServices(null);
+              }}
               mobileHome={selectedHomeForServices}
               onAddToCart={handleAddToCartWithServices}
               user={user}

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -21,101 +22,86 @@ const Admin = () => {
   const [loading, setLoading] = useState(true);
   const [debugInfo, setDebugInfo] = useState<any>({});
   const [activeTab, setActiveTab] = useState('estimates');
-  const [authChecked, setAuthChecked] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
   useEffect(() => {
-    let mounted = true;
-
     const checkAuth = async () => {
-      try {
-        console.log('🔍 Admin: Starting auth check...');
-        
-        const { data: { user } } = await supabase.auth.getUser();
-        console.log('🔍 Admin: Current user:', user?.id, user?.email);
-        
-        if (!user) {
-          console.log('🔍 Admin: No user found, redirecting to auth');
-          if (mounted) {
-            navigate('/auth');
-          }
-          return;
-        }
-
-        if (mounted) {
-          setUser(user);
-        }
-
-        // Check if user is admin
-        console.log('🔍 Admin: Checking admin role for user:', user.id);
-        const { data: roleData, error: roleError } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', user.id)
-          .eq('role', 'admin')
-          .single();
-
-        console.log('🔍 Admin: Role check result:', roleData);
-        console.log('🔍 Admin: Role check error:', roleError);
-
-        // Also check all roles for this user
-        const { data: userRoles, error: userRolesError } = await supabase
-          .from('user_roles')
-          .select('*')
-          .eq('user_id', user.id);
-
-        console.log('🔍 Admin: All user roles:', userRoles);
-        console.log('🔍 Admin: User roles error:', userRolesError);
-
-        if (mounted) {
-          setDebugInfo({
-            userId: user.id,
-            userEmail: user.email,
-            roleData,
-            roleError: roleError?.message,
-            userRoles,
-            userRolesError: userRolesError?.message,
-            hasAdminRole: !!roleData
-          });
-
-          if (!roleData) {
-            console.log('🔍 Admin: User is not admin');
-            setIsAdmin(false);
-          } else {
-            console.log('🔍 Admin: User is admin, setting up dashboard');
-            setIsAdmin(true);
-          }
-          
-          setLoading(false);
-          setAuthChecked(true);
-        }
-      } catch (error) {
-        console.error('🔍 Admin: Error in auth check:', error);
-        if (mounted) {
-          setLoading(false);
-          setAuthChecked(true);
-        }
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        navigate('/auth');
+        return;
       }
+
+      setUser(user);
+      console.log('Current user:', user);
+
+      // Debug: Check if user exists in user_roles table
+      const { data: allRoles, error: allRolesError } = await supabase
+        .from('user_roles')
+        .select('*');
+      
+      console.log('All user roles:', allRoles);
+      console.log('All roles error:', allRolesError);
+
+      // Check if user is admin
+      const { data: roleData, error: roleError } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .eq('role', 'admin')
+        .single();
+
+      console.log('Role check result:', roleData);
+      console.log('Role check error:', roleError);
+
+      // Check user's roles (all of them)
+      const { data: userRoles, error: userRolesError } = await supabase
+        .from('user_roles')
+        .select('*')
+        .eq('user_id', user.id);
+
+      console.log('User roles:', userRoles);
+      console.log('User roles error:', userRolesError);
+
+      setDebugInfo({
+        userId: user.id,
+        userEmail: user.email,
+        allRoles,
+        roleData,
+        roleError,
+        userRoles,
+        userRolesError
+      });
+
+      if (!roleData) {
+        toast({
+          title: "Access Denied",
+          description: `You don't have admin privileges. Contact an administrator. User ID: ${user.id}`,
+          variant: "destructive",
+        });
+        
+        // Don't navigate away immediately so we can see the debug info
+        setLoading(false);
+        return;
+      }
+
+      setIsAdmin(true);
+      setLoading(false);
     };
 
-    if (!authChecked) {
-      checkAuth();
-    }
+    checkAuth();
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('🔍 Admin: Auth state changed:', event);
-      if (!session?.user && mounted) {
+      if (!session?.user) {
         navigate('/auth');
       }
     });
 
-    return () => {
-      mounted = false;
-      subscription.unsubscribe();
-    };
-  }, [navigate, toast, authChecked]);
+    return () => subscription.unsubscribe();
+  }, [navigate, toast]);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -191,7 +177,6 @@ const Admin = () => {
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 md:h-32 md:w-32 border-b-2 border-blue-600 mx-auto"></div>
           <p className="mt-4 text-sm md:text-lg text-blue-900">Loading admin dashboard...</p>
-          <p className="mt-2 text-xs text-gray-600">Checking authentication and permissions...</p>
         </div>
       </div>
     );

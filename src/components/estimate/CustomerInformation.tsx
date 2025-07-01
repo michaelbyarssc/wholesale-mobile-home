@@ -36,38 +36,32 @@ export const CustomerInformation = ({ customerInfo, onCustomerInfoChange }: Cust
       </CardHeader>
       <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <Label htmlFor="customer-name">Full Name *</Label>
+          <Label htmlFor="name">Full Name *</Label>
           <Input
-            id="customer-name"
-            name="customer-name"
+            id="name"
             value={customerInfo.name}
             onChange={(e) => updateCustomerInfo('name', e.target.value)}
             required
-            aria-required="true"
           />
         </div>
         <div>
-          <Label htmlFor="customer-phone">Phone Number *</Label>
+          <Label htmlFor="phone">Phone Number *</Label>
           <Input
-            id="customer-phone"
-            name="customer-phone"
+            id="phone"
             type="tel"
             value={customerInfo.phone}
             onChange={(e) => updateCustomerInfo('phone', e.target.value)}
             required
-            aria-required="true"
           />
         </div>
         <div className="md:col-span-2">
-          <Label htmlFor="customer-email">Email Address *</Label>
+          <Label htmlFor="email">Email Address *</Label>
           <Input
-            id="customer-email"
-            name="customer-email"
+            id="email"
             type="email"
             value={customerInfo.email}
             onChange={(e) => updateCustomerInfo('email', e.target.value)}
             required
-            aria-required="true"
           />
         </div>
         
@@ -76,29 +70,27 @@ export const CustomerInformation = ({ customerInfo, onCustomerInfoChange }: Cust
           <h3 className="font-medium text-gray-900 mb-3">Delivery Address</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="md:col-span-2">
-              <Label htmlFor="customer-address">Street Address</Label>
+              <Label htmlFor="address">Street Address</Label>
               <Input
-                id="customer-address"
-                name="customer-address"
+                id="address"
                 value={customerInfo.address}
                 onChange={(e) => updateCustomerInfo('address', e.target.value)}
                 placeholder="123 Main Street"
               />
             </div>
             <div>
-              <Label htmlFor="customer-city">City</Label>
+              <Label htmlFor="city">City</Label>
               <Input
-                id="customer-city"
-                name="customer-city"
+                id="city"
                 value={customerInfo.city}
                 onChange={(e) => updateCustomerInfo('city', e.target.value)}
                 placeholder="Spartanburg"
               />
             </div>
             <div>
-              <Label htmlFor="customer-state">State</Label>
+              <Label htmlFor="state">State</Label>
               <Select value={customerInfo.state} onValueChange={(value) => updateCustomerInfo('state', value)}>
-                <SelectTrigger id="customer-state" name="customer-state" aria-label="Select state">
+                <SelectTrigger>
                   <SelectValue placeholder="Select state" />
                 </SelectTrigger>
                 <SelectContent>
@@ -112,10 +104,9 @@ export const CustomerInformation = ({ customerInfo, onCustomerInfoChange }: Cust
               </Select>
             </div>
             <div>
-              <Label htmlFor="customer-zipcode">ZIP Code</Label>
+              <Label htmlFor="zipCode">ZIP Code</Label>
               <Input
-                id="customer-zipcode"
-                name="customer-zipcode"
+                id="zipCode"
                 value={customerInfo.zipCode}
                 onChange={(e) => updateCustomerInfo('zipCode', e.target.value)}
                 placeholder="29301"
@@ -126,9 +117,9 @@ export const CustomerInformation = ({ customerInfo, onCustomerInfoChange }: Cust
         </div>
 
         <div>
-          <Label htmlFor="customer-contact">Preferred Contact Method</Label>
+          <Label htmlFor="contact">Preferred Contact Method</Label>
           <Select value={customerInfo.preferredContact} onValueChange={(value) => updateCustomerInfo('preferredContact', value)}>
-            <SelectTrigger id="customer-contact" name="customer-contact" aria-label="Select preferred contact method">
+            <SelectTrigger>
               <SelectValue placeholder="Select contact method" />
             </SelectTrigger>
             <SelectContent>
@@ -139,9 +130,9 @@ export const CustomerInformation = ({ customerInfo, onCustomerInfoChange }: Cust
           </Select>
         </div>
         <div>
-          <Label htmlFor="customer-timeline">Installation Timeline</Label>
+          <Label htmlFor="timeline">Installation Timeline</Label>
           <Select value={customerInfo.timeline} onValueChange={(value) => updateCustomerInfo('timeline', value)}>
-            <SelectTrigger id="customer-timeline" name="customer-timeline" aria-label="Select installation timeline">
+            <SelectTrigger>
               <SelectValue placeholder="Select timeline" />
             </SelectTrigger>
             <SelectContent>
@@ -153,10 +144,9 @@ export const CustomerInformation = ({ customerInfo, onCustomerInfoChange }: Cust
           </Select>
         </div>
         <div className="md:col-span-2">
-          <Label htmlFor="customer-requirements">Additional Requirements</Label>
+          <Label htmlFor="requirements">Additional Requirements</Label>
           <Textarea
-            id="customer-requirements"
-            name="customer-requirements"
+            id="requirements"
             value={customerInfo.requirements}
             onChange={(e) => updateCustomerInfo('requirements', e.target.value)}
             placeholder="Any special requirements or questions?"

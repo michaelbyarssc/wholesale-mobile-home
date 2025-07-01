@@ -14,7 +14,6 @@ export interface UserProfile {
   email: string;
   first_name: string | null;
   last_name: string | null;
-  phone_number: string | null;
   role: string | null;
   created_at: string;
   markup_percentage: number;
@@ -33,7 +32,6 @@ export const UserEditDialog = ({ profile, onUserUpdated }: UserEditDialogProps) 
   const [loading, setLoading] = useState(false);
   const [firstName, setFirstName] = useState(profile.first_name || '');
   const [lastName, setLastName] = useState(profile.last_name || '');
-  const [phoneNumber, setPhoneNumber] = useState(profile.phone_number || '');
   const [role, setRole] = useState<'admin' | 'user'>(profile.role as 'admin' | 'user' || 'user');
   const { toast } = useToast();
 
@@ -48,7 +46,6 @@ export const UserEditDialog = ({ profile, onUserUpdated }: UserEditDialogProps) 
         .update({
           first_name: firstName.trim() || null,
           last_name: lastName.trim() || null,
-          phone_number: phoneNumber.trim() || null,
           updated_at: new Date().toISOString()
         })
         .eq('user_id', profile.user_id);
@@ -110,50 +107,36 @@ export const UserEditDialog = ({ profile, onUserUpdated }: UserEditDialogProps) 
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <Label htmlFor="edit-firstName">First Name</Label>
+            <Label htmlFor="firstName">First Name</Label>
             <Input
-              id="edit-firstName"
-              name="edit-firstName"
+              id="firstName"
               value={firstName}
               onChange={(e) => setFirstName(e.target.value)}
               placeholder="First name"
             />
           </div>
           <div>
-            <Label htmlFor="edit-lastName">Last Name</Label>
+            <Label htmlFor="lastName">Last Name</Label>
             <Input
-              id="edit-lastName"
-              name="edit-lastName"
+              id="lastName"
               value={lastName}
               onChange={(e) => setLastName(e.target.value)}
               placeholder="Last name"
             />
           </div>
           <div>
-            <Label htmlFor="edit-phoneNumber">Phone Number</Label>
+            <Label htmlFor="email">Email</Label>
             <Input
-              id="edit-phoneNumber"
-              name="edit-phoneNumber"
-              value={phoneNumber}
-              onChange={(e) => setPhoneNumber(e.target.value)}
-              placeholder="Phone number"
-              type="tel"
-            />
-          </div>
-          <div>
-            <Label htmlFor="edit-email">Email</Label>
-            <Input
-              id="edit-email"
-              name="edit-email"
+              id="email"
               value={profile.email}
               disabled
               className="bg-gray-100"
             />
           </div>
           <div>
-            <Label htmlFor="edit-role">Role</Label>
+            <Label htmlFor="role">Role</Label>
             <Select value={role} onValueChange={(value: 'admin' | 'user') => setRole(value)}>
-              <SelectTrigger id="edit-role" name="edit-role">
+              <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>

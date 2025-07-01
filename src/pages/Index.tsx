@@ -15,7 +15,7 @@ import { User } from '@supabase/supabase-js';
 
 const Index = () => {
   const [user, setUser] = useState<User | null>(null);
-  const [userProfile, setUserProfile] = useState<{ first_name?: string } | null>(null);
+  const [userProfile, setUserProfile] = useState<{ first_name?: string, last_name?: string } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
@@ -78,7 +78,7 @@ const Index = () => {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('first_name')
+        .select('first_name, last_name')
         .eq('user_id', userId)
         .single();
 

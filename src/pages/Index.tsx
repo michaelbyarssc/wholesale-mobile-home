@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Header } from '@/components/layout/Header';
 import { HeroSection } from '@/components/layout/HeroSection';
@@ -7,6 +6,7 @@ import { MobileHomesShowcase } from '@/components/MobileHomesShowcase';
 import { CTASection } from '@/components/layout/CTASection';
 import { Footer } from '@/components/layout/Footer';
 import { PhoneNumberDialog } from '@/components/auth/PhoneNumberDialog';
+import { PriceMatchAlert } from '@/components/PriceMatchAlert';
 import { usePhoneNumberCheck } from '@/hooks/usePhoneNumberCheck';
 import { useShoppingCart } from '@/hooks/useShoppingCart';
 import { supabase } from '@/integrations/supabase/client';
@@ -125,6 +125,7 @@ const Index = () => {
         onLogout={handleLogout}
         onToggleCart={toggleCart}
       />
+      <PriceMatchAlert />
       <HeroSection user={user} />
       <MobileHomesShowcase 
         user={user}

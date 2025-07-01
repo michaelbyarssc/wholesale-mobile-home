@@ -27,49 +27,37 @@ const Auth = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    let mounted = true;
-
-    const initializeAuth = async () => {
-      console.log('🔍 Auth: Starting initialization...');
+    const checkAuthAndRedirect = async () => {
+      console.log('🔍 Auth: Starting auth check...');
       
       try {
-        // Check if this is a password reset flow first
+        // Check if this is a password recovery flow
         const type = searchParams.get('type');
         if (type === 'recovery') {
           console.log('🔍 Auth: Password recovery flow detected');
-          if (mounted) {
-            setShowPasswordChange(true);
-            setCheckingAuth(false);
-          }
+          setShowPasswordChange(true);
+          setCheckingAuth(false);
           return;
         }
 
-        console.log('🔍 Auth: Getting current session...');
+        // Get current session
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
           console.error('❌ Auth: Error getting session:', error);
-          if (mounted) {
-            setCheckingAuth(false);
-          }
+          setCheckingAuth(false);
           return;
         }
-
-        console.log('🔍 Auth: Session check complete. User exists:', !!session?.user);
 
         if (!session?.user) {
           console.log('🔍 Auth: No session found - showing login form');
-          if (mounted) {
-            setCheckingAuth(false);
-          }
+          setCheckingAuth(false);
           return;
         }
 
-        // If we get here, user is logged in - check role and redirect
-        console.log('🔍 Auth: User is logged in, checking role and redirecting...');
-        if (mounted) {
-          setCurrentUser(session.user);
-        }
+        // User is logged in, check if they're admin and redirect
+        console.log('🔍 Auth: User is logged in, checking role...');
+        setCurrentUser(session.user);
 
         const { data: roleData } = await supabase
           .from('user_roles')
@@ -78,32 +66,24 @@ const Auth = () => {
           .eq('role', 'admin')
           .single();
 
-        if (mounted) {
-          if (roleData) {
-            console.log('🔍 Auth: Admin user - redirecting to admin');
-            navigate('/admin');
-          } else {
-            console.log('🔍 Auth: Regular user - redirecting to home');
-            navigate('/');
-          }
+        if (roleData) {
+          console.log('🔍 Auth: Admin user - redirecting to admin');
+          navigate('/admin');
+        } else {
+          console.log('🔍 Auth: Regular user - redirecting to home');
+          navigate('/');
         }
       } catch (error) {
-        console.error('❌ Auth: Error in initialization:', error);
-        if (mounted) {
-          setCheckingAuth(false);
-        }
+        console.error('❌ Auth: Error in auth check:', error);
+        setCheckingAuth(false);
       }
     };
 
-    initializeAuth();
-
-    return () => {
-      mounted = false;
-    };
-  }, []); // Remove all dependencies to prevent infinite loops
+    checkAuthAndRedirect();
+  }, [searchParams, navigate]);
 
   useEffect(() => {
-    // Set up auth state listener in a separate effect
+    // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('🔄 Auth: Auth state changed:', event, !!session?.user);
       
@@ -128,7 +108,6 @@ const Auth = () => {
         }
       } else if (!session?.user && event === 'SIGNED_OUT') {
         setCurrentUser(null);
-        setCheckingAuth(false);
       }
     });
 

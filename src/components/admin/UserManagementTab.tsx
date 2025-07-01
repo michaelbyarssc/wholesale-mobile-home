@@ -40,9 +40,17 @@ export const UserManagementTab = () => {
 
       console.log('Profiles data:', profileData);
 
+      if (!profileData) {
+        console.log('No profile data returned');
+        setUserProfiles([]);
+        setPendingApprovals([]);
+        setLoading(false);
+        return;
+      }
+
       // Separate approved users, pending users (not approved and not denied), and denied users
-      const approvedUsers = profileData?.filter(profile => profile.approved) || [];
-      const pendingUsers = profileData?.filter(profile => !profile.approved && !profile.denied) || [];
+      const approvedUsers = profileData.filter(profile => profile.approved) || [];
+      const pendingUsers = profileData.filter(profile => !profile.approved && !profile.denied) || [];
 
       // Fetch user roles for approved users
       const { data: roleData, error: roleError } = await supabase
@@ -96,6 +104,9 @@ export const UserManagementTab = () => {
         approved: false,
         approved_at: null
       }));
+
+      console.log('Combined approved data:', combinedApprovedData);
+      console.log('Pending users data:', pendingUsersData);
 
       setUserProfiles(combinedApprovedData);
       setPendingApprovals(pendingUsersData);

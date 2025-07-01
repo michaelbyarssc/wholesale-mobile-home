@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Shield, ShieldCheck, ShieldOff } from 'lucide-react';
@@ -7,6 +7,7 @@ import { UserProfile } from './UserEditDialog';
 import { UserEditDialog } from './UserEditDialog';
 import { UserActions } from './UserActions';
 import { MarkupEditor } from './MarkupEditor';
+import { supabase } from '@/integrations/supabase/client';
 
 interface UserTableRowProps {
   profile: UserProfile;
@@ -14,6 +15,36 @@ interface UserTableRowProps {
 }
 
 export const UserTableRow = ({ profile, onUserUpdated }: UserTableRowProps) => {
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+
+  useEffect(() => {
+    checkCurrentUserRole();
+  }, []);
+
+  const checkCurrentUserRole = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) return;
+
+      // Check if user is super admin - get all roles for the user
+      const { data: roleData, error: roleError } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', session.user.id);
+
+      if (roleError) {
+        console.error('Error fetching user roles:', roleError);
+        return;
+      }
+
+      // Check if user has super_admin role
+      const userIsSuperAdmin = roleData?.some(r => r.role === 'super_admin') || false;
+      setIsSuperAdmin(userIsSuperAdmin);
+    } catch (error) {
+      console.error('Error checking user role:', error);
+    }
+  };
+
   const getDisplayName = (profile: UserProfile) => {
     if (profile.first_name || profile.last_name) {
       return `${profile.first_name || ''} ${profile.last_name || ''}`.trim();
@@ -69,9 +100,11 @@ export const UserTableRow = ({ profile, onUserUpdated }: UserTableRowProps) => {
           {profile.phone_number || 'No phone'}
         </div>
       </TableCell>
-      <TableCell>
-        {getRoleBadge(profile.role)}
-      </TableCell>
+      {isSuperAdmin && (
+        <TableCell>
+          {getRoleBadge(profile.role)}
+        </TableCell>
+      )}
       <TableCell>
         <MarkupEditor
           userId={profile.user_id}

@@ -99,9 +99,26 @@ export const UserEditDialog = ({ profile, onUserUpdated }: UserEditDialogProps) 
         // Ensure the role is a valid enum value
         const validRole = formData.role as 'user' | 'admin' | 'super_admin';
         
+        // First, delete existing roles for this user
+        const { error: deleteError } = await supabase
+          .from('user_roles')
+          .delete()
+          .eq('user_id', profile.user_id);
+
+        if (deleteError) {
+          console.error('Error deleting existing roles:', deleteError);
+          toast({
+            title: "Error",
+            description: "Failed to update user role",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        // Then insert the new role
         const { error: roleError } = await supabase
           .from('user_roles')
-          .upsert({
+          .insert({
             user_id: profile.user_id,
             role: validRole
           });

@@ -4,6 +4,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Button } from '@/components/ui/button';
 import { Receipt } from 'lucide-react';
 import { formatPrice } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 interface CartTotalProps {
   total: number;
@@ -18,6 +20,8 @@ export const CartTotal = ({
   onConvertToEstimate,
   onCloseCart
 }: CartTotalProps) => {
+  const { toast } = useToast();
+
   const handleClearCart = () => {
     console.log('🔍 CartTotal: Clear cart clicked');
     try {
@@ -28,13 +32,69 @@ export const CartTotal = ({
     }
   };
 
-  const handleConvertToEstimate = () => {
-    console.log('🔍 CartTotal: Convert to estimate clicked');
+  const handleConvertToEstimate = async () => {
+    console.log('🔍 CartTotal: Send to sales rep clicked');
     try {
-      onConvertToEstimate();
-      console.log('🔍 CartTotal: Convert to estimate completed');
+      // Get cart data from localStorage
+      const cartData = localStorage.getItem('cart_items');
+      if (!cartData) {
+        toast({
+          title: "Error",
+          description: "No items in cart to send",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const cartItems = JSON.parse(cartData);
+      if (!cartItems || cartItems.length === 0) {
+        toast({
+          title: "Error", 
+          description: "No items in cart to send",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Send estimate to sales representative
+      const { data, error } = await supabase.functions.invoke('send-estimate-to-sales-rep', {
+        body: {
+          cart_items: cartItems,
+          total_amount: total,
+          sales_rep_email: 'michaelbyarssc@gmail.com'
+        }
+      });
+
+      if (error) {
+        console.error('Error sending estimate to sales rep:', error);
+        toast({
+          title: "Error",
+          description: "Failed to send estimate to sales representative. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Clear the cart after successful submission
+      onClearCart();
+      
+      // Close the cart
+      onCloseCart();
+      
+      // Show success message
+      toast({
+        title: "Estimate Sent!",
+        description: "Your estimate has been sent to your sales representative. They will be in contact with you as soon as possible to discuss the details.",
+      });
+
+      console.log('🔍 CartTotal: Estimate sent to sales rep successfully');
     } catch (error) {
-      console.error('🔍 CartTotal: Error converting to estimate:', error);
+      console.error('🔍 CartTotal: Error sending to sales rep:', error);
+      toast({
+        title: "Error",
+        description: "Failed to send estimate to sales representative. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 

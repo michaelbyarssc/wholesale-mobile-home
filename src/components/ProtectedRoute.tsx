@@ -27,97 +27,99 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   useEffect(() => {
     let mounted = true;
 
-    const checkAuth = async () => {
+    const checkAuthAndRoles = async () => {
       try {
-        console.log('ProtectedRoute: Checking authentication...');
+        console.log('ProtectedRoute: Starting auth check...');
         
-        const { data: { session }, error } = await supabase.auth.getSession();
+        // Get current session
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         
-        if (error) {
-          console.error('ProtectedRoute: Error getting session:', error);
-          if (requireAuth && mounted) {
+        if (sessionError) {
+          console.error('ProtectedRoute: Session error:', sessionError);
+          if (mounted) {
+            setLoading(false);
+            if (requireAuth) navigate('/auth');
+          }
+          return;
+        }
+
+        console.log('ProtectedRoute: Session check complete, user:', session?.user?.id);
+
+        if (!mounted) return;
+
+        // Handle no session case
+        if (!session?.user) {
+          console.log('ProtectedRoute: No session found');
+          setUser(null);
+          setLoading(false);
+          if (requireAuth) {
             navigate('/auth');
           }
           return;
         }
 
-        if (!mounted) return;
+        // Set user
+        setUser(session.user);
+        console.log('ProtectedRoute: User set:', session.user.id);
 
-        console.log('ProtectedRoute: Session found:', !!session);
-        setUser(session?.user ?? null);
-        
-        if (requireAuth && !session?.user) {
-          console.log('ProtectedRoute: No user found, redirecting to auth');
-          navigate('/auth');
-          return;
-        }
-
-        // Check role status if user exists and role checking is required
-        if (session?.user && (adminOnly || superAdminOnly)) {
-          console.log('ProtectedRoute: Checking user roles for:', session.user.id);
-          await checkUserRoles(session.user.id);
-        } else {
+        // If no role checking needed, we're done
+        if (!adminOnly && !superAdminOnly) {
+          console.log('ProtectedRoute: No role checking needed, access granted');
           if (mounted) {
             setLoading(false);
           }
+          return;
         }
-      } catch (error) {
-        console.error('ProtectedRoute: Auth check error:', error);
-        if (requireAuth && mounted) {
-          navigate('/auth');
-        }
-      }
-    };
 
-    const checkUserRoles = async (userId: string) => {
-      try {
-        console.log('ProtectedRoute: Fetching roles for user:', userId);
-        
-        const { data, error } = await supabase
+        // Check user roles
+        console.log('ProtectedRoute: Checking user roles...');
+        const { data: roleData, error: roleError } = await supabase
           .from('user_roles')
           .select('role')
-          .eq('user_id', userId)
-          .single();
+          .eq('user_id', session.user.id)
+          .maybeSingle();
 
         if (!mounted) return;
 
-        if (error && error.code !== 'PGRST116') {
-          console.error('ProtectedRoute: Error checking user roles:', error);
+        if (roleError) {
+          console.error('ProtectedRoute: Role check error:', roleError);
           setIsAdmin(false);
           setIsSuperAdmin(false);
+          setLoading(false);
           
           if (adminOnly || superAdminOnly) {
             console.log('ProtectedRoute: Role check failed, redirecting to home');
             navigate('/');
           }
-        } else {
-          const userRole = data?.role;
-          console.log('ProtectedRoute: User role found:', userRole);
-          
-          const userIsSuperAdmin = userRole === 'super_admin';
-          const userIsAdmin = userRole === 'admin' || userRole === 'super_admin';
-          
-          setIsSuperAdmin(userIsSuperAdmin);
-          setIsAdmin(userIsAdmin);
-          
-          // Check access permissions
-          if (superAdminOnly && !userIsSuperAdmin) {
-            console.log('ProtectedRoute: User is not super admin, redirecting to home');
-            navigate('/');
-          } else if (adminOnly && !userIsAdmin) {
-            console.log('ProtectedRoute: User is not admin/super admin, redirecting to home');
-            navigate('/');
-          } else {
-            console.log('ProtectedRoute: Access granted for role:', userRole);
-          }
+          return;
         }
+
+        const userRole = roleData?.role;
+        console.log('ProtectedRoute: User role found:', userRole);
+        
+        const userIsSuperAdmin = userRole === 'super_admin';
+        const userIsAdmin = userRole === 'admin' || userRole === 'super_admin';
+        
+        setIsSuperAdmin(userIsSuperAdmin);
+        setIsAdmin(userIsAdmin);
+        
+        // Check access permissions
+        if (superAdminOnly && !userIsSuperAdmin) {
+          console.log('ProtectedRoute: User is not super admin, redirecting to home');
+          navigate('/');
+        } else if (adminOnly && !userIsAdmin) {
+          console.log('ProtectedRoute: User is not admin/super admin, redirecting to home');
+          navigate('/');
+        } else {
+          console.log('ProtectedRoute: Access granted for role:', userRole);
+        }
+
       } catch (error) {
-        console.error('ProtectedRoute: Role check error:', error);
+        console.error('ProtectedRoute: Unexpected error:', error);
         if (mounted) {
-          setIsAdmin(false);
-          setIsSuperAdmin(false);
-          if (adminOnly || superAdminOnly) {
-            navigate('/');
+          setLoading(false);
+          if (requireAuth) {
+            navigate('/auth');
           }
         }
       } finally {
@@ -127,29 +129,29 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
       }
     };
 
-    // Set up auth state listener
+    // Initial check
+    checkAuthAndRoles();
+
+    // Auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
         if (!mounted) return;
         
         console.log('ProtectedRoute: Auth state changed:', event, session?.user?.id);
-        setUser(session?.user ?? null);
         
-        if (requireAuth && !session?.user && event !== 'INITIAL_SESSION') {
-          navigate('/auth');
-        }
-        
-        // Check role status if user exists and role checking is required
-        if (session?.user && (adminOnly || superAdminOnly)) {
-          await checkUserRoles(session.user.id);
-        } else if (!adminOnly && !superAdminOnly) {
-          setLoading(false);
+        if (event === 'SIGNED_OUT' || !session?.user) {
+          setUser(null);
+          setIsAdmin(false);
+          setIsSuperAdmin(false);
+          if (requireAuth) {
+            navigate('/auth');
+          }
+        } else if (event === 'SIGNED_IN') {
+          // Re-run the full auth check
+          checkAuthAndRoles();
         }
       }
     );
-
-    // Initial auth check
-    checkAuth();
 
     return () => {
       mounted = false;

@@ -29,9 +29,9 @@ const Auth = () => {
     let mounted = true;
 
     const initializeAuth = async () => {
+      console.log('🔍 Auth: Starting initialization...');
+      
       try {
-        console.log('🔍 Auth: Starting initialization...');
-        
         // Check if this is a password reset flow first
         const type = searchParams.get('type');
         if (type === 'recovery') {
@@ -54,50 +54,39 @@ const Auth = () => {
           return;
         }
 
-        console.log('🔍 Auth: Session result:', !!session?.user);
-
         if (!session?.user) {
-          console.log('🔍 Auth: No session - showing login form');
+          console.log('🔍 Auth: No session found - showing login form');
           if (mounted) {
             setCheckingAuth(false);
           }
           return;
         }
 
-        // User is logged in, check their role and redirect
-        console.log('🔍 Auth: User is logged in, checking role...');
+        // If we get here, user is logged in - check role and redirect
+        console.log('🔍 Auth: User is logged in, checking role and redirecting...');
         if (mounted) {
           setCurrentUser(session.user);
         }
 
-        try {
-          const { data: roleData } = await supabase
-            .from('user_roles')
-            .select('role')
-            .eq('user_id', session.user.id)
-            .eq('role', 'admin')
-            .single();
+        const { data: roleData } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', session.user.id)
+          .eq('role', 'admin')
+          .single();
 
-          if (mounted) {
-            if (roleData) {
-              console.log('🔍 Auth: Admin user - redirecting to admin');
-              navigate('/admin');
-            } else {
-              console.log('🔍 Auth: Regular user - redirecting to home');
-              navigate('/');
-            }
-          }
-        } catch (roleError) {
-          console.error('❌ Auth: Error checking role:', roleError);
-          if (mounted) {
+        if (mounted) {
+          if (roleData) {
+            console.log('🔍 Auth: Admin user - redirecting to admin');
+            navigate('/admin');
+          } else {
+            console.log('🔍 Auth: Regular user - redirecting to home');
             navigate('/');
           }
         }
       } catch (error) {
         console.error('❌ Auth: Error in initialization:', error);
-      } finally {
         if (mounted) {
-          console.log('🔍 Auth: Setting checkingAuth to false');
           setCheckingAuth(false);
         }
       }
@@ -132,9 +121,8 @@ const Auth = () => {
         }
       } else if (!session?.user && event === 'SIGNED_OUT') {
         setCurrentUser(null);
+        setCheckingAuth(false);
       }
-      
-      setCheckingAuth(false);
     });
 
     return () => {

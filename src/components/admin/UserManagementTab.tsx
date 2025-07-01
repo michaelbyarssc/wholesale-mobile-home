@@ -60,10 +60,10 @@ export const UserManagementTab = () => {
         .from('profiles')
         .select('user_id, email, first_name, last_name, phone_number, created_at, approved, approved_at, denied, created_by');
 
-      // If not super admin, only show users created by current admin or users that signed up themselves
+      // If not super admin, only show users created by current admin
       if (!userIsSuperAdmin && currentUserId) {
         console.log('Filtering profiles by created_by:', currentUserId);
-        profileQuery = profileQuery.or(`created_by.eq.${currentUserId},created_by.is.null`);
+        profileQuery = profileQuery.eq('created_by', currentUserId);
       }
 
       const { data: profileData, error: profileError } = await profileQuery;
@@ -87,16 +87,9 @@ export const UserManagementTab = () => {
         return;
       }
 
-      // For regular admins, further filter to only show users they created (not null created_by)
-      let filteredProfiles = profileData;
-      if (!userIsSuperAdmin && currentUserId) {
-        filteredProfiles = profileData.filter(profile => profile.created_by === currentUserId);
-        console.log('After filtering by created_by, profiles:', filteredProfiles.length);
-      }
-
       // Separate approved users, pending users (not approved and not denied), and denied users
-      const approvedUsers = filteredProfiles?.filter(profile => profile.approved) || [];
-      const pendingUsers = filteredProfiles?.filter(profile => !profile.approved && !profile.denied) || [];
+      const approvedUsers = profileData?.filter(profile => profile.approved) || [];
+      const pendingUsers = profileData?.filter(profile => !profile.approved && !profile.denied) || [];
 
       console.log('Approved users:', approvedUsers.length);
       console.log('Pending users:', pendingUsers.length);

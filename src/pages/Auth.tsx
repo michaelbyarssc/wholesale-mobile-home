@@ -54,6 +54,8 @@ const Auth = () => {
           return;
         }
 
+        console.log('🔍 Auth: Session check complete. User exists:', !!session?.user);
+
         if (!session?.user) {
           console.log('🔍 Auth: No session found - showing login form');
           if (mounted) {
@@ -92,7 +94,10 @@ const Auth = () => {
       }
     };
 
-    initializeAuth();
+    // Only run initialization once
+    if (checkingAuth) {
+      initializeAuth();
+    }
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -129,7 +134,7 @@ const Auth = () => {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, [navigate, searchParams]);
+  }, []); // Remove checkingAuth dependency to prevent loops
 
   const resetForm = () => {
     setEmail('');

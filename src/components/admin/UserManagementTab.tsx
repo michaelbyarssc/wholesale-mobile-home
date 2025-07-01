@@ -38,6 +38,9 @@ export const UserManagementTab = () => {
       setIsSuperAdmin(userIsSuperAdmin);
       console.log('UserManagementTab: User role:', roleData?.role, 'isSuperAdmin:', userIsSuperAdmin);
       
+      // Check specifically for support@michaelbyars.com
+      await checkSpecificUser();
+      
       // Fetch user profiles after determining role
       fetchUserProfiles(session.user.id, userIsSuperAdmin);
     } catch (error) {
@@ -47,6 +50,44 @@ export const UserManagementTab = () => {
         description: "Failed to check user permissions",
         variant: "destructive",
       });
+    }
+  };
+
+  const checkSpecificUser = async () => {
+    try {
+      console.log('=== CHECKING FOR support@michaelbyars.com ===');
+      
+      // Check in profiles table
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('email', 'support@michaelbyars.com');
+      
+      console.log('Profile query result:', { profileData, profileError });
+      
+      // Check in auth.users table via edge function or RPC if possible
+      // Note: We can't directly query auth.users, but we can check if there are any user_roles
+      const { data: roleData, error: roleError } = await supabase
+        .from('user_roles')
+        .select('*')
+        .in('user_id', ['2cdfc4ae-d8cc-4890-a1be-132cfbdd87d0', '91f386de-c98e-4906-b388-baa1a09af57e']);
+      
+      console.log('Role data for known users:', { roleData, roleError });
+      
+      // Get all profiles to see what's in the database
+      const { data: allProfiles, error: allError } = await supabase
+        .from('profiles')
+        .select('email, user_id, created_by, approved, denied');
+      
+      console.log('All profiles in database:', allProfiles);
+      console.log('Total profiles count:', allProfiles?.length);
+      
+      // Check if support@michaelbyars.com exists in any form
+      const supportUser = allProfiles?.find(p => p.email === 'support@michaelbyars.com');
+      console.log('Found support@michaelbyars.com?', supportUser);
+      
+    } catch (error) {
+      console.error('Error checking specific user:', error);
     }
   };
 

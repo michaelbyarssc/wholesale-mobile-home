@@ -9,16 +9,19 @@ interface ProtectedRouteProps {
   children: React.ReactNode;
   requireAuth?: boolean;
   adminOnly?: boolean;
+  superAdminOnly?: boolean;
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ 
   children, 
   requireAuth = true,
-  adminOnly = false
+  adminOnly = false,
+  superAdminOnly = false
 }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -36,9 +39,9 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
           navigate('/auth');
         }
         
-        // Check admin status if user exists and adminOnly is required
-        if (session?.user && adminOnly) {
-          checkAdminStatus(session.user.id);
+        // Check role status if user exists and role checking is required
+        if (session?.user && (adminOnly || superAdminOnly)) {
+          checkUserRoles(session.user.id);
         } else {
           setLoading(false);
         }
@@ -61,9 +64,9 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
           
           if (requireAuth && !session?.user) {
             navigate('/auth');
-          } else if (session?.user && adminOnly) {
-            // Check admin status
-            await checkAdminStatus(session.user.id);
+          } else if (session?.user && (adminOnly || superAdminOnly)) {
+            // Check role status
+            await checkUserRoles(session.user.id);
           } else {
             setLoading(false);
           }
@@ -74,38 +77,46 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
           navigate('/auth');
         }
       } finally {
-        if (mounted && !adminOnly) {
+        if (mounted && !adminOnly && !superAdminOnly) {
           setLoading(false);
         }
       }
     };
 
-    const checkAdminStatus = async (userId: string) => {
+    const checkUserRoles = async (userId: string) => {
       try {
         const { data, error } = await supabase
           .from('user_roles')
           .select('role')
           .eq('user_id', userId)
-          .eq('role', 'admin')
           .single();
 
         if (!mounted) return;
 
         if (error && error.code !== 'PGRST116') {
-          console.error('ProtectedRoute: Error checking admin status:', error);
+          console.error('ProtectedRoute: Error checking user roles:', error);
           setIsAdmin(false);
+          setIsSuperAdmin(false);
         } else {
-          setIsAdmin(!!data);
-          if (adminOnly && !data) {
-            console.log('ProtectedRoute: User is not admin, redirecting to home');
+          const userRole = data?.role;
+          setIsSuperAdmin(userRole === 'super_admin');
+          setIsAdmin(userRole === 'admin' || userRole === 'super_admin');
+          
+          // Check access permissions
+          if (superAdminOnly && userRole !== 'super_admin') {
+            console.log('ProtectedRoute: User is not super admin, redirecting to home');
+            navigate('/');
+          } else if (adminOnly && !['admin', 'super_admin'].includes(userRole)) {
+            console.log('ProtectedRoute: User is not admin/super admin, redirecting to home');
             navigate('/');
           }
         }
       } catch (error) {
-        console.error('ProtectedRoute: Admin check error:', error);
+        console.error('ProtectedRoute: Role check error:', error);
         if (mounted) {
           setIsAdmin(false);
-          if (adminOnly) {
+          setIsSuperAdmin(false);
+          if (adminOnly || superAdminOnly) {
             navigate('/');
           }
         }
@@ -122,7 +133,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
       mounted = false;
       subscription.unsubscribe();
     };
-  }, [navigate, requireAuth, adminOnly]);
+  }, [navigate, requireAuth, adminOnly, superAdminOnly]);
 
   if (loading) {
     return <LoadingSpinner />;
@@ -130,6 +141,10 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   if (requireAuth && !user) {
     return null; // Will redirect to auth
+  }
+
+  if (superAdminOnly && !isSuperAdmin) {
+    return null; // Will redirect to home
   }
 
   if (adminOnly && !isAdmin) {

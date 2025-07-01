@@ -34,7 +34,7 @@ export const UserEditDialog = ({ profile, onUserUpdated }: UserEditDialogProps) 
   const [firstName, setFirstName] = useState(profile.first_name || '');
   const [lastName, setLastName] = useState(profile.last_name || '');
   const [phoneNumber, setPhoneNumber] = useState(profile.phone_number || '');
-  const [role, setRole] = useState<'admin' | 'user'>(profile.role as 'admin' | 'user' || 'user');
+  const [role, setRole] = useState<'admin' | 'user' | 'super_admin'>(profile.role as 'admin' | 'user' | 'super_admin' || 'user');
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -148,13 +148,14 @@ export const UserEditDialog = ({ profile, onUserUpdated }: UserEditDialogProps) 
           </div>
           <div>
             <Label htmlFor="role">Role</Label>
-            <Select value={role} onValueChange={(value: 'admin' | 'user') => setRole(value)}>
+            <Select value={role} onValueChange={(value: 'admin' | 'user' | 'super_admin') => setRole(value)}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="user">User</SelectItem>
                 <SelectItem value="admin">Admin</SelectItem>
+                <SelectItem value="super_admin">Super Admin</SelectItem>
               </SelectContent>
             </Select>
           </div>

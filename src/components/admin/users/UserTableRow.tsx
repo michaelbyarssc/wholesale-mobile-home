@@ -2,7 +2,7 @@
 import React from 'react';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Shield, ShieldOff } from 'lucide-react';
+import { Shield, ShieldCheck, ShieldOff } from 'lucide-react';
 import { UserProfile } from './UserEditDialog';
 import { UserEditDialog } from './UserEditDialog';
 import { UserActions } from './UserActions';
@@ -21,6 +21,41 @@ export const UserTableRow = ({ profile, onUserUpdated }: UserTableRowProps) => {
     return profile.email === 'No email' ? 'Unknown User' : profile.email || 'Unknown User';
   };
 
+  const getRoleBadge = (role: string | null) => {
+    if (!role) {
+      return (
+        <Badge variant="outline" className="text-gray-500">
+          <ShieldOff className="h-3 w-3 mr-1" />
+          No Role
+        </Badge>
+      );
+    }
+
+    switch (role) {
+      case 'super_admin':
+        return (
+          <Badge variant="default" className="bg-purple-600 hover:bg-purple-700">
+            <ShieldCheck className="h-3 w-3 mr-1" />
+            Super Admin
+          </Badge>
+        );
+      case 'admin':
+        return (
+          <Badge variant="default">
+            <Shield className="h-3 w-3 mr-1" />
+            Admin
+          </Badge>
+        );
+      default:
+        return (
+          <Badge variant="secondary">
+            <ShieldOff className="h-3 w-3 mr-1" />
+            User
+          </Badge>
+        );
+    }
+  };
+
   return (
     <TableRow key={profile.user_id}>
       <TableCell>
@@ -35,25 +70,7 @@ export const UserTableRow = ({ profile, onUserUpdated }: UserTableRowProps) => {
         </div>
       </TableCell>
       <TableCell>
-        {profile.role ? (
-          <Badge variant={profile.role === 'admin' ? "default" : "secondary"}>
-            {profile.role === 'admin' ? (
-              <>
-                <Shield className="h-3 w-3 mr-1" />
-                Admin
-              </>
-            ) : (
-              <>
-                <ShieldOff className="h-3 w-3 mr-1" />
-                User
-              </>
-            )}
-          </Badge>
-        ) : (
-          <Badge variant="outline" className="text-gray-500">
-            No Role
-          </Badge>
-        )}
+        {getRoleBadge(profile.role)}
       </TableCell>
       <TableCell>
         <MarkupEditor

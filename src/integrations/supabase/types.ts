@@ -75,25 +75,34 @@ export type Database = {
       customer_markups: {
         Row: {
           created_at: string
+          created_by: string | null
           id: string
           markup_percentage: number
           minimum_profit_per_home: number
+          super_admin_markup_percentage: number | null
+          tier_level: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
           created_at?: string
+          created_by?: string | null
           id?: string
           markup_percentage?: number
           minimum_profit_per_home?: number
+          super_admin_markup_percentage?: number | null
+          tier_level?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
           created_at?: string
+          created_by?: string | null
           id?: string
           markup_percentage?: number
           minimum_profit_per_home?: number
+          super_admin_markup_percentage?: number | null
+          tier_level?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -406,6 +415,7 @@ export type Database = {
           approved_at: string | null
           approved_by: string | null
           created_at: string
+          created_by: string | null
           denied: boolean
           denied_at: string | null
           denied_by: string | null
@@ -422,6 +432,7 @@ export type Database = {
           approved_at?: string | null
           approved_by?: string | null
           created_at?: string
+          created_by?: string | null
           denied?: boolean
           denied_at?: string | null
           denied_by?: string | null
@@ -438,6 +449,7 @@ export type Database = {
           approved_at?: string | null
           approved_by?: string | null
           created_at?: string
+          created_by?: string | null
           denied?: boolean
           denied_at?: string | null
           denied_by?: string | null
@@ -505,6 +517,30 @@ export type Database = {
           requires_admin?: boolean | null
           single_wide_price?: number
           updated_at?: string
+        }
+        Relationships: []
+      }
+      super_admin_markups: {
+        Row: {
+          created_at: string
+          id: string
+          markup_percentage: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          markup_percentage?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          markup_percentage?: number
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }

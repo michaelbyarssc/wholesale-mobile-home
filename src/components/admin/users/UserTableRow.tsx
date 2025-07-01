@@ -153,7 +153,7 @@ export const UserTableRow = ({ profile, onUserUpdated }: UserTableRowProps) => {
         </TableCell>
       )}
       <TableCell>
-        {new Date(profile.created_at).toLocaleDateDate()}
+        {new Date(profile.created_at).toLocaleDateString()}
       </TableCell>
       <TableCell className="text-right">
         <div className="flex items-center justify-end gap-2">

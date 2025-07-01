@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -129,24 +128,32 @@ export const useThreeTierPricing = (user: User | null) => {
       return 0;
     }
 
-    const { userRole, superAdminMarkup, adminMarkup } = pricingData;
+    const { userRole, superAdminMarkup } = pricingData;
     
-    // For super admins, use cost price if available
-    let basePrice = mobileHome.price;
-    if (userRole === 'super_admin' && mobileHome.cost) {
-      basePrice = mobileHome.cost;
+    // For super admins, use special pricing logic
+    if (userRole === 'super_admin') {
+      const internalCost = mobileHome.cost || mobileHome.price;
+      
+      // Pricing 1: Internal Cost + Markup %
+      const pricing1 = internalCost * (1 + superAdminMarkup / 100);
+      
+      // Pricing 2: Internal cost + Min Profit
+      const pricing2 = internalCost + (mobileHome.minimum_profit || 0);
+      
+      // Use the higher of the two prices
+      const finalPrice = Math.max(pricing1, pricing2);
+      
+      console.log('useThreeTierPricing: Super Admin pricing - Internal Cost:', internalCost, 'Cost + Markup%:', pricing1, 'Cost + Min Profit:', pricing2, 'Final (higher):', finalPrice);
+      return finalPrice;
     }
 
-    // Calculate tiered pricing
+    // For non-super admins, use the regular tiered pricing
+    const basePrice = mobileHome.price;
     const tieredPrice = calculateTieredPrice(basePrice);
-    
-    // Also check minimum profit requirement
     const minProfitPrice = basePrice + (mobileHome.minimum_profit || 0);
-    
-    // Use the higher of tiered price or minimum profit price
     const finalPrice = Math.max(tieredPrice, minProfitPrice);
     
-    console.log('useThreeTierPricing: Mobile home pricing - Base:', basePrice, 'Tiered:', tieredPrice, 'Min Profit:', minProfitPrice, 'Final:', finalPrice);
+    console.log('useThreeTierPricing: Regular pricing - Base:', basePrice, 'Tiered:', tieredPrice, 'Min Profit:', minProfitPrice, 'Final:', finalPrice);
     return finalPrice;
   };
 

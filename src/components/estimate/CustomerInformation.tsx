@@ -43,6 +43,7 @@ export const CustomerInformation = ({ customerInfo, onCustomerInfoChange }: Cust
             value={customerInfo.name}
             onChange={(e) => updateCustomerInfo('name', e.target.value)}
             required
+            aria-required="true"
           />
         </div>
         <div>
@@ -54,6 +55,7 @@ export const CustomerInformation = ({ customerInfo, onCustomerInfoChange }: Cust
             value={customerInfo.phone}
             onChange={(e) => updateCustomerInfo('phone', e.target.value)}
             required
+            aria-required="true"
           />
         </div>
         <div className="md:col-span-2">
@@ -65,6 +67,7 @@ export const CustomerInformation = ({ customerInfo, onCustomerInfoChange }: Cust
             value={customerInfo.email}
             onChange={(e) => updateCustomerInfo('email', e.target.value)}
             required
+            aria-required="true"
           />
         </div>
         
@@ -95,7 +98,7 @@ export const CustomerInformation = ({ customerInfo, onCustomerInfoChange }: Cust
             <div>
               <Label htmlFor="customer-state">State</Label>
               <Select value={customerInfo.state} onValueChange={(value) => updateCustomerInfo('state', value)}>
-                <SelectTrigger id="customer-state" name="customer-state">
+                <SelectTrigger id="customer-state" name="customer-state" aria-label="Select state">
                   <SelectValue placeholder="Select state" />
                 </SelectTrigger>
                 <SelectContent>
@@ -125,7 +128,7 @@ export const CustomerInformation = ({ customerInfo, onCustomerInfoChange }: Cust
         <div>
           <Label htmlFor="customer-contact">Preferred Contact Method</Label>
           <Select value={customerInfo.preferredContact} onValueChange={(value) => updateCustomerInfo('preferredContact', value)}>
-            <SelectTrigger id="customer-contact" name="customer-contact">
+            <SelectTrigger id="customer-contact" name="customer-contact" aria-label="Select preferred contact method">
               <SelectValue placeholder="Select contact method" />
             </SelectTrigger>
             <SelectContent>
@@ -138,7 +141,7 @@ export const CustomerInformation = ({ customerInfo, onCustomerInfoChange }: Cust
         <div>
           <Label htmlFor="customer-timeline">Installation Timeline</Label>
           <Select value={customerInfo.timeline} onValueChange={(value) => updateCustomerInfo('timeline', value)}>
-            <SelectTrigger id="customer-timeline" name="customer-timeline">
+            <SelectTrigger id="customer-timeline" name="customer-timeline" aria-label="Select installation timeline">
               <SelectValue placeholder="Select timeline" />
             </SelectTrigger>
             <SelectContent>

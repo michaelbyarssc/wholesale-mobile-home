@@ -36,9 +36,9 @@ export const MobileHomeBasicForm = ({
 
       <div>
         <Label htmlFor="series">Series</Label>
-        <Select value={formData.series} onValueChange={(value) => onInputChange('series', value)}>
-          <SelectTrigger id="series" name="series">
-            <SelectValue />
+        <Select value={formData.series || ''} onValueChange={(value) => onInputChange('series', value)}>
+          <SelectTrigger id="series" name="series" aria-label="Select series">
+            <SelectValue placeholder="Select series" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="Tru">Tru</SelectItem>

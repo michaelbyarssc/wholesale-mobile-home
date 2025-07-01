@@ -64,6 +64,7 @@ export const BusinessSettings: React.FC<BusinessSettingsProps> = ({
             <Input
               id="business_phone"
               name="business_phone"
+              type="tel"
               value={settings.business_phone || ''}
               onChange={(e) => onInputChange('business_phone', e.target.value)}
               onBlur={(e) => onInputBlur('business_phone', e.target.value)}

@@ -97,12 +97,13 @@ export const UserForm = ({ onUserCreated }: UserFormProps) => {
                 onChange={(e) => setNewUserEmail(e.target.value)}
                 placeholder="user@example.com"
                 required
+                aria-required="true"
               />
             </div>
             <div>
               <Label htmlFor="new-user-role">Role</Label>
               <Select value={newUserRole} onValueChange={(value: 'admin' | 'user') => setNewUserRole(value)}>
-                <SelectTrigger id="new-user-role" name="new-user-role">
+                <SelectTrigger id="new-user-role" name="new-user-role" aria-label="Select user role">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>

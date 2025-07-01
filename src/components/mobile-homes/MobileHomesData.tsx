@@ -1,3 +1,4 @@
+
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
@@ -17,110 +18,87 @@ export const useMobileHomesData = () => {
   const { data: mobileHomes = [], isLoading, error, refetch } = useQuery({
     queryKey: ['mobile-homes'],
     queryFn: async () => {
-      console.log('🔍 STARTING DETAILED MOBILE HOMES FETCH DEBUG');
-      console.log('📊 Supabase client configured:', !!supabase);
-      console.log('🔑 Using Supabase client for database queries');
+      console.log('🚀 MOBILE HOMES FETCH START - Time:', new Date().toISOString());
       
       try {
-        // Step 1: Test basic connection
-        console.log('🧪 Step 1: Testing basic connection...');
-        const { data: testData, error: testError } = await supabase
+        console.log('⏱️ Step 1: Testing basic query execution...');
+        const startTime = performance.now();
+        
+        // Test the most basic query first
+        const { data: testData, error: testError, count: testCount } = await supabase
           .from('mobile_homes')
-          .select('count(*)')
+          .select('id, model, series, active', { count: 'exact' })
           .limit(1);
-          
-        console.log('✅ Connection test result:', { 
+        
+        const testTime = performance.now() - startTime;
+        console.log('⏱️ Basic query completed in:', testTime + 'ms');
+        console.log('📊 Basic query result:', { 
           success: !testError, 
-          data: testData, 
+          count: testCount,
+          dataLength: testData?.length || 0,
+          firstRecord: testData?.[0],
           error: testError?.message 
         });
-        
+
         if (testError) {
-          console.error('❌ Connection test failed:', testError);
-          throw new Error(`Database connection failed: ${testError.message}`);
+          console.error('❌ Basic query failed:', testError);
+          throw new Error(`Basic query failed: ${testError.message}`);
         }
-        
-        // Step 2: Check table permissions  
-        console.log('🧪 Step 2: Testing table permissions...');
-        const { data: permissionTest, error: permissionError } = await supabase
-          .from('mobile_homes')
-          .select('id')
-          .limit(1);
-          
-        console.log('🔐 Permission test result:', { 
-          success: !permissionError, 
-          recordsFound: permissionTest?.length || 0,
-          error: permissionError?.message 
-        });
-        
-        if (permissionError) {
-          console.error('❌ Permission test failed:', permissionError);
-          throw new Error(`Permission denied: ${permissionError.message}`);
+
+        if (testCount === 0) {
+          console.warn('⚠️ No mobile homes found in database');
+          return [];
         }
+
+        console.log('⏱️ Step 2: Full query with all fields...');
+        const fullStartTime = performance.now();
         
-        // Step 3: Full query with detailed logging
-        console.log('🧪 Step 3: Executing full query...');
-        const startTime = Date.now();
-        
-        const { data, error, count } = await supabase
+        const { data: fullData, error: fullError, count: fullCount } = await supabase
           .from('mobile_homes')
           .select('*', { count: 'exact' })
           .eq('active', true)
           .order('display_order', { ascending: true });
         
-        const queryTime = Date.now() - startTime;
-        
-        console.log('📈 Query execution details:', {
-          executionTime: `${queryTime}ms`,
-          totalCount: count,
-          dataReceived: data?.length || 0,
-          hasError: !!error,
-          errorMessage: error?.message,
-          firstRecord: data?.[0] ? {
-            id: data[0].id,
-            model: data[0].model,
-            series: data[0].series,
-            active: data[0].active
+        const fullTime = performance.now() - fullStartTime;
+        console.log('⏱️ Full query completed in:', fullTime + 'ms');
+        console.log('📊 Full query result:', {
+          success: !fullError,
+          totalCount: fullCount,
+          activeCount: fullData?.length || 0,
+          error: fullError?.message,
+          sampleRecord: fullData?.[0] ? {
+            id: fullData[0].id,
+            model: fullData[0].model,
+            series: fullData[0].series,
+            active: fullData[0].active,
+            price: fullData[0].price
           } : null
         });
-        
-        if (error) {
-          console.error('❌ Query failed:', error);
-          throw new Error(`Failed to fetch mobile homes: ${error.message}`);
+
+        if (fullError) {
+          console.error('❌ Full query failed:', fullError);
+          throw new Error(`Full query failed: ${fullError.message}`);
         }
-        
-        if (!data || data.length === 0) {
-          console.warn('⚠️ No mobile homes found in database');
-          console.log('💡 This might be because:');
-          console.log('   1. No mobile homes exist in the database');
-          console.log('   2. All mobile homes are set to active=false');
-          console.log('   3. RLS policies are still blocking access');
-          return [];
-        }
-        
-        console.log('✅ Successfully fetched mobile homes:', {
-          count: data.length,
-          series: [...new Set(data.map(h => h.series))],
-          models: data.map(h => h.model).slice(0, 3)
+
+        console.log('✅ Mobile homes fetch successful:', {
+          count: fullData?.length || 0,
+          series: [...new Set((fullData || []).map(h => h.series))],
+          totalTime: fullTime + testTime
         });
-        
-        return data as MobileHome[];
+
+        return (fullData || []) as MobileHome[];
         
       } catch (err) {
         console.error('💥 CRITICAL ERROR in mobile homes fetch:', err);
-        console.error('🔍 Error details:', {
-          name: err instanceof Error ? err.name : 'Unknown',
-          message: err instanceof Error ? err.message : String(err),
-          stack: err instanceof Error ? err.stack : undefined
-        });
+        console.error('🔍 Error stack:', err instanceof Error ? err.stack : 'No stack trace');
         throw err;
       }
     },
     staleTime: 2 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
     retry: (failureCount, error) => {
-      console.log(`🔄 Retry attempt ${failureCount} for error:`, error);
-      return failureCount < 3;
+      console.log(`🔄 Retry attempt ${failureCount} for error:`, error.message);
+      return failureCount < 2; // Reduce retries
     },
     refetchOnWindowFocus: false,
     refetchOnMount: true,
@@ -130,10 +108,10 @@ export const useMobileHomesData = () => {
   const { data: homeImages = [], isLoading: imagesLoading } = useQuery({
     queryKey: ['mobile-home-images'],
     queryFn: async () => {
-      console.log('🖼️ STARTING IMAGES FETCH DEBUG');
+      console.log('🖼️ IMAGES FETCH START - Time:', new Date().toISOString());
       
       try {
-        const startTime = Date.now();
+        const startTime = performance.now();
         const { data, error, count } = await supabase
           .from('mobile_home_images')
           .select('*', { count: 'exact' })
@@ -141,19 +119,14 @@ export const useMobileHomesData = () => {
           .order('image_type')
           .order('display_order');
         
-        const queryTime = Date.now() - startTime;
+        const queryTime = performance.now() - startTime;
         
         console.log('🖼️ Images query result:', {
-          executionTime: `${queryTime}ms`,
+          executionTime: queryTime + 'ms',
           totalCount: count,
           dataReceived: data?.length || 0,
           hasError: !!error,
-          errorMessage: error?.message,
-          sampleImage: data?.[0] ? {
-            mobile_home_id: data[0].mobile_home_id,
-            image_type: data[0].image_type,
-            image_url: data[0].image_url?.substring(0, 50) + '...'
-          } : null
+          errorMessage: error?.message
         });
         
         if (error) {
@@ -170,17 +143,17 @@ export const useMobileHomesData = () => {
     },
     staleTime: 5 * 60 * 1000,
     gcTime: 15 * 60 * 1000,
-    retry: 2,
+    retry: 1,
     refetchOnWindowFocus: false,
     refetchOnMount: true,
     refetchOnReconnect: false,
   });
 
-  // Final state logging
+  // Log final state
   console.log('🏁 useMobileHomesData final state:', {
     mobileHomesCount: mobileHomes.length,
     homeImagesCount: homeImages.length,
-    isLoading,
+    mobileHomesLoading: isLoading,
     imagesLoading,
     hasError: !!error,
     errorMessage: error?.message,

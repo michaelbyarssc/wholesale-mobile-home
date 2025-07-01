@@ -22,6 +22,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -38,6 +39,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
           console.error('ProtectedRoute: Session error:', sessionError);
           if (mounted) {
             setLoading(false);
+            setAuthChecked(true);
             if (requireAuth) navigate('/auth');
           }
           return;
@@ -52,6 +54,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
           console.log('ProtectedRoute: No session found');
           setUser(null);
           setLoading(false);
+          setAuthChecked(true);
           if (requireAuth) {
             navigate('/auth');
           }
@@ -67,17 +70,19 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
           console.log('ProtectedRoute: No role checking needed, access granted');
           if (mounted) {
             setLoading(false);
+            setAuthChecked(true);
           }
           return;
         }
 
-        // Check user roles
-        console.log('ProtectedRoute: Checking user roles...');
+        // Check user roles - use a more robust query
+        console.log('ProtectedRoute: Checking user roles for:', session.user.id);
         const { data: roleData, error: roleError } = await supabase
           .from('user_roles')
           .select('role')
-          .eq('user_id', session.user.id)
-          .maybeSingle();
+          .eq('user_id', session.user.id);
+
+        console.log('ProtectedRoute: Role query result:', { roleData, roleError });
 
         if (!mounted) return;
 
@@ -86,6 +91,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
           setIsAdmin(false);
           setIsSuperAdmin(false);
           setLoading(false);
+          setAuthChecked(true);
           
           if (adminOnly || superAdminOnly) {
             console.log('ProtectedRoute: Role check failed, redirecting to home');
@@ -94,7 +100,8 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
           return;
         }
 
-        const userRole = roleData?.role;
+        // Handle role data - could be array or single object
+        const userRole = roleData && roleData.length > 0 ? roleData[0].role : null;
         console.log('ProtectedRoute: User role found:', userRole);
         
         const userIsSuperAdmin = userRole === 'super_admin';
@@ -106,10 +113,16 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
         // Check access permissions
         if (superAdminOnly && !userIsSuperAdmin) {
           console.log('ProtectedRoute: User is not super admin, redirecting to home');
+          setLoading(false);
+          setAuthChecked(true);
           navigate('/');
+          return;
         } else if (adminOnly && !userIsAdmin) {
           console.log('ProtectedRoute: User is not admin/super admin, redirecting to home');
+          setLoading(false);
+          setAuthChecked(true);
           navigate('/');
+          return;
         } else {
           console.log('ProtectedRoute: Access granted for role:', userRole);
         }
@@ -118,6 +131,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
         console.error('ProtectedRoute: Unexpected error:', error);
         if (mounted) {
           setLoading(false);
+          setAuthChecked(true);
           if (requireAuth) {
             navigate('/auth');
           }
@@ -125,6 +139,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
       } finally {
         if (mounted) {
           setLoading(false);
+          setAuthChecked(true);
         }
       }
     };
@@ -143,11 +158,13 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
           setUser(null);
           setIsAdmin(false);
           setIsSuperAdmin(false);
+          setAuthChecked(true);
           if (requireAuth) {
             navigate('/auth');
           }
         } else if (event === 'SIGNED_IN') {
           // Re-run the full auth check
+          setAuthChecked(false);
           checkAuthAndRoles();
         }
       }
@@ -159,7 +176,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     };
   }, [navigate, requireAuth, adminOnly, superAdminOnly]);
 
-  if (loading) {
+  if (loading || !authChecked) {
     return <LoadingSpinner />;
   }
 

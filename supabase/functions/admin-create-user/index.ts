@@ -96,7 +96,7 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    console.log('Creating user:', { email, role: role || 'user', markup_percentage: markup_percentage || 30 });
+    console.log('Creating user:', { email, role: role || 'user', markup_percentage: markup_percentage || 30, created_by: user.id });
 
     // Create user using admin API
     const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
@@ -126,7 +126,10 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log('User created successfully:', newUser.user.id);
 
-    // Create profile
+    // Create profile with the creating admin's ID
+    const createdByUserId = created_by || user.id;
+    console.log('Setting created_by to:', createdByUserId);
+    
     const { error: profileError } = await supabaseAdmin
       .from('profiles')
       .insert({
@@ -137,11 +140,15 @@ const handler = async (req: Request): Promise<Response> => {
         approved: true, // Auto-approve users created by admins
         approved_at: new Date().toISOString(),
         approved_by: user.id,
-        created_by: created_by || user.id
+        created_by: createdByUserId
       });
 
     if (profileError) {
       console.error('Error creating profile:', profileError);
+      return new Response(
+        JSON.stringify({ error: 'Failed to create user profile' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     // Assign role - default to 'user' if not specified
@@ -162,7 +169,7 @@ const handler = async (req: Request): Promise<Response> => {
       .insert({
         user_id: newUser.user.id,
         markup_percentage: markup_percentage || 30,
-        created_by: created_by || user.id
+        created_by: createdByUserId
       });
 
     if (markupError) {
@@ -176,7 +183,7 @@ const handler = async (req: Request): Promise<Response> => {
         action: 'USER_CREATED',
         table_name: 'auth.users',
         record_id: newUser.user.id,
-        new_values: { email, role: role || 'user', markup_percentage: markup_percentage || 30 }
+        new_values: { email, role: role || 'user', markup_percentage: markup_percentage || 30, created_by: createdByUserId }
       });
     } catch (auditError) {
       console.error('Failed to log admin action:', auditError);
@@ -192,7 +199,8 @@ const handler = async (req: Request): Promise<Response> => {
           id: newUser.user.id,
           email: newUser.user.email,
           role: role || 'user',
-          markup_percentage: markup_percentage || 30
+          markup_percentage: markup_percentage || 30,
+          created_by: createdByUserId
         }
       }),
       {

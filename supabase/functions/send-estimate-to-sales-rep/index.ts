@@ -8,6 +8,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+const resend = new Resend(Deno.env.get('RESEND_API_KEY'))
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -15,255 +17,184 @@ serve(async (req) => {
   }
 
   try {
-    console.log('Processing estimate request...')
-    
-    const requestBody = await req.json()
-    console.log('Request body received:', JSON.stringify(requestBody, null, 2))
+    const { cart_items, total_amount, sales_rep_email, user_id } = await req.json()
 
-    const {
-      cart_items,
+    console.log('🔍 send-estimate-to-sales-rep: Received request:', {
+      cart_items: cart_items?.length || 0,
       total_amount,
       sales_rep_email,
       user_id
-    } = requestBody
+    })
 
-    if (!cart_items || !Array.isArray(cart_items) || cart_items.length === 0) {
+    if (!cart_items || cart_items.length === 0) {
       throw new Error('No cart items provided')
     }
-
-    if (!total_amount) {
-      throw new Error('No total amount provided')
-    }
-
-    if (!sales_rep_email) {
-      throw new Error('No sales rep email provided')
-    }
-
-    console.log('Processing estimate for sales rep:', {
-      itemCount: cart_items.length,
-      totalAmount: total_amount,
-      salesRepEmail: sales_rep_email,
-      userId: user_id
-    })
 
     // Initialize Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const supabase = createClient(supabaseUrl, supabaseKey)
 
-    // Get customer profile information
-    let customerInfo = {
-      name: 'Customer',
-      email: '',
-      phone: ''
-    }
-
+    // Get customer information
+    let customerInfo = { name: 'N/A', email: 'N/A', phone: 'N/A' }
     if (user_id) {
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('first_name, last_name, email')
+        .select('first_name, last_name, email, phone_number')
         .eq('user_id', user_id)
         .single()
 
-      if (!profileError && profile) {
-        customerInfo.name = `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'Customer'
-        customerInfo.email = profile.email || ''
-      }
-
-      // Get user's phone from auth.users metadata if available
-      const { data: authUser, error: authError } = await supabase.auth.admin.getUserById(user_id)
-      if (!authError && authUser?.user?.user_metadata?.phone) {
-        customerInfo.phone = authUser.user.user_metadata.phone
+      if (profile && !profileError) {
+        customerInfo = {
+          name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'N/A',
+          email: profile.email || 'N/A',
+          phone: profile.phone_number || 'N/A'
+        }
       }
     }
 
-    // Fetch services and home options for detailed descriptions
-    const { data: services, error: servicesError } = await supabase
-      .from('services')
-      .select('*')
+    // Get all service IDs from cart items
+    const allServiceIds = cart_items.reduce((acc: string[], item: any) => {
+      return [...acc, ...(item.selectedServices || [])]
+    }, [])
 
-    const { data: homeOptions, error: homeOptionsError } = await supabase
-      .from('home_options')
-      .select('*')
+    // Get all home option IDs from cart items
+    const allHomeOptionIds = cart_items.reduce((acc: string[], item: any) => {
+      return [...acc, ...(item.selectedHomeOptions || []).map((ho: any) => ho.option.id)]
+    }, [])
 
-    if (servicesError) {
-      console.error('Error fetching services:', servicesError)
+    // Fetch services data
+    let servicesData: any[] = []
+    if (allServiceIds.length > 0) {
+      const { data: services, error: servicesError } = await supabase
+        .from('services')
+        .select('*')
+        .in('id', allServiceIds)
+
+      if (servicesError) {
+        console.error('Error fetching services:', servicesError)
+      } else {
+        servicesData = services || []
+      }
     }
-    if (homeOptionsError) {
-      console.error('Error fetching home options:', homeOptionsError)
+
+    // Fetch home options data
+    let homeOptionsData: any[] = []
+    if (allHomeOptionIds.length > 0) {
+      const { data: homeOptions, error: homeOptionsError } = await supabase
+        .from('home_options')
+        .select('*')
+        .in('id', allHomeOptionIds)
+
+      if (homeOptionsError) {
+        console.error('Error fetching home options:', homeOptionsError)
+      } else {
+        homeOptionsData = homeOptions || []
+      }
     }
 
-    // Check if Resend API key is available
-    const resendApiKey = Deno.env.get('RESEND_API_KEY')
-    if (!resendApiKey) {
-      throw new Error('RESEND_API_KEY not configured')
-    }
+    // Build email content
+    let emailContent = `
+<h2>New Cart Estimate Request</h2>
 
-    const resend = new Resend(resendApiKey)
+<h3>Customer Information:</h3>
+<ul>
+  <li><strong>Name:</strong> ${customerInfo.name}</li>
+  <li><strong>Email:</strong> ${customerInfo.email}</li>
+  <li><strong>Phone:</strong> ${customerInfo.phone}</li>
+</ul>
 
-    // Format cart items for email with detailed descriptions
-    let cartSummary = ''
-    let cartTotal = 0
-    
-    for (const item of cart_items) {
-      const homeName = item.mobileHome?.display_name || 
-                      item.mobileHome?.model || 
-                      `${item.mobileHome?.manufacturer || ''} ${item.mobileHome?.series || ''} ${item.mobileHome?.model || ''}`.trim()
-      
-      const homePrice = item.mobileHome?.price || item.mobileHome?.cost || 0
-      cartTotal += homePrice
-      
-      cartSummary += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`
-      cartSummary += `📱 MOBILE HOME: ${homeName}\n`
-      cartSummary += `💰 Base Price: $${homePrice.toLocaleString()}\n`
-      
-      if (item.mobileHome?.description) {
-        cartSummary += `📝 Description: ${item.mobileHome.description}\n`
-      }
-      
-      if (item.mobileHome?.square_footage) {
-        cartSummary += `📐 Square Footage: ${item.mobileHome.square_footage} sq ft\n`
-      }
-      
-      if (item.mobileHome?.bedrooms && item.mobileHome?.bathrooms) {
-        cartSummary += `🛏️ Layout: ${item.mobileHome.bedrooms} bed / ${item.mobileHome.bathrooms} bath\n`
-      }
-      
-      if (item.mobileHome?.features && Array.isArray(item.mobileHome.features) && item.mobileHome.features.length > 0) {
-        cartSummary += `✨ Features:\n`
-        item.mobileHome.features.forEach(feature => {
-          cartSummary += `   • ${feature}\n`
-        })
-      }
-      
-      // Add selected services with detailed descriptions
+<h3>Cart Details:</h3>
+`
+
+    // Process each cart item
+    cart_items.forEach((item: any, index: number) => {
+      const home = item.mobileHome
+      const homeName = home.display_name || `${home.manufacturer} ${home.series} ${home.model}`
+      const homeSize = home.square_footage ? `${home.square_footage} sq ft` : 'N/A'
+      const bedBath = `${home.bedrooms || 0} bed / ${home.bathrooms || 0} bath`
+      const homePrice = home.cost || home.price || 0
+
+      emailContent += `
+<div style="border: 1px solid #ddd; padding: 15px; margin: 10px 0;">
+  <h4>Item ${index + 1}: ${homeName}</h4>
+  <ul>
+    <li><strong>Size:</strong> ${homeSize}</li>
+    <li><strong>Bed/Bath:</strong> ${bedBath}</li>
+    <li><strong>Price:</strong> $${homePrice.toLocaleString()}</li>
+  </ul>
+`
+
+      // Add selected services
       if (item.selectedServices && item.selectedServices.length > 0) {
-        cartSummary += `\n🔧 SELECTED SERVICES:\n`
-        for (const serviceId of item.selectedServices) {
-          const service = services?.find(s => s.id === serviceId)
+        emailContent += `<h5>Selected Services:</h5><ul>`
+        item.selectedServices.forEach((serviceId: string) => {
+          const service = servicesData.find(s => s.id === serviceId)
           if (service) {
-            let servicePrice = 0
-            const homeWidth = item.mobileHome?.width_feet || 0
+            // Calculate service price based on home width
+            const homeWidth = home.width_feet || 0
             const isDoubleWide = homeWidth > 16
-            servicePrice = isDoubleWide ? (service.double_wide_price || 0) : (service.single_wide_price || 0)
+            const servicePrice = isDoubleWide ? (service.double_wide_price || service.price) : (service.single_wide_price || service.price)
             
-            cartTotal += servicePrice
-            cartSummary += `   • ${service.name} - $${servicePrice.toLocaleString()}\n`
-            if (service.description) {
-              cartSummary += `     Description: ${service.description}\n`
-            }
+            emailContent += `<li>${service.name}: $${servicePrice.toLocaleString()}</li>`
           }
-        }
+        })
+        emailContent += `</ul>`
       }
-      
-      // Add selected home options with detailed descriptions
+
+      // Add selected home options
       if (item.selectedHomeOptions && item.selectedHomeOptions.length > 0) {
-        cartSummary += `\n🏠 SELECTED HOME OPTIONS:\n`
-        for (const selectedOption of item.selectedHomeOptions) {
-          const homeOption = homeOptions?.find(ho => ho.id === selectedOption.option.id) || selectedOption.option
-          if (homeOption) {
-            let optionPrice = 0
-            const quantity = selectedOption.quantity || 1
-            
-            if (homeOption.pricing_type === 'per_sqft' && item.mobileHome?.square_footage) {
-              optionPrice = (homeOption.price_per_sqft || 0) * item.mobileHome.square_footage * quantity
-            } else {
-              optionPrice = (homeOption.calculated_price || homeOption.cost_price || 0) * quantity
-            }
-            
-            cartTotal += optionPrice
-            cartSummary += `   • ${homeOption.name}`
-            if (quantity > 1) {
-              cartSummary += ` (Qty: ${quantity})`
-            }
-            cartSummary += ` - $${optionPrice.toLocaleString()}\n`
-            
-            if (homeOption.description) {
-              cartSummary += `     Description: ${homeOption.description}\n`
-            }
-            
-            if (homeOption.pricing_type === 'per_sqft') {
-              cartSummary += `     Pricing: $${(homeOption.price_per_sqft || 0).toFixed(2)} per sq ft\n`
-            }
-          }
-        }
-      }
-      
-      cartSummary += `\n`
-    }
-
-    // Customer information section
-    let customerSection = `👤 CUSTOMER INFORMATION:\n`
-    customerSection += `Name: ${customerInfo.name}\n`
-    if (customerInfo.email) {
-      customerSection += `Email: ${customerInfo.email}\n`
-    }
-    if (customerInfo.phone) {
-      customerSection += `Phone: ${customerInfo.phone}\n`
-    }
-
-    const emailContent = `
-New Estimate Request from Customer
-
-${customerSection}
-
-${cartSummary}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-💰 TOTAL ESTIMATE: $${total_amount.toLocaleString()}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-📞 ACTION REQUIRED: Please contact the customer as soon as possible to discuss this estimate.
-
-Generated: ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}
-    `
-
-    console.log('Sending detailed email with customer and pricing information')
-
-    // Send email to sales representative
-    const emailResult = await resend.emails.send({
-      from: 'Wholesale Homes of the Carolinas <onboarding@resend.dev>',
-      to: [sales_rep_email],
-      subject: `New Customer Estimate Request - ${customerInfo.name} - $${total_amount.toLocaleString()}`,
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px;">
-          <h2 style="color: #2563eb; border-bottom: 2px solid #2563eb; padding-bottom: 10px;">New Estimate Request from Customer</h2>
+        emailContent += `<h5>Selected Options:</h5><ul>`
+        item.selectedHomeOptions.forEach((selectedOption: any) => {
+          const option = selectedOption.option
+          const quantity = selectedOption.quantity || 1
           
-          <div style="background-color: #f8fafc; padding: 15px; border-radius: 8px; margin: 20px 0;">
-            <h3 style="color: #1e40af; margin-top: 0;">👤 Customer Information</h3>
-            <p><strong>Name:</strong> ${customerInfo.name}</p>
-            ${customerInfo.email ? `<p><strong>Email:</strong> ${customerInfo.email}</p>` : ''}
-            ${customerInfo.phone ? `<p><strong>Phone:</strong> ${customerInfo.phone}</p>` : ''}
-          </div>
+          // Calculate option price
+          let optionPrice = option.cost_price || 0
+          if (option.pricing_type === 'per_sqft' && home.square_footage) {
+            optionPrice = (option.price_per_sqft || 0) * home.square_footage
+          }
+          
+          const totalOptionPrice = optionPrice * quantity
+          const displayText = quantity > 1 ? `${option.name} (x${quantity}): $${totalOptionPrice.toLocaleString()}` : `${option.name}: $${totalOptionPrice.toLocaleString()}`
+          
+          emailContent += `<li>${displayText}</li>`
+        })
+        emailContent += `</ul>`
+      }
 
-          <div style="background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; margin: 20px 0;">
-            <pre style="white-space: pre-wrap; font-family: 'Courier New', monospace; font-size: 14px; line-height: 1.5; margin: 0;">${cartSummary}</pre>
-          </div>
-
-          <div style="background-color: #059669; color: white; padding: 15px; border-radius: 8px; text-align: center; margin: 20px 0;">
-            <h3 style="margin: 0; font-size: 24px;">💰 TOTAL ESTIMATE: $${total_amount.toLocaleString()}</h3>
-          </div>
-
-          <div style="background-color: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 15px; margin: 20px 0;">
-            <p style="margin: 0; color: #92400e;"><strong>📞 ACTION REQUIRED:</strong> Please contact the customer as soon as possible to discuss this estimate.</p>
-          </div>
-
-          <hr style="margin: 30px 0; border: none; border-top: 1px solid #e5e7eb;">
-          <p style="color: #6b7280; font-size: 12px; text-align: center;">
-            Generated: ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}<br>
-            Wholesale Homes of the Carolinas System
-          </p>
-        </div>
-      `,
+      emailContent += `</div>`
     })
 
-    console.log('Email sent successfully:', emailResult)
+    emailContent += `
+<h3>Total Amount: $${total_amount.toLocaleString()}</h3>
+
+<p>This estimate was generated from the customer's shopping cart and requires your review.</p>
+<p>Please contact the customer to discuss next steps.</p>
+`
+
+    console.log('🔍 send-estimate-to-sales-rep: Sending email to:', sales_rep_email)
+
+    // Send email to sales representative
+    const { data, error } = await resend.emails.send({
+      from: 'Wholesale Homes of the Carolinas <onboarding@resend.dev>',
+      to: [sales_rep_email],
+      subject: `New Cart Estimate Request - ${customerInfo.name}`,
+      html: emailContent,
+    })
+
+    if (error) {
+      console.error('🔍 send-estimate-to-sales-rep: Resend error:', error)
+      throw new Error(`Failed to send email: ${error.message}`)
+    }
+
+    console.log('🔍 send-estimate-to-sales-rep: Email sent successfully:', data)
 
     return new Response(
       JSON.stringify({ 
         success: true, 
         message: 'Estimate sent to sales representative successfully',
-        emailId: emailResult.data?.id
+        email_id: data?.id
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -271,15 +202,15 @@ Generated: ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString
       },
     )
   } catch (error) {
-    console.error('Error in send-estimate-to-sales-rep function:', error)
+    console.error('🔍 send-estimate-to-sales-rep: Error:', error)
     return new Response(
       JSON.stringify({ 
-        success: false,
-        error: error.message || 'Unknown error occurred'
+        success: false, 
+        error: error.message || 'Failed to send estimate' 
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500,
+        status: 400,
       },
     )
   }

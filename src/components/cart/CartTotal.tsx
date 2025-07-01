@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
@@ -56,6 +55,10 @@ export const CartTotal = ({
         return;
       }
 
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      const userId = user?.id || null;
+
       console.log('🔍 CartTotal: Sending cart items to sales rep:', cartItems);
 
       // Send estimate to sales representative
@@ -63,7 +66,8 @@ export const CartTotal = ({
         body: {
           cart_items: cartItems,
           total_amount: total,
-          sales_rep_email: 'michaelbyarssc@gmail.com'
+          sales_rep_email: 'michaelbyarssc@gmail.com',
+          user_id: userId
         }
       });
 

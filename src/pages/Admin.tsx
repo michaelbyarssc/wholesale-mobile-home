@@ -39,7 +39,7 @@ const Admin = () => {
         setUser(session.user);
         console.log('Admin: User authenticated:', session.user.id);
 
-        // Check if user is super admin
+        // Check if user is super admin - fix the role checking logic
         const { data: roleData, error: roleError } = await supabase
           .from('user_roles')
           .select('role')
@@ -49,23 +49,25 @@ const Admin = () => {
         
         if (roleError) {
           console.error('Admin: Error checking user role:', roleError);
-        }
-
-        const userRole = roleData && roleData.length > 0 ? roleData[0].role : null;
-        const isSuperAdminUser = userRole === 'super_admin';
-        
-        setIsSuperAdmin(isSuperAdminUser);
-        console.log('Admin: User role set:', userRole, 'isSuperAdmin:', isSuperAdminUser);
-        
-        // Set default tab based on role
-        if (!isSuperAdminUser) {
-          setActiveTab('users');
+          setIsSuperAdmin(false);
         } else {
-          setActiveTab('mobile-homes');
+          // Check if ANY of the user's roles is 'super_admin'
+          const isSuperAdminUser = roleData?.some(role => role.role === 'super_admin') || false;
+          setIsSuperAdmin(isSuperAdminUser);
+          console.log('Admin: User roles:', roleData?.map(r => r.role));
+          console.log('Admin: Is super admin:', isSuperAdminUser);
+          
+          // Set default tab based on role
+          if (isSuperAdminUser) {
+            setActiveTab('mobile-homes');
+          } else {
+            setActiveTab('users');
+          }
         }
         
       } catch (error) {
         console.error('Admin: Error in role check:', error);
+        setIsSuperAdmin(false);
         toast({
           title: "Error",
           description: "Failed to load admin dashboard",

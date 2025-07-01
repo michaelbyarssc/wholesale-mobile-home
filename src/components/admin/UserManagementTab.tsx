@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
@@ -28,7 +29,7 @@ export const UserManagementTab = () => {
       setCurrentUser(session.user);
       console.log('UserManagementTab: Current user ID:', session.user.id);
 
-      // Check if user is super admin
+      // Check if user is super admin - fix the role checking logic
       const { data: roleData } = await supabase
         .from('user_roles')
         .select('role')
@@ -36,7 +37,8 @@ export const UserManagementTab = () => {
 
       console.log('UserManagementTab: Role data:', roleData);
 
-      const userIsSuperAdmin = roleData?.some(r => r.role === 'super_admin') || false;
+      // Check if ANY of the user's roles is 'super_admin'
+      const userIsSuperAdmin = roleData?.some(role => role.role === 'super_admin') || false;
       setIsSuperAdmin(userIsSuperAdmin);
       console.log('UserManagementTab: User role determination:', { 
         roleData, 

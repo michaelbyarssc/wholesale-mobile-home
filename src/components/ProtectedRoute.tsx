@@ -75,7 +75,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
           return;
         }
 
-        // Check user roles - use a more robust query
+        // Check user roles - fix the role checking logic
         console.log('ProtectedRoute: Checking user roles for:', session.user.id);
         const { data: roleData, error: roleError } = await supabase
           .from('user_roles')
@@ -100,15 +100,16 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
           return;
         }
 
-        // Handle role data - could be array or single object
-        const userRole = roleData && roleData.length > 0 ? roleData[0].role : null;
-        console.log('ProtectedRoute: User role found:', userRole);
-        
-        const userIsSuperAdmin = userRole === 'super_admin';
-        const userIsAdmin = userRole === 'admin' || userRole === 'super_admin';
+        // Check if ANY of the user's roles is 'super_admin' or 'admin'
+        const userIsSuperAdmin = roleData?.some(role => role.role === 'super_admin') || false;
+        const userIsAdmin = roleData?.some(role => role.role === 'admin' || role.role === 'super_admin') || false;
         
         setIsSuperAdmin(userIsSuperAdmin);
         setIsAdmin(userIsAdmin);
+        
+        console.log('ProtectedRoute: User roles found:', roleData?.map(r => r.role));
+        console.log('ProtectedRoute: Is super admin:', userIsSuperAdmin);
+        console.log('ProtectedRoute: Is admin:', userIsAdmin);
         
         // Check access permissions
         if (superAdminOnly && !userIsSuperAdmin) {
@@ -124,7 +125,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
           navigate('/');
           return;
         } else {
-          console.log('ProtectedRoute: Access granted for role:', userRole);
+          console.log('ProtectedRoute: Access granted');
         }
 
       } catch (error) {

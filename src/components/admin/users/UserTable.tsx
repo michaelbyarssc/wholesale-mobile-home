@@ -23,7 +23,7 @@ export const UserTable = ({ userProfiles, onUserUpdated }: UserTableProps) => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) return;
 
-      // Check if user is super admin - get all roles for the user
+      // Check if user is super admin - fix the role checking logic
       const { data: roleData, error: roleError } = await supabase
         .from('user_roles')
         .select('role')
@@ -34,8 +34,8 @@ export const UserTable = ({ userProfiles, onUserUpdated }: UserTableProps) => {
         return;
       }
 
-      // Check if user has super_admin role
-      const userIsSuperAdmin = roleData?.some(r => r.role === 'super_admin') || false;
+      // Check if ANY of the user's roles is 'super_admin'
+      const userIsSuperAdmin = roleData?.some(role => role.role === 'super_admin') || false;
       setIsSuperAdmin(userIsSuperAdmin);
     } catch (error) {
       console.error('Error checking user role:', error);

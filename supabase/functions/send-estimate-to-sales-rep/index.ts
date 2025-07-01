@@ -117,8 +117,8 @@ serve(async (req) => {
       // Pricing 2: Internal price + markup %
       const pricing2 = home.price * (1 + customerMarkup / 100)
       
-      // Use the higher of the two prices (same logic as website)
-      return Math.max(pricing1, pricing2)
+      // Use the higher of the two prices and round down
+      return Math.floor(Math.max(pricing1, pricing2))
     }
 
     // Build email content
@@ -143,7 +143,7 @@ serve(async (req) => {
       const homeSize = home.square_footage ? `${home.square_footage} sq ft` : 'N/A'
       const bedBath = `${home.bedrooms || 0} bed / ${home.bathrooms || 0} bath`
       
-      // Use the displayed price calculation (not internal cost)
+      // Use the displayed price calculation (not internal cost) and round down
       const displayHomePrice = calculateMobileHomePrice(home)
 
       emailContent += `
@@ -173,8 +173,8 @@ serve(async (req) => {
               baseServicePrice = service.single_wide_price
             }
             
-            // Apply customer markup to service price
-            const finalServicePrice = baseServicePrice * (1 + customerMarkup / 100)
+            // Apply customer markup to service price and round down
+            const finalServicePrice = Math.floor(baseServicePrice * (1 + customerMarkup / 100))
             
             emailContent += `<li><strong>${service.name}:</strong> $${finalServicePrice.toLocaleString()}</li>`
           }
@@ -198,8 +198,8 @@ serve(async (req) => {
             baseOptionPrice = option.cost_price || 0
           }
           
-          // Apply customer markup to option price
-          const finalOptionPrice = baseOptionPrice * (1 + customerMarkup / 100)
+          // Apply customer markup to option price and round down
+          const finalOptionPrice = Math.floor(baseOptionPrice * (1 + customerMarkup / 100))
           const totalOptionPrice = finalOptionPrice * quantity
           
           const displayText = quantity > 1 
@@ -214,12 +214,15 @@ serve(async (req) => {
       emailContent += `</div>`
     })
 
+    // Round down the total amount
+    const roundedTotalAmount = Math.floor(total_amount)
+
     emailContent += `
-<h3>Total Amount: $${total_amount.toLocaleString()}</h3>
+<h3>Total Amount: $${roundedTotalAmount.toLocaleString()}</h3>
 
 <p>This estimate was generated from the customer's shopping cart and requires your review.</p>
 <p>Please contact the customer to discuss next steps.</p>
-<p><em>Note: All prices shown include the customer's ${customerMarkup}% markup and reflect what the customer sees on the website.</em></p>
+<p><em>Note: All prices shown include the customer's ${customerMarkup}% markup and reflect what the customer sees on the website. All prices are rounded down to the nearest whole dollar.</em></p>
 `
 
     console.log('🔍 send-estimate-to-sales-rep: Sending email to:', sales_rep_email)

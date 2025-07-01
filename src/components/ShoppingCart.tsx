@@ -1,3 +1,4 @@
+
 import React, { useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ShoppingCart as CartIcon } from 'lucide-react';
@@ -45,7 +46,7 @@ export const ShoppingCart = ({
   isLoading = false
 }: ShoppingCartProps) => {
   const navigate = useNavigate();
-  const { calculatePrice, calculateHomeOptionPrice } = useCustomerPricing(user);
+  const { calculateMobileHomePrice, calculateServicePrice, calculateHomeOptionPrice } = useCustomerPricing(user);
 
   // Fetch services
   const { data: services = [] } = useQuery({
@@ -97,20 +98,26 @@ export const ShoppingCart = ({
 
   const calculateItemTotal = (item: CartItem) => {
     try {
-      const homePrice = calculatePrice(item.mobileHome.cost || item.mobileHome.price);
+      // Calculate home price using the proper mobile home pricing logic
+      const homePrice = calculateMobileHomePrice(item.mobileHome);
       
-      // Calculate services price using conditional pricing
+      // Calculate services price using conditional pricing and proper markup
       const servicesPrice = item.selectedServices.reduce((total, serviceId) => {
+        const service = services.find(s => s.id === serviceId);
+        if (!service) return total;
+        
         const serviceCost = getServicePrice(serviceId);
-        const finalPrice = calculatePrice(serviceCost);
+        const finalPrice = calculateServicePrice(service, item.mobileHome);
+        console.log(`🔍 Cart Service ${service.name}: Raw cost = ${serviceCost}, Final with markup = ${finalPrice}`);
         return total + finalPrice;
       }, 0);
       
       // Calculate home options price with proper markup application
       const homeOptionsPrice = (item.selectedHomeOptions || []).reduce((total, { option, quantity }) => {
         const baseOptionPrice = calculateHomeOptionPrice(option, item.mobileHome.square_footage || undefined);
-        console.log(`🔍 Cart Total - Option ${option.name}: Base price = ${baseOptionPrice}, Quantity = ${quantity}, Total = ${baseOptionPrice * quantity}`);
-        return total + (baseOptionPrice * quantity);
+        const totalOptionPrice = baseOptionPrice * quantity;
+        console.log(`🔍 Cart Option ${option.name}: Base price = ${baseOptionPrice}, Quantity = ${quantity}, Total = ${totalOptionPrice}`);
+        return total + totalOptionPrice;
       }, 0);
       
       const totalPrice = homePrice + servicesPrice + homeOptionsPrice;
@@ -215,7 +222,7 @@ export const ShoppingCart = ({
                 onUpdateServices={onUpdateServices}
                 onUpdateHomeOptions={onUpdateHomeOptions}
                 onRemoveItem={handleRemoveItem}
-                calculatePrice={calculatePrice}
+                calculatePrice={() => 0} // This is now handled by specific calculation functions
                 calculateHomeOptionPrice={calculateHomeOptionPrice}
                 calculateItemTotal={calculateItemTotal}
                 getHomeName={getHomeName}

@@ -9,6 +9,7 @@ import { CartHomeOptionsList } from './CartHomeOptionsList';
 import { formatPrice } from '@/lib/utils';
 import type { Database } from '@/integrations/supabase/types';
 import { CartItem } from '@/components/ShoppingCart';
+import { useCustomerPricing } from '@/hooks/useCustomerPricing';
 
 type HomeOption = Database['public']['Tables']['home_options']['Row'];
 
@@ -45,6 +46,8 @@ export const CartItemCard = ({
   calculateItemTotal,
   getHomeName
 }: CartItemCardProps) => {
+  const { calculateMobileHomePrice } = useCustomerPricing(null);
+
   const formatSize = (home: any) => {
     if (home.length_feet && home.width_feet) {
       return `${home.width_feet}x${home.length_feet}`;
@@ -98,7 +101,7 @@ export const CartItemCard = ({
             </AlertDialog>
           </div>
           <div className="text-sm text-gray-600">
-            Base Price: {formatPrice(calculatePrice(item.mobileHome.cost || item.mobileHome.price))}
+            Base Price: {formatPrice(calculateMobileHomePrice(item.mobileHome))}
           </div>
         </CardHeader>
         

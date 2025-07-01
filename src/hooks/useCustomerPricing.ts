@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -50,7 +51,9 @@ export const useCustomerPricing = (user: User | null) => {
   const calculatePrice = (basePrice: number): number => {
     if (!basePrice) return 0;
     const markup = customerMarkup?.markup_percentage || 30;
-    return basePrice * (1 + markup / 100);
+    const finalPrice = basePrice * (1 + markup / 100);
+    console.log(`🔍 calculatePrice: Base: ${basePrice}, Markup: ${markup}%, Final: ${finalPrice}`);
+    return finalPrice;
   };
 
   const calculateMobileHomePrice = (mobileHome: MobileHome | null): number => {
@@ -99,7 +102,7 @@ export const useCustomerPricing = (user: User | null) => {
     }
     
     const finalPrice = basePrice * (1 + markup / 100);
-    console.log('useCustomerPricing: Service price calculation - Base:', basePrice, 'Final:', finalPrice);
+    console.log('useCustomerPricing: Service price calculation - Base:', basePrice, 'Markup:', markup, '% Final:', finalPrice);
     return finalPrice;
   };
 
@@ -150,7 +153,7 @@ export const useCustomerPricing = (user: User | null) => {
     customerMarkup: customerMarkup?.markup_percentage || 30,
     markupPercentage: customerMarkup?.markup_percentage || 30, // Add alias for backward compatibility
     loading,
-    calculatePrice, // Add the missing calculatePrice function
+    calculatePrice,
     calculateMobileHomePrice,
     calculateServicePrice,
     calculateHomeOptionPrice,

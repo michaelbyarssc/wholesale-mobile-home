@@ -87,12 +87,12 @@ export const UserManagementTab = () => {
         return;
       }
 
-      // Separate approved users and pending users (not approved and not denied)
-      // Note: Users created by admins are auto-approved, so they should appear in approved users
-      const approvedUsers = profileData?.filter(profile => profile.approved) || [];
-      const pendingUsers = profileData?.filter(profile => !profile.approved && !profile.denied) || [];
+      // Separate users: approved users and pending users (not approved and not denied)
+      const approvedUsers = profileData?.filter(profile => profile.approved === true) || [];
+      const pendingUsers = profileData?.filter(profile => profile.approved === false && profile.denied === false) || [];
 
       console.log('Approved users (including admin-created):', approvedUsers.length);
+      console.log('Approved users details:', approvedUsers.map(u => ({ email: u.email, approved: u.approved, created_by: u.created_by })));
       console.log('Pending users:', pendingUsers.length);
 
       // Fetch user roles for approved users

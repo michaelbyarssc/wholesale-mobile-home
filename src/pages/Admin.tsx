@@ -29,59 +29,79 @@ const Admin = () => {
 
   useEffect(() => {
     const checkAuth = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        navigate('/auth');
-        return;
-      }
+      try {
+        console.log('Admin: Starting auth check...');
+        
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (!user) {
+          console.log('Admin: No user found, redirecting to auth');
+          navigate('/auth');
+          return;
+        }
 
-      setUser(user);
-      console.log('Current user:', user);
+        setUser(user);
+        console.log('Admin: Current user:', user.id, user.email);
 
-      // Check user's roles (all of them)
-      const { data: userRoles, error: userRolesError } = await supabase
-        .from('user_roles')
-        .select('*')
-        .eq('user_id', user.id);
+        // Check user's roles
+        const { data: userRoles, error: userRolesError } = await supabase
+          .from('user_roles')
+          .select('*')
+          .eq('user_id', user.id);
 
-      console.log('User roles:', userRoles);
-      console.log('User roles error:', userRolesError);
+        console.log('Admin: User roles query result:', userRoles);
+        console.log('Admin: User roles error:', userRolesError);
 
-      const userRole = userRoles?.[0]?.role;
-      const isUserSuperAdmin = userRole === 'super_admin';
-      const isUserAdmin = userRole === 'admin' || isUserSuperAdmin;
+        const userRole = userRoles?.[0]?.role;
+        const isUserSuperAdmin = userRole === 'super_admin';
+        const isUserAdmin = userRole === 'admin' || isUserSuperAdmin;
 
-      setDebugInfo({
-        userId: user.id,
-        userEmail: user.email,
-        userRoles,
-        userRolesError,
-        userRole,
-        isUserSuperAdmin,
-        isUserAdmin
-      });
+        console.log('Admin: Determined role:', userRole);
+        console.log('Admin: Is super admin:', isUserSuperAdmin);
+        console.log('Admin: Is admin:', isUserAdmin);
 
-      if (!isUserAdmin) {
+        setDebugInfo({
+          userId: user.id,
+          userEmail: user.email,
+          userRoles,
+          userRolesError,
+          userRole,
+          isUserSuperAdmin,
+          isUserAdmin
+        });
+
+        if (!isUserAdmin) {
+          console.log('Admin: User is not admin, showing access denied');
+          toast({
+            title: "Access Denied",
+            description: `You don't have admin privileges. Contact an administrator. User ID: ${user.id}`,
+            variant: "destructive",
+          });
+          
+          setLoading(false);
+          return;
+        }
+
+        console.log('Admin: Access granted, setting states');
+        setIsAdmin(isUserAdmin);
+        setIsSuperAdmin(isUserSuperAdmin);
+        setLoading(false);
+      } catch (error) {
+        console.error('Admin: Error in checkAuth:', error);
         toast({
-          title: "Access Denied",
-          description: `You don't have admin privileges. Contact an administrator. User ID: ${user.id}`,
+          title: "Error",
+          description: "Failed to check authentication status",
           variant: "destructive",
         });
-        
         setLoading(false);
-        return;
       }
-
-      setIsAdmin(isUserAdmin);
-      setIsSuperAdmin(isUserSuperAdmin);
-      setLoading(false);
     };
 
     checkAuth();
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('Admin: Auth state changed:', event, session?.user?.id);
       if (!session?.user) {
         navigate('/auth');
       }
@@ -167,6 +187,8 @@ const Admin = () => {
     </Sheet>
   );
 
+  console.log('Admin: Rendering with loading:', loading, 'isAdmin:', isAdmin);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
@@ -223,7 +245,7 @@ const Admin = () => {
             </div>
             <div className="flex items-center gap-2 md:gap-4">
               <span className="text-xs md:text-sm text-gray-600 hidden sm:inline">
-                Welcome, {user?.email}
+                Welcome, {user?.email} ({isSuperAdmin ? 'Super Admin' : 'Admin'})
               </span>
               <div className="flex flex-col sm:flex-row gap-1 sm:gap-2">
                 <Button 

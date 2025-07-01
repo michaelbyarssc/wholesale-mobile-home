@@ -5,6 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { UserProfile } from './UserEditDialog';
 import { UserTableRow } from './UserTableRow';
 import { supabase } from '@/integrations/supabase/client';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface UserTableProps {
   userProfiles: UserProfile[];
@@ -13,6 +14,7 @@ interface UserTableProps {
 
 export const UserTable = ({ userProfiles, onUserUpdated }: UserTableProps) => {
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     checkCurrentUserRole();
@@ -42,10 +44,69 @@ export const UserTable = ({ userProfiles, onUserUpdated }: UserTableProps) => {
     }
   };
 
+  if (isMobile) {
+    return (
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base sm:text-lg">Users ({userProfiles.length})</CardTitle>
+        </CardHeader>
+        <CardContent className="px-3 space-y-3">
+          {userProfiles.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <p>No registered users found</p>
+            </div>
+          ) : (
+            userProfiles.map((profile) => (
+              <div key={profile.user_id} className="bg-muted/50 rounded-lg p-4 space-y-3">
+                <div className="flex justify-between items-start">
+                  <div className="space-y-1 flex-1 min-w-0">
+                    <div className="font-medium text-sm text-foreground truncate">
+                      {profile.first_name || profile.last_name 
+                        ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim()
+                        : profile.email === 'No email' ? 'Unknown User' : profile.email || 'Unknown User'}
+                    </div>
+                    <div className="text-xs text-muted-foreground truncate">{profile.email}</div>
+                    {profile.phone_number && (
+                      <div className="text-xs text-muted-foreground">{profile.phone_number}</div>
+                    )}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {new Date(profile.created_at).toLocaleDateString()}
+                  </div>
+                </div>
+                
+                {isSuperAdmin && profile.role && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">Role:</span>
+                    <span className="text-xs font-medium text-foreground capitalize">
+                      {profile.role.replace('_', ' ')}
+                    </span>
+                  </div>
+                )}
+                
+                <div className="flex items-center justify-between pt-2 border-t border-border">
+                  <div className="text-xs text-muted-foreground">
+                    Markup: {profile.markup_percentage || 0}%
+                  </div>
+                  <UserTableRow 
+                    key={profile.user_id} 
+                    profile={profile} 
+                    onUserUpdated={onUserUpdated}
+                    mobileView={true}
+                  />
+                </div>
+              </div>
+            ))
+          )}
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card>
       <CardHeader className="pb-4">
-        <CardTitle className="text-lg sm:text-xl">Registered Users</CardTitle>
+        <CardTitle className="text-lg xl:text-xl">Registered Users ({userProfiles.length})</CardTitle>
       </CardHeader>
       <CardContent className="px-2 sm:px-6">
         <div className="rounded-md border overflow-hidden">
@@ -53,19 +114,19 @@ export const UserTable = ({ userProfiles, onUserUpdated }: UserTableProps) => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="min-w-[200px] sm:min-w-0">User</TableHead>
+                  <TableHead className="min-w-[200px] lg:min-w-0">User</TableHead>
                   <TableHead className="hidden sm:table-cell">Phone</TableHead>
-                  {isSuperAdmin && <TableHead className="hidden md:table-cell">Role</TableHead>}
-                  <TableHead className="hidden lg:table-cell">Markup %</TableHead>
+                  {isSuperAdmin && <TableHead className="hidden lg:table-cell">Role</TableHead>}
+                  <TableHead className="hidden xl:table-cell">Markup %</TableHead>
                   {isSuperAdmin && <TableHead className="hidden xl:table-cell">Created By</TableHead>}
-                  <TableHead className="hidden sm:table-cell">Registered</TableHead>
-                  <TableHead className="text-right min-w-[100px]">Actions</TableHead>
+                  <TableHead className="hidden md:table-cell">Registered</TableHead>
+                  <TableHead className="text-right min-w-[120px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {userProfiles.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                       No registered users found
                     </TableCell>
                   </TableRow>

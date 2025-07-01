@@ -15,6 +15,7 @@ import { SuperAdminMarkupTab } from '@/components/admin/SuperAdminMarkupTab';
 import { Menu, X } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { HomeOptionsTab } from '@/components/admin/HomeOptionsTab';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const Admin = () => {
   const [user, setUser] = useState<any>(null);
@@ -24,6 +25,7 @@ const Admin = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     const checkUserRole = async () => {
@@ -110,27 +112,40 @@ const Admin = () => {
     );
   }
 
+  const getTabDisplayName = (tab: string) => {
+    const tabNames: Record<string, string> = {
+      'mobile-homes': 'Homes',
+      'services': 'Services',
+      'home-options': 'Options',
+      'users': 'Users',
+      'super-admin': 'Admin',
+      'settings': 'Settings',
+      'audit': 'Audit'
+    };
+    return tabNames[tab] || tab;
+  };
+
   const NavigationItems = ({ mobile = false }: { mobile?: boolean }) => (
-    <div className={`flex ${mobile ? 'flex-col space-y-2' : 'flex-row space-x-1'}`}>
+    <div className={`flex ${mobile ? 'flex-col space-y-3' : 'flex-row space-x-1'}`}>
       {isSuperAdmin ? (
         <>
           <Button
             variant={activeTab === 'mobile-homes' ? 'default' : 'ghost'}
-            className={`${mobile ? 'justify-start w-full' : ''} text-xs sm:text-sm`}
+            className={`${mobile ? 'justify-start w-full h-12 text-base' : ''} text-xs sm:text-sm`}
             onClick={() => handleTabChange('mobile-homes')}
           >
             Mobile Homes
           </Button>
           <Button
             variant={activeTab === 'services' ? 'default' : 'ghost'}
-            className={`${mobile ? 'justify-start w-full' : ''} text-xs sm:text-sm`}
+            className={`${mobile ? 'justify-start w-full h-12 text-base' : ''} text-xs sm:text-sm`}
             onClick={() => handleTabChange('services')}
           >
             Services
           </Button>
           <Button
             variant={activeTab === 'home-options' ? 'default' : 'ghost'}
-            className={`${mobile ? 'justify-start w-full' : ''} text-xs sm:text-sm`}
+            className={`${mobile ? 'justify-start w-full h-12 text-base' : ''} text-xs sm:text-sm`}
             onClick={() => handleTabChange('home-options')}
           >
             Home Options
@@ -139,7 +154,7 @@ const Admin = () => {
       ) : null}
       <Button
         variant={activeTab === 'users' ? 'default' : 'ghost'}
-        className={`${mobile ? 'justify-start w-full' : ''} text-xs sm:text-sm`}
+        className={`${mobile ? 'justify-start w-full h-12 text-base' : ''} text-xs sm:text-sm`}
         onClick={() => handleTabChange('users')}
       >
         Users
@@ -148,21 +163,21 @@ const Admin = () => {
         <>
           <Button
             variant={activeTab === 'super-admin' ? 'default' : 'ghost'}
-            className={`${mobile ? 'justify-start w-full' : ''} text-xs sm:text-sm`}
+            className={`${mobile ? 'justify-start w-full h-12 text-base' : ''} text-xs sm:text-sm`}
             onClick={() => handleTabChange('super-admin')}
           >
             Super Admin
           </Button>
           <Button
             variant={activeTab === 'settings' ? 'default' : 'ghost'}
-            className={`${mobile ? 'justify-start w-full' : ''} text-xs sm:text-sm`}
+            className={`${mobile ? 'justify-start w-full h-12 text-base' : ''} text-xs sm:text-sm`}
             onClick={() => handleTabChange('settings')}
           >
             Settings
           </Button>
           <Button
             variant={activeTab === 'audit' ? 'default' : 'ghost'}
-            className={`${mobile ? 'justify-start w-full' : ''} text-xs sm:text-sm`}
+            className={`${mobile ? 'justify-start w-full h-12 text-base' : ''} text-xs sm:text-sm`}
             onClick={() => handleTabChange('audit')}
           >
             Audit Log
@@ -173,118 +188,125 @@ const Admin = () => {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b sticky top-0 z-40">
-        <div className="container mx-auto px-2 sm:px-4 py-3">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center space-x-2 sm:space-x-4">
+      <div className="bg-card shadow-sm border-b sticky top-0 z-40">
+        <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4">
+          <div className="flex justify-between items-center gap-2">
+            <div className="flex items-center gap-2 sm:gap-4 min-w-0">
               {/* Mobile Navigation Toggle */}
               <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
                 <SheetTrigger asChild>
-                  <Button variant="outline" size="icon" className="lg:hidden">
+                  <Button variant="outline" size="icon" className="lg:hidden shrink-0">
                     <Menu className="h-4 w-4" />
                   </Button>
                 </SheetTrigger>
-                <SheetContent side="left" className="w-80">
-                  <div className="flex flex-col space-y-4 mt-8">
+                <SheetContent side="left" className="w-80 sm:w-96">
+                  <div className="mt-8">
+                    <div className="mb-6 pb-4 border-b">
+                      <h2 className="text-lg font-semibold text-foreground">Navigation</h2>
+                      <p className="text-sm text-muted-foreground">
+                        Current: {getTabDisplayName(activeTab)}
+                      </p>
+                    </div>
                     <NavigationItems mobile={true} />
                   </div>
                 </SheetContent>
               </Sheet>
               
-              <div className="min-w-0">
-                <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-blue-900 truncate">
-                  Admin Dashboard
+              <div className="min-w-0 flex-1">
+                <h1 className="text-base sm:text-lg md:text-xl font-bold text-foreground truncate">
+                  {isMobile ? getTabDisplayName(activeTab) : 'Admin Dashboard'}
                 </h1>
-                <p className="text-xs sm:text-sm text-gray-600 hidden sm:block">
-                  Wholesale Mobile Home
+                <p className="text-xs text-muted-foreground hidden sm:block">
+                  Wholesale Mobile Home Management
                 </p>
               </div>
             </div>
 
             {/* User Info and Actions */}
-            <div className="flex items-center gap-1 sm:gap-2 md:gap-4">
-              <span className="text-xs text-gray-600 hidden md:inline max-w-[120px] lg:max-w-none truncate">
-                Welcome, {user?.email?.split('@')[0]} ({isSuperAdmin ? 'Super Admin' : 'Admin'})
-              </span>
-              <div className="flex flex-col sm:flex-row gap-1">
+            <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+              {!isMobile && (
+                <span className="text-xs text-muted-foreground hidden lg:inline max-w-[140px] xl:max-w-none truncate">
+                  {user?.email?.split('@')[0]} • {isSuperAdmin ? 'Super Admin' : 'Admin'}
+                </span>
+              )}
+              <div className="flex gap-1 sm:gap-2">
                 <Button 
                   variant="outline" 
-                  size="sm"
+                  size={isMobile ? "sm" : "sm"}
                   onClick={() => navigate('/')}
-                  className="text-xs px-2 sm:px-3"
+                  className={`text-xs ${isMobile ? 'px-2' : 'px-3'}`}
                 >
-                  <span className="hidden sm:inline">View Site</span>
-                  <span className="sm:hidden">Site</span>
+                  {isMobile ? 'Site' : 'View Site'}
                 </Button>
                 <Button 
                   variant="outline" 
-                  size="sm"
+                  size={isMobile ? "sm" : "sm"}
                   onClick={handleSignOut}
-                  className="text-xs px-2 sm:px-3"
+                  className={`text-xs ${isMobile ? 'px-2' : 'px-3'}`}
                 >
-                  Sign Out
+                  {isMobile ? 'Out' : 'Sign Out'}
                 </Button>
               </div>
             </div>
           </div>
-
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="container mx-auto px-2 sm:px-4 py-4 md:py-8">
-        <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4 md:space-y-6">
-          {/* Desktop Tab List - Hidden on mobile since we use buttons */}
-          {isSuperAdmin ? (
-            <TabsList className="hidden lg:grid w-full grid-cols-7 h-auto p-1">
-              <TabsTrigger value="mobile-homes" className="text-xs sm:text-sm">Mobile Homes</TabsTrigger>
-              <TabsTrigger value="services" className="text-xs sm:text-sm">Services</TabsTrigger>
-              <TabsTrigger value="home-options" className="text-xs sm:text-sm">Home Options</TabsTrigger>
-              <TabsTrigger value="users" className="text-xs sm:text-sm">Users</TabsTrigger>
-              <TabsTrigger value="super-admin" className="text-xs sm:text-sm">Super Admin</TabsTrigger>
-              <TabsTrigger value="settings" className="text-xs sm:text-sm">Settings</TabsTrigger>
-              <TabsTrigger value="audit" className="text-xs sm:text-sm">Audit Log</TabsTrigger>
+      <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-6 md:py-8">
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-3 sm:space-y-4 md:space-y-6">
+          {/* Desktop Tab List - Hidden on mobile since we use sheet menu */}
+          {!isMobile && isSuperAdmin && (
+            <TabsList className="grid w-full grid-cols-7 h-auto p-1">
+              <TabsTrigger value="mobile-homes" className="text-xs lg:text-sm">Homes</TabsTrigger>
+              <TabsTrigger value="services" className="text-xs lg:text-sm">Services</TabsTrigger>
+              <TabsTrigger value="home-options" className="text-xs lg:text-sm">Options</TabsTrigger>
+              <TabsTrigger value="users" className="text-xs lg:text-sm">Users</TabsTrigger>
+              <TabsTrigger value="super-admin" className="text-xs lg:text-sm">Admin</TabsTrigger>
+              <TabsTrigger value="settings" className="text-xs lg:text-sm">Settings</TabsTrigger>
+              <TabsTrigger value="audit" className="text-xs lg:text-sm">Audit</TabsTrigger>
             </TabsList>
-          ) : (
-            <TabsList className="hidden lg:grid w-full grid-cols-1 h-auto p-1">
-              <TabsTrigger value="users" className="text-xs sm:text-sm">Users</TabsTrigger>
+          )}
+          {!isMobile && !isSuperAdmin && (
+            <TabsList className="grid w-full grid-cols-1 h-auto p-1">
+              <TabsTrigger value="users" className="text-sm">Users</TabsTrigger>
             </TabsList>
           )}
 
           {/* Tab Content */}
           {isSuperAdmin && (
             <>
-              <TabsContent value="mobile-homes" className="mt-4">
+              <TabsContent value="mobile-homes" className="mt-2 sm:mt-4">
                 <MobileHomesTab />
               </TabsContent>
 
-              <TabsContent value="services" className="mt-4">
+              <TabsContent value="services" className="mt-2 sm:mt-4">
                 <ServicesTab />
               </TabsContent>
 
-              <TabsContent value="home-options" className="mt-4">
+              <TabsContent value="home-options" className="mt-2 sm:mt-4">
                 <HomeOptionsTab />
               </TabsContent>
             </>
           )}
 
-          <TabsContent value="users" className="mt-4">
+          <TabsContent value="users" className="mt-2 sm:mt-4">
             <UserManagementTab />
           </TabsContent>
 
           {isSuperAdmin && (
             <>
-              <TabsContent value="super-admin" className="mt-4">
+              <TabsContent value="super-admin" className="mt-2 sm:mt-4">
                 <SuperAdminMarkupTab />
               </TabsContent>
 
-              <TabsContent value="settings" className="mt-4">
+              <TabsContent value="settings" className="mt-2 sm:mt-4">
                 <SettingsTab />
               </TabsContent>
 
-              <TabsContent value="audit" className="mt-4">
+              <TabsContent value="audit" className="mt-2 sm:mt-4">
                 <AuditLogTab />
               </TabsContent>
             </>

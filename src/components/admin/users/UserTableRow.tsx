@@ -12,9 +12,10 @@ import { supabase } from '@/integrations/supabase/client';
 interface UserTableRowProps {
   profile: UserProfile;
   onUserUpdated: () => void;
+  mobileView?: boolean;
 }
 
-export const UserTableRow = ({ profile, onUserUpdated }: UserTableRowProps) => {
+export const UserTableRow = ({ profile, onUserUpdated, mobileView = false }: UserTableRowProps) => {
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [createdByName, setCreatedByName] = useState<string>('');
 
@@ -120,25 +121,34 @@ export const UserTableRow = ({ profile, onUserUpdated }: UserTableRowProps) => {
     }
   };
 
+  if (mobileView) {
+    return (
+      <div className="flex items-center gap-2">
+        <UserEditDialog profile={profile} onUserUpdated={onUserUpdated} />
+        <UserActions profile={profile} onUserUpdated={onUserUpdated} />
+      </div>
+    );
+  }
+
   return (
     <TableRow key={profile.user_id}>
       <TableCell>
         <div>
-          <div className="font-medium">{getDisplayName(profile)}</div>
-          <div className="text-sm text-gray-500">{profile.email}</div>
+          <div className="font-medium text-sm">{getDisplayName(profile)}</div>
+          <div className="text-xs text-muted-foreground truncate max-w-[200px]">{profile.email}</div>
         </div>
       </TableCell>
-      <TableCell>
+      <TableCell className="hidden sm:table-cell">
         <div className="text-sm">
           {profile.phone_number || 'No phone'}
         </div>
       </TableCell>
       {isSuperAdmin && (
-        <TableCell>
+        <TableCell className="hidden lg:table-cell">
           {getRoleBadge(profile.role)}
         </TableCell>
       )}
-      <TableCell>
+      <TableCell className="hidden xl:table-cell">
         <MarkupEditor
           userId={profile.user_id}
           currentMarkup={profile.markup_percentage || 0}
@@ -146,17 +156,17 @@ export const UserTableRow = ({ profile, onUserUpdated }: UserTableRowProps) => {
         />
       </TableCell>
       {isSuperAdmin && (
-        <TableCell>
-          <div className="text-sm text-gray-600">
+        <TableCell className="hidden xl:table-cell">
+          <div className="text-sm text-muted-foreground">
             {createdByName}
           </div>
         </TableCell>
       )}
-      <TableCell>
-        {new Date(profile.created_at).toLocaleDateString()}
+      <TableCell className="hidden md:table-cell">
+        <div className="text-sm">{new Date(profile.created_at).toLocaleDateString()}</div>
       </TableCell>
       <TableCell className="text-right">
-        <div className="flex items-center justify-end gap-2">
+        <div className="flex items-center justify-end gap-1 sm:gap-2">
           <UserEditDialog profile={profile} onUserUpdated={onUserUpdated} />
           <UserActions profile={profile} onUserUpdated={onUserUpdated} />
         </div>

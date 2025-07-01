@@ -57,30 +57,65 @@ export const MobileHomesShowcase = ({
   
   console.log('🔍 MobileHomesShowcase render - cart items from props:', cartItems.length);
   console.log('🔍 MobileHomesShowcase - selectedHomeForServices:', selectedHomeForServices?.id);
+  console.log('🔍 Current user:', user?.email);
+  console.log('🔍 Supabase URL:', supabase.supabaseUrl);
+  console.log('🔍 Supabase Key (first 20 chars):', supabase.supabaseKey?.substring(0, 20));
 
   const { data: mobileHomes = [], isLoading, error, refetch } = useQuery({
     queryKey: ['public-mobile-homes'],
     queryFn: async () => {
       console.log('🔍 Starting mobile homes fetch...');
-      console.log('🔍 Supabase client status:', !!supabase);
+      console.log('🔍 Supabase client status:', {
+        hasClient: !!supabase,
+        url: supabase.supabaseUrl,
+        authStatus: await supabase.auth.getSession()
+      });
       
       try {
-        // Test basic connection first
-        const { data: connectionTest, error: connectionError } = await supabase
+        // First test basic database connection
+        console.log('🔍 Testing basic database connection...');
+        const { data: testData, error: testError } = await supabase
           .from('mobile_homes')
           .select('count')
           .limit(1);
         
-        console.log('🔍 Connection test result:', { data: connectionTest, error: connectionError });
+        console.log('🔍 Connection test result:', { 
+          success: !testError,
+          data: testData, 
+          error: testError 
+        });
         
-        if (connectionError) {
-          console.error('🔍 Connection test failed:', connectionError);
-          throw new Error(`Database connection failed: ${connectionError.message}`);
+        if (testError) {
+          console.error('🔍 Connection test failed:', {
+            message: testError.message,
+            details: testError.details,
+            hint: testError.hint,
+            code: testError.code
+          });
+          throw new Error(`Database connection failed: ${testError.message}`);
         }
 
-        // Now fetch the actual data
+        // Test if table exists and get basic info
+        console.log('🔍 Testing table structure...');
+        const { data: tableInfo, error: tableError } = await supabase
+          .from('mobile_homes')
+          .select('id, model, active')
+          .limit(1);
+        
+        console.log('🔍 Table structure test:', { 
+          success: !tableError,
+          data: tableInfo,
+          error: tableError 
+        });
+
+        if (tableError) {
+          console.error('🔍 Table structure error:', tableError);
+          throw new Error(`Table access failed: ${tableError.message}`);
+        }
+
+        // Now fetch the actual data with detailed logging
         console.log('🔍 Fetching mobile homes data...');
-        const { data, error } = await supabase
+        const { data, error, status, statusText } = await supabase
           .from('mobile_homes')
           .select(`
             id,
@@ -109,9 +144,14 @@ export const MobileHomesShowcase = ({
           .eq('active', true)
           .order('display_order', { ascending: true });
         
-        console.log('🔍 Raw query result:', { data, error });
-        console.log('🔍 Data length:', data?.length);
-        console.log('🔍 First item:', data?.[0]);
+        console.log('🔍 Query response details:', { 
+          status,
+          statusText,
+          hasData: !!data,
+          dataLength: data?.length || 0,
+          hasError: !!error,
+          error: error
+        });
         
         if (error) {
           console.error('🔍 Query error details:', {
@@ -128,11 +168,20 @@ export const MobileHomesShowcase = ({
           return [];
         }
         
-        console.log('🔍 Successfully fetched mobile homes:', data.length);
+        console.log('🔍 Successfully fetched mobile homes:', {
+          count: data.length,
+          firstItem: data[0],
+          allItems: data
+        });
+        
         return data as MobileHome[];
       } catch (err: any) {
-        console.error('🔍 Mobile homes fetch failed:', err);
-        console.error('🔍 Error stack:', err.stack);
+        console.error('🔍 Mobile homes fetch failed:', {
+          error: err,
+          message: err.message,
+          stack: err.stack,
+          name: err.name
+        });
         throw err;
       }
     },
@@ -163,7 +212,7 @@ export const MobileHomesShowcase = ({
     }
   });
 
-  // Show error state if there's a database error
+  // Enhanced error display with more debugging info
   if (error) {
     console.error('🔍 Mobile homes query error:', error);
     return (
@@ -173,11 +222,16 @@ export const MobileHomesShowcase = ({
             <h3 className="text-3xl font-bold text-gray-900 mb-4">
               Our Mobile Home Models
             </h3>
-            <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-2xl mx-auto">
+            <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-4xl mx-auto">
               <p className="text-red-600 font-medium mb-2">Unable to load mobile homes</p>
               <p className="text-red-500 text-sm mb-4">
-                We're experiencing technical difficulties. Please try refreshing the page.
+                We're experiencing technical difficulties. Please check the details below and try refreshing the page.
               </p>
+              <div className="space-y-2 mb-4">
+                <p className="text-sm"><strong>User:</strong> {user?.email || 'Not logged in'}</p>
+                <p className="text-sm"><strong>Database URL:</strong> {supabase.supabaseUrl}</p>
+                <p className="text-sm"><strong>Error:</strong> {error.message}</p>
+              </div>
               <Button 
                 onClick={() => refetch()} 
                 variant="outline" 
@@ -187,10 +241,10 @@ export const MobileHomesShowcase = ({
               </Button>
               <details className="mt-4 text-left">
                 <summary className="cursor-pointer text-sm text-gray-600 hover:text-gray-800">
-                  Technical Details
+                  Technical Details (Click to expand)
                 </summary>
-                <pre className="text-xs text-gray-500 mt-2 bg-gray-100 p-2 rounded overflow-auto">
-                  {error.message}
+                <pre className="text-xs text-gray-500 mt-2 bg-gray-100 p-2 rounded overflow-auto max-h-40">
+                  {JSON.stringify(error, null, 2)}
                 </pre>
               </details>
             </div>
@@ -441,6 +495,10 @@ export const MobileHomesShowcase = ({
               <span className="text-lg">Loading our amazing mobile home models...</span>
             </div>
             <p className="text-gray-600 mt-2">This should only take a moment</p>
+            <div className="mt-4 text-sm text-gray-500">
+              <p>User: {user?.email || 'Not logged in'}</p>
+              <p>Database: {supabase.supabaseUrl}</p>
+            </div>
           </div>
         </div>
       </section>
@@ -460,6 +518,12 @@ export const MobileHomesShowcase = ({
               <p className="text-yellow-700 text-sm mb-4">
                 We're currently updating our inventory. Please check back soon or contact us for availability.
               </p>
+              <div className="space-y-2 mb-4 text-sm text-gray-600">
+                <p><strong>User:</strong> {user?.email || 'Not logged in'}</p>
+                <p><strong>Query executed successfully:</strong> Yes</p>
+                <p><strong>Database connection:</strong> Working</p>
+                <p><strong>Records returned:</strong> 0</p>
+              </div>
               <Button onClick={() => refetch()} variant="outline">
                 Refresh
               </Button>

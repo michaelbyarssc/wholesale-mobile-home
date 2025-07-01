@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -112,11 +111,15 @@ export const useCustomerPricing = (user: User | null) => {
 
     if (option.pricing_type === 'per_sqft' && squareFootage && option.price_per_sqft) {
       basePrice = option.price_per_sqft * squareFootage;
+      console.log(`🔍 useCustomerPricing: Option ${option.name} - Per sq ft: ${option.price_per_sqft} × ${squareFootage} = ${basePrice}`);
     } else if (option.pricing_type === 'fixed' && option.cost_price) {
       basePrice = option.cost_price;
+      console.log(`🔍 useCustomerPricing: Option ${option.name} - Fixed price: ${basePrice}`);
     }
 
-    return basePrice * (1 + markup / 100);
+    const finalPrice = basePrice * (1 + markup / 100);
+    console.log(`🔍 useCustomerPricing: Option ${option.name} - Base: ${basePrice}, Markup: ${markup}%, Final: ${finalPrice}`);
+    return finalPrice;
   };
 
   const calculateTotalPrice = (

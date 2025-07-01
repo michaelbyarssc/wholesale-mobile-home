@@ -1,4 +1,3 @@
-
 import React, { useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ShoppingCart as CartIcon } from 'lucide-react';
@@ -107,12 +106,17 @@ export const ShoppingCart = ({
         return total + finalPrice;
       }, 0);
       
+      // Calculate home options price with proper markup application
       const homeOptionsPrice = (item.selectedHomeOptions || []).reduce((total, { option, quantity }) => {
-        const optionPrice = calculateHomeOptionPrice(option, item.mobileHome.square_footage || undefined);
-        return total + (optionPrice * quantity);
+        const baseOptionPrice = calculateHomeOptionPrice(option, item.mobileHome.square_footage || undefined);
+        console.log(`🔍 Cart Total - Option ${option.name}: Base price = ${baseOptionPrice}, Quantity = ${quantity}, Total = ${baseOptionPrice * quantity}`);
+        return total + (baseOptionPrice * quantity);
       }, 0);
       
-      return homePrice + servicesPrice + homeOptionsPrice;
+      const totalPrice = homePrice + servicesPrice + homeOptionsPrice;
+      console.log(`🔍 Cart Total - Item ${item.mobileHome.model}: Home = ${homePrice}, Services = ${servicesPrice}, Options = ${homeOptionsPrice}, Total = ${totalPrice}`);
+      
+      return totalPrice;
     } catch (error) {
       console.error('Error calculating item total:', error);
       return 0;
@@ -121,7 +125,9 @@ export const ShoppingCart = ({
 
   const calculateGrandTotal = () => {
     try {
-      return cartItems.reduce((total, item) => total + calculateItemTotal(item), 0);
+      const total = cartItems.reduce((total, item) => total + calculateItemTotal(item), 0);
+      console.log(`🔍 Cart Grand Total: ${total}`);
+      return total;
     } catch (error) {
       console.error('Error calculating grand total:', error);
       return 0;

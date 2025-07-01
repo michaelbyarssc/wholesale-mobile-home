@@ -19,7 +19,7 @@ const Auth = () => {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [loading, setLoading] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [checkingAdminStatus, setCheckingAdminStatus] = useState(true);
+  const [checkingAuth, setCheckingAuth] = useState(true);
   const [userProfile, setUserProfile] = useState<{first_name: string, last_name: string} | null>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [showPasswordChange, setShowPasswordChange] = useState(false);
@@ -33,78 +33,116 @@ const Auth = () => {
       setShowPasswordChange(true);
     }
 
-    // Check if current user is admin and get their profile
-    const checkAdminStatus = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        setCurrentUser(user);
-        // Get user profile
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('first_name, last_name')
-          .eq('user_id', user.id)
-          .single();
+    let mounted = true;
 
-        if (profileData) {
-          setUserProfile(profileData);
+    const checkAuthAndRedirect = async () => {
+      try {
+        console.log('🔍 Auth page - checking current session...');
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('❌ Auth page - Error getting session:', error);
+          if (mounted) {
+            setCheckingAuth(false);
+          }
+          return;
         }
 
-        // Check admin role
-        const { data: roleData } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', user.id)
-          .eq('role', 'admin')
-          .single();
+        if (session?.user && mounted) {
+          console.log('✅ Auth page - User found, checking admin status...');
+          setCurrentUser(session.user);
+          
+          // Get user profile
+          try {
+            const { data: profileData } = await supabase
+              .from('profiles')
+              .select('first_name, last_name')
+              .eq('user_id', session.user.id)
+              .single();
 
-        setIsAdmin(!!roleData);
-      }
-      setCheckingAdminStatus(false);
-    };
+            if (profileData && mounted) {
+              setUserProfile(profileData);
+            }
+          } catch (profileError) {
+            console.error('❌ Auth page - Error fetching profile:', profileError);
+          }
 
-    checkAdminStatus();
+          // Check admin role
+          try {
+            const { data: roleData } = await supabase
+              .from('user_roles')
+              .select('role')
+              .eq('user_id', session.user.id)
+              .eq('role', 'admin')
+              .single();
 
-    // Check if user is already logged in and redirect appropriately
-    const checkUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        // Check if user is admin
-        const { data: roleData } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', user.id)
-          .eq('role', 'admin')
-          .single();
-
-        if (roleData) {
-          navigate('/admin');
+            if (mounted) {
+              const userIsAdmin = !!roleData;
+              setIsAdmin(userIsAdmin);
+              
+              // Redirect based on admin status
+              if (userIsAdmin) {
+                console.log('🔄 Auth page - Redirecting admin to /admin');
+                navigate('/admin');
+              } else {
+                console.log('🔄 Auth page - Redirecting user to /');
+                navigate('/');
+              }
+            }
+          } catch (roleError) {
+            console.error('❌ Auth page - Error checking admin role:', roleError);
+            if (mounted) {
+              // Not admin, redirect to home
+              console.log('🔄 Auth page - Redirecting to home (not admin)');
+              navigate('/');
+            }
+          }
         } else {
-          navigate('/');
+          console.log('ℹ️ Auth page - No user session found');
+          if (mounted) {
+            setCheckingAuth(false);
+          }
+        }
+      } catch (error) {
+        console.error('❌ Auth page - Error in checkAuthAndRedirect:', error);
+        if (mounted) {
+          setCheckingAuth(false);
         }
       }
     };
-    checkUser();
 
-    // Listen for auth changes and redirect appropriately
+    checkAuthAndRedirect();
+
+    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (session?.user) {
-        // Check if user is admin
-        const { data: roleData } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', session.user.id)
-          .eq('role', 'admin')
-          .single();
+      console.log('🔄 Auth page - Auth state changed:', event);
+      
+      if (session?.user && mounted) {
+        // Check admin status and redirect
+        try {
+          const { data: roleData } = await supabase
+            .from('user_roles')
+            .select('role')
+            .eq('user_id', session.user.id)
+            .eq('role', 'admin')
+            .single();
 
-        if (roleData) {
-          navigate('/admin');
-        } else {
+          if (roleData) {
+            navigate('/admin');
+          } else {
+            navigate('/');
+          }
+        } catch (error) {
+          console.error('❌ Auth page - Error checking role on auth change:', error);
           navigate('/');
         }
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, [navigate, searchParams]);
 
   const resetForm = () => {
@@ -127,7 +165,7 @@ const Auth = () => {
     resetForm();
   };
 
-  if (checkingAdminStatus) {
+  if (checkingAuth) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-green-50 to-yellow-50 flex items-center justify-center p-4">
         <div className="text-center">

@@ -19,11 +19,26 @@ export const useMobileHomesData = () => {
     queryKey: ['mobile-homes'],
     queryFn: async () => {
       console.log('🚀 Starting mobile homes query...');
+      console.log('🔍 Supabase client URL:', supabase.supabaseUrl);
+      console.log('🔍 Supabase client key (first 20 chars):', supabase.supabaseKey.substring(0, 20));
       
       try {
         const startTime = Date.now();
-        console.log('📡 Making Supabase request...');
+        console.log('📡 Making Supabase request to mobile_homes table...');
         
+        // First, let's try a simple count query to test basic connectivity
+        const { count, error: countError } = await supabase
+          .from('mobile_homes')
+          .select('*', { count: 'exact', head: true });
+        
+        if (countError) {
+          console.error('❌ Count query failed:', countError);
+          throw new Error(`Count query failed: ${countError.message}`);
+        }
+        
+        console.log('✅ Count query successful. Total rows:', count);
+        
+        // Now try the actual query
         const { data, error } = await supabase
           .from('mobile_homes')
           .select('*')
@@ -31,7 +46,7 @@ export const useMobileHomesData = () => {
           .order('display_order', { ascending: true });
         
         const endTime = Date.now();
-        console.log(`⏱️ Query completed in ${endTime - startTime}ms`);
+        console.log(`⏱️ Main query completed in ${endTime - startTime}ms`);
         
         if (error) {
           console.error('❌ Mobile homes query error:', error);
@@ -46,18 +61,24 @@ export const useMobileHomesData = () => {
         
         console.log('✅ Mobile homes query successful:', {
           rowCount: data?.length || 0,
-          firstRow: data?.[0] || null
+          firstRow: data?.[0] || null,
+          allRows: data
         });
         
         return (data || []) as MobileHome[];
       } catch (error) {
         console.error('❌ Exception in mobile homes query:', error);
+        console.error('❌ Full error object:', JSON.stringify(error, null, 2));
         throw error;
       }
     },
     staleTime: 2 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
-    retry: 1,
+    retry: (failureCount, error) => {
+      console.log(`🔄 Retry attempt ${failureCount} for mobile homes query`);
+      console.log('🔄 Error that triggered retry:', error);
+      return failureCount < 3;
+    },
     refetchOnWindowFocus: false,
     refetchOnMount: true,
     refetchOnReconnect: true,
@@ -98,7 +119,10 @@ export const useMobileHomesData = () => {
     },
     staleTime: 5 * 60 * 1000,
     gcTime: 15 * 60 * 1000,
-    retry: 1,
+    retry: (failureCount, error) => {
+      console.log(`🔄 Retry attempt ${failureCount} for images query`);
+      return failureCount < 3;
+    },
     refetchOnWindowFocus: false,
     refetchOnMount: true,
     refetchOnReconnect: false,
@@ -110,7 +134,9 @@ export const useMobileHomesData = () => {
     isLoading,
     imagesLoading,
     hasError: !!error,
-    errorMessage: error?.message
+    errorMessage: error?.message,
+    supabaseConnected: !!supabase,
+    queryEnabled: true
   });
 
   return {

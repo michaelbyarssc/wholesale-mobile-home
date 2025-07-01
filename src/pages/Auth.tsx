@@ -94,10 +94,8 @@ const Auth = () => {
       }
     };
 
-    // Only run initialization once
-    if (checkingAuth) {
-      initializeAuth();
-    }
+    // Run initialization immediately
+    initializeAuth();
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -134,7 +132,7 @@ const Auth = () => {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, []); // Remove checkingAuth dependency to prevent loops
+  }, [navigate, searchParams]);
 
   const resetForm = () => {
     setEmail('');

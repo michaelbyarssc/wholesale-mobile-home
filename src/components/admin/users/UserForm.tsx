@@ -33,16 +33,22 @@ export const UserForm = ({ onUserCreated }: UserFormProps) => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) return;
 
-      // Check if user is super admin
-      const { data: roleData } = await supabase
+      // Check if user is super admin - get all roles for the user
+      const { data: roleData, error: roleError } = await supabase
         .from('user_roles')
         .select('role')
-        .eq('user_id', session.user.id)
-        .single();
+        .eq('user_id', session.user.id);
 
       console.log('Current user role data:', roleData);
-      const userIsSuperAdmin = roleData?.role === 'super_admin';
-      const userRole = roleData?.role || '';
+      
+      if (roleError) {
+        console.error('Error fetching user roles:', roleError);
+        return;
+      }
+
+      // Check if user has super_admin role
+      const userIsSuperAdmin = roleData?.some(r => r.role === 'super_admin') || false;
+      const userRole = roleData?.[0]?.role || '';
       
       setIsSuperAdmin(userIsSuperAdmin);
       setCurrentUserRole(userRole);
@@ -50,7 +56,8 @@ export const UserForm = ({ onUserCreated }: UserFormProps) => {
       console.log('User role check:', {
         userId: session.user.id,
         role: userRole,
-        isSuperAdmin: userIsSuperAdmin
+        isSuperAdmin: userIsSuperAdmin,
+        allRoles: roleData?.map(r => r.role)
       });
     } catch (error) {
       console.error('Error checking user role:', error);

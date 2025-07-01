@@ -1,5 +1,5 @@
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { MobileHomeServicesDialog } from './MobileHomeServicesDialog';
 import { ShoppingCart } from './ShoppingCart';
@@ -44,29 +44,30 @@ export const MobileHomesShowcase = ({
 
   const { mobileHomes, homeImages, isLoading, imagesLoading, error, refetch } = useMobileHomesData();
 
-  console.log('🔍 MobileHomesShowcase render - cart items from props:', cartItems.length);
-  console.log('🔍 Current user:', user?.email);
-  console.log('🔍 Mobile homes data:', { count: mobileHomes.length, isLoading, error: error?.message });
-
-  // Filter homes based on width
-  const getFilteredHomes = (homes: MobileHome[]) => {
+  // Memoize filtered homes to prevent unnecessary recalculations
+  const filteredHomes = useMemo(() => {
     if (widthFilter === 'single') {
-      return homes.filter(home => !home.width_feet || home.width_feet < 16);
+      return mobileHomes.filter(home => !home.width_feet || home.width_feet < 16);
     }
     if (widthFilter === 'double') {
-      return homes.filter(home => home.width_feet && home.width_feet >= 16);
+      return mobileHomes.filter(home => home.width_feet && home.width_feet >= 16);
     }
-    return homes;
-  };
+    return mobileHomes;
+  }, [mobileHomes, widthFilter]);
 
-  const filteredHomes = getFilteredHomes(mobileHomes);
+  // Memoize unique series calculation
+  const uniqueSeries = useMemo(() => {
+    return [...new Set(filteredHomes.map(home => home.series))].sort((a, b) => {
+      if (a === 'Tru') return -1;
+      if (b === 'Tru') return 1;
+      return a.localeCompare(b);
+    });
+  }, [filteredHomes]);
 
-  // Get unique series from the filtered mobile homes data and sort with Tru first
-  const uniqueSeries = [...new Set(filteredHomes.map(home => home.series))].sort((a, b) => {
-    if (a === 'Tru') return -1;
-    if (b === 'Tru') return 1;
-    return a.localeCompare(b);
-  });
+  // Memoize image lookup function
+  const getHomeImages = useCallback((homeId: string) => {
+    return homeImages.filter(image => image.mobile_home_id === homeId);
+  }, [homeImages]);
 
   // Set the first series as the default active tab
   React.useEffect(() => {
@@ -76,21 +77,11 @@ export const MobileHomesShowcase = ({
     }
   }, [uniqueSeries, activeTab]);
 
-  const getHomeImages = (homeId: string) => {
-    return homeImages.filter(image => image.mobile_home_id === homeId);
-  };
-
   const handleAddToCart = useCallback((home: MobileHome) => {
-    console.log('🔍 Add to cart button clicked for:', home.id, home.model);
     setSelectedHomeForServices(home);
   }, []);
 
   const handleAddToCartWithServices = useCallback((home: MobileHome, selectedServices: string[], selectedHomeOptions: { option: HomeOption; quantity: number }[] = []) => {
-    console.log('🔍 Adding to cart with services and options:', {
-      homeId: home.id,
-      selectedServices,
-      selectedHomeOptions
-    });
     addToCart(home, selectedServices, selectedHomeOptions);
     setSelectedHomeForServices(null);
   }, [addToCart]);

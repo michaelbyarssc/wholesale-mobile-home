@@ -7,6 +7,7 @@ import { Clock, UserCheck, UserX } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { UserProfile } from './UserEditDialog';
+import { BulkApprovalButton } from './BulkApprovalButton';
 
 interface PendingApprovalsCardProps {
   pendingUsers: UserProfile[];
@@ -74,10 +75,16 @@ export const PendingApprovalsCard = ({ pendingUsers, onUserApproved }: PendingAp
   return (
     <Card className="border-orange-200 bg-orange-50">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-orange-800">
-          <Clock className="h-5 w-5" />
-          Pending User Approvals ({pendingUsers.length})
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2 text-orange-800">
+            <Clock className="h-5 w-5" />
+            Pending User Approvals ({pendingUsers.length})
+          </CardTitle>
+          <BulkApprovalButton 
+            pendingCount={pendingUsers.length} 
+            onBulkApproved={onUserApproved} 
+          />
+        </div>
       </CardHeader>
       <CardContent>
         <div className="space-y-3">

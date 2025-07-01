@@ -2,7 +2,6 @@
 import React from 'react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
 import { formatPrice } from '@/lib/utils';
 import { CartItem } from '@/components/ShoppingCart';
 import type { Database } from '@/integrations/supabase/types';
@@ -66,20 +65,8 @@ export const CartHomeOptionsList = ({
                   <p className="text-xs text-gray-500 mt-1">{homeOption.description}</p>
                 )}
                 <p className="text-sm text-gray-600 mt-1">
-                  {homeOption.pricing_type === 'per_sqft' ? (
-                    <>
-                      {formatPrice(optionPrice)}
-                      <span className="text-xs text-gray-400 ml-1">
-                        (${calculatePrice(homeOption.price_per_sqft || 0).toFixed(2)}/sq ft)
-                      </span>
-                    </>
-                  ) : (
-                    formatPrice(optionPrice)
-                  )}
+                  {formatPrice(optionPrice)}
                 </p>
-                <Badge variant="outline" className="text-xs mt-1">
-                  {homeOption.pricing_type === 'per_sqft' ? 'Per Sq Ft' : 'Fixed Price'}
-                </Badge>
               </div>
             </div>
           );

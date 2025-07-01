@@ -79,9 +79,6 @@ export const CartServicesList = ({
           const displayPrice = calculatePrice(serviceCost);
           console.log(`Cart - Service ${service.name}: After markup = ${displayPrice}`);
           
-          const homeWidth = item.mobileHome.width_feet || 0;
-          const isDoubleWide = homeWidth > 16;
-          
           return (
             <div key={service.id} className="flex items-start space-x-3 p-2 border rounded">
               <Checkbox
@@ -102,9 +99,6 @@ export const CartServicesList = ({
                 
                 <p className="text-sm text-gray-600 mt-1">
                   {formatPrice(displayPrice)}
-                  <span className="text-xs text-gray-400 ml-1">
-                    ({isDoubleWide ? 'Double' : 'Single'} Wide)
-                  </span>
                 </p>
               </div>
             </div>

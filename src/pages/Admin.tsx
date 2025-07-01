@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -5,7 +6,6 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { EstimatesTab } from '@/components/admin/EstimatesTab';
 import { MobileHomesTab } from '@/components/admin/MobileHomesTab';
 import { ServicesTab } from '@/components/admin/ServicesTab';
 import { SettingsTab } from '@/components/admin/SettingsTab';
@@ -19,7 +19,7 @@ import { HomeOptionsTab } from '@/components/admin/HomeOptionsTab';
 const Admin = () => {
   const [user, setUser] = useState<any>(null);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
-  const [activeTab, setActiveTab] = useState('mobile-homes');
+  const [activeTab, setActiveTab] = useState('users');
   const [roleLoading, setRoleLoading] = useState(true);
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -55,6 +55,13 @@ const Admin = () => {
         
         setIsSuperAdmin(isSuperAdminUser);
         console.log('Admin: User role set:', userRole, 'isSuperAdmin:', isSuperAdminUser);
+        
+        // Set default tab based on role
+        if (!isSuperAdminUser) {
+          setActiveTab('users');
+        } else {
+          setActiveTab('mobile-homes');
+        }
         
       } catch (error) {
         console.error('Admin: Error in role check:', error);
@@ -110,27 +117,31 @@ const Admin = () => {
                 </SheetTrigger>
                 <SheetContent side="left" className="w-80">
                   <div className="flex flex-col space-y-4 mt-8">
-                    <Button
-                      variant={activeTab === 'mobile-homes' ? 'default' : 'ghost'}
-                      className="justify-start"
-                      onClick={() => setActiveTab('mobile-homes')}
-                    >
-                      Mobile Homes
-                    </Button>
-                    <Button
-                      variant={activeTab === 'services' ? 'default' : 'ghost'}
-                      className="justify-start"
-                      onClick={() => setActiveTab('services')}
-                    >
-                      Services
-                    </Button>
-                    <Button
-                      variant={activeTab === 'home-options' ? 'default' : 'ghost'}
-                      className="justify-start"
-                      onClick={() => setActiveTab('home-options')}
-                    >
-                      Home Options
-                    </Button>
+                    {isSuperAdmin ? (
+                      <>
+                        <Button
+                          variant={activeTab === 'mobile-homes' ? 'default' : 'ghost'}
+                          className="justify-start"
+                          onClick={() => setActiveTab('mobile-homes')}
+                        >
+                          Mobile Homes
+                        </Button>
+                        <Button
+                          variant={activeTab === 'services' ? 'default' : 'ghost'}
+                          className="justify-start"
+                          onClick={() => setActiveTab('services')}
+                        >
+                          Services
+                        </Button>
+                        <Button
+                          variant={activeTab === 'home-options' ? 'default' : 'ghost'}
+                          className="justify-start"
+                          onClick={() => setActiveTab('home-options')}
+                        >
+                          Home Options
+                        </Button>
+                      </>
+                    ) : null}
                     <Button
                       variant={activeTab === 'users' ? 'default' : 'ghost'}
                       className="justify-start"
@@ -139,28 +150,30 @@ const Admin = () => {
                       Users
                     </Button>
                     {isSuperAdmin && (
-                      <Button
-                        variant={activeTab === 'super-admin' ? 'default' : 'ghost'}
-                        className="justify-start"
-                        onClick={() => setActiveTab('super-admin')}
-                      >
-                        Super Admin
-                      </Button>
+                      <>
+                        <Button
+                          variant={activeTab === 'super-admin' ? 'default' : 'ghost'}
+                          className="justify-start"
+                          onClick={() => setActiveTab('super-admin')}
+                        >
+                          Super Admin
+                        </Button>
+                        <Button
+                          variant={activeTab === 'settings' ? 'default' : 'ghost'}
+                          className="justify-start"
+                          onClick={() => setActiveTab('settings')}
+                        >
+                          Settings
+                        </Button>
+                        <Button
+                          variant={activeTab === 'audit' ? 'default' : 'ghost'}
+                          className="justify-start"
+                          onClick={() => setActiveTab('audit')}
+                        >
+                          Audit Log
+                        </Button>
+                      </>
                     )}
-                    <Button
-                      variant={activeTab === 'settings' ? 'default' : 'ghost'}
-                      className="justify-start"
-                      onClick={() => setActiveTab('settings')}
-                    >
-                      Settings
-                    </Button>
-                    <Button
-                      variant={activeTab === 'audit' ? 'default' : 'ghost'}
-                      className="justify-start"
-                      onClick={() => setActiveTab('audit')}
-                    >
-                      Audit Log
-                    </Button>
                   </div>
                 </SheetContent>
               </Sheet>
@@ -199,47 +212,57 @@ const Admin = () => {
 
       <div className="container mx-auto px-4 py-4 md:py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className={`hidden md:grid w-full ${isSuperAdmin ? 'grid-cols-7' : 'grid-cols-6'}`}>
-            <TabsTrigger value="mobile-homes">Mobile Homes</TabsTrigger>
-            <TabsTrigger value="services">Services</TabsTrigger>
-            <TabsTrigger value="home-options">Home Options</TabsTrigger>
-            <TabsTrigger value="users">Users</TabsTrigger>
-            {isSuperAdmin && (
+          {isSuperAdmin ? (
+            <TabsList className="hidden md:grid w-full grid-cols-7">
+              <TabsTrigger value="mobile-homes">Mobile Homes</TabsTrigger>
+              <TabsTrigger value="services">Services</TabsTrigger>
+              <TabsTrigger value="home-options">Home Options</TabsTrigger>
+              <TabsTrigger value="users">Users</TabsTrigger>
               <TabsTrigger value="super-admin">Super Admin</TabsTrigger>
-            )}
-            <TabsTrigger value="settings">Settings</TabsTrigger>
-            <TabsTrigger value="audit">Audit Log</TabsTrigger>
-          </TabsList>
+              <TabsTrigger value="settings">Settings</TabsTrigger>
+              <TabsTrigger value="audit">Audit Log</TabsTrigger>
+            </TabsList>
+          ) : (
+            <TabsList className="hidden md:grid w-full grid-cols-1">
+              <TabsTrigger value="users">Users</TabsTrigger>
+            </TabsList>
+          )}
 
-          <TabsContent value="mobile-homes">
-            <MobileHomesTab />
-          </TabsContent>
+          {isSuperAdmin && (
+            <>
+              <TabsContent value="mobile-homes">
+                <MobileHomesTab />
+              </TabsContent>
 
-          <TabsContent value="services">
-            <ServicesTab />
-          </TabsContent>
+              <TabsContent value="services">
+                <ServicesTab />
+              </TabsContent>
 
-          <TabsContent value="home-options">
-            <HomeOptionsTab />
-          </TabsContent>
+              <TabsContent value="home-options">
+                <HomeOptionsTab />
+              </TabsContent>
+            </>
+          )}
 
           <TabsContent value="users">
             <UserManagementTab />
           </TabsContent>
 
           {isSuperAdmin && (
-            <TabsContent value="super-admin">
-              <SuperAdminMarkupTab />
-            </TabsContent>
+            <>
+              <TabsContent value="super-admin">
+                <SuperAdminMarkupTab />
+              </TabsContent>
+
+              <TabsContent value="settings">
+                <SettingsTab />
+              </TabsContent>
+
+              <TabsContent value="audit">
+                <AuditLogTab />
+              </TabsContent>
+            </>
           )}
-
-          <TabsContent value="settings">
-            <SettingsTab />
-          </TabsContent>
-
-          <TabsContent value="audit">
-            <AuditLogTab />
-          </TabsContent>
         </Tabs>
       </div>
     </div>

@@ -18,34 +18,11 @@ export const useMobileHomesData = () => {
   const { data: mobileHomes = [], isLoading, error, refetch } = useQuery({
     queryKey: ['public-mobile-homes'],
     queryFn: async () => {
-      console.log('🔍 Fetching mobile homes...');
+      console.log('🔍 Starting mobile homes query...');
       
       const { data, error } = await supabase
         .from('mobile_homes')
-        .select(`
-          id,
-          model,
-          manufacturer,
-          series,
-          price,
-          retail_price,
-          cost,
-          minimum_profit,
-          display_name,
-          description,
-          bedrooms,
-          bathrooms,
-          square_footage,
-          width_feet,
-          length_feet,
-          features,
-          exterior_image_url,
-          floor_plan_image_url,
-          active,
-          display_order,
-          created_at,
-          updated_at
-        `)
+        .select('*')
         .eq('active', true)
         .order('display_order', { ascending: true });
       
@@ -59,6 +36,8 @@ export const useMobileHomesData = () => {
     },
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
+    retry: 3,
+    retryDelay: 1000,
   });
 
   const { data: homeImages = [], isLoading: imagesLoading } = useQuery({
@@ -78,7 +57,9 @@ export const useMobileHomesData = () => {
       }
       console.log('🔍 Mobile home images fetched:', data?.length || 0);
       return data as MobileHomeImage[];
-    }
+    },
+    retry: 3,
+    retryDelay: 1000,
   });
 
   return {

@@ -41,12 +41,12 @@ export const MobileHomesShowcase = ({
   const [activeTab, setActiveTab] = useState('');
   const [widthFilter, setWidthFilter] = useState<'all' | 'single' | 'double'>('all');
   const [selectedHomeForServices, setSelectedHomeForServices] = useState<MobileHome | null>(null);
-  const [debugInfo, setDebugInfo] = useState<string[]>([]);
 
   const { mobileHomes, homeImages, isLoading, imagesLoading, error, refetch } = useMobileHomesData();
 
   console.log('🔍 MobileHomesShowcase render - cart items from props:', cartItems.length);
   console.log('🔍 Current user:', user?.email);
+  console.log('🔍 Mobile homes data:', { count: mobileHomes.length, isLoading, error: error?.message });
 
   // Filter homes based on width
   const getFilteredHomes = (homes: MobileHome[]) => {
@@ -100,7 +100,7 @@ export const MobileHomesShowcase = ({
     return (
       <MobileHomesDebugPanel
         user={user}
-        debugInfo={debugInfo}
+        debugInfo={[`Error: ${error.message}`]}
         error={error}
         onRefetch={refetch}
       />
@@ -112,7 +112,7 @@ export const MobileHomesShowcase = ({
     return (
       <MobileHomesLoadingState
         user={user}
-        debugInfo={debugInfo}
+        debugInfo={[`Loading mobile homes...`, `User: ${user?.email || 'Not logged in'}`]}
         onRefetch={refetch}
       />
     );

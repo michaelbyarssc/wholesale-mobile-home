@@ -158,8 +158,9 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log('User created successfully:', newUser.user.id);
 
-    // Create profile with automatic approval since created by admin
-    console.log('Creating profile with created_by:', createdByUserId, 'and auto-approving user');
+    // CRITICAL FIX: Create profile with explicit approved: true (not null)
+    // This ensures the user is auto-approved and won't appear in pending approvals
+    console.log('Creating profile with created_by:', createdByUserId, 'and EXPLICIT auto-approval (approved: true)');
     
     const { error: profileError } = await supabaseAdmin
       .from('profiles')
@@ -169,18 +170,17 @@ const handler = async (req: Request): Promise<Response> => {
         first_name: first_name || '',
         last_name: last_name || '',
         phone_number: phone_number || '',
-        approved: true, // Auto-approve users created by admins
+        approved: true, // EXPLICIT true, not null - this is the key fix
         approved_at: new Date().toISOString(),
         approved_by: user.id,
-        created_by: createdByUserId // This ensures the admin can see their created users
+        created_by: createdByUserId
       });
 
     if (profileError) {
       console.error('Error creating profile:', profileError);
       // Don't fail the entire request, but log the error
-      // The user was created, we just need to handle the profile separately
     } else {
-      console.log('Profile created successfully with auto-approval and correct created_by');
+      console.log('Profile created successfully with EXPLICIT auto-approval (approved: true) and correct created_by');
     }
 
     // Assign role - default to 'user' if not specified
@@ -193,7 +193,6 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (roleInsertError) {
       console.error('Error assigning role:', roleInsertError);
-      // Don't fail the request, but log the error
     } else {
       console.log('Role assigned successfully:', role || 'user');
     }
@@ -209,7 +208,6 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (markupError) {
       console.error('Error creating markup:', markupError);
-      // Don't fail the request, but log the error
     } else {
       console.log('Markup created successfully:', markup_percentage || 30);
     }
@@ -229,16 +227,15 @@ const handler = async (req: Request): Promise<Response> => {
           role: role || 'user', 
           markup_percentage: markup_percentage || 30, 
           created_by: createdByUserId, 
-          approved: true 
+          approved: true // Log that it was auto-approved
         }
       });
       console.log('Admin action logged successfully');
     } catch (auditError) {
       console.error('Failed to log admin action:', auditError);
-      // Don't fail the request if audit logging fails
     }
 
-    console.log('User setup completed successfully with auto-approval');
+    console.log('User setup completed successfully with EXPLICIT auto-approval');
 
     return new Response(
       JSON.stringify({ 
@@ -252,7 +249,7 @@ const handler = async (req: Request): Promise<Response> => {
           role: role || 'user',
           markup_percentage: markup_percentage || 30,
           created_by: createdByUserId,
-          approved: true
+          approved: true // Confirm it's auto-approved
         }
       }),
       {

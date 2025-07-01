@@ -36,58 +36,80 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("Invalid authentication");
     }
 
-    // Check if user is admin
+    // Check if user has admin privileges (admin or super_admin)
     const { data: adminCheck } = await supabase
       .from('user_roles')
       .select('role')
       .eq('user_id', user.id)
-      .eq('role', 'admin')
-      .single();
+      .in('role', ['admin', 'super_admin']);
 
-    if (!adminCheck) {
+    if (!adminCheck || adminCheck.length === 0) {
       throw new Error("Unauthorized - admin access required");
     }
 
     const { userId }: ApproveUserRequest = await req.json();
 
-    // Update user profile to approved
+    console.log('Approving user:', userId, 'by admin:', user.id);
+
+    // Update user profile to explicitly approved: true
     const { error: updateError } = await supabase
       .from('profiles')
       .update({
-        approved: true,
+        approved: true, // EXPLICIT true, not null
         approved_at: new Date().toISOString(),
         approved_by: user.id
       })
       .eq('user_id', userId);
 
     if (updateError) {
+      console.error('Error updating profile:', updateError);
       throw updateError;
     }
 
-    // Assign user role
-    const { error: roleError } = await supabase
-      .from('user_roles')
-      .insert({
-        user_id: userId,
-        role: 'user'
-      });
+    console.log('Profile updated to approved: true');
 
-    if (roleError) {
-      console.error('Role assignment error:', roleError);
-      // Don't throw here as approval is more important
+    // Assign user role if they don't have one
+    const { data: existingRole } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', userId)
+      .single();
+
+    if (!existingRole) {
+      const { error: roleError } = await supabase
+        .from('user_roles')
+        .insert({
+          user_id: userId,
+          role: 'user'
+        });
+
+      if (roleError) {
+        console.error('Role assignment error:', roleError);
+      } else {
+        console.log('User role assigned successfully');
+      }
     }
 
-    // Assign default markup
-    const { error: markupError } = await supabase
+    // Assign default markup if they don't have one
+    const { data: existingMarkup } = await supabase
       .from('customer_markups')
-      .insert({
-        user_id: userId,
-        markup_percentage: 30
-      });
+      .select('markup_percentage')
+      .eq('user_id', userId)
+      .single();
 
-    if (markupError) {
-      console.error('Markup assignment error:', markupError);
-      // Don't throw here as approval is more important
+    if (!existingMarkup) {
+      const { error: markupError } = await supabase
+        .from('customer_markups')
+        .insert({
+          user_id: userId,
+          markup_percentage: 30
+        });
+
+      if (markupError) {
+        console.error('Markup assignment error:', markupError);
+      } else {
+        console.log('Default markup assigned successfully');
+      }
     }
 
     return new Response(JSON.stringify({ success: true }), {

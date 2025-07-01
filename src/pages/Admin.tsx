@@ -230,10 +230,6 @@ const Admin = () => {
             </div>
           </div>
 
-          {/* Desktop Navigation - Hidden on mobile */}
-          <div className="hidden lg:block mt-4 border-t pt-4">
-            <NavigationItems />
-          </div>
         </div>
       </div>
 

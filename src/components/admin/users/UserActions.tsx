@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
@@ -15,7 +15,36 @@ interface UserActionsProps {
 export const UserActions = ({ profile, onUserUpdated }: UserActionsProps) => {
   const [resettingPassword, setResettingPassword] = useState<string | null>(null);
   const [deletingUser, setDeletingUser] = useState<string | null>(null);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const { toast } = useToast();
+
+  useEffect(() => {
+    checkCurrentUserRole();
+  }, []);
+
+  const checkCurrentUserRole = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) return;
+
+      // Check if user is super admin - get all roles for the user
+      const { data: roleData, error: roleError } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', session.user.id);
+
+      if (roleError) {
+        console.error('Error fetching user roles:', roleError);
+        return;
+      }
+
+      // Check if user has super_admin role
+      const userIsSuperAdmin = roleData?.some(r => r.role === 'super_admin') || false;
+      setIsSuperAdmin(userIsSuperAdmin);
+    } catch (error) {
+      console.error('Error checking user role:', error);
+    }
+  };
 
   const resetUserPassword = async (userId: string, userEmail: string) => {
     try {
@@ -246,26 +275,28 @@ export const UserActions = ({ profile, onUserUpdated }: UserActionsProps) => {
         </AlertDialogContent>
       </AlertDialog>
       
-      <Select
-        value={profile.role || 'none'}
-        onValueChange={(newRole: 'admin' | 'user' | 'super_admin' | 'none') => {
-          if (newRole === 'none') {
-            removeUserRole(profile.user_id);
-          } else {
-            updateUserRole(profile.user_id, newRole);
-          }
-        }}
-      >
-        <SelectTrigger className="w-32">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="none">None</SelectItem>
-          <SelectItem value="user">User</SelectItem>
-          <SelectItem value="admin">Admin</SelectItem>
-          <SelectItem value="super_admin">Super Admin</SelectItem>
-        </SelectContent>
-      </Select>
+      {isSuperAdmin && (
+        <Select
+          value={profile.role || 'none'}
+          onValueChange={(newRole: 'admin' | 'user' | 'super_admin' | 'none') => {
+            if (newRole === 'none') {
+              removeUserRole(profile.user_id);
+            } else {
+              updateUserRole(profile.user_id, newRole);
+            }
+          }}
+        >
+          <SelectTrigger className="w-32">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">None</SelectItem>
+            <SelectItem value="user">User</SelectItem>
+            <SelectItem value="admin">Admin</SelectItem>
+            <SelectItem value="super_admin">Super Admin</SelectItem>
+          </SelectContent>
+        </Select>
+      )}
     </div>
   );
 };

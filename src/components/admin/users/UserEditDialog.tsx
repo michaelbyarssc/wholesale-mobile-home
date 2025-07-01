@@ -14,6 +14,7 @@ export interface UserProfile {
   email: string;
   first_name: string | null;
   last_name: string | null;
+  phone_number: string | null;
   role: string | null;
   created_at: string;
   markup_percentage: number;
@@ -32,6 +33,7 @@ export const UserEditDialog = ({ profile, onUserUpdated }: UserEditDialogProps) 
   const [loading, setLoading] = useState(false);
   const [firstName, setFirstName] = useState(profile.first_name || '');
   const [lastName, setLastName] = useState(profile.last_name || '');
+  const [phoneNumber, setPhoneNumber] = useState(profile.phone_number || '');
   const [role, setRole] = useState<'admin' | 'user'>(profile.role as 'admin' | 'user' || 'user');
   const { toast } = useToast();
 
@@ -46,6 +48,7 @@ export const UserEditDialog = ({ profile, onUserUpdated }: UserEditDialogProps) 
         .update({
           first_name: firstName.trim() || null,
           last_name: lastName.trim() || null,
+          phone_number: phoneNumber.trim() || null,
           updated_at: new Date().toISOString()
         })
         .eq('user_id', profile.user_id);
@@ -122,6 +125,16 @@ export const UserEditDialog = ({ profile, onUserUpdated }: UserEditDialogProps) 
               value={lastName}
               onChange={(e) => setLastName(e.target.value)}
               placeholder="Last name"
+            />
+          </div>
+          <div>
+            <Label htmlFor="phoneNumber">Phone Number</Label>
+            <Input
+              id="phoneNumber"
+              value={phoneNumber}
+              onChange={(e) => setPhoneNumber(e.target.value)}
+              placeholder="Phone number"
+              type="tel"
             />
           </div>
           <div>

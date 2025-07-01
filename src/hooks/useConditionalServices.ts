@@ -1,3 +1,4 @@
+
 import { useMemo } from 'react';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -11,7 +12,10 @@ export const useConditionalServices = (
   selectedServices: string[]
 ) => {
   const availableServices = useMemo(() => {
-    if (!selectedHome) return [];
+    // Return empty array if no valid home or services
+    if (!selectedHome || selectedHome === 'stable-empty-id' || !mobileHomes.length) {
+      return [];
+    }
 
     const selectedMobileHome = mobileHomes.find(home => home.id === selectedHome);
     if (!selectedMobileHome) return [];
@@ -53,8 +57,8 @@ export const useConditionalServices = (
       
       console.log(`Found service: ${service?.name}, Found home: ${selectedMobileHome?.model}`);
       
-      if (!service || !selectedMobileHome) {
-        console.log(`Service price calculation failed: service=${!!service}, home=${!!selectedMobileHome}`);
+      if (!service || !selectedMobileHome || selectedHome === 'stable-empty-id') {
+        console.log(`Service price calculation failed: service=${!!service}, home=${!!selectedMobileHome}, validHome=${selectedHome !== 'stable-empty-id'}`);
         return 0;
       }
 

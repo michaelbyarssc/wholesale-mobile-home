@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ShoppingCart as CartIcon } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
@@ -78,18 +78,23 @@ export const ShoppingCart = ({
     }
   });
 
-  // Use conditional services for the first cart item (or empty if no items)
-  // This ensures stable hook calls even when cart items change
-  const firstHomeId = cartItems.length > 0 ? cartItems[0].mobileHome.id : '';
-  const firstSelectedServices = cartItems.length > 0 ? cartItems[0].selectedServices : [];
-  const mobileHomes = cartItems.map(item => item.mobileHome);
-  
+  // Create stable parameters for useConditionalServices to prevent hook call inconsistency
+  const stableParams = useMemo(() => {
+    // Always use a consistent home ID and services array, even when cart is empty
+    const homeId = cartItems.length > 0 ? cartItems[0].mobileHome.id : 'stable-empty-id';
+    const selectedServices = cartItems.length > 0 ? cartItems[0].selectedServices : [];
+    const mobileHomes = cartItems.length > 0 ? cartItems.map(item => item.mobileHome) : [];
+    
+    return { homeId, selectedServices, mobileHomes };
+  }, [cartItems]);
+
+  // Use conditional services with stable parameters
   const {
     availableServices,
     getServicePrice,
     getMissingDependencies,
     getServicesByDependency
-  } = useConditionalServices(services, firstHomeId, mobileHomes, firstSelectedServices);
+  } = useConditionalServices(services, stableParams.homeId, stableParams.mobileHomes, stableParams.selectedServices);
 
   const calculateItemTotal = (item: CartItem) => {
     try {

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
@@ -26,19 +27,56 @@ const Auth = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Force logout all users immediately
-    const forceLogoutAllUsers = async () => {
+    let mounted = true;
+
+    const checkAuthAndRedirect = async () => {
       try {
-        console.log('🚪 Force logging out all users...');
-        await supabase.auth.signOut();
-        setCurrentUser(null);
-        setUserProfile(null);
-        setIsAdmin(false);
-        setCheckingAuth(false);
-        console.log('✅ All users logged out successfully');
+        console.log('🔍 Auth: Checking existing session...');
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('❌ Auth: Error getting session:', error);
+          if (mounted) {
+            setCheckingAuth(false);
+          }
+          return;
+        }
+
+        if (session?.user && mounted) {
+          console.log('✅ Auth: User is logged in, checking admin status...');
+          setCurrentUser(session.user);
+          
+          // Check admin status and redirect
+          try {
+            const { data: roleData } = await supabase
+              .from('user_roles')
+              .select('role')
+              .eq('user_id', session.user.id)
+              .eq('role', 'admin')
+              .single();
+
+            if (roleData && mounted) {
+              console.log('🔍 Auth: User is admin, redirecting to admin dashboard');
+              navigate('/admin');
+            } else if (mounted) {
+              console.log('🔍 Auth: User is regular user, redirecting to home');
+              navigate('/');
+            }
+          } catch (error) {
+            console.error('❌ Auth: Error checking role:', error);
+            if (mounted) {
+              navigate('/');
+            }
+          }
+        } else if (mounted) {
+          console.log('🔍 Auth: No active session found');
+          setCheckingAuth(false);
+        }
       } catch (error) {
-        console.error('❌ Error during force logout:', error);
-        setCheckingAuth(false);
+        console.error('❌ Auth: Error in auth check:', error);
+        if (mounted) {
+          setCheckingAuth(false);
+        }
       }
     };
 
@@ -46,16 +84,20 @@ const Auth = () => {
     const type = searchParams.get('type');
     if (type === 'recovery') {
       setShowPasswordChange(true);
+      setCheckingAuth(false);
+    } else {
+      // Check existing session
+      checkAuthAndRedirect();
     }
-
-    // Execute force logout
-    forceLogoutAllUsers();
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('🔄 Auth page - Auth state changed:', event);
+      console.log('🔄 Auth: Auth state changed:', event);
+      
+      if (!mounted) return;
       
       if (session?.user) {
+        setCurrentUser(session.user);
         // Check admin status and redirect
         try {
           const { data: roleData } = await supabase
@@ -71,13 +113,17 @@ const Auth = () => {
             navigate('/');
           }
         } catch (error) {
-          console.error('❌ Auth page - Error checking role on auth change:', error);
+          console.error('❌ Auth: Error checking role on auth change:', error);
           navigate('/');
         }
+      } else {
+        setCurrentUser(null);
+        setCheckingAuth(false);
       }
     });
 
     return () => {
+      mounted = false;
       subscription.unsubscribe();
     };
   }, [navigate, searchParams]);
@@ -107,7 +153,7 @@ const Auth = () => {
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-green-50 to-yellow-50 flex items-center justify-center p-4">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Logging out all users...</p>
+          <p className="text-gray-600">Checking authentication...</p>
         </div>
       </div>
     );

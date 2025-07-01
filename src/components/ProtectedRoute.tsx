@@ -24,57 +24,44 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   useEffect(() => {
     let mounted = true;
 
-    // Set up auth state listener first
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (!mounted) return;
-        
-        console.log('ProtectedRoute: Auth state changed:', event, session?.user?.id);
-        setUser(session?.user ?? null);
-        
-        if (requireAuth && !session?.user && event !== 'INITIAL_SESSION') {
-          navigate('/auth');
-        }
-        
-        // Check admin status if user exists and adminOnly is required
-        if (session?.user && adminOnly) {
-          checkAdminStatus(session.user.id);
-        } else {
-          setLoading(false);
-        }
-      }
-    );
-
-    // Check current session
     const checkAuth = async () => {
       try {
+        console.log('🔍 ProtectedRoute: Checking authentication...');
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
-          console.error('ProtectedRoute: Error getting session:', error);
-          if (requireAuth) {
+          console.error('❌ ProtectedRoute: Error getting session:', error);
+          if (requireAuth && mounted) {
             navigate('/auth');
           }
+          return;
+        }
+
+        if (!mounted) return;
+
+        const currentUser = session?.user ?? null;
+        setUser(currentUser);
+        console.log('🔍 ProtectedRoute: User found:', !!currentUser);
+
+        if (requireAuth && !currentUser) {
+          console.log('🔍 ProtectedRoute: No user but auth required, redirecting to auth');
+          navigate('/auth');
+          return;
+        }
+
+        // Check admin status if user exists and adminOnly is required
+        if (currentUser && adminOnly) {
+          await checkAdminStatus(currentUser.id);
         } else {
-          if (!mounted) return;
-          setUser(session?.user ?? null);
-          
-          if (requireAuth && !session?.user) {
-            navigate('/auth');
-          } else if (session?.user && adminOnly) {
-            // Check admin status
-            await checkAdminStatus(session.user.id);
-          } else {
+          if (mounted) {
             setLoading(false);
           }
         }
       } catch (error) {
-        console.error('ProtectedRoute: Auth check error:', error);
+        console.error('❌ ProtectedRoute: Auth check error:', error);
         if (requireAuth && mounted) {
           navigate('/auth');
-        }
-      } finally {
-        if (mounted && !adminOnly) {
+        } else if (mounted) {
           setLoading(false);
         }
       }
@@ -82,6 +69,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
     const checkAdminStatus = async (userId: string) => {
       try {
+        console.log('🔍 ProtectedRoute: Checking admin status for user:', userId);
         const { data, error } = await supabase
           .from('user_roles')
           .select('role')
@@ -92,21 +80,26 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
         if (!mounted) return;
 
         if (error && error.code !== 'PGRST116') {
-          console.error('ProtectedRoute: Error checking admin status:', error);
+          console.error('❌ ProtectedRoute: Error checking admin status:', error);
           setIsAdmin(false);
         } else {
-          setIsAdmin(!!data);
-          if (adminOnly && !data) {
-            console.log('ProtectedRoute: User is not admin, redirecting to home');
+          const isUserAdmin = !!data;
+          console.log('🔍 ProtectedRoute: User is admin:', isUserAdmin);
+          setIsAdmin(isUserAdmin);
+          
+          if (adminOnly && !isUserAdmin) {
+            console.log('🔍 ProtectedRoute: User is not admin, redirecting to home');
             navigate('/');
+            return;
           }
         }
       } catch (error) {
-        console.error('ProtectedRoute: Admin check error:', error);
+        console.error('❌ ProtectedRoute: Admin check error:', error);
         if (mounted) {
           setIsAdmin(false);
           if (adminOnly) {
             navigate('/');
+            return;
           }
         }
       } finally {
@@ -116,7 +109,32 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
       }
     };
 
+    // Check current session first
     checkAuth();
+
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (!mounted) return;
+        
+        console.log('🔍 ProtectedRoute: Auth state changed:', event, session?.user?.id);
+        const currentUser = session?.user ?? null;
+        setUser(currentUser);
+        
+        if (requireAuth && !currentUser && event !== 'INITIAL_SESSION') {
+          console.log('🔍 ProtectedRoute: Auth required but no user, redirecting to auth');
+          navigate('/auth');
+          return;
+        }
+        
+        // Check admin status if user exists and adminOnly is required
+        if (currentUser && adminOnly) {
+          checkAdminStatus(currentUser.id);
+        } else if (!adminOnly) {
+          setLoading(false);
+        }
+      }
+    );
 
     return () => {
       mounted = false;

@@ -14,6 +14,7 @@ interface CreateUserRequest {
   last_name?: string;
   role?: 'admin' | 'user';
   markup_percentage?: number;
+  created_by?: string;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -54,22 +55,44 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Check if requesting user is admin using the is_admin function
-    const { data: adminCheck, error: adminError } = await supabaseAdmin.rpc('is_admin', { user_id: user.id });
+    // Check requesting user's role
+    const { data: requestingUserRole, error: roleError } = await supabaseAdmin
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id)
+      .single();
 
-    if (adminError || !adminCheck) {
+    if (roleError || !requestingUserRole) {
+      return new Response(
+        JSON.stringify({ error: 'Failed to verify user role' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const requestingUserRoleValue = requestingUserRole.role;
+
+    // Check if requesting user has admin privileges
+    if (!['admin', 'super_admin'].includes(requestingUserRoleValue)) {
       return new Response(
         JSON.stringify({ error: 'Admin privileges required' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const { email, password, first_name, last_name, role, markup_percentage }: CreateUserRequest = await req.json();
+    const { email, password, first_name, last_name, role, markup_percentage, created_by }: CreateUserRequest = await req.json();
 
     if (!email || !password) {
       return new Response(
         JSON.stringify({ error: 'Email and password are required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Prevent regular admins from creating other admins
+    if (role === 'admin' && requestingUserRoleValue !== 'super_admin') {
+      return new Response(
+        JSON.stringify({ error: 'Only super admins can create admin users' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -110,7 +133,11 @@ const handler = async (req: Request): Promise<Response> => {
         user_id: newUser.user.id,
         email: email,
         first_name: first_name || '',
-        last_name: last_name || ''
+        last_name: last_name || '',
+        approved: true, // Auto-approve users created by admins
+        approved_at: new Date().toISOString(),
+        approved_by: user.id,
+        created_by: created_by || user.id
       });
 
     if (profileError) {
@@ -118,15 +145,15 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Assign role - default to 'user' if not specified
-    const { error: roleError } = await supabaseAdmin
+    const { error: roleInsertError } = await supabaseAdmin
       .from('user_roles')
       .insert({
         user_id: newUser.user.id,
         role: role || 'user'
       });
 
-    if (roleError) {
-      console.error('Error assigning role:', roleError);
+    if (roleInsertError) {
+      console.error('Error assigning role:', roleInsertError);
     }
 
     // Create customer markup - default to 30% if not specified
@@ -134,7 +161,8 @@ const handler = async (req: Request): Promise<Response> => {
       .from('customer_markups')
       .insert({
         user_id: newUser.user.id,
-        markup_percentage: markup_percentage || 30
+        markup_percentage: markup_percentage || 30,
+        created_by: created_by || user.id
       });
 
     if (markupError) {

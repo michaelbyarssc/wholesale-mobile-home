@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,7 +17,31 @@ export const UserForm = ({ onUserCreated }: UserFormProps) => {
   const [newUserEmail, setNewUserEmail] = useState('');
   const [newUserRole, setNewUserRole] = useState<'admin' | 'user'>('user');
   const [creatingUser, setCreatingUser] = useState(false);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const { toast } = useToast();
+
+  useEffect(() => {
+    checkCurrentUserRole();
+  }, []);
+
+  const checkCurrentUserRole = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) return;
+
+      // Check if user is super admin
+      const { data: roleData } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', session.user.id)
+        .single();
+
+      const userIsSuperAdmin = roleData?.role === 'super_admin';
+      setIsSuperAdmin(userIsSuperAdmin);
+    } catch (error) {
+      console.error('Error checking user role:', error);
+    }
+  };
 
   const createUserDirectly = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -107,7 +131,9 @@ export const UserForm = ({ onUserCreated }: UserFormProps) => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="user">User</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
+                  {isSuperAdmin && (
+                    <SelectItem value="admin">Admin</SelectItem>
+                  )}
                 </SelectContent>
               </Select>
             </div>

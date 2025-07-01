@@ -18,21 +18,38 @@ export const useMobileHomesData = () => {
   const { data: mobileHomes = [], isLoading, error, refetch } = useQuery({
     queryKey: ['public-mobile-homes'],
     queryFn: async () => {
-      console.log('🔍 Fetching mobile homes data...');
+      console.log('🔍 Starting mobile homes fetch...');
+      console.log('🔍 Supabase client URL:', supabase.supabaseUrl);
+      console.log('🔍 Supabase client key:', supabase.supabaseKey.substring(0, 20) + '...');
       
-      const { data, error } = await supabase
-        .from('mobile_homes')
-        .select('*')
-        .eq('active', true)
-        .order('display_order', { ascending: true });
-      
-      if (error) {
-        console.error('🔍 Error fetching mobile homes:', error);
-        throw error;
+      try {
+        console.log('🔍 Making query to mobile_homes table...');
+        const { data, error } = await supabase
+          .from('mobile_homes')
+          .select('*')
+          .eq('active', true)
+          .order('display_order', { ascending: true });
+        
+        console.log('🔍 Query completed. Error:', error);
+        console.log('🔍 Query completed. Data length:', data?.length || 0);
+        console.log('🔍 Query completed. First row:', data?.[0]);
+        
+        if (error) {
+          console.error('🔍 Detailed error from Supabase:', {
+            message: error.message,
+            details: error.details,
+            hint: error.hint,
+            code: error.code
+          });
+          throw error;
+        }
+        
+        console.log('🔍 Mobile homes fetched successfully:', data?.length || 0);
+        return data as MobileHome[];
+      } catch (err) {
+        console.error('🔍 Catch block error:', err);
+        throw err;
       }
-      
-      console.log('🔍 Mobile homes fetched successfully:', data?.length || 0);
-      return data as MobileHome[];
     },
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
@@ -43,24 +60,39 @@ export const useMobileHomesData = () => {
   const { data: homeImages = [], isLoading: imagesLoading } = useQuery({
     queryKey: ['mobile-home-images'],
     queryFn: async () => {
-      console.log('🔍 Fetching mobile home images...');
-      const { data, error } = await supabase
-        .from('mobile_home_images')
-        .select('*')
-        .order('mobile_home_id')
-        .order('image_type')
-        .order('display_order');
-      
-      if (error) {
-        console.error('🔍 Error fetching mobile home images:', error);
-        throw error;
+      console.log('🔍 Starting mobile home images fetch...');
+      try {
+        const { data, error } = await supabase
+          .from('mobile_home_images')
+          .select('*')
+          .order('mobile_home_id')
+          .order('image_type')
+          .order('display_order');
+        
+        console.log('🔍 Images query completed. Error:', error);
+        console.log('🔍 Images query completed. Data length:', data?.length || 0);
+        
+        if (error) {
+          console.error('🔍 Detailed images error from Supabase:', {
+            message: error.message,
+            details: error.details,
+            hint: error.hint,
+            code: error.code
+          });
+          throw error;
+        }
+        console.log('🔍 Mobile home images fetched:', data?.length || 0);
+        return data as MobileHomeImage[];
+      } catch (err) {
+        console.error('🔍 Images catch block error:', err);
+        throw err;
       }
-      console.log('🔍 Mobile home images fetched:', data?.length || 0);
-      return data as MobileHomeImage[];
     },
     retry: 3,
     retryDelay: 1000,
   });
+
+  console.log('🔍 Hook state - isLoading:', isLoading, 'error:', error?.message, 'homes count:', mobileHomes.length);
 
   return {
     mobileHomes,

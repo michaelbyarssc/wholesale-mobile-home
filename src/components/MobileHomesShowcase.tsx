@@ -58,8 +58,7 @@ export const MobileHomesShowcase = ({
   console.log('🔍 MobileHomesShowcase render - cart items from props:', cartItems.length);
   console.log('🔍 MobileHomesShowcase - selectedHomeForServices:', selectedHomeForServices?.id);
   console.log('🔍 Current user:', user?.email);
-  console.log('🔍 Supabase URL:', supabase.supabaseUrl);
-  console.log('🔍 Supabase Key (first 20 chars):', supabase.supabaseKey?.substring(0, 20));
+  console.log('🔍 Supabase client available:', !!supabase);
 
   const { data: mobileHomes = [], isLoading, error, refetch } = useQuery({
     queryKey: ['public-mobile-homes'],
@@ -67,8 +66,7 @@ export const MobileHomesShowcase = ({
       console.log('🔍 Starting mobile homes fetch...');
       console.log('🔍 Supabase client status:', {
         hasClient: !!supabase,
-        url: supabase.supabaseUrl,
-        authStatus: await supabase.auth.getSession()
+        authSession: await supabase.auth.getSession()
       });
       
       try {
@@ -229,7 +227,7 @@ export const MobileHomesShowcase = ({
               </p>
               <div className="space-y-2 mb-4">
                 <p className="text-sm"><strong>User:</strong> {user?.email || 'Not logged in'}</p>
-                <p className="text-sm"><strong>Database URL:</strong> {supabase.supabaseUrl}</p>
+                <p className="text-sm"><strong>Database Connected:</strong> {supabase ? 'Yes' : 'No'}</p>
                 <p className="text-sm"><strong>Error:</strong> {error.message}</p>
               </div>
               <Button 
@@ -497,7 +495,7 @@ export const MobileHomesShowcase = ({
             <p className="text-gray-600 mt-2">This should only take a moment</p>
             <div className="mt-4 text-sm text-gray-500">
               <p>User: {user?.email || 'Not logged in'}</p>
-              <p>Database: {supabase.supabaseUrl}</p>
+              <p>Database Connected: {supabase ? 'Yes' : 'No'}</p>
             </div>
           </div>
         </div>

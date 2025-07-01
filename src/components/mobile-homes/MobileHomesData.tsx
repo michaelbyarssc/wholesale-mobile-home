@@ -20,19 +20,40 @@ export const useMobileHomesData = () => {
     queryFn: async () => {
       console.log('🔍 Starting mobile homes query...');
       
-      const { data, error } = await supabase
-        .from('mobile_homes')
-        .select('*')
-        .eq('active', true)
-        .order('display_order', { ascending: true });
-      
-      if (error) {
-        console.error('🔍 Error fetching mobile homes:', error);
-        throw error;
+      try {
+        // First, let's test basic connectivity
+        console.log('🔍 Testing Supabase connection...');
+        const { data: testData, error: testError } = await supabase
+          .from('mobile_homes')
+          .select('count(*)', { count: 'exact', head: true });
+        
+        if (testError) {
+          console.error('🔍 Connection test failed:', testError);
+          throw testError;
+        }
+        
+        console.log('🔍 Connection test successful, count result:', testData);
+        
+        // Now fetch the actual data
+        console.log('🔍 Fetching mobile homes data...');
+        const { data, error } = await supabase
+          .from('mobile_homes')
+          .select('*')
+          .eq('active', true)
+          .order('display_order', { ascending: true });
+        
+        if (error) {
+          console.error('🔍 Error fetching mobile homes:', error);
+          throw error;
+        }
+        
+        console.log('🔍 Mobile homes fetched successfully:', data?.length || 0);
+        console.log('🔍 Sample data:', data?.[0] || 'No data');
+        return data as MobileHome[];
+      } catch (err) {
+        console.error('🔍 Query function error:', err);
+        throw err;
       }
-      
-      console.log('🔍 Mobile homes fetched successfully:', data?.length || 0);
-      return data as MobileHome[];
     },
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
@@ -60,6 +81,15 @@ export const useMobileHomesData = () => {
     },
     retry: 3,
     retryDelay: 1000,
+  });
+
+  // Add some debugging for the query states
+  console.log('🔍 Query states:', { 
+    isLoading, 
+    homeCount: mobileHomes.length, 
+    error: error?.message,
+    imagesLoading,
+    imagesCount: homeImages.length 
   });
 
   return {

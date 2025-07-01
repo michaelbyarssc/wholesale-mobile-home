@@ -18,65 +18,57 @@ export const useMobileHomesData = () => {
   const { data: mobileHomes = [], isLoading, error, refetch } = useQuery({
     queryKey: ['public-mobile-homes'],
     queryFn: async () => {
-      console.log('🔍 Starting mobile homes fetch...');
+      console.log('🔍 Fetching mobile homes...');
       
-      try {
-        const { data, error } = await supabase
-          .from('mobile_homes')
-          .select('*')
-          .eq('active', true)
-          .order('display_order', { ascending: true });
-        
-        console.log('🔍 Supabase response - Error:', error);
-        console.log('🔍 Supabase response - Data count:', data?.length || 0);
-        
-        if (error) {
-          console.error('🔍 Database error:', error);
-          throw error;
-        }
-        
-        console.log('🔍 Successfully fetched mobile homes:', data?.length || 0);
-        return data as MobileHome[];
-      } catch (err) {
-        console.error('🔍 Fetch error:', err);
-        throw err;
+      const { data, error } = await supabase
+        .from('mobile_homes')
+        .select('*')
+        .eq('active', true)
+        .order('display_order', { ascending: true });
+      
+      if (error) {
+        console.error('🔍 Mobile homes error:', error.message);
+        throw error;
       }
+      
+      console.log('🔍 Mobile homes fetched:', data?.length || 0);
+      return data as MobileHome[];
     },
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
     retry: 1,
     retryDelay: 1000,
+    refetchOnWindowFocus: false,
+    refetchOnMount: true,
+    refetchOnReconnect: false,
   });
 
   const { data: homeImages = [], isLoading: imagesLoading } = useQuery({
     queryKey: ['mobile-home-images'],
     queryFn: async () => {
-      console.log('🔍 Starting images fetch...');
-      try {
-        const { data, error } = await supabase
-          .from('mobile_home_images')
-          .select('*')
-          .order('mobile_home_id')
-          .order('image_type')
-          .order('display_order');
-        
-        if (error) {
-          console.error('🔍 Images error:', error);
-          throw error;
-        }
-        
-        console.log('🔍 Images fetched:', data?.length || 0);
-        return data as MobileHomeImage[];
-      } catch (err) {
-        console.error('🔍 Images fetch error:', err);
-        throw err;
+      console.log('🔍 Fetching images...');
+      
+      const { data, error } = await supabase
+        .from('mobile_home_images')
+        .select('*')
+        .order('mobile_home_id')
+        .order('image_type')
+        .order('display_order');
+      
+      if (error) {
+        console.error('🔍 Images error:', error.message);
+        throw error;
       }
+      
+      console.log('🔍 Images fetched:', data?.length || 0);
+      return data as MobileHomeImage[];
     },
     retry: 1,
     retryDelay: 1000,
+    refetchOnWindowFocus: false,
+    refetchOnMount: true,
+    refetchOnReconnect: false,
   });
-
-  console.log('🔍 Hook state - isLoading:', isLoading, 'error:', error?.message, 'homes count:', mobileHomes.length);
 
   return {
     mobileHomes,

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
@@ -94,14 +95,17 @@ const Auth = () => {
       }
     };
 
-    // Run initialization immediately
     initializeAuth();
 
-    // Listen for auth changes
+    return () => {
+      mounted = false;
+    };
+  }, []); // Remove all dependencies to prevent infinite loops
+
+  useEffect(() => {
+    // Set up auth state listener in a separate effect
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('🔄 Auth: Auth state changed:', event, !!session?.user);
-      
-      if (!mounted) return;
       
       if (session?.user && event === 'SIGNED_IN') {
         setCurrentUser(session.user);
@@ -129,10 +133,9 @@ const Auth = () => {
     });
 
     return () => {
-      mounted = false;
       subscription.unsubscribe();
     };
-  }, [navigate, searchParams]);
+  }, [navigate]);
 
   const resetForm = () => {
     setEmail('');

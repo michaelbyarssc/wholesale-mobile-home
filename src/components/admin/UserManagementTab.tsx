@@ -112,29 +112,32 @@ export const UserManagementTab = () => {
         return;
       }
 
-      // Separate users: approved users and pending users (not approved and not denied)
+      // Separate users: approved users and TRULY pending users (not approved, not denied, and not null approved)
       const approvedUsers = profileData?.filter(profile => profile.approved === true) || [];
       
-      // For pending users, super admins see ALL pending users, regular admins see theirs OR null created_by
+      // For pending users - STRICT filtering to only show users that are actually pending approval
       let pendingUsers;
       if (userIsSuperAdmin) {
-        // Super admins see ALL pending users, regardless of created_by
-        pendingUsers = profileData?.filter(profile => profile.approved !== true && profile.denied !== true) || [];
-        console.log('Super admin - showing ALL pending users');
-      } else {
-        // Regular admins see pending users they created OR users with null created_by
+        // Super admins see ALL truly pending users
         pendingUsers = profileData?.filter(profile => 
-          profile.approved !== true && 
+          profile.approved === false && // Explicitly false, not null or true
+          profile.denied !== true
+        ) || [];
+        console.log('Super admin - showing ALL truly pending users');
+      } else {
+        // Regular admins see truly pending users they created OR users with null created_by
+        pendingUsers = profileData?.filter(profile => 
+          profile.approved === false && // Explicitly false, not null or true
           profile.denied !== true && 
           (profile.created_by === currentUserId || profile.created_by === null)
         ) || [];
-        console.log('Regular admin - showing pending users created by current admin OR with null created_by');
+        console.log('Regular admin - showing truly pending users created by current admin OR with null created_by');
       }
 
       console.log('Approved users:', approvedUsers.length);
       console.log('Approved users details:', approvedUsers.map(u => ({ email: u.email, approved: u.approved, created_by: u.created_by })));
-      console.log('Pending users:', pendingUsers.length);
-      console.log('Pending users details:', pendingUsers.map(u => ({ email: u.email, approved: u.approved, denied: u.denied, created_by: u.created_by })));
+      console.log('Truly pending users:', pendingUsers.length);
+      console.log('Truly pending users details:', pendingUsers.map(u => ({ email: u.email, approved: u.approved, denied: u.denied, created_by: u.created_by })));
 
       // Fetch user roles for approved users
       const approvedUserIds = approvedUsers.map(profile => profile.user_id);
@@ -186,7 +189,7 @@ export const UserManagementTab = () => {
         };
       });
 
-      // Process pending users (those not approved and not denied)
+      // Process truly pending users (those explicitly set to approved: false and not denied)
       const pendingUsersData: UserProfile[] = pendingUsers.map(profile => ({
         user_id: profile.user_id,
         email: profile.email || 'No email',
@@ -202,7 +205,7 @@ export const UserManagementTab = () => {
       }));
 
       console.log('Final approved users data:', combinedApprovedData);
-      console.log('Final pending users data:', pendingUsersData);
+      console.log('Final truly pending users data:', pendingUsersData);
 
       setUserProfiles(combinedApprovedData);
       setPendingApprovals(pendingUsersData);

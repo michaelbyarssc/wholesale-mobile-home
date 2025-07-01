@@ -17,6 +17,11 @@ interface PendingApprovalsCardProps {
 export const PendingApprovalsCard = ({ pendingUsers, onUserApproved }: PendingApprovalsCardProps) => {
   const { toast } = useToast();
 
+  // Filter out any users that are actually approved (safety check)
+  const actuallyPendingUsers = pendingUsers.filter(user => 
+    user.approved !== true && user.approved !== null
+  );
+
   const handleApproveUser = async (userId: string, userName: string) => {
     try {
       const { error } = await supabase.functions.invoke('admin-approve-user', {
@@ -72,23 +77,28 @@ export const PendingApprovalsCard = ({ pendingUsers, onUserApproved }: PendingAp
     return user.email === 'No email' ? 'Unknown User' : user.email || 'Unknown User';
   };
 
+  // Don't render the card if there are no actually pending users
+  if (actuallyPendingUsers.length === 0) {
+    return null;
+  }
+
   return (
     <Card className="border-orange-200 bg-orange-50">
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-orange-800">
             <Clock className="h-5 w-5" />
-            Pending User Approvals ({pendingUsers.length})
+            Pending User Approvals ({actuallyPendingUsers.length})
           </CardTitle>
           <BulkApprovalButton 
-            pendingCount={pendingUsers.length} 
+            pendingCount={actuallyPendingUsers.length} 
             onBulkApproved={onUserApproved} 
           />
         </div>
       </CardHeader>
       <CardContent>
         <div className="space-y-3">
-          {pendingUsers.map((user) => (
+          {actuallyPendingUsers.map((user) => (
             <div
               key={user.user_id}
               className="flex items-center justify-between p-3 bg-white rounded-lg border"

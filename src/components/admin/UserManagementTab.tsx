@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
@@ -141,11 +142,12 @@ export const UserManagementTab = () => {
 
       // Separate users: approved users and pending users (not approved and not denied)
       const approvedUsers = profileData?.filter(profile => profile.approved === true) || [];
-      const pendingUsers = profileData?.filter(profile => profile.approved === false && profile.denied === false) || [];
+      const pendingUsers = profileData?.filter(profile => profile.approved !== true && profile.denied !== true) || [];
 
       console.log('Approved users (including admin-created):', approvedUsers.length);
       console.log('Approved users details:', approvedUsers.map(u => ({ email: u.email, approved: u.approved, created_by: u.created_by })));
       console.log('Pending users:', pendingUsers.length);
+      console.log('Pending users details:', pendingUsers.map(u => ({ email: u.email, approved: u.approved, denied: u.denied, created_by: u.created_by })));
 
       // Fetch user roles for approved users
       const approvedUserIds = approvedUsers.map(profile => profile.user_id);
@@ -197,7 +199,7 @@ export const UserManagementTab = () => {
         };
       });
 
-      // Process pending users (only those not denied and not auto-approved)
+      // Process pending users (those not approved and not denied)
       const pendingUsersData: UserProfile[] = pendingUsers.map(profile => ({
         user_id: profile.user_id,
         email: profile.email || 'No email',

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
@@ -46,7 +45,7 @@ const Auth = () => {
           console.log('✅ Auth: User is logged in, checking admin status...');
           setCurrentUser(session.user);
           
-          // Check admin status and redirect
+          // Check admin status and redirect - but always clear loading state
           try {
             const { data: roleData } = await supabase
               .from('user_roles')
@@ -55,17 +54,21 @@ const Auth = () => {
               .eq('role', 'admin')
               .single();
 
-            if (roleData && mounted) {
-              console.log('🔍 Auth: User is admin, redirecting to admin dashboard');
-              navigate('/admin');
-            } else if (mounted) {
-              console.log('🔍 Auth: User is regular user, redirecting to home');
-              navigate('/');
+            if (mounted) {
+              if (roleData) {
+                console.log('🔍 Auth: User is admin, redirecting to admin dashboard');
+                navigate('/admin');
+              } else {
+                console.log('🔍 Auth: User is regular user, redirecting to home');
+                navigate('/');
+              }
+              setCheckingAuth(false);
             }
           } catch (error) {
             console.error('❌ Auth: Error checking role:', error);
             if (mounted) {
               navigate('/');
+              setCheckingAuth(false);
             }
           }
         } else if (mounted) {
@@ -99,7 +102,7 @@ const Auth = () => {
       
       if (session?.user && event === 'SIGNED_IN') {
         setCurrentUser(session.user);
-        // Check admin status and redirect
+        // Check admin status and redirect - but always clear loading state
         try {
           const { data: roleData } = await supabase
             .from('user_roles')
@@ -116,6 +119,8 @@ const Auth = () => {
         } catch (error) {
           console.error('❌ Auth: Error checking role on auth change:', error);
           navigate('/');
+        } finally {
+          setCheckingAuth(false);
         }
       } else if (!session?.user && event === 'SIGNED_OUT') {
         setCurrentUser(null);

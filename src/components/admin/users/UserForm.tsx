@@ -21,6 +21,7 @@ export const UserForm = ({ onUserCreated }: UserFormProps) => {
   const [newUserRole, setNewUserRole] = useState<'admin' | 'user'>('user');
   const [creatingUser, setCreatingUser] = useState(false);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [currentUserRole, setCurrentUserRole] = useState<string>('');
   const { toast } = useToast();
 
   useEffect(() => {
@@ -39,8 +40,18 @@ export const UserForm = ({ onUserCreated }: UserFormProps) => {
         .eq('user_id', session.user.id)
         .single();
 
+      console.log('Current user role data:', roleData);
       const userIsSuperAdmin = roleData?.role === 'super_admin';
+      const userRole = roleData?.role || '';
+      
       setIsSuperAdmin(userIsSuperAdmin);
+      setCurrentUserRole(userRole);
+      
+      console.log('User role check:', {
+        userId: session.user.id,
+        role: userRole,
+        isSuperAdmin: userIsSuperAdmin
+      });
     } catch (error) {
       console.error('Error checking user role:', error);
     }
@@ -68,7 +79,9 @@ export const UserForm = ({ onUserCreated }: UserFormProps) => {
         throw new Error('Not authenticated');
       }
 
-      console.log('Creating user with created_by:', session.user.id);
+      console.log('Creating user with role:', newUserRole, 'by user:', session.user.id);
+      console.log('Current user is super admin:', isSuperAdmin);
+      console.log('Current user role:', currentUserRole);
 
       const { data, error } = await supabase.functions.invoke('admin-create-user', {
         body: {
@@ -193,6 +206,9 @@ export const UserForm = ({ onUserCreated }: UserFormProps) => {
             <div className="text-sm text-gray-600">
               <p><strong>Password:</strong> Wholesale2025!</p>
               <p className="text-green-600 font-medium">Users created by admins are automatically approved</p>
+              {isSuperAdmin && (
+                <p className="text-blue-600 font-medium">As Super Admin, you can create both Admin and User accounts</p>
+              )}
             </div>
             <Button type="submit" disabled={creatingUser}>
               {creatingUser ? "Creating..." : "Create User"}

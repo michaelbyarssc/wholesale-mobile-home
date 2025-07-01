@@ -28,9 +28,9 @@ const Auth = () => {
   useEffect(() => {
     let mounted = true;
 
-    const checkAuthAndRedirect = async () => {
+    const initializeAuth = async () => {
       try {
-        console.log('🔍 Auth: Checking existing session...');
+        console.log('🔍 Auth: Starting initialization...');
         
         // Check if this is a password reset flow first
         const type = searchParams.get('type');
@@ -43,6 +43,7 @@ const Auth = () => {
           return;
         }
 
+        console.log('🔍 Auth: Getting current session...');
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
@@ -53,57 +54,60 @@ const Auth = () => {
           return;
         }
 
-        // If no session, stop checking auth immediately
+        console.log('🔍 Auth: Session result:', !!session?.user);
+
         if (!session?.user) {
-          console.log('🔍 Auth: No active session found');
+          console.log('🔍 Auth: No session - showing login form');
           if (mounted) {
             setCheckingAuth(false);
           }
           return;
         }
 
-        // Only if we have a session, proceed with admin check and redirect
+        // User is logged in, check their role and redirect
+        console.log('🔍 Auth: User is logged in, checking role...');
         if (mounted) {
-          console.log('✅ Auth: User is logged in, checking admin status...');
           setCurrentUser(session.user);
-          
-          try {
-            const { data: roleData } = await supabase
-              .from('user_roles')
-              .select('role')
-              .eq('user_id', session.user.id)
-              .eq('role', 'admin')
-              .single();
+        }
 
+        try {
+          const { data: roleData } = await supabase
+            .from('user_roles')
+            .select('role')
+            .eq('user_id', session.user.id)
+            .eq('role', 'admin')
+            .single();
+
+          if (mounted) {
             if (roleData) {
-              console.log('🔍 Auth: User is admin, redirecting to admin dashboard');
+              console.log('🔍 Auth: Admin user - redirecting to admin');
               navigate('/admin');
             } else {
-              console.log('🔍 Auth: User is regular user, redirecting to home');
+              console.log('🔍 Auth: Regular user - redirecting to home');
               navigate('/');
             }
-          } catch (error) {
-            console.error('❌ Auth: Error checking role:', error);
+          }
+        } catch (roleError) {
+          console.error('❌ Auth: Error checking role:', roleError);
+          if (mounted) {
             navigate('/');
           }
-          
-          // Always clear loading state after redirect
-          setCheckingAuth(false);
         }
       } catch (error) {
-        console.error('❌ Auth: Error in auth check:', error);
+        console.error('❌ Auth: Error in initialization:', error);
+      } finally {
         if (mounted) {
+          console.log('🔍 Auth: Setting checkingAuth to false');
           setCheckingAuth(false);
         }
       }
     };
 
-    // Check existing session
-    checkAuthAndRedirect();
+    initializeAuth();
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('🔄 Auth: Auth state changed:', event);
+      console.log('🔄 Auth: Auth state changed:', event, !!session?.user);
       
       if (!mounted) return;
       
@@ -126,11 +130,11 @@ const Auth = () => {
           console.error('❌ Auth: Error checking role on auth change:', error);
           navigate('/');
         }
-        setCheckingAuth(false);
       } else if (!session?.user && event === 'SIGNED_OUT') {
         setCurrentUser(null);
-        setCheckingAuth(false);
       }
+      
+      setCheckingAuth(false);
     });
 
     return () => {
@@ -159,12 +163,15 @@ const Auth = () => {
     resetForm();
   };
 
+  console.log('🔍 Auth: Render state - checkingAuth:', checkingAuth, 'currentUser:', !!currentUser);
+
   if (checkingAuth) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-green-50 to-yellow-50 flex items-center justify-center p-4">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Checking authentication...</p>
+          <p className="text-xs text-gray-500 mt-2">Please wait...</p>
         </div>
       </div>
     );

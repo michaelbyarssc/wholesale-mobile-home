@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
@@ -64,6 +63,8 @@ export const UserManagementTab = () => {
       if (!userIsSuperAdmin && currentUserId) {
         console.log('Filtering profiles by created_by:', currentUserId);
         profileQuery = profileQuery.eq('created_by', currentUserId);
+      } else {
+        console.log('Super admin - fetching ALL profiles without filtering');
       }
 
       const { data: profileData, error: profileError } = await profileQuery;
@@ -80,6 +81,16 @@ export const UserManagementTab = () => {
 
       console.log('Raw profiles data:', profileData);
       console.log('Profiles found:', profileData?.length || 0);
+      
+      // Log detailed info about each profile
+      profileData?.forEach(profile => {
+        console.log('Profile:', {
+          email: profile.email,
+          approved: profile.approved,
+          denied: profile.denied,
+          created_by: profile.created_by
+        });
+      });
 
       if (!profileData) {
         setUserProfiles([]);

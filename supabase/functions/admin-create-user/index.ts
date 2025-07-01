@@ -116,7 +116,17 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    console.log('Creating user with details:', { email, first_name, last_name, phone_number, role: role || 'user', markup_percentage: markup_percentage || 30, created_by: user.id });
+    // Use the authenticated admin user's ID as created_by (this is the key fix)
+    const createdByUserId = user.id;
+    console.log('Creating user with details:', { 
+      email, 
+      first_name, 
+      last_name, 
+      phone_number, 
+      role: role || 'user', 
+      markup_percentage: markup_percentage || 30, 
+      created_by: createdByUserId 
+    });
 
     // Create user using admin API
     const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
@@ -149,7 +159,6 @@ const handler = async (req: Request): Promise<Response> => {
     console.log('User created successfully:', newUser.user.id);
 
     // Create profile with automatic approval since created by admin
-    const createdByUserId = created_by || user.id;
     console.log('Creating profile with created_by:', createdByUserId, 'and auto-approving user');
     
     const { error: profileError } = await supabaseAdmin
@@ -163,7 +172,7 @@ const handler = async (req: Request): Promise<Response> => {
         approved: true, // Auto-approve users created by admins
         approved_at: new Date().toISOString(),
         approved_by: user.id,
-        created_by: createdByUserId
+        created_by: createdByUserId // This ensures the admin can see their created users
       });
 
     if (profileError) {
@@ -171,7 +180,7 @@ const handler = async (req: Request): Promise<Response> => {
       // Don't fail the entire request, but log the error
       // The user was created, we just need to handle the profile separately
     } else {
-      console.log('Profile created successfully with auto-approval');
+      console.log('Profile created successfully with auto-approval and correct created_by');
     }
 
     // Assign role - default to 'user' if not specified

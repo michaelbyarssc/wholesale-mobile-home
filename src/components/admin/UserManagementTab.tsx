@@ -6,6 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { UserForm } from './users/UserForm';
 import { UserTable } from './users/UserTable';
 import { PendingApprovalsCard } from './users/PendingApprovalsCard';
+import { FixProfilesButton } from './users/FixProfilesButton';
 import { UserProfile } from './users/UserEditDialog';
 
 export const UserManagementTab = () => {
@@ -32,12 +33,17 @@ export const UserManagementTab = () => {
       const { data: roleData } = await supabase
         .from('user_roles')
         .select('role')
-        .eq('user_id', session.user.id)
-        .single();
+        .eq('user_id', session.user.id);
 
-      const userIsSuperAdmin = roleData?.role === 'super_admin';
+      console.log('UserManagementTab: Role data:', roleData);
+
+      const userIsSuperAdmin = roleData?.some(r => r.role === 'super_admin') || false;
       setIsSuperAdmin(userIsSuperAdmin);
-      console.log('UserManagementTab: User role:', roleData?.role, 'isSuperAdmin:', userIsSuperAdmin);
+      console.log('UserManagementTab: User role determination:', { 
+        roleData, 
+        userIsSuperAdmin,
+        hasRoles: roleData && roleData.length > 0 
+      });
       
       // Fetch user profiles after determining role
       fetchUserProfiles(session.user.id, userIsSuperAdmin);
@@ -55,6 +61,11 @@ export const UserManagementTab = () => {
     try {
       setLoading(true);
       console.log('Fetching user profiles for user:', currentUserId, 'isSuperAdmin:', userIsSuperAdmin);
+      
+      // First, let's get all auth users to see what we're working with
+      const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
+      console.log('Auth users found:', authUsers?.users?.length || 0);
+      console.log('Auth users:', authUsers?.users?.map(u => ({ id: u.id, email: u.email })));
       
       let profileQuery = supabase
         .from('profiles')
@@ -90,7 +101,8 @@ export const UserManagementTab = () => {
           email: profile.email,
           approved: profile.approved,
           denied: profile.denied,
-          created_by: profile.created_by
+          created_by: profile.created_by,
+          user_id: profile.user_id
         });
       });
 
@@ -227,6 +239,20 @@ export const UserManagementTab = () => {
 
   return (
     <div className="space-y-6">
+      {isSuperAdmin && (
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex justify-between items-center">
+              <div>
+                <h3 className="text-lg font-semibold">Admin Tools</h3>
+                <p className="text-sm text-gray-600">Tools to help manage user profiles</p>
+              </div>
+              <FixProfilesButton />
+            </div>
+          </CardContent>
+        </Card>
+      )}
+      
       {pendingApprovals.length > 0 && (
         <PendingApprovalsCard 
           pendingUsers={pendingApprovals} 

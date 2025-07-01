@@ -98,7 +98,7 @@ export const UserTableRow = ({ profile, onUserUpdated }: UserTableRowProps) => {
     switch (role) {
       case 'super_admin':
         return (
-          <Badge variant="default" className="bg-purple-600 hover:bg-purple-700">
+          <Badge variant="default" className="bg-green-600 hover:bg-green-700">
             <ShieldCheck className="h-3 w-3 mr-1" />
             Super Admin
           </Badge>
@@ -153,7 +153,7 @@ export const UserTableRow = ({ profile, onUserUpdated }: UserTableRowProps) => {
         </TableCell>
       )}
       <TableCell>
-        {new Date(profile.created_at).toLocaleDateString()}
+        {new Date(profile.created_at).toLocaleDateDate()}
       </TableCell>
       <TableCell className="text-right">
         <div className="flex items-center justify-end gap-2">

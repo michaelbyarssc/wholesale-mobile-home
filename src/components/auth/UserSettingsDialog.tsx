@@ -62,19 +62,47 @@ export const UserSettingsDialog = ({ user, userProfile, onProfileUpdated }: User
 
     setLoading(true);
     try {
-      // Update profile in profiles table
-      const { error: profileError } = await supabase
+      // Check if profile exists first
+      const { data: existingProfile, error: checkError } = await supabase
         .from('profiles')
-        .upsert({
-          user_id: user.id,
-          first_name: firstName.trim() || null,
-          last_name: lastName.trim() || null,
-          phone_number: phoneNumber.trim() || null,
-          email: email.trim(),
-          updated_at: new Date().toISOString()
-        });
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
 
-      if (profileError) throw profileError;
+      if (checkError) {
+        console.error('Error checking existing profile:', checkError);
+        throw checkError;
+      }
+
+      if (existingProfile) {
+        // Update existing profile
+        const { error: updateError } = await supabase
+          .from('profiles')
+          .update({
+            first_name: firstName.trim() || null,
+            last_name: lastName.trim() || null,
+            phone_number: phoneNumber.trim() || null,
+            email: email.trim(),
+            updated_at: new Date().toISOString()
+          })
+          .eq('user_id', user.id);
+
+        if (updateError) throw updateError;
+      } else {
+        // Insert new profile
+        const { error: insertError } = await supabase
+          .from('profiles')
+          .insert({
+            user_id: user.id,
+            first_name: firstName.trim() || null,
+            last_name: lastName.trim() || null,
+            phone_number: phoneNumber.trim() || null,
+            email: email.trim(),
+            updated_at: new Date().toISOString()
+          });
+
+        if (insertError) throw insertError;
+      }
 
       // Update email in auth if it's different
       if (email.trim() !== user.email) {

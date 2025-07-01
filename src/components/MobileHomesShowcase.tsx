@@ -58,34 +58,40 @@ export const MobileHomesShowcase = ({
   console.log('🔍 MobileHomesShowcase render - cart items from props:', cartItems.length);
   console.log('🔍 MobileHomesShowcase - selectedHomeForServices:', selectedHomeForServices?.id);
 
-  const { data: mobileHomes = [], isLoading } = useQuery({
+  const { data: mobileHomes = [], isLoading, error } = useQuery({
     queryKey: ['public-mobile-homes'],
     queryFn: async () => {
-      console.log('Fetching mobile homes...');
+      console.log('🔍 Fetching mobile homes from database...');
       
-      const { data, error } = await supabase
-        .from('mobile_homes')
-        .select('*')
-        .eq('active', true)
-        .order('display_order', { ascending: true })
-        .order('created_at', { ascending: true });
-      
-      if (error) {
-        console.error('Error fetching mobile homes:', error);
-        throw error;
+      try {
+        const { data, error } = await supabase
+          .from('mobile_homes')
+          .select('*')
+          .eq('active', true)
+          .order('display_order', { ascending: true });
+        
+        if (error) {
+          console.error('🔍 Error fetching mobile homes:', error);
+          throw error;
+        }
+        
+        console.log('🔍 Mobile homes fetched successfully:', data?.length || 0, 'homes');
+        console.log('🔍 First home data sample:', data?.[0]);
+        
+        return data as MobileHome[];
+      } catch (err) {
+        console.error('🔍 Database query failed:', err);
+        throw err;
       }
-      
-      console.log('Mobile homes fetched:', data?.length || 0);
-      console.log('Active homes data:', data);
-      
-      return data as MobileHome[];
-    }
+    },
+    retry: 3,
+    retryDelay: 1000,
   });
 
   const { data: homeImages = [], isLoading: imagesLoading } = useQuery({
     queryKey: ['mobile-home-images'],
     queryFn: async () => {
-      console.log('Fetching mobile home images...');
+      console.log('🔍 Fetching mobile home images...');
       const { data, error } = await supabase
         .from('mobile_home_images')
         .select('*')
@@ -94,13 +100,34 @@ export const MobileHomesShowcase = ({
         .order('display_order');
       
       if (error) {
-        console.error('Error fetching mobile home images:', error);
+        console.error('🔍 Error fetching mobile home images:', error);
         throw error;
       }
-      console.log('Mobile home images fetched:', data?.length || 0);
+      console.log('🔍 Mobile home images fetched:', data?.length || 0);
       return data as MobileHomeImage[];
     }
   });
+
+  // Show error state if there's a database error
+  if (error) {
+    console.error('🔍 Mobile homes query error:', error);
+    return (
+      <section className="py-20 bg-amber-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h3 className="text-3xl font-bold text-gray-900 mb-4">
+              Our Mobile Home Models
+            </h3>
+            <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+              <p className="text-red-600 font-medium">Unable to load mobile homes</p>
+              <p className="text-red-500 text-sm mt-2">Please refresh the page or contact support if the issue persists.</p>
+              <p className="text-gray-500 text-xs mt-2">Error: {error.message}</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   // Filter homes based on width
   const getFilteredHomes = (homes: MobileHome[]) => {
@@ -122,13 +149,13 @@ export const MobileHomesShowcase = ({
     return a.localeCompare(b);
   });
 
-  console.log('Unique series found:', uniqueSeries);
+  console.log('🔍 Unique series found:', uniqueSeries);
   
   // Set the first series as the default active tab
   React.useEffect(() => {
     if (uniqueSeries.length > 0 && !activeTab) {
       const defaultTab = uniqueSeries[0];
-      console.log('Setting default tab to:', defaultTab);
+      console.log('🔍 Setting default tab to:', defaultTab);
       setActiveTab(defaultTab);
     }
   }, [uniqueSeries, activeTab]);
@@ -316,7 +343,7 @@ export const MobileHomesShowcase = ({
     );
   };
 
-  console.log('Render state:', { 
+  console.log('🔍 Render state:', { 
     isLoading, 
     imagesLoading, 
     pricingLoading,
@@ -326,7 +353,8 @@ export const MobileHomesShowcase = ({
     activeTab,
     cartItemsCount: cartItems.length,
     widthFilter,
-    filteredHomesCount: filteredHomes.length
+    filteredHomesCount: filteredHomes.length,
+    hasError: !!error
   });
 
   if (isLoading) {
@@ -453,7 +481,7 @@ export const MobileHomesShowcase = ({
 
             {uniqueSeries.map((series) => {
               const seriesHomes = filteredHomes.filter(home => home.series === series);
-              console.log(`Rendering ${series} series with ${seriesHomes.length} homes:`, seriesHomes);
+              console.log(`🔍 Rendering ${series} series with ${seriesHomes.length} homes:`, seriesHomes);
               
               return (
                 <TabsContent key={series} value={series}>

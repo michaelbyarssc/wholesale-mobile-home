@@ -72,6 +72,23 @@ export const MobileHomesShowcase = ({
       
       try {
         addDebugInfo('🔍 Fetching mobile homes data...');
+        
+        // Try a simpler query first to test basic functionality
+        addDebugInfo('🔍 Attempting simple query...');
+        const { data: simpleData, error: simpleError } = await supabase
+          .from('mobile_homes')
+          .select('id, model, manufacturer')
+          .limit(1);
+        
+        if (simpleError) {
+          addDebugInfo(`🔍 Simple query failed: ${simpleError.message}`);
+          throw new Error(`Simple query failed: ${simpleError.message}`);
+        }
+        
+        addDebugInfo(`🔍 Simple query successful, found ${simpleData?.length || 0} records`);
+        
+        // Now try the full query
+        addDebugInfo('🔍 Attempting full query...');
         const { data, error, status } = await supabase
           .from('mobile_homes')
           .select(`
@@ -101,8 +118,12 @@ export const MobileHomesShowcase = ({
           .eq('active', true)
           .order('display_order', { ascending: true });
         
+        addDebugInfo(`🔍 Full query status: ${status}`);
+        
         if (error) {
-          addDebugInfo(`🔍 Query error: ${error.message}`);
+          addDebugInfo(`🔍 Full query error: ${error.message}`);
+          addDebugInfo(`🔍 Error details: ${JSON.stringify(error.details)}`);
+          addDebugInfo(`🔍 Error hint: ${error.hint}`);
           throw new Error(`Failed to fetch mobile homes: ${error.message}`);
         }
         
@@ -110,14 +131,17 @@ export const MobileHomesShowcase = ({
         return data as MobileHome[];
       } catch (err: any) {
         addDebugInfo(`🔍 Fetch failed: ${err.message}`);
+        addDebugInfo(`🔍 Error stack: ${err.stack}`);
         throw err;
       }
     },
     retry: (failureCount, error) => {
       addDebugInfo(`🔍 Query retry attempt ${failureCount}: ${error?.message}`);
-      return failureCount < 3;
+      return failureCount < 2; // Reduce retry attempts
     },
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000), // Reduce max delay
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
   });
 
   const { data: homeImages = [], isLoading: imagesLoading } = useQuery({

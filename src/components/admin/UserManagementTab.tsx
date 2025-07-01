@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
@@ -185,7 +184,8 @@ export const UserManagementTab = () => {
           markup_percentage: markup?.markup_percentage || 0,
           minimum_profit_per_home: markup?.minimum_profit_per_home || 0,
           approved: profile.approved,
-          approved_at: profile.approved_at
+          approved_at: profile.approved_at,
+          created_by: profile.created_by
         };
       });
 
@@ -201,7 +201,8 @@ export const UserManagementTab = () => {
         markup_percentage: 0,
         minimum_profit_per_home: 0,
         approved: false,
-        approved_at: null
+        approved_at: null,
+        created_by: profile.created_by
       }));
 
       console.log('Final approved users data:', combinedApprovedData);

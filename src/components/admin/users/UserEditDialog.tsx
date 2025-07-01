@@ -1,13 +1,12 @@
-
 import React, { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Edit } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { Edit } from 'lucide-react';
 
 export interface UserProfile {
   user_id: string;
@@ -19,8 +18,9 @@ export interface UserProfile {
   created_at: string;
   markup_percentage: number;
   minimum_profit_per_home: number;
-  approved?: boolean;
-  approved_at?: string | null;
+  approved: boolean;
+  approved_at: string | null;
+  created_by?: string | null;
 }
 
 interface UserEditDialogProps {
@@ -31,11 +31,14 @@ interface UserEditDialogProps {
 export const UserEditDialog = ({ profile, onUserUpdated }: UserEditDialogProps) => {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [firstName, setFirstName] = useState(profile.first_name || '');
-  const [lastName, setLastName] = useState(profile.last_name || '');
-  const [phoneNumber, setPhoneNumber] = useState(profile.phone_number || '');
-  const [role, setRole] = useState<'admin' | 'user' | 'super_admin'>(profile.role as 'admin' | 'user' | 'super_admin' || 'user');
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [formData, setFormData] = useState({
+    first_name: profile.first_name || '',
+    last_name: profile.last_name || '',
+    phone_number: profile.phone_number || '',
+    role: profile.role || 'user',
+    markup_percentage: profile.markup_percentage || 0,
+  });
   const { toast } = useToast();
 
   useEffect(() => {
@@ -47,25 +50,22 @@ export const UserEditDialog = ({ profile, onUserUpdated }: UserEditDialogProps) 
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) return;
 
-      // Check if user is super admin - get all roles for the user
-      const { data: roleData, error: roleError } = await supabase
+      // Check if user is super admin
+      const { data: roleData } = await supabase
         .from('user_roles')
         .select('role')
         .eq('user_id', session.user.id);
 
-      if (roleError) {
-        console.error('Error fetching user roles:', roleError);
-        return;
-      }
-
-      // Check if user has super_admin role
       const userIsSuperAdmin = roleData?.some(r => r.role === 'super_admin') || false;
       setIsSuperAdmin(userIsSuperAdmin);
-      
       console.log('UserEditDialog: User is super admin:', userIsSuperAdmin);
     } catch (error) {
       console.error('Error checking user role:', error);
     }
+  };
+
+  const handleInputChange = (field: string, value: string | number) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -77,50 +77,72 @@ export const UserEditDialog = ({ profile, onUserUpdated }: UserEditDialogProps) 
       const { error: profileError } = await supabase
         .from('profiles')
         .update({
-          first_name: firstName.trim() || null,
-          last_name: lastName.trim() || null,
-          phone_number: phoneNumber.trim() || null,
-          updated_at: new Date().toISOString()
+          first_name: formData.first_name,
+          last_name: formData.last_name,
+          phone_number: formData.phone_number,
         })
         .eq('user_id', profile.user_id);
 
-      if (profileError) throw profileError;
+      if (profileError) {
+        console.error('Error updating profile:', profileError);
+        toast({
+          title: "Error",
+          description: "Failed to update user profile",
+          variant: "destructive",
+        });
+        return;
+      }
 
-      // Update role only if current user is super admin and role has changed
-      if (isSuperAdmin && profile.role !== role) {
-        if (profile.role) {
-          // Update existing role
-          const { error: roleUpdateError } = await supabase
-            .from('user_roles')
-            .update({ role })
-            .eq('user_id', profile.user_id);
+      // Update role if user is super admin
+      if (isSuperAdmin) {
+        const { error: roleError } = await supabase
+          .from('user_roles')
+          .upsert({
+            user_id: profile.user_id,
+            role: formData.role
+          });
 
-          if (roleUpdateError) throw roleUpdateError;
-        } else {
-          // Insert new role
-          const { error: roleInsertError } = await supabase
-            .from('user_roles')
-            .insert({
-              user_id: profile.user_id,
-              role
-            });
-
-          if (roleInsertError) throw roleInsertError;
+        if (roleError) {
+          console.error('Error updating role:', roleError);
+          toast({
+            title: "Error",
+            description: "Failed to update user role",
+            variant: "destructive",
+          });
+          return;
         }
       }
 
+      // Update markup
+      const { error: markupError } = await supabase
+        .from('customer_markups')
+        .upsert({
+          user_id: profile.user_id,
+          markup_percentage: formData.markup_percentage
+        });
+
+      if (markupError) {
+        console.error('Error updating markup:', markupError);
+        toast({
+          title: "Error",
+          description: "Failed to update markup percentage",
+          variant: "destructive",
+        });
+        return;
+      }
+
       toast({
-        title: "User Updated",
-        description: "User profile has been successfully updated.",
+        title: "Success",
+        description: "User updated successfully",
       });
 
       setOpen(false);
       onUserUpdated();
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error updating user:', error);
       toast({
-        title: "Update Failed",
-        description: error.message || "Failed to update user profile",
+        title: "Error",
+        description: "An unexpected error occurred",
         variant: "destructive",
       });
     } finally {
@@ -135,52 +157,41 @@ export const UserEditDialog = ({ profile, onUserUpdated }: UserEditDialogProps) 
           <Edit className="h-4 w-4" />
         </Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Edit User Profile</DialogTitle>
+          <DialogTitle>Edit User</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <Label htmlFor="firstName">First Name</Label>
-            <Input
-              id="firstName"
-              value={firstName}
-              onChange={(e) => setFirstName(e.target.value)}
-              placeholder="First name"
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="first_name">First Name</Label>
+              <Input
+                id="first_name"
+                value={formData.first_name}
+                onChange={(e) => handleInputChange('first_name', e.target.value)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="last_name">Last Name</Label>
+              <Input
+                id="last_name"
+                value={formData.last_name}
+                onChange={(e) => handleInputChange('last_name', e.target.value)}
+              />
+            </div>
           </div>
           <div>
-            <Label htmlFor="lastName">Last Name</Label>
+            <Label htmlFor="phone_number">Phone Number</Label>
             <Input
-              id="lastName"
-              value={lastName}
-              onChange={(e) => setLastName(e.target.value)}
-              placeholder="Last name"
-            />
-          </div>
-          <div>
-            <Label htmlFor="phoneNumber">Phone Number</Label>
-            <Input
-              id="phoneNumber"
-              value={phoneNumber}
-              onChange={(e) => setPhoneNumber(e.target.value)}
-              placeholder="Phone number"
-              type="tel"
-            />
-          </div>
-          <div>
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              value={profile.email}
-              disabled
-              className="bg-gray-100"
+              id="phone_number"
+              value={formData.phone_number}
+              onChange={(e) => handleInputChange('phone_number', e.target.value)}
             />
           </div>
           {isSuperAdmin && (
             <div>
               <Label htmlFor="role">Role</Label>
-              <Select value={role} onValueChange={(value: 'admin' | 'user' | 'super_admin') => setRole(value)}>
+              <Select value={formData.role} onValueChange={(value) => handleInputChange('role', value)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -192,12 +203,21 @@ export const UserEditDialog = ({ profile, onUserUpdated }: UserEditDialogProps) 
               </Select>
             </div>
           )}
+          <div>
+            <Label htmlFor="markup_percentage">Markup Percentage</Label>
+            <Input
+              id="markup_percentage"
+              type="number"
+              value={formData.markup_percentage}
+              onChange={(e) => handleInputChange('markup_percentage', Number(e.target.value))}
+            />
+          </div>
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Cancel
             </Button>
             <Button type="submit" disabled={loading}>
-              {loading ? "Updating..." : "Update User"}
+              {loading ? 'Saving...' : 'Save Changes'}
             </Button>
           </div>
         </form>

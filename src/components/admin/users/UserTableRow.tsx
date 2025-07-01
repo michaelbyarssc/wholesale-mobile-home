@@ -16,9 +16,11 @@ interface UserTableRowProps {
 
 export const UserTableRow = ({ profile, onUserUpdated }: UserTableRowProps) => {
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [createdByName, setCreatedByName] = useState<string>('');
 
   useEffect(() => {
     checkCurrentUserRole();
+    fetchCreatedByName();
   }, []);
 
   const checkCurrentUserRole = async () => {
@@ -42,6 +44,37 @@ export const UserTableRow = ({ profile, onUserUpdated }: UserTableRowProps) => {
       setIsSuperAdmin(userIsSuperAdmin);
     } catch (error) {
       console.error('Error checking user role:', error);
+    }
+  };
+
+  const fetchCreatedByName = async () => {
+    if (!profile.created_by) {
+      setCreatedByName('Self-registered');
+      return;
+    }
+
+    try {
+      const { data: creatorProfile, error } = await supabase
+        .from('profiles')
+        .select('first_name, last_name, email')
+        .eq('user_id', profile.created_by)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error fetching creator profile:', error);
+        setCreatedByName('Unknown');
+        return;
+      }
+
+      if (creatorProfile) {
+        const name = `${creatorProfile.first_name || ''} ${creatorProfile.last_name || ''}`.trim();
+        setCreatedByName(name || creatorProfile.email || 'Unknown');
+      } else {
+        setCreatedByName('Unknown');
+      }
+    } catch (error) {
+      console.error('Error in fetchCreatedByName:', error);
+      setCreatedByName('Unknown');
     }
   };
 
@@ -112,6 +145,13 @@ export const UserTableRow = ({ profile, onUserUpdated }: UserTableRowProps) => {
           onMarkupUpdated={onUserUpdated}
         />
       </TableCell>
+      {isSuperAdmin && (
+        <TableCell>
+          <div className="text-sm text-gray-600">
+            {createdByName}
+          </div>
+        </TableCell>
+      )}
       <TableCell>
         {new Date(profile.created_at).toLocaleDateString()}
       </TableCell>

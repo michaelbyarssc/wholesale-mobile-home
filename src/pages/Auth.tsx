@@ -31,6 +31,18 @@ const Auth = () => {
     const checkAuthAndRedirect = async () => {
       try {
         console.log('🔍 Auth: Checking existing session...');
+        
+        // Check if this is a password reset flow first
+        const type = searchParams.get('type');
+        if (type === 'recovery') {
+          console.log('🔍 Auth: Password recovery flow detected');
+          if (mounted) {
+            setShowPasswordChange(true);
+            setCheckingAuth(false);
+          }
+          return;
+        }
+
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
@@ -41,11 +53,20 @@ const Auth = () => {
           return;
         }
 
-        if (session?.user && mounted) {
+        // If no session, stop checking auth immediately
+        if (!session?.user) {
+          console.log('🔍 Auth: No active session found');
+          if (mounted) {
+            setCheckingAuth(false);
+          }
+          return;
+        }
+
+        // Only if we have a session, proceed with admin check and redirect
+        if (mounted) {
           console.log('✅ Auth: User is logged in, checking admin status...');
           setCurrentUser(session.user);
           
-          // Check admin status and redirect - but always clear loading state
           try {
             const { data: roleData } = await supabase
               .from('user_roles')
@@ -54,25 +75,19 @@ const Auth = () => {
               .eq('role', 'admin')
               .single();
 
-            if (mounted) {
-              if (roleData) {
-                console.log('🔍 Auth: User is admin, redirecting to admin dashboard');
-                navigate('/admin');
-              } else {
-                console.log('🔍 Auth: User is regular user, redirecting to home');
-                navigate('/');
-              }
-              setCheckingAuth(false);
+            if (roleData) {
+              console.log('🔍 Auth: User is admin, redirecting to admin dashboard');
+              navigate('/admin');
+            } else {
+              console.log('🔍 Auth: User is regular user, redirecting to home');
+              navigate('/');
             }
           } catch (error) {
             console.error('❌ Auth: Error checking role:', error);
-            if (mounted) {
-              navigate('/');
-              setCheckingAuth(false);
-            }
+            navigate('/');
           }
-        } else if (mounted) {
-          console.log('🔍 Auth: No active session found');
+          
+          // Always clear loading state after redirect
           setCheckingAuth(false);
         }
       } catch (error) {
@@ -82,14 +97,6 @@ const Auth = () => {
         }
       }
     };
-
-    // Check if this is a password reset flow
-    const type = searchParams.get('type');
-    if (type === 'recovery') {
-      setShowPasswordChange(true);
-      setCheckingAuth(false);
-      return;
-    }
 
     // Check existing session
     checkAuthAndRedirect();
@@ -102,7 +109,6 @@ const Auth = () => {
       
       if (session?.user && event === 'SIGNED_IN') {
         setCurrentUser(session.user);
-        // Check admin status and redirect - but always clear loading state
         try {
           const { data: roleData } = await supabase
             .from('user_roles')
@@ -119,9 +125,8 @@ const Auth = () => {
         } catch (error) {
           console.error('❌ Auth: Error checking role on auth change:', error);
           navigate('/');
-        } finally {
-          setCheckingAuth(false);
         }
+        setCheckingAuth(false);
       } else if (!session?.user && event === 'SIGNED_OUT') {
         setCurrentUser(null);
         setCheckingAuth(false);

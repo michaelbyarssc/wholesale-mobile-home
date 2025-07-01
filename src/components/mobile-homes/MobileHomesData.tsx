@@ -21,7 +21,9 @@ export const useMobileHomesData = () => {
       console.log('🔍 Starting mobile homes fetch...');
       
       try {
-        console.log('🔍 Making query to mobile_homes table...');
+        console.log('🔍 About to make Supabase query...');
+        console.log('🔍 Current auth state:', await supabase.auth.getUser());
+        
         const { data, error } = await supabase
           .from('mobile_homes')
           .select('*')
@@ -29,8 +31,8 @@ export const useMobileHomesData = () => {
           .order('display_order', { ascending: true });
         
         console.log('🔍 Query completed. Error:', error);
+        console.log('🔍 Query completed. Data:', data);
         console.log('🔍 Query completed. Data length:', data?.length || 0);
-        console.log('🔍 Query completed. First row:', data?.[0]);
         
         if (error) {
           console.error('🔍 Detailed error from Supabase:', {

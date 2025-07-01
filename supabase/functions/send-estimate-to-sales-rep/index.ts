@@ -8,8 +8,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-const resend = new Resend(Deno.env.get('RESEND_API_KEY'))
-
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -17,30 +15,53 @@ serve(async (req) => {
   }
 
   try {
+    console.log('Processing estimate request...')
+    
+    const requestBody = await req.json()
+    console.log('Request body received:', JSON.stringify(requestBody, null, 2))
+
     const {
       cart_items,
       total_amount,
       sales_rep_email
-    } = await req.json()
+    } = requestBody
+
+    if (!cart_items || !Array.isArray(cart_items) || cart_items.length === 0) {
+      throw new Error('No cart items provided')
+    }
+
+    if (!total_amount) {
+      throw new Error('No total amount provided')
+    }
+
+    if (!sales_rep_email) {
+      throw new Error('No sales rep email provided')
+    }
 
     console.log('Processing estimate for sales rep:', {
-      itemCount: cart_items?.length,
+      itemCount: cart_items.length,
       totalAmount: total_amount,
       salesRepEmail: sales_rep_email
     })
 
-    // Initialize Supabase client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    const supabase = createClient(supabaseUrl, supabaseKey)
+    // Check if Resend API key is available
+    const resendApiKey = Deno.env.get('RESEND_API_KEY')
+    if (!resendApiKey) {
+      throw new Error('RESEND_API_KEY not configured')
+    }
+
+    const resend = new Resend(resendApiKey)
 
     // Format cart items for email
     let cartSummary = 'Cart Items:\n\n'
     
     for (const item of cart_items) {
-      const homeName = item.mobileHome.display_name || `${item.mobileHome.manufacturer} ${item.mobileHome.series} ${item.mobileHome.model}`
+      const homeName = item.mobileHome?.display_name || 
+                      item.mobileHome?.model || 
+                      `${item.mobileHome?.manufacturer || ''} ${item.mobileHome?.series || ''} ${item.mobileHome?.model || ''}`.trim()
+      
       cartSummary += `Mobile Home: ${homeName}\n`
-      cartSummary += `Price: $${item.mobileHome.price || item.mobileHome.cost}\n`
+      cartSummary += `Price: $${(item.mobileHome?.price || item.mobileHome?.cost || 0).toLocaleString()}\n`
       
       if (item.selectedServices && item.selectedServices.length > 0) {
         cartSummary += `Selected Services: ${item.selectedServices.length} service(s)\n`
@@ -58,27 +79,29 @@ New Estimate Request from Customer
 
 ${cartSummary}
 
-Total Amount: $${total_amount}
+Total Amount: $${total_amount.toLocaleString()}
 
 Customer is ready to discuss this estimate. Please contact them as soon as possible.
 
 Generated: ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}
     `
 
+    console.log('Sending email with content:', emailContent)
+
     // Send email to sales representative
     const emailResult = await resend.emails.send({
       from: 'Wholesale Homes of the Carolinas <onboarding@resend.dev>',
       to: [sales_rep_email],
-      subject: `New Customer Estimate Request - $${total_amount}`,
+      subject: `New Customer Estimate Request - $${total_amount.toLocaleString()}`,
       html: `
         <h2>New Estimate Request from Customer</h2>
-        <pre style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; font-family: monospace;">${emailContent}</pre>
+        <pre style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; font-family: monospace; white-space: pre-wrap;">${emailContent}</pre>
         <p><strong>Action Required:</strong> Please contact the customer as soon as possible to discuss this estimate.</p>
         <p>Best regards,<br>Wholesale Homes of the Carolinas System</p>
       `,
     })
 
-    console.log('Email sent to sales rep:', emailResult)
+    console.log('Email sent successfully:', emailResult)
 
     return new Response(
       JSON.stringify({ 
@@ -92,12 +115,15 @@ Generated: ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString
       },
     )
   } catch (error) {
-    console.error('Error in send-estimate-to-sales-rep:', error)
+    console.error('Error in send-estimate-to-sales-rep function:', error)
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        success: false,
+        error: error.message || 'Unknown error occurred'
+      }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 400,
+        status: 500,
       },
     )
   }

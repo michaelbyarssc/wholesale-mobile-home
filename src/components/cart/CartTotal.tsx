@@ -56,6 +56,8 @@ export const CartTotal = ({
         return;
       }
 
+      console.log('🔍 CartTotal: Sending cart items to sales rep:', cartItems);
+
       // Send estimate to sales representative
       const { data, error } = await supabase.functions.invoke('send-estimate-to-sales-rep', {
         body: {
@@ -65,11 +67,24 @@ export const CartTotal = ({
         }
       });
 
+      console.log('🔍 CartTotal: Function response:', { data, error });
+
       if (error) {
-        console.error('Error sending estimate to sales rep:', error);
+        console.error('🔍 CartTotal: Supabase function error:', error);
         toast({
           title: "Error",
-          description: "Failed to send estimate to sales representative. Please try again.",
+          description: `Failed to send estimate: ${error.message || 'Unknown error'}. Please try again.`,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Check if the function returned an error in the data
+      if (data && !data.success) {
+        console.error('🔍 CartTotal: Function returned error:', data.error);
+        toast({
+          title: "Error",
+          description: `Failed to send estimate: ${data.error || 'Unknown error'}. Please try again.`,
           variant: "destructive",
         });
         return;
@@ -92,7 +107,7 @@ export const CartTotal = ({
       console.error('🔍 CartTotal: Error sending to sales rep:', error);
       toast({
         title: "Error",
-        description: "Failed to send estimate to sales representative. Please try again.",
+        description: `Failed to send estimate: ${error.message || 'Unknown error'}. Please try again.`,
         variant: "destructive",
       });
     }

@@ -81,7 +81,7 @@ export const CartTotal = ({
             className="bg-green-600 hover:bg-green-700"
           >
             <Receipt className="h-4 w-4 mr-2" />
-            Convert to Estimate
+            Send Estimate to my sales representative
           </Button>
           <Button onClick={handleCloseCart}>
             Close Cart

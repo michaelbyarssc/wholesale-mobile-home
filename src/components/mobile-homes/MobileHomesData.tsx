@@ -21,46 +21,37 @@ export const useMobileHomesData = () => {
       console.log('🔍 Starting mobile homes fetch...');
       
       try {
-        console.log('🔍 About to make Supabase query...');
-        console.log('🔍 Current auth state:', await supabase.auth.getUser());
-        
         const { data, error } = await supabase
           .from('mobile_homes')
           .select('*')
           .eq('active', true)
           .order('display_order', { ascending: true });
         
-        console.log('🔍 Query completed. Error:', error);
-        console.log('🔍 Query completed. Data:', data);
-        console.log('🔍 Query completed. Data length:', data?.length || 0);
+        console.log('🔍 Supabase response - Error:', error);
+        console.log('🔍 Supabase response - Data count:', data?.length || 0);
         
         if (error) {
-          console.error('🔍 Detailed error from Supabase:', {
-            message: error.message,
-            details: error.details,
-            hint: error.hint,
-            code: error.code
-          });
+          console.error('🔍 Database error:', error);
           throw error;
         }
         
-        console.log('🔍 Mobile homes fetched successfully:', data?.length || 0);
+        console.log('🔍 Successfully fetched mobile homes:', data?.length || 0);
         return data as MobileHome[];
       } catch (err) {
-        console.error('🔍 Catch block error:', err);
+        console.error('🔍 Fetch error:', err);
         throw err;
       }
     },
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
-    retry: 3,
+    retry: 1,
     retryDelay: 1000,
   });
 
   const { data: homeImages = [], isLoading: imagesLoading } = useQuery({
     queryKey: ['mobile-home-images'],
     queryFn: async () => {
-      console.log('🔍 Starting mobile home images fetch...');
+      console.log('🔍 Starting images fetch...');
       try {
         const { data, error } = await supabase
           .from('mobile_home_images')
@@ -69,26 +60,19 @@ export const useMobileHomesData = () => {
           .order('image_type')
           .order('display_order');
         
-        console.log('🔍 Images query completed. Error:', error);
-        console.log('🔍 Images query completed. Data length:', data?.length || 0);
-        
         if (error) {
-          console.error('🔍 Detailed images error from Supabase:', {
-            message: error.message,
-            details: error.details,
-            hint: error.hint,
-            code: error.code
-          });
+          console.error('🔍 Images error:', error);
           throw error;
         }
-        console.log('🔍 Mobile home images fetched:', data?.length || 0);
+        
+        console.log('🔍 Images fetched:', data?.length || 0);
         return data as MobileHomeImage[];
       } catch (err) {
-        console.error('🔍 Images catch block error:', err);
+        console.error('🔍 Images fetch error:', err);
         throw err;
       }
     },
-    retry: 3,
+    retry: 1,
     retryDelay: 1000,
   });
 

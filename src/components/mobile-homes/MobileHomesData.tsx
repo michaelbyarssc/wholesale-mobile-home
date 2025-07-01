@@ -19,8 +19,6 @@ export const useMobileHomesData = () => {
     queryKey: ['public-mobile-homes'],
     queryFn: async () => {
       console.log('🔍 Starting mobile homes fetch...');
-      console.log('🔍 Supabase client URL:', supabase.supabaseUrl);
-      console.log('🔍 Supabase client key:', supabase.supabaseKey.substring(0, 20) + '...');
       
       try {
         console.log('🔍 Making query to mobile_homes table...');

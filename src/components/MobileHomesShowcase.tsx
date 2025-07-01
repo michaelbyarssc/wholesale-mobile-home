@@ -71,21 +71,6 @@ export const MobileHomesShowcase = ({
       addDebugInfo('🔍 Starting mobile homes fetch...');
       
       try {
-        // Test basic connection
-        addDebugInfo('🔍 Testing basic database connection...');
-        const { data: testData, error: testError } = await supabase
-          .from('mobile_homes')
-          .select('count')
-          .limit(1);
-        
-        if (testError) {
-          addDebugInfo(`🔍 Connection test failed: ${testError.message}`);
-          throw new Error(`Database connection failed: ${testError.message}`);
-        }
-        
-        addDebugInfo('🔍 Connection test passed');
-
-        // Fetch actual data
         addDebugInfo('🔍 Fetching mobile homes data...');
         const { data, error, status } = await supabase
           .from('mobile_homes')
@@ -493,7 +478,7 @@ export const MobileHomesShowcase = ({
   }
 
   return (
-    <section className="py-20 bg-amber-50">
+    <section className="py-20 bg-amber-50" id="mobile-homes">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
           <h3 className="text-3xl font-bold text-gray-900 mb-4">

@@ -103,10 +103,21 @@ export const UserForm = ({ onUserCreated }: UserFormProps) => {
         }
       });
 
-      if (error) throw error;
+      console.log('Edge function response:', { data, error });
 
-      if (data.error) {
+      if (error) {
+        console.error('Edge function error:', error);
+        throw new Error(`Function error: ${error.message || 'Unknown error'}`);
+      }
+
+      if (data?.error) {
+        console.error('Edge function returned error:', data.error);
         throw new Error(data.error);
+      }
+
+      if (!data?.success) {
+        console.error('Edge function did not return success:', data);
+        throw new Error('User creation failed - no success response');
       }
 
       console.log('User created successfully:', data);
@@ -126,9 +137,17 @@ export const UserForm = ({ onUserCreated }: UserFormProps) => {
       onUserCreated();
     } catch (error: any) {
       console.error('Error creating user:', error);
+      
+      let errorMessage = 'Failed to create user';
+      if (error.message.includes('Function error:')) {
+        errorMessage = error.message.replace('Function error: ', '');
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       toast({
         title: "Error",
-        description: error.message || "Failed to create user",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {

@@ -40,6 +40,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Verify the requesting user is an admin
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
+      console.error('No authorization header provided');
       return new Response(
         JSON.stringify({ error: 'Authorization header required' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -50,35 +51,53 @@ const handler = async (req: Request): Promise<Response> => {
     const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
     
     if (authError || !user) {
+      console.error('Auth error:', authError);
       return new Response(
         JSON.stringify({ error: 'Invalid authorization' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Check requesting user's role
-    const { data: requestingUserRole, error: roleError } = await supabaseAdmin
+    console.log('Admin user authenticated:', user.id);
+
+    // Check requesting user's role - get all roles for the user
+    const { data: requestingUserRoles, error: roleError } = await supabaseAdmin
       .from('user_roles')
       .select('role')
-      .eq('user_id', user.id)
-      .single();
+      .eq('user_id', user.id);
 
-    if (roleError || !requestingUserRole) {
+    if (roleError) {
+      console.error('Error fetching user roles:', roleError);
       return new Response(
         JSON.stringify({ error: 'Failed to verify user role' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const requestingUserRoleValue = requestingUserRole.role;
+    console.log('Requesting user roles:', requestingUserRoles);
+
+    if (!requestingUserRoles || requestingUserRoles.length === 0) {
+      console.error('User has no roles assigned');
+      return new Response(
+        JSON.stringify({ error: 'User has no admin privileges' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const userRoles = requestingUserRoles.map(r => r.role);
+    console.log('User roles:', userRoles);
 
     // Check if requesting user has admin privileges
-    if (!['admin', 'super_admin'].includes(requestingUserRoleValue)) {
+    if (!userRoles.some(role => ['admin', 'super_admin'].includes(role))) {
+      console.error('User does not have admin privileges');
       return new Response(
         JSON.stringify({ error: 'Admin privileges required' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    const isSuperAdmin = userRoles.includes('super_admin');
+    console.log('User is super admin:', isSuperAdmin);
 
     const { email, password, first_name, last_name, phone_number, role, markup_percentage, created_by }: CreateUserRequest = await req.json();
 
@@ -90,14 +109,14 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Prevent regular admins from creating other admins
-    if (role === 'admin' && requestingUserRoleValue !== 'super_admin') {
+    if (role === 'admin' && !isSuperAdmin) {
       return new Response(
         JSON.stringify({ error: 'Only super admins can create admin users' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log('Creating user:', { email, first_name, last_name, phone_number, role: role || 'user', markup_percentage: markup_percentage || 30, created_by: user.id });
+    console.log('Creating user with details:', { email, first_name, last_name, phone_number, role: role || 'user', markup_percentage: markup_percentage || 30, created_by: user.id });
 
     // Create user using admin API
     const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
@@ -120,6 +139,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     if (!newUser.user) {
+      console.error('User creation failed - no user returned');
       return new Response(
         JSON.stringify({ error: 'Failed to create user' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -130,7 +150,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Create profile with automatic approval since created by admin
     const createdByUserId = created_by || user.id;
-    console.log('Setting created_by to:', createdByUserId, 'and auto-approving user');
+    console.log('Creating profile with created_by:', createdByUserId, 'and auto-approving user');
     
     const { error: profileError } = await supabaseAdmin
       .from('profiles')
@@ -148,10 +168,10 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (profileError) {
       console.error('Error creating profile:', profileError);
-      return new Response(
-        JSON.stringify({ error: 'Failed to create user profile' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      // Don't fail the entire request, but log the error
+      // The user was created, we just need to handle the profile separately
+    } else {
+      console.log('Profile created successfully with auto-approval');
     }
 
     // Assign role - default to 'user' if not specified
@@ -164,6 +184,9 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (roleInsertError) {
       console.error('Error assigning role:', roleInsertError);
+      // Don't fail the request, but log the error
+    } else {
+      console.log('Role assigned successfully:', role || 'user');
     }
 
     // Create customer markup - default to 30% if not specified
@@ -177,6 +200,9 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (markupError) {
       console.error('Error creating markup:', markupError);
+      // Don't fail the request, but log the error
+    } else {
+      console.log('Markup created successfully:', markup_percentage || 30);
     }
 
     // Log admin action
@@ -197,6 +223,7 @@ const handler = async (req: Request): Promise<Response> => {
           approved: true 
         }
       });
+      console.log('Admin action logged successfully');
     } catch (auditError) {
       console.error('Failed to log admin action:', auditError);
       // Don't fail the request if audit logging fails
@@ -228,7 +255,7 @@ const handler = async (req: Request): Promise<Response> => {
   } catch (error: any) {
     console.error('Error in admin-create-user function:', error);
     return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
+      JSON.stringify({ error: 'Internal server error: ' + error.message }),
       {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }

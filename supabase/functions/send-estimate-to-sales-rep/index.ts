@@ -53,6 +53,20 @@ serve(async (req) => {
       }
     }
 
+    // Get customer markup for price calculations
+    let customerMarkup = 30; // Default markup
+    if (user_id) {
+      const { data: markupData, error: markupError } = await supabase
+        .from('customer_markups')
+        .select('markup_percentage')
+        .eq('user_id', user_id)
+        .maybeSingle()
+
+      if (markupData && !markupError) {
+        customerMarkup = markupData.markup_percentage || 30
+      }
+    }
+
     // Get all service IDs from cart items
     const allServiceIds = cart_items.reduce((acc: string[], item: any) => {
       return [...acc, ...(item.selectedServices || [])]
@@ -93,6 +107,20 @@ serve(async (req) => {
       }
     }
 
+    // Helper function to calculate mobile home display price (matches website display)
+    const calculateMobileHomePrice = (home: any) => {
+      if (!home.price) return 0
+      
+      // Pricing 1: Internal price + minimum profit
+      const pricing1 = home.price + (home.minimum_profit || 0)
+      
+      // Pricing 2: Internal price + markup %
+      const pricing2 = home.price * (1 + customerMarkup / 100)
+      
+      // Use the higher of the two prices (same logic as website)
+      return Math.max(pricing1, pricing2)
+    }
+
     // Build email content
     let emailContent = `
 <h2>New Cart Estimate Request</h2>
@@ -102,6 +130,7 @@ serve(async (req) => {
   <li><strong>Name:</strong> ${customerInfo.name}</li>
   <li><strong>Email:</strong> ${customerInfo.email}</li>
   <li><strong>Phone:</strong> ${customerInfo.phone}</li>
+  <li><strong>Customer Markup:</strong> ${customerMarkup}%</li>
 </ul>
 
 <h3>Cart Details:</h3>
@@ -113,7 +142,9 @@ serve(async (req) => {
       const homeName = home.display_name || `${home.manufacturer} ${home.series} ${home.model}`
       const homeSize = home.square_footage ? `${home.square_footage} sq ft` : 'N/A'
       const bedBath = `${home.bedrooms || 0} bed / ${home.bathrooms || 0} bath`
-      const homePrice = home.cost || home.price || 0
+      
+      // Use the displayed price calculation (not internal cost)
+      const displayHomePrice = calculateMobileHomePrice(home)
 
       emailContent += `
 <div style="border: 1px solid #ddd; padding: 15px; margin: 10px 0;">
@@ -121,7 +152,7 @@ serve(async (req) => {
   <ul>
     <li><strong>Size:</strong> ${homeSize}</li>
     <li><strong>Bed/Bath:</strong> ${bedBath}</li>
-    <li><strong>Home Price:</strong> $${homePrice.toLocaleString()}</li>
+    <li><strong>Home Price (Customer Price):</strong> $${displayHomePrice.toLocaleString()}</li>
   </ul>
 `
 
@@ -131,12 +162,21 @@ serve(async (req) => {
         item.selectedServices.forEach((serviceId: string) => {
           const service = servicesData.find(s => s.id === serviceId)
           if (service) {
-            // Calculate service price based on home width
+            // Calculate service price based on home width and apply markup
             const homeWidth = home.width_feet || 0
-            const isDoubleWide = homeWidth > 16
-            const servicePrice = isDoubleWide ? (service.double_wide_price || service.price) : (service.single_wide_price || service.price)
+            const isDoubleWide = homeWidth >= 16
+            let baseServicePrice = service.price || 0
             
-            emailContent += `<li><strong>${service.name}:</strong> $${servicePrice.toLocaleString()}</li>`
+            if (isDoubleWide && service.double_wide_price) {
+              baseServicePrice = service.double_wide_price
+            } else if (!isDoubleWide && service.single_wide_price) {
+              baseServicePrice = service.single_wide_price
+            }
+            
+            // Apply customer markup to service price
+            const finalServicePrice = baseServicePrice * (1 + customerMarkup / 100)
+            
+            emailContent += `<li><strong>${service.name}:</strong> $${finalServicePrice.toLocaleString()}</li>`
           }
         })
         emailContent += `</ul>`
@@ -150,15 +190,18 @@ serve(async (req) => {
           const quantity = selectedOption.quantity || 1
           
           // Calculate option price based on pricing type
-          let optionPrice = 0
+          let baseOptionPrice = 0
           if (option.pricing_type === 'per_sqft' && home.square_footage) {
-            optionPrice = (option.price_per_sqft || 0) * home.square_footage
+            baseOptionPrice = (option.price_per_sqft || 0) * home.square_footage
           } else {
             // Fixed pricing
-            optionPrice = option.cost_price || 0
+            baseOptionPrice = option.cost_price || 0
           }
           
-          const totalOptionPrice = optionPrice * quantity
+          // Apply customer markup to option price
+          const finalOptionPrice = baseOptionPrice * (1 + customerMarkup / 100)
+          const totalOptionPrice = finalOptionPrice * quantity
+          
           const displayText = quantity > 1 
             ? `<strong>${option.name}</strong> (x${quantity}): $${totalOptionPrice.toLocaleString()}` 
             : `<strong>${option.name}:</strong> $${totalOptionPrice.toLocaleString()}`
@@ -176,6 +219,7 @@ serve(async (req) => {
 
 <p>This estimate was generated from the customer's shopping cart and requires your review.</p>
 <p>Please contact the customer to discuss next steps.</p>
+<p><em>Note: All prices shown include the customer's ${customerMarkup}% markup and reflect what the customer sees on the website.</em></p>
 `
 
     console.log('🔍 send-estimate-to-sales-rep: Sending email to:', sales_rep_email)

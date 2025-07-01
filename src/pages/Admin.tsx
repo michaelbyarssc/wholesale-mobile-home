@@ -26,31 +26,56 @@ const Admin = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    console.log('Admin page: Starting authentication check');
+    
     const checkUserRole = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
+        console.log('Admin page: Session check result:', !!session);
         
         if (!session?.user) {
+          console.log('Admin page: No session found, redirecting to auth');
           navigate('/auth');
           return;
         }
 
         setUser(session.user);
-        console.log('Admin: User set:', session.user.id);
+        console.log('Admin page: User set:', session.user.id);
 
         // Check if user is super admin
-        const { data: roleData } = await supabase
+        const { data: roleData, error: roleError } = await supabase
           .from('user_roles')
           .select('role')
           .eq('user_id', session.user.id)
           .maybeSingle();
 
+        if (roleError) {
+          console.error('Admin page: Error checking user role:', roleError);
+        }
+
         const userRole = roleData?.role;
-        console.log('Admin: User role:', userRole);
-        setIsSuperAdmin(userRole === 'super_admin');
+        console.log('Admin page: User role:', userRole);
+        
+        const isAdmin = userRole === 'admin' || userRole === 'super_admin';
+        const isSuperAdminUser = userRole === 'super_admin';
+        
+        setIsSuperAdmin(isSuperAdminUser);
+        
+        if (!isAdmin) {
+          console.log('Admin page: User is not admin, redirecting to home');
+          toast({
+            title: "Access Denied",
+            description: "You don't have permission to access the admin panel.",
+            variant: "destructive",
+          });
+          navigate('/');
+          return;
+        }
+        
+        console.log('Admin page: Access granted, user role:', userRole);
         
       } catch (error) {
-        console.error('Admin: Error checking user role:', error);
+        console.error('Admin page: Error checking user role:', error);
         toast({
           title: "Error",
           description: "Failed to load admin dashboard",
@@ -65,6 +90,7 @@ const Admin = () => {
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('Admin page: Auth state changed:', event);
       if (!session?.user) {
         navigate('/auth');
       } else {
@@ -76,6 +102,7 @@ const Admin = () => {
   }, [navigate, toast]);
 
   const handleSignOut = async () => {
+    console.log('Admin page: Signing out');
     await supabase.auth.signOut();
     navigate('/');
   };

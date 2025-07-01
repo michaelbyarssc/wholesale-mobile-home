@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
@@ -27,20 +26,20 @@ const Auth = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const checkAuthAndRedirect = async () => {
-      console.log('🔍 Auth: Starting auth check...');
-      
-      try {
-        // Check if this is a password recovery flow
-        const type = searchParams.get('type');
-        if (type === 'recovery') {
-          console.log('🔍 Auth: Password recovery flow detected');
-          setShowPasswordChange(true);
-          setCheckingAuth(false);
-          return;
-        }
+    console.log('🔍 Auth: Component mounted, starting auth check...');
+    
+    // Check if this is a password recovery flow first
+    const type = searchParams.get('type');
+    if (type === 'recovery') {
+      console.log('🔍 Auth: Password recovery flow detected');
+      setShowPasswordChange(true);
+      setCheckingAuth(false);
+      return;
+    }
 
-        // Get current session
+    // Check current session
+    const checkSession = async () => {
+      try {
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
@@ -49,47 +48,11 @@ const Auth = () => {
           return;
         }
 
-        if (!session?.user) {
-          console.log('🔍 Auth: No session found - showing login form');
-          setCheckingAuth(false);
-          return;
-        }
+        if (session?.user) {
+          console.log('✅ Auth: User found, checking role and redirecting...');
+          setCurrentUser(session.user);
 
-        // User is logged in, check if they're admin and redirect
-        console.log('🔍 Auth: User is logged in, checking role...');
-        setCurrentUser(session.user);
-
-        const { data: roleData } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', session.user.id)
-          .eq('role', 'admin')
-          .single();
-
-        if (roleData) {
-          console.log('🔍 Auth: Admin user - redirecting to admin');
-          navigate('/admin');
-        } else {
-          console.log('🔍 Auth: Regular user - redirecting to home');
-          navigate('/');
-        }
-      } catch (error) {
-        console.error('❌ Auth: Error in auth check:', error);
-        setCheckingAuth(false);
-      }
-    };
-
-    checkAuthAndRedirect();
-  }, [searchParams, navigate]);
-
-  useEffect(() => {
-    // Set up auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('🔄 Auth: Auth state changed:', event, !!session?.user);
-      
-      if (session?.user && event === 'SIGNED_IN') {
-        setCurrentUser(session.user);
-        try {
+          // Check if user is admin
           const { data: roleData } = await supabase
             .from('user_roles')
             .select('role')
@@ -98,23 +61,24 @@ const Auth = () => {
             .single();
 
           if (roleData) {
+            console.log('🔍 Auth: Admin user - redirecting to admin');
             navigate('/admin');
           } else {
+            console.log('🔍 Auth: Regular user - redirecting to home');
             navigate('/');
           }
-        } catch (error) {
-          console.error('❌ Auth: Error checking role on auth change:', error);
-          navigate('/');
+        } else {
+          console.log('ℹ️ Auth: No session found - showing auth form');
+          setCheckingAuth(false);
         }
-      } else if (!session?.user && event === 'SIGNED_OUT') {
-        setCurrentUser(null);
+      } catch (error) {
+        console.error('❌ Auth: Error in session check:', error);
+        setCheckingAuth(false);
       }
-    });
-
-    return () => {
-      subscription.unsubscribe();
     };
-  }, [navigate]);
+
+    checkSession();
+  }, [searchParams, navigate]);
 
   const resetForm = () => {
     setEmail('');

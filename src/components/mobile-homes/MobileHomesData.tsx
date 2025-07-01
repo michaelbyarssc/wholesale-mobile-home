@@ -15,11 +15,10 @@ interface MobileHomeImage {
 }
 
 export const useMobileHomesData = () => {
-  // Simple query with minimal logging to avoid console flooding
   const { data: mobileHomes = [], isLoading, error, refetch } = useQuery({
-    queryKey: ['mobile-homes-simple'],
+    queryKey: ['mobile-homes'],
     queryFn: async () => {
-      console.log('📱 Fetching homes');
+      console.log('📱 Fetching mobile homes...');
       
       const { data, error } = await supabase
         .from('mobile_homes')
@@ -27,23 +26,26 @@ export const useMobileHomesData = () => {
         .eq('active', true)
         .order('display_order', { ascending: true });
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching mobile homes:', error);
+        throw error;
+      }
       
-      console.log('📱 Got homes:', data?.length || 0);
+      console.log('📱 Fetched homes:', data?.length || 0);
       return data as MobileHome[];
     },
-    staleTime: 10 * 60 * 1000, // 10 minutes
-    gcTime: 30 * 60 * 1000, // 30 minutes
-    retry: false, // No retries to avoid loops
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 15 * 60 * 1000, // 15 minutes
+    retry: 2,
     refetchOnWindowFocus: false,
-    refetchOnMount: false, // Only fetch once
-    refetchOnReconnect: false,
+    refetchOnMount: true,
+    refetchOnReconnect: true,
   });
 
   const { data: homeImages = [], isLoading: imagesLoading } = useQuery({
-    queryKey: ['mobile-home-images-simple'],
+    queryKey: ['mobile-home-images'],
     queryFn: async () => {
-      console.log('🖼️ Fetching images');
+      console.log('🖼️ Fetching mobile home images...');
       
       const { data, error } = await supabase
         .from('mobile_home_images')
@@ -52,16 +54,19 @@ export const useMobileHomesData = () => {
         .order('image_type')
         .order('display_order');
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching mobile home images:', error);
+        throw error;
+      }
       
-      console.log('🖼️ Got images:', data?.length || 0);
+      console.log('🖼️ Fetched images:', data?.length || 0);
       return data as MobileHomeImage[];
     },
     staleTime: 10 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
-    retry: false,
+    retry: 2,
     refetchOnWindowFocus: false,
-    refetchOnMount: false,
+    refetchOnMount: true,
     refetchOnReconnect: false,
   });
 

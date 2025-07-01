@@ -12,6 +12,7 @@ import { ServicesTab } from '@/components/admin/ServicesTab';
 import { SettingsTab } from '@/components/admin/SettingsTab';
 import { UserManagementTab } from '@/components/admin/UserManagementTab';
 import { AuditLogTab } from '@/components/admin/AuditLogTab';
+import { SuperAdminMarkupTab } from '@/components/admin/SuperAdminMarkupTab';
 import { Menu, X } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { HomeOptionsTab } from '@/components/admin/HomeOptionsTab';
@@ -19,6 +20,7 @@ import { HomeOptionsTab } from '@/components/admin/HomeOptionsTab';
 const Admin = () => {
   const [user, setUser] = useState<any>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
   const [debugInfo, setDebugInfo] = useState<any>({});
   const [activeTab, setActiveTab] = useState('estimates');
@@ -37,25 +39,6 @@ const Admin = () => {
       setUser(user);
       console.log('Current user:', user);
 
-      // Debug: Check if user exists in user_roles table
-      const { data: allRoles, error: allRolesError } = await supabase
-        .from('user_roles')
-        .select('*');
-      
-      console.log('All user roles:', allRoles);
-      console.log('All roles error:', allRolesError);
-
-      // Check if user is admin
-      const { data: roleData, error: roleError } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', user.id)
-        .eq('role', 'admin')
-        .single();
-
-      console.log('Role check result:', roleData);
-      console.log('Role check error:', roleError);
-
       // Check user's roles (all of them)
       const { data: userRoles, error: userRolesError } = await supabase
         .from('user_roles')
@@ -65,29 +48,33 @@ const Admin = () => {
       console.log('User roles:', userRoles);
       console.log('User roles error:', userRolesError);
 
+      const userRole = userRoles?.[0]?.role;
+      const isUserSuperAdmin = userRole === 'super_admin';
+      const isUserAdmin = userRole === 'admin' || isUserSuperAdmin;
+
       setDebugInfo({
         userId: user.id,
         userEmail: user.email,
-        allRoles,
-        roleData,
-        roleError,
         userRoles,
-        userRolesError
+        userRolesError,
+        userRole,
+        isUserSuperAdmin,
+        isUserAdmin
       });
 
-      if (!roleData) {
+      if (!isUserAdmin) {
         toast({
           title: "Access Denied",
           description: `You don't have admin privileges. Contact an administrator. User ID: ${user.id}`,
           variant: "destructive",
         });
         
-        // Don't navigate away immediately so we can see the debug info
         setLoading(false);
         return;
       }
 
-      setIsAdmin(true);
+      setIsAdmin(isUserAdmin);
+      setIsSuperAdmin(isUserSuperAdmin);
       setLoading(false);
     };
 
@@ -152,6 +139,15 @@ const Admin = () => {
           >
             Users
           </Button>
+          {isSuperAdmin && (
+            <Button
+              variant={activeTab === 'super-admin' ? 'default' : 'ghost'}
+              className="justify-start"
+              onClick={() => setActiveTab('super-admin')}
+            >
+              Super Admin
+            </Button>
+          )}
           <Button
             variant={activeTab === 'settings' ? 'default' : 'ghost'}
             className="justify-start"
@@ -254,12 +250,15 @@ const Admin = () => {
 
       <div className="container mx-auto px-4 py-4 md:py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="hidden md:grid w-full grid-cols-7">
+          <TabsList className={`hidden md:grid w-full ${isSuperAdmin ? 'grid-cols-8' : 'grid-cols-7'}`}>
             <TabsTrigger value="estimates">Estimates</TabsTrigger>
             <TabsTrigger value="mobile-homes">Mobile Homes</TabsTrigger>
             <TabsTrigger value="services">Services</TabsTrigger>
             <TabsTrigger value="home-options">Home Options</TabsTrigger>
             <TabsTrigger value="users">Users</TabsTrigger>
+            {isSuperAdmin && (
+              <TabsTrigger value="super-admin">Super Admin</TabsTrigger>
+            )}
             <TabsTrigger value="settings">Settings</TabsTrigger>
             <TabsTrigger value="audit">Audit Log</TabsTrigger>
           </TabsList>
@@ -283,6 +282,12 @@ const Admin = () => {
           <TabsContent value="users">
             <UserManagementTab />
           </TabsContent>
+
+          {isSuperAdmin && (
+            <TabsContent value="super-admin">
+              <SuperAdminMarkupTab />
+            </TabsContent>
+          )}
 
           <TabsContent value="settings">
             <SettingsTab />

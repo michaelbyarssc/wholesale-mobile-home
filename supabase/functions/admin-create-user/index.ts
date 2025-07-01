@@ -126,9 +126,9 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log('User created successfully:', newUser.user.id);
 
-    // Create profile with the creating admin's ID
+    // Create profile with automatic approval since created by admin
     const createdByUserId = created_by || user.id;
-    console.log('Setting created_by to:', createdByUserId);
+    console.log('Setting created_by to:', createdByUserId, 'and auto-approving user');
     
     const { error: profileError } = await supabaseAdmin
       .from('profiles')
@@ -183,14 +183,14 @@ const handler = async (req: Request): Promise<Response> => {
         action: 'USER_CREATED',
         table_name: 'auth.users',
         record_id: newUser.user.id,
-        new_values: { email, role: role || 'user', markup_percentage: markup_percentage || 30, created_by: createdByUserId }
+        new_values: { email, role: role || 'user', markup_percentage: markup_percentage || 30, created_by: createdByUserId, approved: true }
       });
     } catch (auditError) {
       console.error('Failed to log admin action:', auditError);
       // Don't fail the request if audit logging fails
     }
 
-    console.log('User setup completed successfully');
+    console.log('User setup completed successfully with auto-approval');
 
     return new Response(
       JSON.stringify({ 
@@ -200,7 +200,8 @@ const handler = async (req: Request): Promise<Response> => {
           email: newUser.user.email,
           role: role || 'user',
           markup_percentage: markup_percentage || 30,
-          created_by: createdByUserId
+          created_by: createdByUserId,
+          approved: true
         }
       }),
       {

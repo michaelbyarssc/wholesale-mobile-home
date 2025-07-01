@@ -87,11 +87,12 @@ export const UserManagementTab = () => {
         return;
       }
 
-      // Separate approved users, pending users (not approved and not denied), and denied users
+      // Separate approved users and pending users (not approved and not denied)
+      // Note: Users created by admins are auto-approved, so they should appear in approved users
       const approvedUsers = profileData?.filter(profile => profile.approved) || [];
       const pendingUsers = profileData?.filter(profile => !profile.approved && !profile.denied) || [];
 
-      console.log('Approved users:', approvedUsers.length);
+      console.log('Approved users (including admin-created):', approvedUsers.length);
       console.log('Pending users:', pendingUsers.length);
 
       // Fetch user roles for approved users
@@ -144,7 +145,7 @@ export const UserManagementTab = () => {
         };
       });
 
-      // Process pending users (only those not denied)
+      // Process pending users (only those not denied and not auto-approved)
       const pendingUsersData: UserProfile[] = pendingUsers.map(profile => ({
         user_id: profile.user_id,
         email: profile.email || 'No email',
@@ -159,7 +160,7 @@ export const UserManagementTab = () => {
         approved_at: null
       }));
 
-      console.log('Final approved users data:', combinedApprovedData);
+      console.log('Final approved users data (including admin-created):', combinedApprovedData);
       console.log('Final pending users data:', pendingUsersData);
 
       setUserProfiles(combinedApprovedData);

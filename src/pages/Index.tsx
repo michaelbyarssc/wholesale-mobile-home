@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MobileHomesShowcase } from '@/components/MobileHomesShowcase';
@@ -163,6 +162,27 @@ const Index = () => {
     }
   };
 
+  const handleProfileUpdated = async () => {
+    // Refetch user profile after update
+    if (user) {
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('first_name')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (error && error.code !== 'PGRST116') {
+          console.error('Index: Error fetching updated user profile:', error);
+        } else {
+          setUserProfile(data);
+        }
+      } catch (error) {
+        console.error('Index: Error fetching updated user profile:', error);
+      }
+    }
+  };
+
   console.log('Index component: About to render, isLoading:', isLoading, 'cartLoading:', cartLoading);
 
   // Now we can safely do conditional rendering since all hooks have been called
@@ -182,6 +202,7 @@ const Index = () => {
         isLoading={isLoading}
         onLogout={handleLogout}
         onToggleCart={toggleCart}
+        onProfileUpdated={handleProfileUpdated}
       />
 
       {/* Top competitive pricing message */}

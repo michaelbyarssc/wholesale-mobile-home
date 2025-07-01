@@ -7,6 +7,7 @@ import { ShoppingCart as CartIcon, LogOut, User, Lock, Menu, Phone, Mail, X } fr
 import { User as SupabaseUser } from '@supabase/supabase-js';
 import { CartItem } from '@/hooks/useShoppingCart';
 import { PasswordChangeDialog } from '@/components/auth/PasswordChangeDialog';
+import { UserSettingsDialog } from '@/components/auth/UserSettingsDialog';
 import { useBusinessInfo } from '@/hooks/useBusinessInfo';
 import {
   DropdownMenu,
@@ -24,6 +25,7 @@ interface HeaderProps {
   onLogout: () => void;
   onToggleCart: () => void;
   onChangePassword?: () => void;
+  onProfileUpdated?: () => void;
 }
 
 export const Header = ({ 
@@ -33,6 +35,7 @@ export const Header = ({
   isLoading, 
   onLogout, 
   onToggleCart,
+  onProfileUpdated,
 }: HeaderProps) => {
   const navigate = useNavigate();
   const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
@@ -43,6 +46,12 @@ export const Header = ({
 
   const handleChangePassword = () => {
     setIsPasswordDialogOpen(true);
+  };
+
+  const handleProfileUpdated = () => {
+    if (onProfileUpdated) {
+      onProfileUpdated();
+    }
   };
 
   return (
@@ -114,6 +123,13 @@ export const Header = ({
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="bg-white border border-gray-200 shadow-lg">
+                        <DropdownMenuItem asChild>
+                          <UserSettingsDialog 
+                            user={user} 
+                            userProfile={userProfile} 
+                            onProfileUpdated={handleProfileUpdated}
+                          />
+                        </DropdownMenuItem>
                         <DropdownMenuItem onClick={handleChangePassword} className="hover:bg-gray-50">
                           <Lock className="h-4 w-4 mr-2" />
                           Change Password
@@ -212,6 +228,14 @@ export const Header = ({
 
               {/* Menu Actions */}
               <div className="space-y-2 px-2 pt-2 border-t border-gray-100">
+                <UserSettingsDialog 
+                  user={user} 
+                  userProfile={userProfile} 
+                  onProfileUpdated={() => {
+                    handleProfileUpdated();
+                    setIsMobileMenuOpen(false);
+                  }}
+                />
                 <Button
                   onClick={() => {
                     handleChangePassword();

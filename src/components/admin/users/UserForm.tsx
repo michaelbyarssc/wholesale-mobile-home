@@ -88,9 +88,10 @@ export const UserForm = ({ onUserCreated }: UserFormProps) => {
         <form onSubmit={createUserDirectly} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="md:col-span-2">
-              <Label htmlFor="email">Email Address</Label>
+              <Label htmlFor="new-user-email">Email Address</Label>
               <Input
-                id="email"
+                id="new-user-email"
+                name="new-user-email"
                 type="email"
                 value={newUserEmail}
                 onChange={(e) => setNewUserEmail(e.target.value)}
@@ -99,9 +100,9 @@ export const UserForm = ({ onUserCreated }: UserFormProps) => {
               />
             </div>
             <div>
-              <Label htmlFor="role">Role</Label>
+              <Label htmlFor="new-user-role">Role</Label>
               <Select value={newUserRole} onValueChange={(value: 'admin' | 'user') => setNewUserRole(value)}>
-                <SelectTrigger>
+                <SelectTrigger id="new-user-role" name="new-user-role">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>

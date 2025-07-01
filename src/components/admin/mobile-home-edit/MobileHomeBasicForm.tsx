@@ -28,6 +28,7 @@ export const MobileHomeBasicForm = ({
         <Label htmlFor="manufacturer">Manufacturer</Label>
         <Input
           id="manufacturer"
+          name="manufacturer"
           value={formData.manufacturer || ''}
           onChange={(e) => onInputChange('manufacturer', e.target.value)}
         />
@@ -36,7 +37,7 @@ export const MobileHomeBasicForm = ({
       <div>
         <Label htmlFor="series">Series</Label>
         <Select value={formData.series} onValueChange={(value) => onInputChange('series', value)}>
-          <SelectTrigger>
+          <SelectTrigger id="series" name="series">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -50,6 +51,7 @@ export const MobileHomeBasicForm = ({
         <Label htmlFor="model">Model</Label>
         <Input
           id="model"
+          name="model"
           value={formData.model || ''}
           onChange={(e) => onInputChange('model', e.target.value)}
         />
@@ -59,6 +61,7 @@ export const MobileHomeBasicForm = ({
         <Label htmlFor="display_name">Display Name</Label>
         <Input
           id="display_name"
+          name="display_name"
           value={formData.display_name || ''}
           onChange={(e) => onInputChange('display_name', e.target.value)}
         />
@@ -74,6 +77,7 @@ export const MobileHomeBasicForm = ({
           )}
           <Input
             id="price"
+            name="price"
             type="number"
             value={formData.price || ''}
             onChange={(e) => onInputChange('price', parseFloat(e.target.value))}
@@ -92,6 +96,7 @@ export const MobileHomeBasicForm = ({
           )}
           <Input
             id="retail_price"
+            name="retail_price"
             type="number"
             value={formData.retail_price || ''}
             onChange={(e) => onInputChange('retail_price', parseFloat(e.target.value))}
@@ -113,6 +118,7 @@ export const MobileHomeBasicForm = ({
           )}
           <Input
             id="minimum_profit"
+            name="minimum_profit"
             type="number"
             value={formData.minimum_profit || ''}
             onChange={(e) => onInputChange('minimum_profit', parseFloat(e.target.value))}
@@ -125,6 +131,7 @@ export const MobileHomeBasicForm = ({
         <Label htmlFor="square_footage">Square Footage</Label>
         <Input
           id="square_footage"
+          name="square_footage"
           type="number"
           value={formData.square_footage || ''}
           onChange={(e) => onInputChange('square_footage', parseInt(e.target.value))}
@@ -136,6 +143,7 @@ export const MobileHomeBasicForm = ({
           <Label htmlFor="bedrooms">Bedrooms</Label>
           <Input
             id="bedrooms"
+            name="bedrooms"
             type="number"
             value={formData.bedrooms || ''}
             onChange={(e) => onInputChange('bedrooms', parseInt(e.target.value))}
@@ -145,6 +153,7 @@ export const MobileHomeBasicForm = ({
           <Label htmlFor="bathrooms">Bathrooms</Label>
           <Input
             id="bathrooms"
+            name="bathrooms"
             type="number"
             step="0.5"
             value={formData.bathrooms || ''}
@@ -158,6 +167,7 @@ export const MobileHomeBasicForm = ({
           <Label htmlFor="length_feet">Length (ft)</Label>
           <Input
             id="length_feet"
+            name="length_feet"
             type="number"
             value={formData.length_feet || ''}
             onChange={(e) => onInputChange('length_feet', parseInt(e.target.value))}
@@ -167,6 +177,7 @@ export const MobileHomeBasicForm = ({
           <Label htmlFor="width_feet">Width (ft)</Label>
           <Input
             id="width_feet"
+            name="width_feet"
             type="number"
             value={formData.width_feet || ''}
             onChange={(e) => onInputChange('width_feet', parseInt(e.target.value))}
@@ -178,6 +189,7 @@ export const MobileHomeBasicForm = ({
         <Label htmlFor="description">Description</Label>
         <Textarea
           id="description"
+          name="description"
           value={formData.description || ''}
           onChange={(e) => onInputChange('description', e.target.value)}
           rows={3}
@@ -188,6 +200,7 @@ export const MobileHomeBasicForm = ({
         <Label htmlFor="features">Features (one per line)</Label>
         <Textarea
           id="features"
+          name="features"
           value={features}
           onChange={(e) => onFeaturesChange(e.target.value)}
           rows={5}

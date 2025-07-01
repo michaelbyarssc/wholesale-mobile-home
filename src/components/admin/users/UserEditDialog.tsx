@@ -107,36 +107,39 @@ export const UserEditDialog = ({ profile, onUserUpdated }: UserEditDialogProps) 
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <Label htmlFor="firstName">First Name</Label>
+            <Label htmlFor="edit-firstName">First Name</Label>
             <Input
-              id="firstName"
+              id="edit-firstName"
+              name="edit-firstName"
               value={firstName}
               onChange={(e) => setFirstName(e.target.value)}
               placeholder="First name"
             />
           </div>
           <div>
-            <Label htmlFor="lastName">Last Name</Label>
+            <Label htmlFor="edit-lastName">Last Name</Label>
             <Input
-              id="lastName"
+              id="edit-lastName"
+              name="edit-lastName"
               value={lastName}
               onChange={(e) => setLastName(e.target.value)}
               placeholder="Last name"
             />
           </div>
           <div>
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="edit-email">Email</Label>
             <Input
-              id="email"
+              id="edit-email"
+              name="edit-email"
               value={profile.email}
               disabled
               className="bg-gray-100"
             />
           </div>
           <div>
-            <Label htmlFor="role">Role</Label>
+            <Label htmlFor="edit-role">Role</Label>
             <Select value={role} onValueChange={(value: 'admin' | 'user') => setRole(value)}>
-              <SelectTrigger>
+              <SelectTrigger id="edit-role" name="edit-role">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>

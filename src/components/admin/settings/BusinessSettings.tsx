@@ -45,6 +45,7 @@ export const BusinessSettings: React.FC<BusinessSettingsProps> = ({
             <Label htmlFor="business_name">Business Name</Label>
             <Input
               id="business_name"
+              name="business_name"
               value={settings.business_name || 'Wholesale Mobile Home'}
               onChange={(e) => onInputChange('business_name', e.target.value)}
               onBlur={(e) => onInputBlur('business_name', e.target.value)}
@@ -62,6 +63,7 @@ export const BusinessSettings: React.FC<BusinessSettingsProps> = ({
             <Label htmlFor="business_phone">Business Phone</Label>
             <Input
               id="business_phone"
+              name="business_phone"
               value={settings.business_phone || ''}
               onChange={(e) => onInputChange('business_phone', e.target.value)}
               onBlur={(e) => onInputBlur('business_phone', e.target.value)}
@@ -80,6 +82,7 @@ export const BusinessSettings: React.FC<BusinessSettingsProps> = ({
             <Label htmlFor="business_email">Business Email</Label>
             <Input
               id="business_email"
+              name="business_email"
               type="email"
               value={settings.business_email || ''}
               onChange={(e) => onInputChange('business_email', e.target.value)}

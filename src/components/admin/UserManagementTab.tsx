@@ -12,21 +12,58 @@ export const UserManagementTab = () => {
   const [userProfiles, setUserProfiles] = useState<UserProfile[]>([]);
   const [pendingApprovals, setPendingApprovals] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
-    fetchUserProfiles();
+    checkCurrentUserRole();
   }, []);
 
-  const fetchUserProfiles = async () => {
+  const checkCurrentUserRole = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) return;
+
+      setCurrentUser(session.user);
+
+      // Check if user is super admin
+      const { data: roleData } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', session.user.id)
+        .single();
+
+      const userIsSuperAdmin = roleData?.role === 'super_admin';
+      setIsSuperAdmin(userIsSuperAdmin);
+      
+      // Fetch user profiles after determining role
+      fetchUserProfiles(session.user.id, userIsSuperAdmin);
+    } catch (error) {
+      console.error('Error checking user role:', error);
+      toast({
+        title: "Error",
+        description: "Failed to check user permissions",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const fetchUserProfiles = async (currentUserId?: string, userIsSuperAdmin?: boolean) => {
     try {
       setLoading(true);
       console.log('Fetching user profiles...');
       
-      // Fetch all user profiles including approval status
-      const { data: profileData, error: profileError } = await supabase
+      let profileQuery = supabase
         .from('profiles')
-        .select('user_id, email, first_name, last_name, phone_number, created_at, approved, approved_at, denied');
+        .select('user_id, email, first_name, last_name, phone_number, created_at, approved, approved_at, denied, created_by');
+
+      // If not super admin, only show users created by current admin
+      if (!userIsSuperAdmin && currentUserId) {
+        profileQuery = profileQuery.eq('created_by', currentUserId);
+      }
+
+      const { data: profileData, error: profileError } = await profileQuery;
 
       if (profileError) {
         console.error('Error fetching profiles:', profileError);
@@ -111,6 +148,12 @@ export const UserManagementTab = () => {
     }
   };
 
+  const handleUserUpdated = () => {
+    if (currentUser) {
+      fetchUserProfiles(currentUser.id, isSuperAdmin);
+    }
+  };
+
   if (loading) {
     return (
       <Card>
@@ -128,11 +171,11 @@ export const UserManagementTab = () => {
       {pendingApprovals.length > 0 && (
         <PendingApprovalsCard 
           pendingUsers={pendingApprovals} 
-          onUserApproved={fetchUserProfiles} 
+          onUserApproved={handleUserUpdated} 
         />
       )}
-      <UserForm onUserCreated={fetchUserProfiles} />
-      <UserTable userProfiles={userProfiles} onUserUpdated={fetchUserProfiles} />
+      <UserForm onUserCreated={handleUserUpdated} />
+      <UserTable userProfiles={userProfiles} onUserUpdated={handleUserUpdated} />
     </div>
   );
 };

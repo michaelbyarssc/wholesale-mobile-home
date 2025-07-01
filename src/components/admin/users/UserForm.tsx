@@ -46,7 +46,8 @@ export const UserForm = ({ onUserCreated }: UserFormProps) => {
           email: newUserEmail,
           password: tempPassword,
           role: newUserRole,
-          markup_percentage: 30
+          markup_percentage: 30,
+          created_by: session.user.id // Set the created_by field
         }
       });
 

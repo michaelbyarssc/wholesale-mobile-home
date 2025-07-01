@@ -53,8 +53,13 @@ export const MobileHomesShowcase = ({
   const [activeTab, setActiveTab] = useState('');
   const [widthFilter, setWidthFilter] = useState<'all' | 'single' | 'double'>('all');
   const [selectedHomeForServices, setSelectedHomeForServices] = useState<MobileHome | null>(null);
+  const [debugInfo, setDebugInfo] = useState<string[]>([]);
   const { calculateMobileHomePrice, loading: pricingLoading } = useCustomerPricing(user);
   
+  const addDebugInfo = (message: string) => {
+    setDebugInfo(prev => [...prev, `${new Date().toLocaleTimeString()}: ${message}`]);
+  };
+
   console.log('🔍 MobileHomesShowcase render - cart items from props:', cartItems.length);
   console.log('🔍 MobileHomesShowcase - selectedHomeForServices:', selectedHomeForServices?.id);
   console.log('🔍 Current user:', user?.email);
@@ -63,57 +68,26 @@ export const MobileHomesShowcase = ({
   const { data: mobileHomes = [], isLoading, error, refetch } = useQuery({
     queryKey: ['public-mobile-homes'],
     queryFn: async () => {
-      console.log('🔍 Starting mobile homes fetch...');
-      console.log('🔍 Supabase client status:', {
-        hasClient: !!supabase,
-        authSession: await supabase.auth.getSession()
-      });
+      addDebugInfo('🔍 Starting mobile homes fetch...');
       
       try {
-        // First test basic database connection
-        console.log('🔍 Testing basic database connection...');
+        // Test basic connection
+        addDebugInfo('🔍 Testing basic database connection...');
         const { data: testData, error: testError } = await supabase
           .from('mobile_homes')
           .select('count')
           .limit(1);
         
-        console.log('🔍 Connection test result:', { 
-          success: !testError,
-          data: testData, 
-          error: testError 
-        });
-        
         if (testError) {
-          console.error('🔍 Connection test failed:', {
-            message: testError.message,
-            details: testError.details,
-            hint: testError.hint,
-            code: testError.code
-          });
+          addDebugInfo(`🔍 Connection test failed: ${testError.message}`);
           throw new Error(`Database connection failed: ${testError.message}`);
         }
-
-        // Test if table exists and get basic info
-        console.log('🔍 Testing table structure...');
-        const { data: tableInfo, error: tableError } = await supabase
-          .from('mobile_homes')
-          .select('id, model, active')
-          .limit(1);
         
-        console.log('🔍 Table structure test:', { 
-          success: !tableError,
-          data: tableInfo,
-          error: tableError 
-        });
+        addDebugInfo('🔍 Connection test passed');
 
-        if (tableError) {
-          console.error('🔍 Table structure error:', tableError);
-          throw new Error(`Table access failed: ${tableError.message}`);
-        }
-
-        // Now fetch the actual data with detailed logging
-        console.log('🔍 Fetching mobile homes data...');
-        const { data, error, status, statusText } = await supabase
+        // Fetch actual data
+        addDebugInfo('🔍 Fetching mobile homes data...');
+        const { data, error, status } = await supabase
           .from('mobile_homes')
           .select(`
             id,
@@ -142,49 +116,20 @@ export const MobileHomesShowcase = ({
           .eq('active', true)
           .order('display_order', { ascending: true });
         
-        console.log('🔍 Query response details:', { 
-          status,
-          statusText,
-          hasData: !!data,
-          dataLength: data?.length || 0,
-          hasError: !!error,
-          error: error
-        });
-        
         if (error) {
-          console.error('🔍 Query error details:', {
-            message: error.message,
-            details: error.details,
-            hint: error.hint,
-            code: error.code
-          });
+          addDebugInfo(`🔍 Query error: ${error.message}`);
           throw new Error(`Failed to fetch mobile homes: ${error.message}`);
         }
         
-        if (!data) {
-          console.warn('🔍 No data returned from query');
-          return [];
-        }
-        
-        console.log('🔍 Successfully fetched mobile homes:', {
-          count: data.length,
-          firstItem: data[0],
-          allItems: data
-        });
-        
+        addDebugInfo(`🔍 Successfully fetched ${data?.length || 0} mobile homes`);
         return data as MobileHome[];
       } catch (err: any) {
-        console.error('🔍 Mobile homes fetch failed:', {
-          error: err,
-          message: err.message,
-          stack: err.stack,
-          name: err.name
-        });
+        addDebugInfo(`🔍 Fetch failed: ${err.message}`);
         throw err;
       }
     },
     retry: (failureCount, error) => {
-      console.log('🔍 Query retry attempt:', failureCount, error?.message);
+      addDebugInfo(`🔍 Query retry attempt ${failureCount}: ${error?.message}`);
       return failureCount < 3;
     },
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
@@ -210,9 +155,8 @@ export const MobileHomesShowcase = ({
     }
   });
 
-  // Enhanced error display with more debugging info
+  // Enhanced error display with debug information
   if (error) {
-    console.error('🔍 Mobile homes query error:', error);
     return (
       <section className="py-20 bg-amber-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -223,28 +167,24 @@ export const MobileHomesShowcase = ({
             <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-4xl mx-auto">
               <p className="text-red-600 font-medium mb-2">Unable to load mobile homes</p>
               <p className="text-red-500 text-sm mb-4">
-                We're experiencing technical difficulties. Please check the details below and try refreshing the page.
+                We're experiencing technical difficulties. Debug information:
               </p>
-              <div className="space-y-2 mb-4">
+              <div className="space-y-2 mb-4 text-left">
                 <p className="text-sm"><strong>User:</strong> {user?.email || 'Not logged in'}</p>
                 <p className="text-sm"><strong>Database Connected:</strong> {supabase ? 'Yes' : 'No'}</p>
                 <p className="text-sm"><strong>Error:</strong> {error.message}</p>
+                <div className="mt-4 max-h-60 overflow-y-auto bg-gray-100 p-3 rounded text-xs">
+                  <strong>Debug Log:</strong>
+                  {debugInfo.map((info, index) => (
+                    <div key={index} className="py-1 border-b border-gray-200 last:border-b-0">
+                      {info}
+                    </div>
+                  ))}
+                </div>
               </div>
-              <Button 
-                onClick={() => refetch()} 
-                variant="outline" 
-                className="mr-2"
-              >
+              <Button onClick={() => refetch()} variant="outline">
                 Try Again
               </Button>
-              <details className="mt-4 text-left">
-                <summary className="cursor-pointer text-sm text-gray-600 hover:text-gray-800">
-                  Technical Details (Click to expand)
-                </summary>
-                <pre className="text-xs text-gray-500 mt-2 bg-gray-100 p-2 rounded overflow-auto max-h-40">
-                  {JSON.stringify(error, null, 2)}
-                </pre>
-              </details>
             </div>
           </div>
         </div>
@@ -488,15 +428,35 @@ export const MobileHomesShowcase = ({
             <h3 className="text-3xl font-bold text-gray-900 mb-4">
               Our Mobile Home Models
             </h3>
-            <div className="flex items-center justify-center space-x-2">
+            <div className="flex items-center justify-center space-x-2 mb-4">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
               <span className="text-lg">Loading our amazing mobile home models...</span>
             </div>
-            <p className="text-gray-600 mt-2">This should only take a moment</p>
-            <div className="mt-4 text-sm text-gray-500">
-              <p>User: {user?.email || 'Not logged in'}</p>
-              <p>Database Connected: {supabase ? 'Yes' : 'No'}</p>
+            <p className="text-gray-600 mb-4">This should only take a moment</p>
+            
+            {/* Debug Information Panel */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 max-w-4xl mx-auto mb-4">
+              <div className="text-sm text-left space-y-1">
+                <p><strong>User:</strong> {user?.email || 'Not logged in'}</p>
+                <p><strong>Database Connected:</strong> {supabase ? 'Yes' : 'No'}</p>
+                <p><strong>Query Status:</strong> Loading...</p>
+              </div>
+              
+              {debugInfo.length > 0 && (
+                <div className="mt-4 max-h-40 overflow-y-auto bg-white p-3 rounded text-xs">
+                  <strong>Real-time Debug Log:</strong>
+                  {debugInfo.map((info, index) => (
+                    <div key={index} className="py-1 border-b border-gray-200 last:border-b-0">
+                      {info}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
+            
+            <Button onClick={() => refetch()} variant="outline" className="mt-2">
+              Refresh
+            </Button>
           </div>
         </div>
       </section>

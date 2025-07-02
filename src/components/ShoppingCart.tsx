@@ -48,7 +48,7 @@ export const ShoppingCart = ({
   const navigate = useNavigate();
   
   console.log('🔍 ShoppingCart: User passed to pricing hook:', user?.id || 'undefined');
-  const { calculateMobileHomePrice, calculateServicePrice, calculateHomeOptionPrice } = useCustomerPricing(user);
+  const { calculateMobileHomePrice, calculateServicePrice, calculateHomeOptionPrice, calculatePrice } = useCustomerPricing(user);
 
   // Fetch services
   const { data: services = [] } = useQuery({
@@ -224,7 +224,7 @@ export const ShoppingCart = ({
                 onUpdateServices={onUpdateServices}
                 onUpdateHomeOptions={onUpdateHomeOptions}
                 onRemoveItem={handleRemoveItem}
-                calculatePrice={() => 0} // This is now handled by specific calculation functions
+                calculatePrice={calculatePrice}
                 calculateHomeOptionPrice={calculateHomeOptionPrice}
                 calculateItemTotal={calculateItemTotal}
                 getHomeName={getHomeName}

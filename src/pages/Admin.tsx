@@ -12,7 +12,6 @@ import { SettingsTab } from '@/components/admin/SettingsTab';
 import { UserManagementTab } from '@/components/admin/UserManagementTab';
 import { AuditLogTab } from '@/components/admin/AuditLogTab';
 import { SuperAdminMarkupTab } from '@/components/admin/SuperAdminMarkupTab';
-import { AdminMarkupTab } from '@/components/admin/AdminMarkupTab';
 import { Menu, X } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { HomeOptionsTab } from '@/components/admin/HomeOptionsTab';
@@ -119,7 +118,6 @@ const Admin = () => {
       'services': 'Services',
       'home-options': 'Options',
       'users': 'Users',
-      'admin-markup': 'Markup',
       'super-admin': 'Admin',
       'settings': 'Settings',
       'audit': 'Audit'
@@ -161,15 +159,6 @@ const Admin = () => {
       >
         Users
       </Button>
-      {!isSuperAdmin && (
-        <Button
-          variant={activeTab === 'admin-markup' ? 'default' : 'ghost'}
-          className={`${mobile ? 'justify-start w-full h-12 text-base' : ''} text-xs sm:text-sm`}
-          onClick={() => handleTabChange('admin-markup')}
-        >
-          Admin Markup
-        </Button>
-      )}
       {isSuperAdmin && (
         <>
           <Button
@@ -281,9 +270,8 @@ const Admin = () => {
             </TabsList>
           )}
           {!isMobile && !isSuperAdmin && (
-            <TabsList className="grid w-full grid-cols-2 h-auto p-1">
+            <TabsList className="grid w-full grid-cols-1 h-auto p-1">
               <TabsTrigger value="users" className="text-sm">Users</TabsTrigger>
-              <TabsTrigger value="admin-markup" className="text-sm">Admin Markup</TabsTrigger>
             </TabsList>
           )}
 
@@ -307,12 +295,6 @@ const Admin = () => {
           <TabsContent value="users" className="mt-2 sm:mt-4">
             <UserManagementTab />
           </TabsContent>
-
-          {!isSuperAdmin && (
-            <TabsContent value="admin-markup" className="mt-2 sm:mt-4">
-              <AdminMarkupTab />
-            </TabsContent>
-          )}
 
           {isSuperAdmin && (
             <>

@@ -105,10 +105,10 @@ export const MobileHomesShowcase = ({
   // Filter homes based on width
   const getFilteredHomes = (homes: MobileHome[]) => {
     if (widthFilter === 'single') {
-      return homes.filter(home => !home.width_feet || home.width_feet < 16);
+      return homes.filter(home => !home.width_feet || home.width_feet <= 18);
     }
     if (widthFilter === 'double') {
-      return homes.filter(home => home.width_feet && home.width_feet >= 16);
+      return homes.filter(home => home.width_feet && home.width_feet > 18);
     }
     return homes;
   };
@@ -405,7 +405,7 @@ export const MobileHomesShowcase = ({
                     : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'
                 }`}
               >
-                Single Wide ({mobileHomes.filter(h => !h.width_feet || h.width_feet < 16).length})
+                Single Wide ({mobileHomes.filter(h => !h.width_feet || h.width_feet <= 18).length})
               </button>
               <button
                 onClick={() => setWidthFilter('double')}
@@ -415,7 +415,7 @@ export const MobileHomesShowcase = ({
                     : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'
                 }`}
               >
-                Double Wide ({mobileHomes.filter(h => h.width_feet && h.width_feet >= 16).length})
+                Double Wide ({mobileHomes.filter(h => h.width_feet && h.width_feet > 18).length})
               </button>
             </div>
           </div>

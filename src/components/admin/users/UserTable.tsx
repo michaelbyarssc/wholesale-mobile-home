@@ -117,7 +117,7 @@ export const UserTable = ({ userProfiles, onUserUpdated }: UserTableProps) => {
                   <TableHead className="min-w-[200px] lg:min-w-0">User</TableHead>
                   <TableHead className="hidden sm:table-cell">Phone</TableHead>
                   {isSuperAdmin && <TableHead className="hidden lg:table-cell">Role</TableHead>}
-                  <TableHead className="hidden xl:table-cell">Markup %</TableHead>
+                  <TableHead className="hidden md:table-cell">Markup %</TableHead>
                   {isSuperAdmin && <TableHead className="hidden xl:table-cell">Created By</TableHead>}
                   <TableHead className="hidden md:table-cell">Registered</TableHead>
                   <TableHead className="text-right min-w-[120px]">Actions</TableHead>

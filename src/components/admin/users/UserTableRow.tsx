@@ -148,7 +148,7 @@ export const UserTableRow = ({ profile, onUserUpdated, mobileView = false }: Use
           {getRoleBadge(profile.role)}
         </TableCell>
       )}
-      <TableCell className="hidden xl:table-cell">
+      <TableCell className="hidden md:table-cell">
         <MarkupEditor
           userId={profile.user_id}
           currentMarkup={profile.markup_percentage || 0}

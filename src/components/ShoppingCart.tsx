@@ -46,6 +46,8 @@ export const ShoppingCart = ({
   isLoading = false
 }: ShoppingCartProps) => {
   const navigate = useNavigate();
+  
+  console.log('🔍 ShoppingCart: User passed to pricing hook:', user?.id || 'undefined');
   const { calculateMobileHomePrice, calculateServicePrice, calculateHomeOptionPrice } = useCustomerPricing(user);
 
   // Fetch services

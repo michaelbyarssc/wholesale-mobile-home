@@ -46,7 +46,7 @@ export const CartItemCard = ({
   calculateItemTotal,
   getHomeName
 }: CartItemCardProps) => {
-  const { calculateMobileHomePrice } = useCustomerPricing(null);
+  // Don't use a separate pricing hook here - use the parent's calculations
 
   const formatSize = (home: any) => {
     if (home.length_feet && home.width_feet) {
@@ -101,7 +101,15 @@ export const CartItemCard = ({
             </AlertDialog>
           </div>
           <div className="text-sm text-gray-600">
-            Base Price: {formatPrice(calculateMobileHomePrice(item.mobileHome))}
+            Base Price: {formatPrice(calculateItemTotal(item) - 
+              (item.selectedServices || []).reduce((total, serviceId) => {
+                const service = services.find(s => s.id === serviceId);
+                return service ? total + getServicePrice(serviceId) : total;
+              }, 0) -
+              (item.selectedHomeOptions || []).reduce((total, { option, quantity }) => {
+                return total + (calculateHomeOptionPrice(option, item.mobileHome.square_footage || undefined) * quantity);
+              }, 0)
+            )}
           </div>
         </CardHeader>
         

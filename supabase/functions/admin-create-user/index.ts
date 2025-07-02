@@ -95,7 +95,7 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    const isSuperAdmin = userRoles.includes('super_admin');
+    const isSuperAdmin = userRoles.some(role => role === 'super_admin');
     console.log('User is super admin:', isSuperAdmin);
 
     const { email, password, first_name, last_name, phone_number, role, markup_percentage, created_by }: CreateUserRequest = await req.json();

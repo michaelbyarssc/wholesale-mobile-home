@@ -6,8 +6,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Percent, Settings } from 'lucide-react';
+import { Percent, Settings, Users } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
+import { CustomerMarkupTab } from './CustomerMarkupTab';
 
 interface SuperAdminMarkup {
   id: string;
@@ -194,6 +195,23 @@ export const SuperAdminMarkupTab = () => {
               </div>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Users className="h-5 w-5" />
+            <div>
+              <CardTitle>Admin User Markup Management</CardTitle>
+              <p className="text-sm text-gray-600 mt-1">
+                Manage markup percentages for individual admin users
+              </p>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <CustomerMarkupTab />
         </CardContent>
       </Card>
     </div>

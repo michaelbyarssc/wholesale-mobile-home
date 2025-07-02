@@ -47,20 +47,34 @@ export const CustomerMarkupTab = () => {
 
   const fetchCustomerMarkups = async () => {
     try {
-      const { data, error } = await supabase
+      // Fetch customer markups and profiles separately since there's no foreign key
+      const { data: markups, error: markupsError } = await supabase
         .from('customer_markups')
-        .select(`
-          *,
-          profiles!customer_markups_user_id_fkey (
-            email,
-            first_name,
-            last_name
-          )
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      setCustomerMarkups(data || []);
+      if (markupsError) throw markupsError;
+
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('user_id, email, first_name, last_name');
+
+      if (profilesError) throw profilesError;
+
+      // Match markups with profiles
+      const markupsWithProfiles = (markups || []).map(markup => {
+        const profile = profiles?.find(p => p.user_id === markup.user_id);
+        return {
+          ...markup,
+          profile: profile ? {
+            email: profile.email,
+            first_name: profile.first_name,
+            last_name: profile.last_name
+          } : null
+        };
+      });
+
+      setCustomerMarkups(markupsWithProfiles);
     } catch (error: any) {
       console.error('Error fetching customer markups:', error);
       toast({

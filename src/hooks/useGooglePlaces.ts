@@ -78,12 +78,18 @@ export const useGooglePlaces = () => {
     autocomplete.addListener('place_changed', () => {
       const place = autocomplete.getPlace();
       
+      console.log('🏠 Google Places - Place selected:', place);
+      
       if (!place.address_components) {
         console.warn('No address components found');
         return;
       }
 
+      console.log('🏠 Google Places - Address components:', place.address_components);
+      
       const placeResult = parseAddressComponents(place.address_components, place.formatted_address || '');
+      console.log('🏠 Google Places - Parsed result:', placeResult);
+      
       onPlaceSelect(placeResult);
     });
 
@@ -100,8 +106,12 @@ export const useGooglePlaces = () => {
     let state = '';
     let zipCode = '';
 
+    console.log('🏠 Parsing components:', components);
+
     components.forEach((component) => {
       const types = component.types;
+      
+      console.log(`🏠 Component: ${component.long_name} - Types:`, types);
       
       if (types.includes('street_number')) {
         street = component.long_name + ' ';
@@ -116,13 +126,16 @@ export const useGooglePlaces = () => {
       }
     });
 
-    return {
+    const result = {
       street: street.trim(),
       city,
       state,
       zipCode,
       formattedAddress
     };
+    
+    console.log('🏠 Final parsed result:', result);
+    return result;
   };
 
   const clearAutocomplete = () => {

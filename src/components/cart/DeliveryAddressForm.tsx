@@ -35,12 +35,14 @@ export const DeliveryAddressForm = ({
       const autocomplete = initializeAutocomplete(
         streetInputRef.current,
         (place) => {
+          console.log('🏠 DeliveryAddressForm - Received place:', place);
           setFormData({
             street: place.street,
             city: place.city,
             state: place.state,
             zipCode: place.zipCode
           });
+          console.log('🏠 DeliveryAddressForm - Updated formData');
           // Clear any existing errors when autocomplete fills the form
           setErrors({});
         }

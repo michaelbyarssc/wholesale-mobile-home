@@ -15,6 +15,7 @@ import { ShippingCostDisplay } from './cart/ShippingCostDisplay';
 import { LoadingSpinner } from './layout/LoadingSpinner';
 import type { Database } from '@/integrations/supabase/types';
 import { DeliveryAddress } from '@/hooks/useShoppingCart';
+import { useShippingCost } from '@/hooks/useShippingCost';
 
 type HomeOption = Database['public']['Tables']['home_options']['Row'];
 
@@ -53,6 +54,7 @@ export const ShoppingCart = ({
   isLoading = false
 }: ShoppingCartProps) => {
   const navigate = useNavigate();
+  const { getShippingCost } = useShippingCost();
   
   console.log('🔍 ShoppingCart: User passed to pricing hook:', user?.id || 'undefined');
   const { calculateMobileHomePrice, calculateServicePrice, calculateHomeOptionPrice, calculatePrice } = useCustomerPricing(user);
@@ -183,6 +185,17 @@ export const ShoppingCart = ({
     }
   };
 
+  // Calculate shipping cost once for all items (they all go to same address)
+  const totalShippingCost = deliveryAddress && cartItems.length > 0 ? (() => {
+    const shippingCost = getShippingCost(cartItems[0].mobileHome, deliveryAddress);
+    console.log('🛒 ShoppingCart shipping calculation:', {
+      mobileHome: cartItems[0].mobileHome.model,
+      totalCost: shippingCost.totalCost,
+      breakdown: shippingCost.breakdown
+    });
+    return shippingCost.totalCost;
+  })() : 0;
+
   if (isLoading) {
     return (
       <Dialog open={isOpen} onOpenChange={onClose}>
@@ -261,6 +274,7 @@ export const ShoppingCart = ({
               subtotal={calculateGrandTotal()}
               deliveryAddress={deliveryAddress}
               cartItems={cartItems}
+              totalShippingCost={totalShippingCost}
               onClearCart={handleClearCart}
               onConvertToEstimate={handleConvertToEstimate}
               onCloseCart={onClose}

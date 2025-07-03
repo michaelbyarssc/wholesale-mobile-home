@@ -7,7 +7,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { DeliveryAddress } from '@/hooks/useShoppingCart';
 import { ShippingCostDisplay } from './ShippingCostDisplay';
-import { useShippingCost } from '@/hooks/useShippingCost';
 import type { Database } from '@/integrations/supabase/types';
 
 type MobileHome = Database['public']['Tables']['mobile_homes']['Row'];
@@ -16,6 +15,7 @@ interface CartTotalProps {
   subtotal: number;
   deliveryAddress: DeliveryAddress | null;
   cartItems: Array<{ mobileHome: MobileHome; [key: string]: any }>;
+  totalShippingCost: number;
   onClearCart: () => void;
   onConvertToEstimate: () => void;
   onCloseCart: () => void;
@@ -25,32 +25,14 @@ export const CartTotal = ({
   subtotal,
   deliveryAddress,
   cartItems,
+  totalShippingCost,
   onClearCart,
   onConvertToEstimate,
   onCloseCart
 }: CartTotalProps) => {
   const { toast } = useToast();
-  const { getShippingCost } = useShippingCost();
 
-  // Calculate shipping cost once for the delivery address (not per item)
-  console.log('🚛 CartTotal - Starting calculation:', {
-    hasDeliveryAddress: !!deliveryAddress,
-    cartItemsLength: cartItems.length,
-    firstItem: cartItems[0]?.mobileHome?.model
-  });
-  
-  const totalShippingCost = deliveryAddress && cartItems.length > 0 ? (() => {
-    // Use the first item's mobile home for shipping calculation since all items go to same address
-    const shippingCost = getShippingCost(cartItems[0].mobileHome, deliveryAddress);
-    console.log('🚛 CartTotal shipping calculation:', {
-      mobileHome: cartItems[0].mobileHome.model,
-      totalCost: shippingCost.totalCost,
-      breakdown: shippingCost.breakdown
-    });
-    return shippingCost.totalCost;
-  })() : 0;
-  
-  console.log('🚛 CartTotal - Final shipping cost:', totalShippingCost);
+  console.log('🚛 CartTotal - Using passed shipping cost:', totalShippingCost);
   
   // Calculate SC sales tax
   const salesTax = deliveryAddress?.state.toLowerCase() === 'sc' ? 500 : 0;

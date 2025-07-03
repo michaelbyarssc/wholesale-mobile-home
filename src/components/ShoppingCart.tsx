@@ -54,7 +54,7 @@ export const ShoppingCart = ({
   isLoading = false
 }: ShoppingCartProps) => {
   const navigate = useNavigate();
-  const { getShippingCost } = useShippingCost();
+  const { getShippingCost, calculateShippingCost } = useShippingCost();
   
   console.log('🔍 ShoppingCart: User passed to pricing hook:', user?.id || 'undefined');
   const { calculateMobileHomePrice, calculateServicePrice, calculateHomeOptionPrice, calculatePrice } = useCustomerPricing(user);
@@ -189,18 +189,23 @@ export const ShoppingCart = ({
   const totalShippingCost = useMemo(() => {
     if (!deliveryAddress || cartItems.length === 0) return 0;
     
+    // First trigger the calculation if not already done
+    calculateShippingCost(cartItems[0].mobileHome, deliveryAddress);
+    
     const shippingCost = getShippingCost(cartItems[0].mobileHome, deliveryAddress);
-    console.log('🛒 ShoppingCart shipping calculation:', {
+    console.log('🛒 ShoppingCart shipping calculation DETAILED:', {
       mobileHome: cartItems[0].mobileHome.model,
+      deliveryAddress: deliveryAddress.zipCode,
       totalCost: shippingCost.totalCost,
       breakdown: shippingCost.breakdown,
       error: shippingCost.error,
-      isCalculating: shippingCost.isCalculating
+      isCalculating: shippingCost.isCalculating,
+      rawShippingResult: shippingCost
     });
     
-    console.log('🛒 ShoppingCart - Final shipping cost being passed to CartTotal:', shippingCost.totalCost);
+    console.log('🛒 ShoppingCart - EXACT VALUE being passed to CartTotal:', shippingCost.totalCost, typeof shippingCost.totalCost);
     return shippingCost.totalCost;
-  }, [deliveryAddress, cartItems, getShippingCost]);
+  }, [deliveryAddress, cartItems, getShippingCost, calculateShippingCost]);
 
   if (isLoading) {
     return (

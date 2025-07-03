@@ -78,17 +78,19 @@ export const useGooglePlaces = () => {
     autocomplete.addListener('place_changed', () => {
       const place = autocomplete.getPlace();
       
-      console.log('🏠 Google Places - Place selected:', place);
+      // Alert for debugging on iPad
+      alert(`Place selected: ${place.formatted_address || 'No formatted address'}`);
       
       if (!place.address_components) {
-        console.warn('No address components found');
+        alert('No address components found');
         return;
       }
 
-      console.log('🏠 Google Places - Address components:', place.address_components);
+      alert(`Found ${place.address_components.length} address components`);
       
       const placeResult = parseAddressComponents(place.address_components, place.formatted_address || '');
-      console.log('🏠 Google Places - Parsed result:', placeResult);
+      
+      alert(`Parsed result: Street="${placeResult.street}" City="${placeResult.city}" State="${placeResult.state}" ZIP="${placeResult.zipCode}"`);
       
       onPlaceSelect(placeResult);
     });
@@ -106,12 +108,8 @@ export const useGooglePlaces = () => {
     let state = '';
     let zipCode = '';
 
-    console.log('🏠 Parsing components:', components);
-
     components.forEach((component) => {
       const types = component.types;
-      
-      console.log(`🏠 Component: ${component.long_name} - Types:`, types);
       
       if (types.includes('street_number')) {
         street = component.long_name + ' ';
@@ -134,7 +132,6 @@ export const useGooglePlaces = () => {
       formattedAddress
     };
     
-    console.log('🏠 Final parsed result:', result);
     return result;
   };
 

@@ -7,6 +7,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { MobileHomeBasicForm } from './mobile-home-edit/MobileHomeBasicForm';
 import { MobileHomeImageManager } from './mobile-home-edit/MobileHomeImageManager';
+import { FactoryAssignment } from './mobile-home-edit/FactoryAssignment';
 import type { Database } from '@/integrations/supabase/types';
 
 type MobileHome = Database['public']['Tables']['mobile_homes']['Row'];
@@ -23,6 +24,7 @@ export const MobileHomeEditDialog = ({ mobileHome, open, onClose, onSave }: Mobi
   const queryClient = useQueryClient();
   const [formData, setFormData] = useState<Partial<MobileHome>>({});
   const [features, setFeatures] = useState<string>('');
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (mobileHome) {
@@ -51,7 +53,30 @@ export const MobileHomeEditDialog = ({ mobileHome, open, onClose, onSave }: Mobi
   const handleSave = async () => {
     if (!mobileHome) return;
 
+    setIsSaving(true);
+    
     try {
+      // Check if mobile home has factory assignments
+      const { data: assignments, error: assignmentError } = await supabase
+        .from('mobile_home_factories')
+        .select('id')
+        .eq('mobile_home_id', mobileHome.id)
+        .limit(1);
+
+      if (assignmentError) {
+        throw new Error(`Failed to check factory assignments: ${assignmentError.message}`);
+      }
+
+      if (!assignments || assignments.length === 0) {
+        toast({
+          title: "Factory Assignment Required",
+          description: "You must assign at least one factory before saving this mobile home.",
+          variant: "destructive",
+        });
+        setIsSaving(false);
+        return;
+      }
+
       const featuresArray = features.split('\n').filter(f => f.trim()).map(f => f.trim());
       
       const { error } = await supabase
@@ -82,9 +107,11 @@ export const MobileHomeEditDialog = ({ mobileHome, open, onClose, onSave }: Mobi
       console.error('Error updating mobile home:', error);
       toast({
         title: "Error",
-        description: "Failed to update mobile home.",
+        description: error.message || "Failed to update mobile home.",
         variant: "destructive",
       });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -97,9 +124,9 @@ export const MobileHomeEditDialog = ({ mobileHome, open, onClose, onSave }: Mobi
           <DialogTitle>Edit Mobile Home: {mobileHome.manufacturer} {mobileHome.model}</DialogTitle>
         </DialogHeader>
         
-        <div className="grid grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column - Basic Info */}
-          <div>
+          <div className="lg:col-span-1">
             <MobileHomeBasicForm
               formData={formData}
               features={features}
@@ -108,18 +135,23 @@ export const MobileHomeEditDialog = ({ mobileHome, open, onClose, onSave }: Mobi
             />
           </div>
 
+          {/* Middle Column - Factory Assignment */}
+          <div className="lg:col-span-1">
+            <FactoryAssignment mobileHomeId={mobileHome.id} />
+          </div>
+
           {/* Right Column - Images */}
-          <div>
+          <div className="lg:col-span-1">
             <MobileHomeImageManager mobileHome={mobileHome} />
           </div>
         </div>
 
         <div className="flex justify-end space-x-2 mt-6">
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" onClick={onClose} disabled={isSaving}>
             Cancel
           </Button>
-          <Button onClick={handleSave}>
-            Save Changes
+          <Button onClick={handleSave} disabled={isSaving}>
+            {isSaving ? 'Saving...' : 'Save Changes'}
           </Button>
         </div>
       </DialogContent>

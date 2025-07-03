@@ -3,16 +3,18 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { MobileHomeEditDialog } from './MobileHomeEditDialog';
 import { MobileHomesDragDrop } from './MobileHomesDragDrop';
+import { FactoriesTab } from './FactoriesTab';
 import { formatPrice } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerTrigger } from '@/components/ui/drawer';
-import { Plus } from 'lucide-react';
+import { Plus, Home, Factory } from 'lucide-react';
 import type { Database } from '@/integrations/supabase/types';
 
 type MobileHome = Database['public']['Tables']['mobile_homes']['Row'];
@@ -21,7 +23,9 @@ type MobileHomeInsert = Database['public']['Tables']['mobile_homes']['Insert'];
 // Extract AddFormContent as a separate component outside the main component
 const AddFormContent = React.memo(({ 
   formData, 
+  selectedFactories,
   onInputChange, 
+  onFactorySelectionChange,
   onSubmit 
 }: {
   formData: {
@@ -33,83 +37,151 @@ const AddFormContent = React.memo(({
     retail_price: string;
     minimum_profit: string;
   };
+  selectedFactories: string[];
   onInputChange: (field: string, value: string) => void;
+  onFactorySelectionChange: (factoryIds: string[]) => void;
   onSubmit: (e: React.FormEvent) => void;
-}) => (
-  <form onSubmit={onSubmit} className="space-y-4 p-4">
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-      <div>
-        <Label htmlFor="manufacturer">Manufacturer</Label>
-        <Input
-          id="manufacturer"
-          value={formData.manufacturer}
-          onChange={(e) => onInputChange('manufacturer', e.target.value)}
-          required
-        />
+}) => {
+  const { data: factories = [] } = useQuery({
+    queryKey: ['factories'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('factories')
+        .select('*')
+        .order('name');
+      
+      if (error) throw error;
+      return data;
+    }
+  });
+
+  const handleFactoryToggle = (factoryId: string) => {
+    const newSelection = selectedFactories.includes(factoryId)
+      ? selectedFactories.filter(id => id !== factoryId)
+      : [...selectedFactories, factoryId];
+    onFactorySelectionChange(newSelection);
+  };
+  return (
+    <form onSubmit={onSubmit} className="space-y-4 p-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <Label htmlFor="manufacturer">Manufacturer</Label>
+          <Input
+            id="manufacturer"
+            value={formData.manufacturer}
+            onChange={(e) => onInputChange('manufacturer', e.target.value)}
+            required
+          />
+        </div>
+        <div>
+          <Label htmlFor="series">Series</Label>
+          <Input
+            id="series"
+            value={formData.series}
+            onChange={(e) => onInputChange('series', e.target.value)}
+            placeholder="Enter series name (e.g., Tru, Epic, Classic)"
+            required
+          />
+        </div>
+        <div>
+          <Label htmlFor="model">Model</Label>
+          <Input
+            id="model"
+            value={formData.model}
+            onChange={(e) => onInputChange('model', e.target.value)}
+            required
+          />
+        </div>
+        <div>
+          <Label htmlFor="display_name">Display Name (e.g., Bliss, Delight, Elation)</Label>
+          <Input
+            id="display_name"
+            value={formData.display_name}
+            onChange={(e) => onInputChange('display_name', e.target.value)}
+            placeholder="Enter OwnTru model name"
+            required
+          />
+        </div>
+        <div>
+          <Label htmlFor="price">Cost (Internal Price)</Label>
+          <Input
+            id="price"
+            type="number"
+            value={formData.price}
+            onChange={(e) => onInputChange('price', e.target.value)}
+            required
+          />
+        </div>
+        <div>
+          <Label htmlFor="retail_price">Retail Price (Public Display)</Label>
+          <Input
+            id="retail_price"
+            type="number"
+            value={formData.retail_price}
+            onChange={(e) => onInputChange('retail_price', e.target.value)}
+            placeholder="Enter retail price for public display"
+          />
+        </div>
+        <div className="sm:col-span-2">
+          <Label htmlFor="minimum_profit">Minimum Profit per Home</Label>
+          <Input
+            id="minimum_profit"
+            type="number"
+            value={formData.minimum_profit}
+            onChange={(e) => onInputChange('minimum_profit', e.target.value)}
+            placeholder="0"
+          />
+        </div>
+        
+        {/* Factory Selection */}
+        <div className="sm:col-span-2">
+          <Label className="text-base font-medium">
+            Manufacturing Factories <span className="text-red-500">*</span>
+          </Label>
+          <p className="text-sm text-gray-600 mb-3">Select which factories can manufacture this mobile home</p>
+          
+          {factories.length === 0 ? (
+            <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
+              <Factory className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+              <p className="text-sm text-gray-500">No factories available</p>
+              <p className="text-xs text-gray-400">Create factories in the Factories tab first</p>
+            </div>
+          ) : (
+            <div className="space-y-2 max-h-40 overflow-y-auto border rounded-lg p-3">
+              {factories.map((factory) => (
+                <label key={factory.id} className="flex items-center space-x-3 cursor-pointer hover:bg-gray-50 p-2 rounded">
+                  <input
+                    type="checkbox"
+                    checked={selectedFactories.includes(factory.id)}
+                    onChange={() => handleFactoryToggle(factory.id)}
+                    className="rounded border-gray-300"
+                  />
+                  <div className="flex-1">
+                    <div className="font-medium text-sm">{factory.name}</div>
+                    <div className="text-xs text-gray-600">{factory.city}, {factory.state}</div>
+                  </div>
+                </label>
+              ))}
+              
+              {selectedFactories.length === 0 && (
+                <div className="text-center py-2 text-sm text-red-600">
+                  Please select at least one factory
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
-      <div>
-        <Label htmlFor="series">Series</Label>
-        <Input
-          id="series"
-          value={formData.series}
-          onChange={(e) => onInputChange('series', e.target.value)}
-          placeholder="Enter series name (e.g., Tru, Epic, Classic)"
-          required
-        />
-      </div>
-      <div>
-        <Label htmlFor="model">Model</Label>
-        <Input
-          id="model"
-          value={formData.model}
-          onChange={(e) => onInputChange('model', e.target.value)}
-          required
-        />
-      </div>
-      <div>
-        <Label htmlFor="display_name">Display Name (e.g., Bliss, Delight, Elation)</Label>
-        <Input
-          id="display_name"
-          value={formData.display_name}
-          onChange={(e) => onInputChange('display_name', e.target.value)}
-          placeholder="Enter OwnTru model name"
-          required
-        />
-      </div>
-      <div>
-        <Label htmlFor="price">Cost (Internal Price)</Label>
-        <Input
-          id="price"
-          type="number"
-          value={formData.price}
-          onChange={(e) => onInputChange('price', e.target.value)}
-          required
-        />
-      </div>
-      <div>
-        <Label htmlFor="retail_price">Retail Price (Public Display)</Label>
-        <Input
-          id="retail_price"
-          type="number"
-          value={formData.retail_price}
-          onChange={(e) => onInputChange('retail_price', e.target.value)}
-          placeholder="Enter retail price for public display"
-        />
-      </div>
-      <div className="sm:col-span-2">
-        <Label htmlFor="minimum_profit">Minimum Profit per Home</Label>
-        <Input
-          id="minimum_profit"
-          type="number"
-          value={formData.minimum_profit}
-          onChange={(e) => onInputChange('minimum_profit', e.target.value)}
-          placeholder="0"
-        />
-      </div>
-    </div>
-    <Button type="submit" className="w-full">Add Mobile Home</Button>
-  </form>
-));
+      <Button 
+        type="submit" 
+        className="w-full" 
+        disabled={selectedFactories.length === 0}
+      >
+        Add Mobile Home
+      </Button>
+    </form>
+  );
+});
 
 export const MobileHomesTab = () => {
   const { toast } = useToast();
@@ -117,6 +189,7 @@ export const MobileHomesTab = () => {
   const isMobile = useIsMobile();
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingHome, setEditingHome] = useState<MobileHome | null>(null);
+  const [selectedFactories, setSelectedFactories] = useState<string[]>([]);
   const [formData, setFormData] = useState({
     manufacturer: 'Clayton',
     series: '',
@@ -175,6 +248,15 @@ export const MobileHomesTab = () => {
       });
       return;
     }
+
+    if (selectedFactories.length === 0) {
+      toast({
+        title: "Error",
+        description: "At least one factory must be selected.",
+        variant: "destructive",
+      });
+      return;
+    }
     
     try {
       // Get the next display_order value
@@ -197,11 +279,26 @@ export const MobileHomesTab = () => {
         display_order: nextOrder
       };
 
-      const { error } = await supabase
+      const { data: newMobileHome, error } = await supabase
         .from('mobile_homes')
-        .insert(insertData);
+        .insert(insertData)
+        .select()
+        .single();
 
       if (error) throw error;
+
+      // Now create factory assignments for the new mobile home
+      const factoryAssignments = selectedFactories.map(factoryId => ({
+        mobile_home_id: newMobileHome.id,
+        factory_id: factoryId,
+        production_lead_time_days: 30 // Default lead time
+      }));
+
+      const { error: assignmentError } = await supabase
+        .from('mobile_home_factories')
+        .insert(factoryAssignments);
+
+      if (assignmentError) throw assignmentError;
 
       toast({
         title: "Success",
@@ -215,6 +312,7 @@ export const MobileHomesTab = () => {
       queryClient.invalidateQueries({ queryKey: ['mobile-homes-for-conditions'] });
 
       setFormData({ manufacturer: 'Clayton', series: '', model: '', display_name: '', price: '', retail_price: '', minimum_profit: '' });
+      setSelectedFactories([]);
       setShowAddForm(false);
       refetch();
     } catch (error) {
@@ -362,67 +460,92 @@ export const MobileHomesTab = () => {
   }
 
   return (
-    <div className="space-y-4 px-2 sm:px-0">
-      <Card>
-        <CardHeader>
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-            <CardTitle className="text-lg sm:text-xl">Mobile Homes Management</CardTitle>
-            <div className="flex gap-2 w-full sm:w-auto">
-              {isMobile ? (
-                <Drawer open={showAddForm} onOpenChange={setShowAddForm}>
-                  <DrawerTrigger asChild>
-                    <Button className="flex-1 sm:flex-none">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Home
-                    </Button>
-                  </DrawerTrigger>
-                  <DrawerContent>
-                    <DrawerHeader>
-                      <DrawerTitle>Add New Mobile Home</DrawerTitle>
-                    </DrawerHeader>
-                    <AddFormContent 
-                      formData={formData}
-                      onInputChange={handleInputChange}
-                      onSubmit={handleSubmit}
-                    />
-                  </DrawerContent>
-                </Drawer>
-              ) : (
-                <Button onClick={() => setShowAddForm(!showAddForm)}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  {showAddForm ? 'Cancel' : 'Add Mobile Home'}
-                </Button>
-              )}
-            </div>
+    <div className="space-y-4">
+      <Tabs defaultValue="homes" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="homes" className="flex items-center gap-2">
+            <Home className="h-4 w-4" />
+            Mobile Homes
+          </TabsTrigger>
+          <TabsTrigger value="factories" className="flex items-center gap-2">
+            <Factory className="h-4 w-4" />
+            Factories
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="homes" className="space-y-4">
+          <div className="px-2 sm:px-0">
+            <Card>
+              <CardHeader>
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                  <CardTitle className="text-lg sm:text-xl">Mobile Homes Management</CardTitle>
+                  <div className="flex gap-2 w-full sm:w-auto">
+                    {isMobile ? (
+                      <Drawer open={showAddForm} onOpenChange={setShowAddForm}>
+                        <DrawerTrigger asChild>
+                          <Button className="flex-1 sm:flex-none">
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add Home
+                          </Button>
+                        </DrawerTrigger>
+                        <DrawerContent>
+                          <DrawerHeader>
+                            <DrawerTitle>Add New Mobile Home</DrawerTitle>
+                          </DrawerHeader>
+                  <AddFormContent 
+                    formData={formData}
+                    selectedFactories={selectedFactories}
+                    onInputChange={handleInputChange}
+                    onFactorySelectionChange={setSelectedFactories}
+                    onSubmit={handleSubmit}
+                  />
+                        </DrawerContent>
+                      </Drawer>
+                    ) : (
+                      <Button onClick={() => setShowAddForm(!showAddForm)}>
+                        <Plus className="h-4 w-4 mr-2" />
+                        {showAddForm ? 'Cancel' : 'Add Mobile Home'}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="p-3 sm:p-6">
+                {!isMobile && showAddForm && (
+                  <div className="mb-6 border rounded-lg">
+                          <AddFormContent 
+                            formData={formData}
+                            selectedFactories={selectedFactories}
+                            onInputChange={handleInputChange}
+                            onFactorySelectionChange={setSelectedFactories}
+                            onSubmit={handleSubmit}
+                          />
+                  </div>
+                )}
+
+                <MobileHomesDragDrop
+                  mobileHomes={mobileHomes}
+                  onEdit={setEditingHome}
+                  onDelete={deleteMobileHome}
+                  onToggleActive={toggleActive}
+                  onRefetch={refetch}
+                />
+              </CardContent>
+            </Card>
+
+            <MobileHomeEditDialog
+              mobileHome={editingHome}
+              open={!!editingHome}
+              onClose={() => setEditingHome(null)}
+              onSave={refetch}
+            />
           </div>
-        </CardHeader>
-        <CardContent className="p-3 sm:p-6">
-          {!isMobile && showAddForm && (
-            <div className="mb-6 border rounded-lg">
-              <AddFormContent 
-                formData={formData}
-                onInputChange={handleInputChange}
-                onSubmit={handleSubmit}
-              />
-            </div>
-          )}
+        </TabsContent>
 
-          <MobileHomesDragDrop
-            mobileHomes={mobileHomes}
-            onEdit={setEditingHome}
-            onDelete={deleteMobileHome}
-            onToggleActive={toggleActive}
-            onRefetch={refetch}
-          />
-        </CardContent>
-      </Card>
-
-      <MobileHomeEditDialog
-        mobileHome={editingHome}
-        open={!!editingHome}
-        onClose={() => setEditingHome(null)}
-        onSave={refetch}
-      />
+        <TabsContent value="factories">
+          <FactoriesTab />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

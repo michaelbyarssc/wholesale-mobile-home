@@ -189,6 +189,45 @@ export type Database = {
           },
         ]
       }
+      factories: {
+        Row: {
+          city: string
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          phone: string | null
+          state: string
+          street_address: string
+          updated_at: string
+          zip_code: string
+        }
+        Insert: {
+          city: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          name: string
+          phone?: string | null
+          state: string
+          street_address: string
+          updated_at?: string
+          zip_code: string
+        }
+        Update: {
+          city?: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          phone?: string | null
+          state?: string
+          street_address?: string
+          updated_at?: string
+          zip_code?: string
+        }
+        Relationships: []
+      }
       home_options: {
         Row: {
           active: boolean
@@ -289,6 +328,48 @@ export type Database = {
             columns: ["estimate_id"]
             isOneToOne: false
             referencedRelation: "estimates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mobile_home_factories: {
+        Row: {
+          created_at: string
+          factory_id: string
+          id: string
+          mobile_home_id: string
+          production_lead_time_days: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          factory_id: string
+          id?: string
+          mobile_home_id: string
+          production_lead_time_days?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          factory_id?: string
+          id?: string
+          mobile_home_id?: string
+          production_lead_time_days?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mobile_home_factories_factory_id_fkey"
+            columns: ["factory_id"]
+            isOneToOne: false
+            referencedRelation: "factories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mobile_home_factories_mobile_home_id_fkey"
+            columns: ["mobile_home_id"]
+            isOneToOne: false
+            referencedRelation: "mobile_homes"
             referencedColumns: ["id"]
           },
         ]

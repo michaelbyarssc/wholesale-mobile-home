@@ -33,6 +33,12 @@ export const CartTotal = ({
   const { getShippingCost } = useShippingCost();
 
   // Calculate shipping cost once for the delivery address (not per item)
+  console.log('🚛 CartTotal - Starting calculation:', {
+    hasDeliveryAddress: !!deliveryAddress,
+    cartItemsLength: cartItems.length,
+    firstItem: cartItems[0]?.mobileHome?.model
+  });
+  
   const totalShippingCost = deliveryAddress && cartItems.length > 0 ? (() => {
     // Use the first item's mobile home for shipping calculation since all items go to same address
     const shippingCost = getShippingCost(cartItems[0].mobileHome, deliveryAddress);
@@ -43,6 +49,8 @@ export const CartTotal = ({
     });
     return shippingCost.totalCost;
   })() : 0;
+  
+  console.log('🚛 CartTotal - Final shipping cost:', totalShippingCost);
   
   // Calculate SC sales tax
   const salesTax = deliveryAddress?.state.toLowerCase() === 'sc' ? 500 : 0;

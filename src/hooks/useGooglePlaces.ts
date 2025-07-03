@@ -105,6 +105,34 @@ export const useGooglePlaces = () => {
         handlePlaceChanged(autocomplete, onPlaceSelect);
       });
 
+      // Method 5: Monitor input value changes
+      let lastValue = inputElement.value;
+      const checkForPlace = () => {
+        const currentValue = inputElement.value;
+        if (currentValue !== lastValue) {
+          lastValue = currentValue;
+          setStatus(`🔍 Value changed to: "${currentValue}"`);
+          
+          setTimeout(() => {
+            const place = autocomplete.getPlace();
+            if (place && place.address_components) {
+              setStatus('🎯 Found complete place!');
+              handlePlaceChanged(autocomplete, onPlaceSelect);
+            } else if (place) {
+              setStatus(`🔍 Incomplete place: ${place.name || place.formatted_address || 'no data'}`);
+            } else {
+              setStatus('🔍 No place data found');
+            }
+          }, 200);
+        }
+      };
+
+      // Check every 500ms
+      const interval = setInterval(checkForPlace, 500);
+      
+      // Store interval for cleanup
+      (inputElement as any)._placeCheckInterval = interval;
+
       // Method 3: Listen for input focus loss (when user clicks a suggestion)
       inputElement.addEventListener('blur', () => {
         setStatus('🎯 Input blur detected, checking autocomplete...');
@@ -203,6 +231,15 @@ export const useGooglePlaces = () => {
       window.google.maps.event.clearInstanceListeners(autocompleteRef.current);
       autocompleteRef.current = null;
     }
+    
+    // Clear the polling interval
+    const inputs = document.querySelectorAll('input[type="text"]');
+    inputs.forEach(input => {
+      if ((input as any)._placeCheckInterval) {
+        clearInterval((input as any)._placeCheckInterval);
+        (input as any)._placeCheckInterval = null;
+      }
+    });
   };
 
   return {

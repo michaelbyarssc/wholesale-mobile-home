@@ -55,6 +55,19 @@ export const DeliveryAddressForm = ({
     }
   }, [isEditing, isLoaded, initializeAutocomplete, clearAutocomplete]);
 
+  // Test function to manually populate form
+  const testFormUpdate = () => {
+    const testAddress = {
+      street: '123 Test Street',
+      city: 'Charleston', 
+      state: 'SC',
+      zipCode: '29401'
+    };
+    
+    setFormData(testAddress);
+    setErrors({});
+  };
+
   const validateForm = () => {
     const newErrors: Partial<DeliveryAddress> = {};
     
@@ -173,6 +186,13 @@ export const DeliveryAddressForm = ({
               <div className="text-xs text-blue-600 bg-blue-50 p-2 rounded border">
                 Status: {status}
               </div>
+              <button 
+                type="button"
+                onClick={testFormUpdate}
+                className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded border"
+              >
+                🧪 Test Form Update
+              </button>
             </div>
             
             <div className="grid grid-cols-2 gap-4">

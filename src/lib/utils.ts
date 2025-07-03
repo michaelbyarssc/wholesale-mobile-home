@@ -7,11 +7,11 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function formatPrice(price: number | null | undefined): string {
-  if (!price || price <= 0) return '$0';
+  if (!price || price <= 0) return '$0.00';
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(price);
 }

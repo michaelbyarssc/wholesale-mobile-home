@@ -91,23 +91,32 @@ export const useGooglePlaces = () => {
 
     setStatus('Autocomplete ready - start typing!');
 
+    // Try multiple ways to bind the event
     autocomplete.addListener('place_changed', () => {
+      setStatus('Place changed event fired!');
       const place = autocomplete.getPlace();
       
-      // Alert for debugging on iPad
-      alert(`Place selected: ${place.formatted_address || 'No formatted address'}`);
-      
       if (!place.address_components) {
-        alert('No address components found');
+        setStatus('No address components found');
         return;
       }
 
-      alert(`Found ${place.address_components.length} address components`);
-      
       const placeResult = parseAddressComponents(place.address_components, place.formatted_address || '');
+      setStatus(`Calling onPlaceSelect with: ${placeResult.city}, ${placeResult.state}`);
+      onPlaceSelect(placeResult);
+    });
+
+    // Alternative binding method
+    google.maps.event.addListener(autocomplete, 'place_changed', () => {
+      setStatus('Google event listener fired!');
+      const place = autocomplete.getPlace();
       
-      alert(`Parsed result: Street="${placeResult.street}" City="${placeResult.city}" State="${placeResult.state}" ZIP="${placeResult.zipCode}"`);
-      
+      if (!place.address_components) {
+        setStatus('No components in alt listener');
+        return;
+      }
+
+      const placeResult = parseAddressComponents(place.address_components, place.formatted_address || '');
       onPlaceSelect(placeResult);
     });
 

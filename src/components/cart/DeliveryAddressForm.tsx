@@ -1,11 +1,10 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { MapPin, Check, X } from 'lucide-react';
 import { DeliveryAddress } from '@/hooks/useShoppingCart';
-import { useGooglePlaces } from '@/hooks/useGooglePlaces';
 
 interface DeliveryAddressFormProps {
   address: DeliveryAddress | null;
@@ -27,46 +26,6 @@ export const DeliveryAddressForm = ({
   });
   const [errors, setErrors] = useState<Partial<DeliveryAddress>>({});
   const streetInputRef = useRef<HTMLInputElement>(null);
-  const { isLoaded, status, initializeAutocomplete, clearAutocomplete } = useGooglePlaces();
-
-  // Initialize Google Places autocomplete when editing starts and API is loaded
-  useEffect(() => {
-    if (isEditing && isLoaded && streetInputRef.current) {
-      const autocomplete = initializeAutocomplete(
-        streetInputRef.current,
-        (place) => {
-          // Force update the state by setting each field individually
-          setFormData(prev => ({
-            ...prev,
-            street: place.street || '',
-            city: place.city || '',
-            state: place.state || '',
-            zipCode: place.zipCode || ''
-          }));
-          
-          // Clear any existing errors
-          setErrors({});
-        }
-      );
-
-      return () => {
-        clearAutocomplete();
-      };
-    }
-  }, [isEditing, isLoaded, initializeAutocomplete, clearAutocomplete]);
-
-  // Test function to manually populate form
-  const testFormUpdate = () => {
-    const testAddress = {
-      street: '123 Test Street',
-      city: 'Charleston', 
-      state: 'SC',
-      zipCode: '29401'
-    };
-    
-    setFormData(testAddress);
-    setErrors({});
-  };
 
   const validateForm = () => {
     const newErrors: Partial<DeliveryAddress> = {};
@@ -175,7 +134,7 @@ export const DeliveryAddressForm = ({
               <Input
                 ref={streetInputRef}
                 id="street"
-                placeholder="Start typing your address..."
+                placeholder="123 Main Street"
                 value={formData.street}
                 onChange={(e) => handleInputChange('street', e.target.value)}
                 className={errors.street ? 'border-red-500' : ''}
@@ -183,16 +142,6 @@ export const DeliveryAddressForm = ({
               {errors.street && (
                 <p className="text-sm text-red-500">{errors.street}</p>
               )}
-              <div className="text-xs text-blue-600 bg-blue-50 p-2 rounded border">
-                Status: {status}
-              </div>
-              <button 
-                type="button"
-                onClick={testFormUpdate}
-                className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded border"
-              >
-                🧪 Test Form Update
-              </button>
             </div>
             
             <div className="grid grid-cols-2 gap-4">

@@ -38,8 +38,8 @@ export const useShippingCost = () => {
           baseCost: 0,
           permitCost: 0,
           hotelCost: 0,
-          flatRate: 750,
-          totalCost: 750,
+          flatRate: 1000,
+          totalCost: 1000,
           isCalculating: false,
           error: distanceResult.error || 'Failed to calculate shipping distance',
           breakdown: null
@@ -67,7 +67,7 @@ export const useShippingCost = () => {
       const hotelCost = requiresHotel ? 125 * multiplier : 0;
       
       // Flat rate
-      const flatRate = 750;
+      const flatRate = 1000;
       
       // Total cost
       const totalCost = baseCost + permitCost + hotelCost + flatRate;
@@ -94,8 +94,8 @@ export const useShippingCost = () => {
         baseCost: 0,
         permitCost: 0,
         hotelCost: 0,
-        flatRate: 750,
-        totalCost: 750,
+        flatRate: 1000,
+        totalCost: 1000,
         isCalculating: false,
         error: error instanceof Error ? error.message : 'Failed to calculate shipping cost',
         breakdown: null
@@ -115,8 +115,8 @@ export const useShippingCost = () => {
         baseCost: 0,
         permitCost: 0,
         hotelCost: 0,
-        flatRate: 750,
-        totalCost: 750,
+        flatRate: 1000,
+        totalCost: 1000,
         isCalculating: true,
         breakdown: null
       };
@@ -127,8 +127,8 @@ export const useShippingCost = () => {
         baseCost: 0,
         permitCost: 0,
         hotelCost: 0,
-        flatRate: 750,
-        totalCost: 750,
+        flatRate: 1000,
+        totalCost: 1000,
         isCalculating: false,
         error: distanceResult?.error || 'No shipping calculation available',
         breakdown: null
@@ -156,7 +156,7 @@ export const useShippingCost = () => {
     const hotelCost = requiresHotel ? 125 * multiplier : 0;
     
     // Flat rate
-    const flatRate = 750;
+    const flatRate = 1000;
     
     // Total cost
     const totalCost = baseCost + permitCost + hotelCost + flatRate;

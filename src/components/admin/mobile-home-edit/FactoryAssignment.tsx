@@ -39,9 +39,9 @@ export const FactoryAssignment = ({ mobileHomeId }: FactoryAssignmentProps) => {
     }
   });
 
-  // Fetch assigned factories for this mobile home
-  const { data: assignedFactories = [], refetch } = useQuery({
-    queryKey: ['mobile-home-factories', mobileHomeId],
+  // Fetch assigned factory for this mobile home (single factory only)
+  const { data: assignedFactory, refetch } = useQuery({
+    queryKey: ['mobile-home-factory', mobileHomeId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('mobile_home_factories')
@@ -49,43 +49,59 @@ export const FactoryAssignment = ({ mobileHomeId }: FactoryAssignmentProps) => {
           *,
           factories (*)
         `)
-        .eq('mobile_home_id', mobileHomeId);
+        .eq('mobile_home_id', mobileHomeId)
+        .single();
       
-      if (error) throw error;
+      if (error && error.code !== 'PGRST116') { // PGRST116 is "not found"
+        throw error;
+      }
       return data;
     }
   });
 
-  // Add factory assignment mutation
-  const addFactoryAssignment = useMutation({
+  // Add/Update factory assignment mutation
+  const updateFactoryAssignment = useMutation({
     mutationFn: async () => {
       if (!selectedFactoryId) {
         throw new Error('Please select a factory');
       }
 
-      const { error } = await supabase
-        .from('mobile_home_factories')
-        .insert({
-          mobile_home_id: mobileHomeId,
-          factory_id: selectedFactoryId,
-          production_lead_time_days: parseInt(leadTimeDays) || 30
-        });
-      
-      if (error) throw error;
+      // If there's an existing assignment, update it; otherwise insert new
+      if (assignedFactory) {
+        const { error } = await supabase
+          .from('mobile_home_factories')
+          .update({
+            factory_id: selectedFactoryId,
+            production_lead_time_days: parseInt(leadTimeDays) || 30
+          })
+          .eq('id', assignedFactory.id);
+        
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('mobile_home_factories')
+          .insert({
+            mobile_home_id: mobileHomeId,
+            factory_id: selectedFactoryId,
+            production_lead_time_days: parseInt(leadTimeDays) || 30
+          });
+        
+        if (error) throw error;
+      }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['mobile-home-factories', mobileHomeId] });
+      queryClient.invalidateQueries({ queryKey: ['mobile-home-factory', mobileHomeId] });
       setSelectedFactoryId('');
       setLeadTimeDays('30');
       toast({
         title: "Success",
-        description: "Factory assigned successfully"
+        description: assignedFactory ? "Factory assignment updated successfully" : "Factory assigned successfully"
       });
     },
     onError: (error: any) => {
       const message = error.message?.includes('duplicate') 
         ? 'This factory is already assigned to this mobile home'
-        : `Failed to assign factory: ${error.message}`;
+        : `Failed to ${assignedFactory ? 'update' : 'assign'} factory: ${error.message}`;
       
       toast({
         title: "Error",
@@ -97,16 +113,18 @@ export const FactoryAssignment = ({ mobileHomeId }: FactoryAssignmentProps) => {
 
   // Remove factory assignment mutation
   const removeFactoryAssignment = useMutation({
-    mutationFn: async (assignmentId: string) => {
+    mutationFn: async () => {
+      if (!assignedFactory) return;
+      
       const { error } = await supabase
         .from('mobile_home_factories')
         .delete()
-        .eq('id', assignmentId);
+        .eq('id', assignedFactory.id);
       
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['mobile-home-factories', mobileHomeId] });
+      queryClient.invalidateQueries({ queryKey: ['mobile-home-factory', mobileHomeId] });
       toast({
         title: "Success",
         description: "Factory assignment removed successfully"
@@ -123,16 +141,18 @@ export const FactoryAssignment = ({ mobileHomeId }: FactoryAssignmentProps) => {
 
   // Update lead time mutation
   const updateLeadTime = useMutation({
-    mutationFn: async ({ assignmentId, leadTime }: { assignmentId: string, leadTime: number }) => {
+    mutationFn: async (leadTime: number) => {
+      if (!assignedFactory) return;
+      
       const { error } = await supabase
         .from('mobile_home_factories')
         .update({ production_lead_time_days: leadTime })
-        .eq('id', assignmentId);
+        .eq('id', assignedFactory.id);
       
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['mobile-home-factories', mobileHomeId] });
+      queryClient.invalidateQueries({ queryKey: ['mobile-home-factory', mobileHomeId] });
       toast({
         title: "Success",
         description: "Lead time updated successfully"
@@ -148,21 +168,21 @@ export const FactoryAssignment = ({ mobileHomeId }: FactoryAssignmentProps) => {
   });
 
   const availableFactories = factories.filter(
-    factory => !assignedFactories.some(af => af.factory_id === factory.id)
+    factory => !assignedFactory || assignedFactory.factory_id !== factory.id
   );
 
-  const handleAddFactory = () => {
-    addFactoryAssignment.mutate();
+  const handleUpdateFactory = () => {
+    updateFactoryAssignment.mutate();
   };
 
-  const handleRemoveFactory = (assignmentId: string) => {
-    removeFactoryAssignment.mutate(assignmentId);
+  const handleRemoveFactory = () => {
+    removeFactoryAssignment.mutate();
   };
 
-  const handleLeadTimeChange = (assignmentId: string, newLeadTime: string) => {
+  const handleLeadTimeChange = (newLeadTime: string) => {
     const leadTimeNumber = parseInt(newLeadTime);
     if (leadTimeNumber > 0) {
-      updateLeadTime.mutate({ assignmentId, leadTime: leadTimeNumber });
+      updateLeadTime.mutate(leadTimeNumber);
     }
   };
 
@@ -171,85 +191,85 @@ export const FactoryAssignment = ({ mobileHomeId }: FactoryAssignmentProps) => {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Factory className="h-5 w-5" />
-          Factory Assignments
-          {assignedFactories.length === 0 && (
+          Factory Assignment
+          {!assignedFactory && (
             <Badge variant="destructive" className="ml-2">Required</Badge>
           )}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Current Assignments */}
-        {assignedFactories.length > 0 ? (
+        {/* Current Assignment */}
+        {assignedFactory ? (
           <div className="space-y-3">
-            <div className="text-sm font-medium text-gray-700">Assigned Factories:</div>
-            {assignedFactories.map((assignment) => (
-              <div key={assignment.id} className="flex items-center justify-between p-3 border rounded-lg">
-                <div className="flex-1">
-                  <div className="font-medium">{assignment.factories?.name}</div>
-                  <div className="text-sm text-gray-600">
-                    {assignment.factories?.city}, {assignment.factories?.state}
-                  </div>
-                  <div className="flex items-center gap-2 mt-1">
-                    <Clock className="h-3 w-3 text-gray-400" />
-                    <Input
-                      type="number"
-                      value={assignment.production_lead_time_days}
-                      onChange={(e) => handleLeadTimeChange(assignment.id, e.target.value)}
-                      className="w-20 h-6 text-xs"
-                      min="1"
-                    />
-                    <span className="text-xs text-gray-500">days lead time</span>
-                  </div>
+            <div className="text-sm font-medium text-gray-700">Assigned Factory:</div>
+            <div className="flex items-center justify-between p-3 border rounded-lg">
+              <div className="flex-1">
+                <div className="font-medium">{assignedFactory.factories?.name}</div>
+                <div className="text-sm text-gray-600">
+                  {assignedFactory.factories?.city}, {assignedFactory.factories?.state}
                 </div>
-                
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="outline" size="sm">
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Remove Factory Assignment</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        Are you sure you want to remove "{assignment.factories?.name}" from this mobile home?
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction 
-                        onClick={() => handleRemoveFactory(assignment.id)}
-                        className="bg-red-600 hover:bg-red-700"
-                      >
-                        Remove
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+                <div className="flex items-center gap-2 mt-1">
+                  <Clock className="h-3 w-3 text-gray-400" />
+                  <Input
+                    type="number"
+                    value={assignedFactory.production_lead_time_days}
+                    onChange={(e) => handleLeadTimeChange(e.target.value)}
+                    className="w-20 h-6 text-xs"
+                    min="1"
+                  />
+                  <span className="text-xs text-gray-500">days lead time</span>
+                </div>
               </div>
-            ))}
+              
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Remove Factory Assignment</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Are you sure you want to remove "{assignedFactory.factories?.name}" from this mobile home?
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction 
+                      onClick={handleRemoveFactory}
+                      className="bg-red-600 hover:bg-red-700"
+                    >
+                      Remove
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
           </div>
         ) : (
           <div className="text-center py-4 text-gray-500 border-2 border-dashed rounded-lg">
             <Factory className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-            <p className="text-sm font-medium">No factories assigned</p>
-            <p className="text-xs">You must assign at least one factory to save this mobile home</p>
+            <p className="text-sm font-medium">No factory assigned</p>
+            <p className="text-xs">You must assign a factory to save this mobile home</p>
           </div>
         )}
 
-        {/* Add New Factory */}
-        {availableFactories.length > 0 && (
+        {/* Add/Update Factory */}
+        {(!assignedFactory || availableFactories.length > 0) && (
           <div className="border-t pt-4">
-            <div className="text-sm font-medium text-gray-700 mb-3">Add Factory:</div>
+            <div className="text-sm font-medium text-gray-700 mb-3">
+              {assignedFactory ? 'Change Factory:' : 'Assign Factory:'}
+            </div>
             <div className="space-y-3">
               <div>
                 <Label htmlFor="factory-select">Select Factory</Label>
                 <Select value={selectedFactoryId} onValueChange={setSelectedFactoryId}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Choose a factory..." />
+                    <SelectValue placeholder={assignedFactory ? "Choose a different factory..." : "Choose a factory..."} />
                   </SelectTrigger>
                   <SelectContent>
-                    {availableFactories.map((factory) => (
+                    {(assignedFactory ? factories : availableFactories).map((factory) => (
                       <SelectItem key={factory.id} value={factory.id}>
                         <div>
                           <div className="font-medium">{factory.name}</div>
@@ -276,20 +296,23 @@ export const FactoryAssignment = ({ mobileHomeId }: FactoryAssignmentProps) => {
               </div>
               
               <Button 
-                onClick={handleAddFactory}
-                disabled={!selectedFactoryId || addFactoryAssignment.isPending}
+                onClick={handleUpdateFactory}
+                disabled={!selectedFactoryId || updateFactoryAssignment.isPending}
                 className="w-full"
               >
                 <Plus className="h-4 w-4 mr-2" />
-                {addFactoryAssignment.isPending ? 'Adding...' : 'Add Factory'}
+                {updateFactoryAssignment.isPending 
+                  ? (assignedFactory ? 'Updating...' : 'Assigning...') 
+                  : (assignedFactory ? 'Update Factory' : 'Assign Factory')
+                }
               </Button>
             </div>
           </div>
         )}
 
-        {availableFactories.length === 0 && assignedFactories.length > 0 && (
+        {availableFactories.length === 0 && assignedFactory && (
           <div className="text-center py-2 text-sm text-gray-500">
-            All available factories have been assigned
+            Factory assigned
           </div>
         )}
 

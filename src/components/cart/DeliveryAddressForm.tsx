@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { MapPin, Check, X } from 'lucide-react';
 import { DeliveryAddress } from '@/hooks/useShoppingCart';
+import { useGooglePlaces } from '@/hooks/useGooglePlaces';
 
 interface DeliveryAddressFormProps {
   address: DeliveryAddress | null;
@@ -25,6 +26,31 @@ export const DeliveryAddressForm = ({
     zipCode: address?.zipCode || ''
   });
   const [errors, setErrors] = useState<Partial<DeliveryAddress>>({});
+  const streetInputRef = useRef<HTMLInputElement>(null);
+  const { isLoaded, initializeAutocomplete, clearAutocomplete } = useGooglePlaces();
+
+  // Initialize Google Places autocomplete when editing starts and API is loaded
+  useEffect(() => {
+    if (isEditing && isLoaded && streetInputRef.current) {
+      const autocomplete = initializeAutocomplete(
+        streetInputRef.current,
+        (place) => {
+          setFormData({
+            street: place.street,
+            city: place.city,
+            state: place.state,
+            zipCode: place.zipCode
+          });
+          // Clear any existing errors when autocomplete fills the form
+          setErrors({});
+        }
+      );
+
+      return () => {
+        clearAutocomplete();
+      };
+    }
+  }, [isEditing, isLoaded, initializeAutocomplete, clearAutocomplete]);
 
   const validateForm = () => {
     const newErrors: Partial<DeliveryAddress> = {};
@@ -127,18 +153,24 @@ export const DeliveryAddressForm = ({
             </div>
           </div>
         ) : (
-          <div className="space-y-4">
+            <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="street">Street Address</Label>
               <Input
+                ref={streetInputRef}
                 id="street"
-                placeholder="123 Main Street"
+                placeholder="Start typing your address..."
                 value={formData.street}
                 onChange={(e) => handleInputChange('street', e.target.value)}
                 className={errors.street ? 'border-red-500' : ''}
               />
               {errors.street && (
                 <p className="text-sm text-red-500">{errors.street}</p>
+              )}
+              {isLoaded && (
+                <p className="text-xs text-gray-500">
+                  ✨ Start typing to see address suggestions
+                </p>
               )}
             </div>
             

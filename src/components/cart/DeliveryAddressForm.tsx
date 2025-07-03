@@ -41,25 +41,32 @@ export const DeliveryAddressForm = ({
         (place) => {
           setDebugInfo(`Received: Street="${place.street}" City="${place.city}" State="${place.state}" ZIP="${place.zipCode}"`);
           
-          // Update form data
-          const newFormData = {
-            street: place.street || '',
-            city: place.city || '',
-            state: place.state || '',
-            zipCode: place.zipCode || ''
-          };
+          // Update each field individually using the handleInputChange function
+          handleInputChange('street', place.street || '');
+          handleInputChange('city', place.city || '');
+          handleInputChange('state', place.state || '');
+          handleInputChange('zipCode', place.zipCode || '');
           
-          setFormData(newFormData);
-          
-          // Also directly update the input values to ensure they show
+          // Also directly update the input values and trigger events
           setTimeout(() => {
-            if (streetInputRef.current) streetInputRef.current.value = newFormData.street;
-            if (cityInputRef.current) cityInputRef.current.value = newFormData.city;
-            if (stateInputRef.current) stateInputRef.current.value = newFormData.state;
-            if (zipInputRef.current) zipInputRef.current.value = newFormData.zipCode;
+            const inputs = [
+              { ref: streetInputRef, value: place.street || '', field: 'street' },
+              { ref: cityInputRef, value: place.city || '', field: 'city' },
+              { ref: stateInputRef, value: place.state || '', field: 'state' },
+              { ref: zipInputRef, value: place.zipCode || '', field: 'zipCode' }
+            ];
             
-            setDebugInfo(`Updated: Street="${newFormData.street}" City="${newFormData.city}" State="${newFormData.state}" ZIP="${newFormData.zipCode}"`);
-          }, 50);
+            inputs.forEach(({ ref, value, field }) => {
+              if (ref.current) {
+                ref.current.value = value;
+                // Trigger React's onChange event
+                const event = new Event('input', { bubbles: true });
+                ref.current.dispatchEvent(event);
+              }
+            });
+            
+            setDebugInfo(`Fields should now show: Street="${place.street}" City="${place.city}" State="${place.state}" ZIP="${place.zipCode}"`);
+          }, 100);
           
           // Clear any existing errors
           setErrors({});

@@ -399,6 +399,13 @@ const EstimateForm = () => {
           <EstimateTotal 
             total={calculateTotal()}
             user={null}
+            selectedHome={selectedHome}
+            deliveryAddress={customerInfo.address && customerInfo.city && customerInfo.state && customerInfo.zipCode ? {
+              street: customerInfo.address,
+              city: customerInfo.city,
+              state: customerInfo.state,
+              zipCode: customerInfo.zipCode
+            } : null}
           />
 
           <Button 

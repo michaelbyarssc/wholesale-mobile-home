@@ -11,6 +11,7 @@ import { useNavigate } from 'react-router-dom';
 import { CartItemCard } from './cart/CartItemCard';
 import { CartTotal } from './cart/CartTotal';
 import { DeliveryAddressForm } from './cart/DeliveryAddressForm';
+import { ShippingCostDisplay } from './cart/ShippingCostDisplay';
 import { LoadingSpinner } from './layout/LoadingSpinner';
 import type { Database } from '@/integrations/supabase/types';
 import { DeliveryAddress } from '@/hooks/useShoppingCart';
@@ -243,9 +244,23 @@ export const ShoppingCart = ({
               isRequired={true}
             />
 
+            {/* Shipping Cost Display for each item */}
+            {deliveryAddress && cartItems.map((item) => (
+              <div key={`shipping-${item.mobileHome.id}`} className="mt-4">
+                <div className="text-sm font-medium text-gray-700 mb-2">
+                  Shipping for {getHomeName(item.mobileHome)}:
+                </div>
+                <ShippingCostDisplay
+                  mobileHome={item.mobileHome}
+                  deliveryAddress={deliveryAddress}
+                />
+              </div>
+            ))}
+
             <CartTotal
               subtotal={calculateGrandTotal()}
               deliveryAddress={deliveryAddress}
+              cartItems={cartItems}
               onClearCart={handleClearCart}
               onConvertToEstimate={handleConvertToEstimate}
               onCloseCart={onClose}

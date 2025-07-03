@@ -6,10 +6,16 @@ import { formatPrice } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { DeliveryAddress } from '@/hooks/useShoppingCart';
+import { ShippingCostDisplay } from './ShippingCostDisplay';
+import { useShippingCost } from '@/hooks/useShippingCost';
+import type { Database } from '@/integrations/supabase/types';
+
+type MobileHome = Database['public']['Tables']['mobile_homes']['Row'];
 
 interface CartTotalProps {
   subtotal: number;
   deliveryAddress: DeliveryAddress | null;
+  cartItems: Array<{ mobileHome: MobileHome; [key: string]: any }>;
   onClearCart: () => void;
   onConvertToEstimate: () => void;
   onCloseCart: () => void;
@@ -18,20 +24,25 @@ interface CartTotalProps {
 export const CartTotal = ({
   subtotal,
   deliveryAddress,
+  cartItems,
   onClearCart,
   onConvertToEstimate,
   onCloseCart
 }: CartTotalProps) => {
   const { toast } = useToast();
+  const { getShippingCost } = useShippingCost();
 
-  // Calculate shipping cost (placeholder for now)
-  const shippingCost = deliveryAddress ? 500 : 0; // Placeholder $500 shipping
+  // Calculate shipping cost for each item
+  const totalShippingCost = deliveryAddress ? cartItems.reduce((total, item) => {
+    const shippingCost = getShippingCost(item.mobileHome, deliveryAddress);
+    return total + shippingCost.totalCost;
+  }, 0) : 0;
   
   // Calculate SC sales tax
   const salesTax = deliveryAddress?.state.toLowerCase() === 'sc' ? 500 : 0;
   
   // Calculate total
-  const total = subtotal + shippingCost + salesTax;
+  const total = subtotal + totalShippingCost + salesTax;
 
   const handleClearCart = () => {
     console.log('🔍 CartTotal: Clear cart clicked');
@@ -167,7 +178,7 @@ export const CartTotal = ({
                 <Truck className="h-4 w-4" />
                 Shipping:
               </span>
-              <span>{formatPrice(shippingCost)}</span>
+              <span>{formatPrice(totalShippingCost)}</span>
             </div>
             
             {salesTax > 0 && (

@@ -10,7 +10,7 @@ import { MobileHomeImageCarousel } from './MobileHomeImageCarousel';
 import { MobileHomeServicesDialog } from './MobileHomeServicesDialog';
 import { ShoppingCart } from './ShoppingCart';
 import { useCustomerPricing } from '@/hooks/useCustomerPricing';
-import { CartItem } from '@/hooks/useShoppingCart';
+import { CartItem, DeliveryAddress } from '@/hooks/useShoppingCart';
 import { User } from '@supabase/supabase-js';
 import { formatPrice } from '@/lib/utils';
 import type { Database } from '@/integrations/supabase/types';
@@ -30,11 +30,13 @@ interface MobileHomeImage {
 interface MobileHomesShowcaseProps {
   user?: User | null;
   cartItems: CartItem[];
+  deliveryAddress: DeliveryAddress | null;
   isCartOpen: boolean;
   addToCart: (home: MobileHome, selectedServices: string[], selectedHomeOptions: { option: HomeOption; quantity: number }[]) => void;
   removeFromCart: (itemId: string) => void;
   updateServices: (homeId: string, selectedServices: string[]) => void;
   updateHomeOptions: (homeId: string, selectedHomeOptions: { option: HomeOption; quantity: number }[]) => void;
+  updateDeliveryAddress: (address: DeliveryAddress | null) => void;
   clearCart: () => void;
   setIsCartOpen: (open: boolean) => void;
 }
@@ -42,11 +44,13 @@ interface MobileHomesShowcaseProps {
 export const MobileHomesShowcase = ({ 
   user = null, 
   cartItems,
+  deliveryAddress,
   isCartOpen,
   addToCart,
   removeFromCart,
   updateServices,
   updateHomeOptions,
+  updateDeliveryAddress,
   clearCart,
   setIsCartOpen
 }: MobileHomesShowcaseProps) => {
@@ -479,9 +483,11 @@ export const MobileHomesShowcase = ({
               isOpen={isCartOpen}
               onClose={() => setIsCartOpen(false)}
               cartItems={cartItems}
+              deliveryAddress={deliveryAddress}
               onRemoveItem={removeFromCart}
               onUpdateServices={updateServices}
               onUpdateHomeOptions={updateHomeOptions}
+              onUpdateDeliveryAddress={updateDeliveryAddress}
               onClearCart={clearCart}
               user={user}
             />

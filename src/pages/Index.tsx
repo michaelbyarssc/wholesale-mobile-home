@@ -19,11 +19,13 @@ const Index = () => {
   // ALL hooks must be called at the top level before any conditional logic
   const {
     cartItems,
+    deliveryAddress,
     isCartOpen,
     addToCart,
     removeFromCart,
     updateServices,
     updateHomeOptions,
+    updateDeliveryAddress,
     clearCart,
     toggleCart,
     closeCart,
@@ -216,13 +218,15 @@ const Index = () => {
 
       <div id="mobile-homes">
         <MobileHomesShowcase 
-          user={user}
+          user={user} 
           cartItems={cartItems}
+          deliveryAddress={deliveryAddress}
           isCartOpen={isCartOpen}
           addToCart={addToCart}
           removeFromCart={removeFromCart}
           updateServices={updateServices}
           updateHomeOptions={updateHomeOptions}
+          updateDeliveryAddress={updateDeliveryAddress}
           clearCart={clearCart}
           setIsCartOpen={setIsCartOpen}
         />

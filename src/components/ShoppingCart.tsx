@@ -10,8 +10,10 @@ import { User } from '@supabase/supabase-js';
 import { useNavigate } from 'react-router-dom';
 import { CartItemCard } from './cart/CartItemCard';
 import { CartTotal } from './cart/CartTotal';
+import { DeliveryAddressForm } from './cart/DeliveryAddressForm';
 import { LoadingSpinner } from './layout/LoadingSpinner';
 import type { Database } from '@/integrations/supabase/types';
+import { DeliveryAddress } from '@/hooks/useShoppingCart';
 
 type HomeOption = Database['public']['Tables']['home_options']['Row'];
 
@@ -26,9 +28,11 @@ interface ShoppingCartProps {
   isOpen: boolean;
   onClose: () => void;
   cartItems: CartItem[];
+  deliveryAddress: DeliveryAddress | null;
   onRemoveItem: (homeId: string) => void;
   onUpdateServices: (homeId: string, selectedServices: string[]) => void;
   onUpdateHomeOptions: (homeId: string, selectedHomeOptions: { option: HomeOption; quantity: number }[]) => void;
+  onUpdateDeliveryAddress: (address: DeliveryAddress | null) => void;
   onClearCart: () => void;
   user?: User | null;
   isLoading?: boolean;
@@ -38,9 +42,11 @@ export const ShoppingCart = ({
   isOpen,
   onClose,
   cartItems,
+  deliveryAddress,
   onRemoveItem,
   onUpdateServices,
   onUpdateHomeOptions,
+  onUpdateDeliveryAddress,
   onClearCart,
   user,
   isLoading = false
@@ -231,8 +237,15 @@ export const ShoppingCart = ({
               />
             ))}
 
+            <DeliveryAddressForm
+              address={deliveryAddress}
+              onAddressChange={onUpdateDeliveryAddress}
+              isRequired={true}
+            />
+
             <CartTotal
-              total={calculateGrandTotal()}
+              subtotal={calculateGrandTotal()}
+              deliveryAddress={deliveryAddress}
               onClearCart={handleClearCart}
               onConvertToEstimate={handleConvertToEstimate}
               onCloseCart={onClose}

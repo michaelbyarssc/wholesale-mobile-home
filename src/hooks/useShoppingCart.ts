@@ -5,6 +5,18 @@ import { Database } from '@/integrations/supabase/types';
 
 type HomeOption = Database['public']['Tables']['home_options']['Row'];
 
+export type DeliveryAddress = {
+  street: string;
+  city: string;
+  state: string;
+  zipCode: string;
+};
+
+export type CartData = {
+  items: CartItem[];
+  deliveryAddress: DeliveryAddress | null;
+};
+
 export type CartItem = {
   id: string;
   mobileHome: Database['public']['Tables']['mobile_homes']['Row'];
@@ -14,32 +26,46 @@ export type CartItem = {
 
 export const useShoppingCart = () => {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [deliveryAddress, setDeliveryAddress] = useState<DeliveryAddress | null>(null);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Load cart items from localStorage on mount
+  // Load cart data from localStorage on mount
   useEffect(() => {
     const loadCart = () => {
       try {
-        const savedItems = localStorage.getItem('cart_items');
-        console.log('🔍 Loading cart from localStorage:', savedItems);
-        if (savedItems) {
-          const parsed = JSON.parse(savedItems);
-          if (Array.isArray(parsed)) {
-            console.log('🔍 Loaded cart items:', parsed.length);
-            setCartItems(parsed);
+        const savedCartData = localStorage.getItem('cart_data');
+        console.log('🔍 Loading cart from localStorage:', savedCartData);
+        
+        if (savedCartData) {
+          const parsed: CartData = JSON.parse(savedCartData);
+          if (parsed && typeof parsed === 'object') {
+            console.log('🔍 Loaded cart items:', parsed.items?.length || 0);
+            setCartItems(parsed.items || []);
+            setDeliveryAddress(parsed.deliveryAddress || null);
           } else {
             console.log('🔍 Invalid cart data format, clearing cart');
-            localStorage.removeItem('cart_items');
+            localStorage.removeItem('cart_data');
             setCartItems([]);
+            setDeliveryAddress(null);
           }
         } else {
-          setCartItems([]);
+          // Try to migrate old format
+          const savedItems = localStorage.getItem('cart_items');
+          if (savedItems) {
+            const parsed = JSON.parse(savedItems);
+            if (Array.isArray(parsed)) {
+              setCartItems(parsed);
+              localStorage.removeItem('cart_items'); // Remove old format
+            }
+          }
         }
       } catch (error) {
         console.error('🔍 Error loading cart from localStorage:', error);
+        localStorage.removeItem('cart_data');
         localStorage.removeItem('cart_items');
         setCartItems([]);
+        setDeliveryAddress(null);
       } finally {
         setIsLoading(false);
       }
@@ -48,17 +74,21 @@ export const useShoppingCart = () => {
     loadCart();
   }, []);
 
-  // Save cart items to localStorage whenever cartItems changes
+  // Save cart data to localStorage whenever cartItems or deliveryAddress changes
   useEffect(() => {
     if (!isLoading) {
       try {
-        console.log('🔍 Saving cart to localStorage:', cartItems.length, 'items');
-        localStorage.setItem('cart_items', JSON.stringify(cartItems));
+        const cartData: CartData = {
+          items: cartItems,
+          deliveryAddress: deliveryAddress
+        };
+        console.log('🔍 Saving cart data to localStorage:', cartItems.length, 'items, address:', !!deliveryAddress);
+        localStorage.setItem('cart_data', JSON.stringify(cartData));
       } catch (error) {
         console.error('🔍 Error saving cart to localStorage:', error);
       }
     }
-  }, [cartItems, isLoading]);
+  }, [cartItems, deliveryAddress, isLoading]);
 
   const addToCart = useCallback((
     mobileHome: Database['public']['Tables']['mobile_homes']['Row'], 
@@ -146,11 +176,21 @@ export const useShoppingCart = () => {
     }
   }, []);
 
+  const updateDeliveryAddress = useCallback((address: DeliveryAddress | null) => {
+    console.log('🔍 updateDeliveryAddress called with:', address);
+    try {
+      setDeliveryAddress(address);
+    } catch (error) {
+      console.error('🔍 Error updating delivery address:', error);
+    }
+  }, []);
+
   const clearCart = useCallback(() => {
     console.log('🔍 clearCart called');
     try {
-      console.log('🔍 Setting cart items to empty array');
+      console.log('🔍 Setting cart items to empty array and clearing address');
       setCartItems([]);
+      setDeliveryAddress(null);
       console.log('🔍 Cart cleared successfully');
     } catch (error) {
       console.error('🔍 Error clearing cart:', error);
@@ -183,12 +223,14 @@ export const useShoppingCart = () => {
 
   return {
     cartItems,
+    deliveryAddress,
     isCartOpen,
     isLoading,
     addToCart,
     removeFromCart,
     updateServices,
     updateHomeOptions,
+    updateDeliveryAddress,
     clearCart,
     toggleCart,
     closeCart,

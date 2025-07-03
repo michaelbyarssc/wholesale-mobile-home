@@ -82,47 +82,79 @@ export const useGooglePlaces = () => {
       return null;
     }
 
-    setStatus('Initializing autocomplete...');
-    const autocomplete = new window.google.maps.places.Autocomplete(inputElement, {
-      types: ['address'],
-      componentRestrictions: { country: 'us' },
-      fields: ['address_components', 'formatted_address']
-    });
+    setStatus('Creating autocomplete...');
+    
+    try {
+      const autocomplete = new window.google.maps.places.Autocomplete(inputElement, {
+        types: ['address'],
+        componentRestrictions: { country: 'us' },
+        fields: ['address_components', 'formatted_address']
+      });
 
-    setStatus('Autocomplete ready - start typing!');
+      setStatus('Autocomplete created, binding events...');
 
-    // Try multiple ways to bind the event
-    autocomplete.addListener('place_changed', () => {
-      setStatus('Place changed event fired!');
-      const place = autocomplete.getPlace();
+      // Method 1: Standard addListener
+      autocomplete.addListener('place_changed', () => {
+        setStatus('🎯 Standard listener fired!');
+        handlePlaceChanged(autocomplete, onPlaceSelect);
+      });
+
+      // Method 2: Google event listener
+      google.maps.event.addListener(autocomplete, 'place_changed', () => {
+        setStatus('🎯 Google event listener fired!');
+        handlePlaceChanged(autocomplete, onPlaceSelect);
+      });
+
+      // Method 3: Listen for input focus loss (when user clicks a suggestion)
+      inputElement.addEventListener('blur', () => {
+        setStatus('🎯 Input blur detected, checking autocomplete...');
+        setTimeout(() => {
+          const place = autocomplete.getPlace();
+          if (place && place.address_components) {
+            setStatus('🎯 Found place on blur!');
+            handlePlaceChanged(autocomplete, onPlaceSelect);
+          }
+        }, 100);
+      });
+
+      // Method 4: Listen for Enter key
+      inputElement.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          setStatus('🎯 Enter key detected, checking autocomplete...');
+          setTimeout(() => {
+            const place = autocomplete.getPlace();
+            if (place && place.address_components) {
+              setStatus('🎯 Found place on Enter!');
+              handlePlaceChanged(autocomplete, onPlaceSelect);
+            }
+          }, 100);
+        }
+      });
+
+      autocompleteRef.current = autocomplete;
+      setStatus('Autocomplete ready - start typing and SELECT from dropdown!');
       
-      if (!place.address_components) {
-        setStatus('No address components found');
-        return;
-      }
-
-      const placeResult = parseAddressComponents(place.address_components, place.formatted_address || '');
-      setStatus(`Calling onPlaceSelect with: ${placeResult.city}, ${placeResult.state}`);
-      onPlaceSelect(placeResult);
-    });
-
-    // Alternative binding method
-    google.maps.event.addListener(autocomplete, 'place_changed', () => {
-      setStatus('Google event listener fired!');
-      const place = autocomplete.getPlace();
-      
-      if (!place.address_components) {
-        setStatus('No components in alt listener');
-        return;
-      }
-
-      const placeResult = parseAddressComponents(place.address_components, place.formatted_address || '');
-      onPlaceSelect(placeResult);
-    });
-
-    autocompleteRef.current = autocomplete;
-    return autocomplete;
+      return autocomplete;
+    } catch (error) {
+      setStatus(`Error: ${error.message}`);
+      return null;
+    }
   };
+
+  const handlePlaceChanged = (autocomplete: google.maps.places.Autocomplete, onPlaceSelect: (place: PlaceResult) => void) => {
+    const place = autocomplete.getPlace();
+    
+    if (!place.address_components) {
+      setStatus('❌ No address components found');
+      return;
+    }
+
+    setStatus(`✅ Processing ${place.address_components.length} components...`);
+    const placeResult = parseAddressComponents(place.address_components, place.formatted_address || '');
+    setStatus(`✅ Parsed: ${placeResult.city}, ${placeResult.state} ${placeResult.zipCode}`);
+    onPlaceSelect(placeResult);
+  };
+
 
   const parseAddressComponents = (
     components: google.maps.GeocoderAddressComponent[],

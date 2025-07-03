@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Truck, MapPin, Hotel, DollarSign } from 'lucide-react';
 import { useShippingCost } from '@/hooks/useShippingCost';
 import { DeliveryAddress } from '@/hooks/useShoppingCart';
+import { formatPrice } from '@/lib/utils';
 import type { Database } from '@/integrations/supabase/types';
 
 type MobileHome = Database['public']['Tables']['mobile_homes']['Row'];
@@ -43,7 +44,7 @@ export const ShippingCostDisplay = ({ mobileHome, deliveryAddress }: ShippingCos
         <CardContent>
           <p className="text-sm text-red-600">{shippingCost.error}</p>
           <p className="text-lg font-semibold text-right mt-2">
-            ${shippingCost.totalCost.toLocaleString()} <span className="text-sm font-normal">(minimum)</span>
+            {formatPrice(shippingCost.totalCost)} <span className="text-sm font-normal">(minimum)</span>
           </p>
         </CardContent>
       </Card>
@@ -87,7 +88,7 @@ export const ShippingCostDisplay = ({ mobileHome, deliveryAddress }: ShippingCos
       <CardContent>
         <div className="flex justify-between items-center font-bold text-lg">
           <span>Total Shipping:</span>
-          <span>${shippingCost.totalCost.toLocaleString()}</span>
+          <span>{formatPrice(shippingCost.totalCost)}</span>
         </div>
       </CardContent>
     </Card>

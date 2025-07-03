@@ -38,6 +38,8 @@ export const CartTotal = ({
     cartItemsLength: cartItems.length
   });
   
+  console.log('🚛 CartTotal - Line 181 will show shipping as:', formatPrice(totalShippingCost));
+  
   // Calculate SC sales tax
   const salesTax = deliveryAddress?.state.toLowerCase() === 'sc' ? 500 : 0;
   

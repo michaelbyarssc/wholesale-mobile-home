@@ -32,11 +32,12 @@ export const CartTotal = ({
   const { toast } = useToast();
   const { getShippingCost } = useShippingCost();
 
-  // Calculate shipping cost for each item
-  const totalShippingCost = deliveryAddress ? cartItems.reduce((total, item) => {
-    const shippingCost = getShippingCost(item.mobileHome, deliveryAddress);
-    return total + shippingCost.totalCost;
-  }, 0) : 0;
+  // Calculate shipping cost once for the delivery address (not per item)
+  const totalShippingCost = deliveryAddress && cartItems.length > 0 ? (() => {
+    // Use the first item's mobile home for shipping calculation since all items go to same address
+    const shippingCost = getShippingCost(cartItems[0].mobileHome, deliveryAddress);
+    return shippingCost.totalCost;
+  })() : 0;
   
   // Calculate SC sales tax
   const salesTax = deliveryAddress?.state.toLowerCase() === 'sc' ? 500 : 0;

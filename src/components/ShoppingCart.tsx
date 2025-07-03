@@ -186,7 +186,9 @@ export const ShoppingCart = ({
   };
 
   // Calculate shipping cost once for all items (they all go to same address)
-  const totalShippingCost = deliveryAddress && cartItems.length > 0 ? (() => {
+  const totalShippingCost = useMemo(() => {
+    if (!deliveryAddress || cartItems.length === 0) return 0;
+    
     const shippingCost = getShippingCost(cartItems[0].mobileHome, deliveryAddress);
     console.log('🛒 ShoppingCart shipping calculation:', {
       mobileHome: cartItems[0].mobileHome.model,
@@ -195,10 +197,10 @@ export const ShoppingCart = ({
       error: shippingCost.error,
       isCalculating: shippingCost.isCalculating
     });
+    
+    console.log('🛒 ShoppingCart - Final shipping cost being passed to CartTotal:', shippingCost.totalCost);
     return shippingCost.totalCost;
-  })() : 0;
-  
-  console.log('🛒 ShoppingCart - Final shipping cost being passed to CartTotal:', totalShippingCost);
+  }, [deliveryAddress, cartItems, getShippingCost]);
 
   if (isLoading) {
     return (

@@ -601,6 +601,50 @@ export type Database = {
         }
         Relationships: []
       }
+      shipping_calculations: {
+        Row: {
+          calculated_at: string
+          delivery_city: string
+          delivery_state: string
+          delivery_zip: string
+          distance_miles: number
+          estimated_travel_time_minutes: number | null
+          factory_id: string
+          google_maps_response: Json | null
+          id: string
+        }
+        Insert: {
+          calculated_at?: string
+          delivery_city: string
+          delivery_state: string
+          delivery_zip: string
+          distance_miles: number
+          estimated_travel_time_minutes?: number | null
+          factory_id: string
+          google_maps_response?: Json | null
+          id?: string
+        }
+        Update: {
+          calculated_at?: string
+          delivery_city?: string
+          delivery_state?: string
+          delivery_zip?: string
+          distance_miles?: number
+          estimated_travel_time_minutes?: number | null
+          factory_id?: string
+          google_maps_response?: Json | null
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shipping_calculations_factory_id_fkey"
+            columns: ["factory_id"]
+            isOneToOne: false
+            referencedRelation: "factories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       super_admin_markups: {
         Row: {
           created_at: string

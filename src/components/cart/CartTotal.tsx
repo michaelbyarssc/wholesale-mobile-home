@@ -32,7 +32,11 @@ export const CartTotal = ({
 }: CartTotalProps) => {
   const { toast } = useToast();
 
-  console.log('🚛 CartTotal - Using passed shipping cost:', totalShippingCost);
+  console.log('🚛 CartTotal - Received props:', {
+    totalShippingCost,
+    deliveryAddress: !!deliveryAddress,
+    cartItemsLength: cartItems.length
+  });
   
   // Calculate SC sales tax
   const salesTax = deliveryAddress?.state.toLowerCase() === 'sc' ? 500 : 0;

@@ -191,10 +191,14 @@ export const ShoppingCart = ({
     console.log('🛒 ShoppingCart shipping calculation:', {
       mobileHome: cartItems[0].mobileHome.model,
       totalCost: shippingCost.totalCost,
-      breakdown: shippingCost.breakdown
+      breakdown: shippingCost.breakdown,
+      error: shippingCost.error,
+      isCalculating: shippingCost.isCalculating
     });
     return shippingCost.totalCost;
   })() : 0;
+  
+  console.log('🛒 ShoppingCart - Final shipping cost being passed to CartTotal:', totalShippingCost);
 
   if (isLoading) {
     return (

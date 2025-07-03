@@ -38,15 +38,23 @@ export const DeliveryAddressForm = ({
         (place) => {
           setDebugInfo(`Received: Street="${place.street}" City="${place.city}" State="${place.state}" ZIP="${place.zipCode}"`);
           
-          setFormData({
-            street: place.street,
-            city: place.city,
-            state: place.state,
-            zipCode: place.zipCode
-          });
+          // Update form data immediately
+          const newFormData = {
+            street: place.street || '',
+            city: place.city || '',
+            state: place.state || '',
+            zipCode: place.zipCode || ''
+          };
+          
+          setFormData(newFormData);
           
           // Clear any existing errors when autocomplete fills the form
           setErrors({});
+          
+          // Force a re-render by updating the debug info with current form state
+          setTimeout(() => {
+            setDebugInfo(`Updated Form: Street="${newFormData.street}" City="${newFormData.city}" State="${newFormData.state}" ZIP="${newFormData.zipCode}"`);
+          }, 100);
         }
       );
 

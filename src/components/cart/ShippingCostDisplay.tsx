@@ -84,50 +84,7 @@ export const ShippingCostDisplay = ({ mobileHome, deliveryAddress }: ShippingCos
           )}
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-3">
-        {breakdown && (
-          <div className="space-y-2 text-sm">
-            {/* Distance & Transport */}
-            <div className="flex justify-between items-center">
-              <div className="flex items-center gap-2">
-                <MapPin className="h-3 w-3 text-gray-500" />
-                <span>{breakdown.distance.toFixed(1)} miles @ ${breakdown.pricePerMile}/mile</span>
-              </div>
-              <span className="font-medium">${shippingCost.baseCost.toLocaleString()}</span>
-            </div>
-            
-            {/* Permits */}
-            <div className="flex justify-between items-center">
-              <div className="flex items-center gap-2">
-                <DollarSign className="h-3 w-3 text-gray-500" />
-                <span>
-                  Permits {breakdown.crossesStateBorder ? '(2 states)' : '(1 state)'}
-                </span>
-              </div>
-              <span className="font-medium">${shippingCost.permitCost}</span>
-            </div>
-            
-            {/* Hotel (if applicable) */}
-            {breakdown.requiresHotel && (
-              <div className="flex justify-between items-center">
-                <div className="flex items-center gap-2">
-                  <Hotel className="h-3 w-3 text-gray-500" />
-                  <span>Hotel (over 150 miles)</span>
-                </div>
-                <span className="font-medium">${shippingCost.hotelCost}</span>
-              </div>
-            )}
-            
-            {/* Flat Rate */}
-            <div className="flex justify-between items-center">
-              <span>Service Fee</span>
-              <span className="font-medium">${shippingCost.flatRate}</span>
-            </div>
-            
-            <hr className="my-2" />
-          </div>
-        )}
-        
+      <CardContent>
         <div className="flex justify-between items-center font-bold text-lg">
           <span>Total Shipping:</span>
           <span>${shippingCost.totalCost.toLocaleString()}</span>

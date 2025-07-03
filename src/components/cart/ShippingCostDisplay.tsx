@@ -18,6 +18,12 @@ export const ShippingCostDisplay = ({ mobileHome, deliveryAddress }: ShippingCos
   
   const shippingCost = getShippingCost(mobileHome, deliveryAddress);
   
+  console.log('📦 ShippingCostDisplay calculation:', {
+    mobileHome: mobileHome.model,
+    totalCost: shippingCost.totalCost,
+    breakdown: shippingCost.breakdown
+  });
+  
   // Trigger calculation when component mounts
   useEffect(() => {
     if (deliveryAddress && !shippingCost.breakdown && !shippingCost.isCalculating) {

@@ -36,6 +36,11 @@ export const CartTotal = ({
   const totalShippingCost = deliveryAddress && cartItems.length > 0 ? (() => {
     // Use the first item's mobile home for shipping calculation since all items go to same address
     const shippingCost = getShippingCost(cartItems[0].mobileHome, deliveryAddress);
+    console.log('🚛 CartTotal shipping calculation:', {
+      mobileHome: cartItems[0].mobileHome.model,
+      totalCost: shippingCost.totalCost,
+      breakdown: shippingCost.breakdown
+    });
     return shippingCost.totalCost;
   })() : 0;
   

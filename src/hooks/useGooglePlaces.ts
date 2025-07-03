@@ -105,33 +105,40 @@ export const useGooglePlaces = () => {
         handlePlaceChanged(autocomplete, onPlaceSelect);
       });
 
-      // Method 5: Monitor input value changes
-      let lastValue = inputElement.value;
-      const checkForPlace = () => {
-        const currentValue = inputElement.value;
-        if (currentValue !== lastValue) {
-          lastValue = currentValue;
-          setStatus(`🔍 Value changed to: "${currentValue}"`);
+      // Method 5: Direct input monitoring for mobile devices
+      let lastCheckedValue = '';
+      
+      const checkInputValue = () => {
+        const currentValue = inputElement.value.trim();
+        
+        if (currentValue !== lastCheckedValue && currentValue.length > 10) {
+          lastCheckedValue = currentValue;
+          setStatus(`🔍 Checking: "${currentValue}"`);
           
+          // Try to get place data
           setTimeout(() => {
             const place = autocomplete.getPlace();
+            
             if (place && place.address_components) {
-              setStatus('🎯 Found complete place!');
+              setStatus('🎯 Found place data!');
               handlePlaceChanged(autocomplete, onPlaceSelect);
-            } else if (place) {
-              setStatus(`🔍 Incomplete place: ${place.name || place.formatted_address || 'no data'}`);
             } else {
-              setStatus('🔍 No place data found');
+              // Try manual geocoding as fallback
+              setStatus('🔄 Trying manual geocoding...');
+              manualGeocode(currentValue, onPlaceSelect);
             }
-          }, 200);
+          }, 300);
         }
       };
 
-      // Check every 500ms
-      const interval = setInterval(checkForPlace, 500);
+      // Check on various events
+      inputElement.addEventListener('input', checkInputValue);
+      inputElement.addEventListener('change', checkInputValue);
+      inputElement.addEventListener('blur', checkInputValue);
       
-      // Store interval for cleanup
-      (inputElement as any)._placeCheckInterval = interval;
+      // Also poll every 2 seconds
+      const pollInterval = setInterval(checkInputValue, 2000);
+      (inputElement as any)._pollInterval = pollInterval;
 
       // Method 3: Listen for input focus loss (when user clicks a suggestion)
       inputElement.addEventListener('blur', () => {
@@ -172,6 +179,29 @@ export const useGooglePlaces = () => {
     } catch (error) {
       setStatus(`Error: ${error.message}`);
       return null;
+    }
+  };
+
+  // Manual geocoding fallback for when autocomplete doesn't work
+  const manualGeocode = async (address: string, onPlaceSelect: (place: PlaceResult) => void) => {
+    try {
+      const geocoder = new google.maps.Geocoder();
+      
+      geocoder.geocode({ address: address }, (results, status) => {
+        if (status === 'OK' && results && results[0]) {
+          setStatus('✅ Manual geocoding successful!');
+          const result = results[0];
+          
+          if (result.address_components) {
+            const placeResult = parseAddressComponents(result.address_components, result.formatted_address || '');
+            onPlaceSelect(placeResult);
+          }
+        } else {
+          setStatus('❌ Manual geocoding failed');
+        }
+      });
+    } catch (error) {
+      setStatus('❌ Geocoding error');
     }
   };
 
@@ -232,12 +262,12 @@ export const useGooglePlaces = () => {
       autocompleteRef.current = null;
     }
     
-    // Clear the polling interval
+    // Clear polling intervals
     const inputs = document.querySelectorAll('input[type="text"]');
     inputs.forEach(input => {
-      if ((input as any)._placeCheckInterval) {
-        clearInterval((input as any)._placeCheckInterval);
-        (input as any)._placeCheckInterval = null;
+      if ((input as any)._pollInterval) {
+        clearInterval((input as any)._pollInterval);
+        (input as any)._pollInterval = null;
       }
     });
   };

@@ -26,6 +26,7 @@ export const DeliveryAddressForm = ({
     zipCode: address?.zipCode || ''
   });
   const [errors, setErrors] = useState<Partial<DeliveryAddress>>({});
+  const [debugInfo, setDebugInfo] = useState<string>('');
   const streetInputRef = useRef<HTMLInputElement>(null);
   const { isLoaded, initializeAutocomplete, clearAutocomplete } = useGooglePlaces();
 
@@ -35,14 +36,15 @@ export const DeliveryAddressForm = ({
       const autocomplete = initializeAutocomplete(
         streetInputRef.current,
         (place) => {
-          console.log('🏠 DeliveryAddressForm - Received place:', place);
+          setDebugInfo(`Received: Street="${place.street}" City="${place.city}" State="${place.state}" ZIP="${place.zipCode}"`);
+          
           setFormData({
             street: place.street,
             city: place.city,
             state: place.state,
             zipCode: place.zipCode
           });
-          console.log('🏠 DeliveryAddressForm - Updated formData');
+          
           // Clear any existing errors when autocomplete fills the form
           setErrors({});
         }
@@ -173,6 +175,11 @@ export const DeliveryAddressForm = ({
                 <p className="text-xs text-gray-500">
                   ✨ Start typing to see address suggestions
                 </p>
+              )}
+              {debugInfo && (
+                <div className="text-xs bg-blue-50 border border-blue-200 p-2 rounded">
+                  <strong>Debug:</strong> {debugInfo}
+                </div>
               )}
             </div>
             

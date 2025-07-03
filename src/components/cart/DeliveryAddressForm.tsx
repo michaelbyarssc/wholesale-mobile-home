@@ -28,6 +28,9 @@ export const DeliveryAddressForm = ({
   const [errors, setErrors] = useState<Partial<DeliveryAddress>>({});
   const [debugInfo, setDebugInfo] = useState<string>('');
   const streetInputRef = useRef<HTMLInputElement>(null);
+  const cityInputRef = useRef<HTMLInputElement>(null);
+  const stateInputRef = useRef<HTMLInputElement>(null);
+  const zipInputRef = useRef<HTMLInputElement>(null);
   const { isLoaded, initializeAutocomplete, clearAutocomplete } = useGooglePlaces();
 
   // Initialize Google Places autocomplete when editing starts and API is loaded
@@ -38,7 +41,7 @@ export const DeliveryAddressForm = ({
         (place) => {
           setDebugInfo(`Received: Street="${place.street}" City="${place.city}" State="${place.state}" ZIP="${place.zipCode}"`);
           
-          // Update form data immediately
+          // Update form data
           const newFormData = {
             street: place.street || '',
             city: place.city || '',
@@ -48,13 +51,18 @@ export const DeliveryAddressForm = ({
           
           setFormData(newFormData);
           
-          // Clear any existing errors when autocomplete fills the form
-          setErrors({});
-          
-          // Force a re-render by updating the debug info with current form state
+          // Also directly update the input values to ensure they show
           setTimeout(() => {
-            setDebugInfo(`Updated Form: Street="${newFormData.street}" City="${newFormData.city}" State="${newFormData.state}" ZIP="${newFormData.zipCode}"`);
-          }, 100);
+            if (streetInputRef.current) streetInputRef.current.value = newFormData.street;
+            if (cityInputRef.current) cityInputRef.current.value = newFormData.city;
+            if (stateInputRef.current) stateInputRef.current.value = newFormData.state;
+            if (zipInputRef.current) zipInputRef.current.value = newFormData.zipCode;
+            
+            setDebugInfo(`Updated: Street="${newFormData.street}" City="${newFormData.city}" State="${newFormData.state}" ZIP="${newFormData.zipCode}"`);
+          }, 50);
+          
+          // Clear any existing errors
+          setErrors({});
         }
       );
 
@@ -195,6 +203,7 @@ export const DeliveryAddressForm = ({
               <div className="space-y-2">
                 <Label htmlFor="city">City</Label>
                 <Input
+                  ref={cityInputRef}
                   id="city"
                   placeholder="Charleston"
                   value={formData.city}
@@ -209,6 +218,7 @@ export const DeliveryAddressForm = ({
               <div className="space-y-2">
                 <Label htmlFor="state">State</Label>
                 <Input
+                  ref={stateInputRef}
                   id="state"
                   placeholder="SC"
                   value={formData.state}
@@ -225,6 +235,7 @@ export const DeliveryAddressForm = ({
             <div className="space-y-2">
               <Label htmlFor="zipCode">ZIP Code</Label>
               <Input
+                ref={zipInputRef}
                 id="zipCode"
                 placeholder="29401"
                 value={formData.zipCode}

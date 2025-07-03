@@ -27,7 +27,7 @@ export const DeliveryAddressForm = ({
   });
   const [errors, setErrors] = useState<Partial<DeliveryAddress>>({});
   const streetInputRef = useRef<HTMLInputElement>(null);
-  const { isLoaded, initializeAutocomplete, clearAutocomplete } = useGooglePlaces();
+  const { isLoaded, status, initializeAutocomplete, clearAutocomplete } = useGooglePlaces();
 
   // Initialize Google Places autocomplete when editing starts and API is loaded
   useEffect(() => {
@@ -170,11 +170,9 @@ export const DeliveryAddressForm = ({
               {errors.street && (
                 <p className="text-sm text-red-500">{errors.street}</p>
               )}
-              {isLoaded && (
-                <p className="text-xs text-gray-500">
-                  ✨ Start typing to see address suggestions
-                </p>
-              )}
+              <div className="text-xs text-blue-600 bg-blue-50 p-2 rounded border">
+                Status: {status}
+              </div>
             </div>
             
             <div className="grid grid-cols-2 gap-4">

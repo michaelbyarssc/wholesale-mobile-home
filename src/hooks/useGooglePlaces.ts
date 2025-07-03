@@ -11,22 +11,29 @@ interface PlaceResult {
 
 export const useGooglePlaces = () => {
   const [isLoaded, setIsLoaded] = useState(false);
+  const [status, setStatus] = useState('Initializing...');
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
 
   useEffect(() => {
     // Get the API key from Supabase secrets via edge function
     const loadApiKey = async () => {
       try {
+        setStatus('Fetching Google Maps API key...');
         const { data, error } = await supabase.functions.invoke('get-google-maps-key');
         if (error) {
+          setStatus('Failed to get API key');
           console.error('Failed to get Google Maps API key:', error);
           return;
         }
         
         if (data?.apiKey) {
+          setStatus('Loading Google Maps...');
           loadGoogleMapsScript(data.apiKey);
+        } else {
+          setStatus('No API key received');
         }
       } catch (error) {
+        setStatus('Error loading API key');
         console.error('Error loading Google Maps API key:', error);
       }
     };
@@ -37,23 +44,28 @@ export const useGooglePlaces = () => {
   const loadGoogleMapsScript = (key: string) => {
     // Check if script is already loaded
     if (window.google && window.google.maps && window.google.maps.places) {
+      setStatus('Google Maps already loaded');
       setIsLoaded(true);
       return;
     }
 
     // Check if script is already in DOM
     if (document.querySelector('script[src*="maps.googleapis.com"]')) {
+      setStatus('Google Maps script found, waiting...');
       return;
     }
 
+    setStatus('Loading Google Maps script...');
     const script = document.createElement('script');
     script.src = `https://maps.googleapis.com/maps/api/js?key=${key}&libraries=places`;
     script.async = true;
     script.defer = true;
     script.onload = () => {
+      setStatus('Google Maps loaded successfully');
       setIsLoaded(true);
     };
     script.onerror = () => {
+      setStatus('Failed to load Google Maps');
       console.error('Failed to load Google Maps script');
     };
     
@@ -65,15 +77,19 @@ export const useGooglePlaces = () => {
     onPlaceSelect: (place: PlaceResult) => void
   ) => {
     if (!isLoaded || !window.google?.maps?.places) {
+      setStatus('Google Maps not ready');
       console.warn('Google Maps Places API not loaded yet');
       return null;
     }
 
+    setStatus('Initializing autocomplete...');
     const autocomplete = new window.google.maps.places.Autocomplete(inputElement, {
       types: ['address'],
       componentRestrictions: { country: 'us' },
       fields: ['address_components', 'formatted_address']
     });
+
+    setStatus('Autocomplete ready - start typing!');
 
     autocomplete.addListener('place_changed', () => {
       const place = autocomplete.getPlace();
@@ -144,6 +160,7 @@ export const useGooglePlaces = () => {
 
   return {
     isLoaded,
+    status,
     initializeAutocomplete,
     clearAutocomplete
   };

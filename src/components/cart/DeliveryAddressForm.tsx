@@ -26,11 +26,7 @@ export const DeliveryAddressForm = ({
     zipCode: address?.zipCode || ''
   });
   const [errors, setErrors] = useState<Partial<DeliveryAddress>>({});
-  const [debugInfo, setDebugInfo] = useState<string>('');
   const streetInputRef = useRef<HTMLInputElement>(null);
-  const cityInputRef = useRef<HTMLInputElement>(null);
-  const stateInputRef = useRef<HTMLInputElement>(null);
-  const zipInputRef = useRef<HTMLInputElement>(null);
   const { isLoaded, initializeAutocomplete, clearAutocomplete } = useGooglePlaces();
 
   // Initialize Google Places autocomplete when editing starts and API is loaded
@@ -39,34 +35,14 @@ export const DeliveryAddressForm = ({
       const autocomplete = initializeAutocomplete(
         streetInputRef.current,
         (place) => {
-          setDebugInfo(`Received: Street="${place.street}" City="${place.city}" State="${place.state}" ZIP="${place.zipCode}"`);
-          
-          // Update each field individually using the handleInputChange function
-          handleInputChange('street', place.street || '');
-          handleInputChange('city', place.city || '');
-          handleInputChange('state', place.state || '');
-          handleInputChange('zipCode', place.zipCode || '');
-          
-          // Also directly update the input values and trigger events
-          setTimeout(() => {
-            const inputs = [
-              { ref: streetInputRef, value: place.street || '', field: 'street' },
-              { ref: cityInputRef, value: place.city || '', field: 'city' },
-              { ref: stateInputRef, value: place.state || '', field: 'state' },
-              { ref: zipInputRef, value: place.zipCode || '', field: 'zipCode' }
-            ];
-            
-            inputs.forEach(({ ref, value, field }) => {
-              if (ref.current) {
-                ref.current.value = value;
-                // Trigger React's onChange event
-                const event = new Event('input', { bubbles: true });
-                ref.current.dispatchEvent(event);
-              }
-            });
-            
-            setDebugInfo(`Fields should now show: Street="${place.street}" City="${place.city}" State="${place.state}" ZIP="${place.zipCode}"`);
-          }, 100);
+          // Force update the state by setting each field individually
+          setFormData(prev => ({
+            ...prev,
+            street: place.street || '',
+            city: place.city || '',
+            state: place.state || '',
+            zipCode: place.zipCode || ''
+          }));
           
           // Clear any existing errors
           setErrors({});
@@ -199,23 +175,18 @@ export const DeliveryAddressForm = ({
                   ✨ Start typing to see address suggestions
                 </p>
               )}
-              {debugInfo && (
-                <div className="text-xs bg-blue-50 border border-blue-200 p-2 rounded">
-                  <strong>Debug:</strong> {debugInfo}
-                </div>
-              )}
             </div>
             
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="city">City</Label>
                 <Input
-                  ref={cityInputRef}
                   id="city"
                   placeholder="Charleston"
                   value={formData.city}
                   onChange={(e) => handleInputChange('city', e.target.value)}
                   className={errors.city ? 'border-red-500' : ''}
+                  autoComplete="address-level2"
                 />
                 {errors.city && (
                   <p className="text-sm text-red-500">{errors.city}</p>
@@ -225,13 +196,13 @@ export const DeliveryAddressForm = ({
               <div className="space-y-2">
                 <Label htmlFor="state">State</Label>
                 <Input
-                  ref={stateInputRef}
                   id="state"
                   placeholder="SC"
                   value={formData.state}
                   onChange={(e) => handleInputChange('state', e.target.value.toUpperCase())}
                   maxLength={2}
                   className={errors.state ? 'border-red-500' : ''}
+                  autoComplete="address-level1"
                 />
                 {errors.state && (
                   <p className="text-sm text-red-500">{errors.state}</p>
@@ -242,12 +213,12 @@ export const DeliveryAddressForm = ({
             <div className="space-y-2">
               <Label htmlFor="zipCode">ZIP Code</Label>
               <Input
-                ref={zipInputRef}
                 id="zipCode"
                 placeholder="29401"
                 value={formData.zipCode}
                 onChange={(e) => handleInputChange('zipCode', e.target.value)}
                 className={errors.zipCode ? 'border-red-500' : ''}
+                autoComplete="postal-code"
               />
               {errors.zipCode && (
                 <p className="text-sm text-red-500">{errors.zipCode}</p>

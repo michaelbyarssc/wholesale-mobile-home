@@ -110,9 +110,12 @@ export const useGooglePlaces = () => {
         setStatus('🎯 Input blur detected, checking autocomplete...');
         setTimeout(() => {
           const place = autocomplete.getPlace();
+          setStatus(`🔍 Blur check: place=${!!place}, components=${!!place?.address_components}, name=${place?.name || 'none'}`);
           if (place && place.address_components) {
             setStatus('🎯 Found place on blur!');
             handlePlaceChanged(autocomplete, onPlaceSelect);
+          } else if (place) {
+            setStatus(`🔍 Place found but incomplete: ${JSON.stringify(Object.keys(place))}`);
           }
         }, 100);
       });
@@ -123,9 +126,12 @@ export const useGooglePlaces = () => {
           setStatus('🎯 Enter key detected, checking autocomplete...');
           setTimeout(() => {
             const place = autocomplete.getPlace();
+            setStatus(`🔍 Enter check: place=${!!place}, components=${!!place?.address_components}`);
             if (place && place.address_components) {
               setStatus('🎯 Found place on Enter!');
               handlePlaceChanged(autocomplete, onPlaceSelect);
+            } else if (place) {
+              setStatus(`🔍 Enter place incomplete: ${place.name || place.formatted_address || 'no name'}`);
             }
           }, 100);
         }

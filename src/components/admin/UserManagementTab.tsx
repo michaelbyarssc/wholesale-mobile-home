@@ -72,10 +72,10 @@ export const UserManagementTab = () => {
         .from('profiles')
         .select('user_id, email, first_name, last_name, phone_number, created_at, approved, approved_at, denied, created_by');
 
-      // Super admins see ALL users, regular admins only see users they created OR users with null created_by
+      // Super admins see ALL users, regular admins only see users they created
       if (!userIsSuperAdmin && currentUserId) {
-        console.log('Regular admin - filtering profiles by created_by:', currentUserId, 'OR null created_by');
-        profileQuery = profileQuery.or(`created_by.eq.${currentUserId},created_by.is.null`);
+        console.log('Regular admin - filtering profiles by created_by:', currentUserId);
+        profileQuery = profileQuery.eq('created_by', currentUserId);
       } else if (userIsSuperAdmin) {
         console.log('Super admin - fetching ALL profiles without filtering');
         // No filtering for super admins - they see everyone
@@ -126,13 +126,13 @@ export const UserManagementTab = () => {
         ) || [];
         console.log('Super admin - showing ALL truly pending users');
       } else {
-        // Regular admins see truly pending users they created OR users with null created_by
+        // Regular admins see truly pending users they created
         pendingUsers = profileData?.filter(profile => 
           profile.approved === false && // Explicitly false, not null or true
           profile.denied !== true && 
-          (profile.created_by === currentUserId || profile.created_by === null)
+          profile.created_by === currentUserId
         ) || [];
-        console.log('Regular admin - showing truly pending users created by current admin OR with null created_by');
+        console.log('Regular admin - showing truly pending users created by current admin');
       }
 
       console.log('Approved users:', approvedUsers.length);

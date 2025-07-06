@@ -58,12 +58,15 @@ const Admin = () => {
           setIsSuperAdmin(isSuperAdminUser);
           console.log('Admin: User roles:', roleData?.map(r => r.role));
           console.log('Admin: Is super admin:', isSuperAdminUser);
+          console.log('Admin: Setting isSuperAdmin state to:', isSuperAdminUser);
           
           // Set default tab based on role
           if (isSuperAdminUser) {
             setActiveTab('mobile-homes');
+            console.log('Admin: Super admin detected, setting tab to mobile-homes');
           } else {
             setActiveTab('users');
+            console.log('Admin: Regular admin detected, setting tab to users');
           }
         }
         
@@ -129,6 +132,7 @@ const Admin = () => {
     <div className={`flex ${mobile ? 'flex-col space-y-3' : 'flex-row space-x-1'}`}>
       {isSuperAdmin ? (
         <>
+          {console.log('Admin: Rendering super admin navigation - isSuperAdmin:', isSuperAdmin)}
           <Button
             variant={activeTab === 'mobile-homes' ? 'default' : 'ghost'}
             className={`${mobile ? 'justify-start w-full h-12 text-base' : ''} text-xs sm:text-sm`}

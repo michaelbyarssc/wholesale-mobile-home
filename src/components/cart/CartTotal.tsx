@@ -41,7 +41,7 @@ export const CartTotal = ({
   console.log('🚛 CartTotal - Line 181 will show shipping as:', formatPrice(totalShippingCost));
   
   // Calculate SC sales tax
-  const salesTax = deliveryAddress?.state.toLowerCase() === 'sc' ? 500 : 0;
+  const salesTax = deliveryAddress?.state.toLowerCase() === 'sc' ? 50000 : 0;
   
   // Calculate total
   const total = subtotal + totalShippingCost + salesTax;

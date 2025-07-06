@@ -29,14 +29,14 @@ export const UserForm = ({ onUserCreated }: UserFormProps) => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) return;
 
-      // Check if user is super admin
+      // Check if user is super admin - fix the role checking logic
       const { data: roleData } = await supabase
         .from('user_roles')
         .select('role')
-        .eq('user_id', session.user.id)
-        .single();
+        .eq('user_id', session.user.id);
 
-      const userIsSuperAdmin = roleData?.role === 'super_admin';
+      // Check if ANY of the user's roles is 'super_admin'
+      const userIsSuperAdmin = roleData?.some(role => role.role === 'super_admin') || false;
       setIsSuperAdmin(userIsSuperAdmin);
     } catch (error) {
       console.error('Error checking user role:', error);

@@ -98,28 +98,17 @@ export const CartTotal = ({
       return;
     }
     
+    // Check if cart has items
+    if (!cartItems || cartItems.length === 0) {
+      toast({
+        title: "Error", 
+        description: "No items in cart to send",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     try {
-      // Get cart data from localStorage
-      const cartData = localStorage.getItem('cart_data');
-      if (!cartData) {
-        toast({
-          title: "Error",
-          description: "No items in cart to send",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      const cartDataParsed = JSON.parse(cartData);
-      const cartItems = cartDataParsed.items;
-      if (!cartItems || cartItems.length === 0) {
-        toast({
-          title: "Error", 
-          description: "No items in cart to send",
-          variant: "destructive",
-        });
-        return;
-      }
 
       // Get current user
       const { data: { user } } = await supabase.auth.getUser();

@@ -50,10 +50,10 @@ export const useShippingCost = () => {
       
       // Determine if it's single or double wide (≤ 18 feet = single wide)
       const isDoubleWide = (mobileHome.width_feet || 0) > 18;
-      const pricePerMile = 7; // Base rate for single wide
+      const pricePerMile = 8.75; // Base rate for single wide
       const multiplier = isDoubleWide ? 2 : 1;
       
-      // Calculate base cost ($7 per mile, x2 for double wide)
+      // Calculate base cost ($8.75 per mile, x2 for double wide)
       const baseCost = distance * pricePerMile * multiplier;
       
       // Calculate permit cost
@@ -69,9 +69,9 @@ export const useShippingCost = () => {
       // Flat rate
       const flatRate = 1000;
       
-      // Total cost with 15% markup
+      // Total cost with no markup
       const subtotal = baseCost + permitCost + hotelCost + flatRate;
-      const totalCost = Math.round(subtotal * 1.15);
+      const totalCost = Math.round(subtotal);
       
       console.log('🚢 Shipping calculation breakdown:', {
         baseCost,
@@ -79,7 +79,7 @@ export const useShippingCost = () => {
         hotelCost,
         flatRate,
         subtotal,
-        markup: '15%',
+        markup: 'none',
         totalCost,
         distance,
         isDoubleWide
@@ -152,10 +152,10 @@ export const useShippingCost = () => {
     
     // Determine if it's single or double wide (≤ 18 feet = single wide)
     const isDoubleWide = (mobileHome.width_feet || 0) > 18;
-    const pricePerMile = 7; // Base rate for single wide
+    const pricePerMile = 8.75; // Base rate for single wide
     const multiplier = isDoubleWide ? 2 : 1;
     
-    // Calculate base cost ($7 per mile, x2 for double wide)
+    // Calculate base cost ($8.75 per mile, x2 for double wide)
     const baseCost = distance * pricePerMile * multiplier;
     
     // Calculate permit cost
@@ -171,9 +171,9 @@ export const useShippingCost = () => {
     // Flat rate
     const flatRate = 1000;
     
-    // Total cost with 15% markup
+    // Total cost with no markup
     const subtotal = baseCost + permitCost + hotelCost + flatRate;
-    const totalCost = Math.round(subtotal * 1.15);
+    const totalCost = Math.round(subtotal);
     
     console.log('🚢 getShippingCost breakdown:', {
       baseCost,
@@ -181,7 +181,7 @@ export const useShippingCost = () => {
       hotelCost,
       flatRate,
       subtotal,
-      markup: '15%',
+      markup: 'none',
       totalCost,
       distance,
       isDoubleWide

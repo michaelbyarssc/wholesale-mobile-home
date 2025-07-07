@@ -54,7 +54,7 @@ export const ShoppingCart = ({
   isLoading = false
 }: ShoppingCartProps) => {
   const navigate = useNavigate();
-  const { getShippingCost, calculateShippingCost } = useShippingCost();
+  const { getShippingCost, calculateShippingCost, clearCalculations } = useShippingCost();
   
   console.log('🔍 ShoppingCart: User passed to pricing hook:', user?.id || 'undefined');
   const { calculateMobileHomePrice, calculateServicePrice, calculateHomeOptionPrice, calculatePrice } = useCustomerPricing(user);
@@ -188,6 +188,9 @@ export const ShoppingCart = ({
   // Calculate shipping cost once for all items (they all go to same address)
   const totalShippingCost = useMemo(() => {
     if (!deliveryAddress || cartItems.length === 0) return 0;
+    
+    // Clear any cached calculations to ensure fresh calculation with 15% markup
+    clearCalculations();
     
     // First trigger the calculation if not already done
     calculateShippingCost(cartItems[0].mobileHome, deliveryAddress);

@@ -15,7 +15,7 @@ interface ShippingCostDisplayProps {
 }
 
 export const ShippingCostDisplay = ({ mobileHome, deliveryAddress }: ShippingCostDisplayProps) => {
-  const { calculateShippingCost, getShippingCost } = useShippingCost();
+  const { calculateShippingCost, getShippingCost, clearCalculations } = useShippingCost();
   
   const shippingCost = getShippingCost(mobileHome, deliveryAddress);
   
@@ -28,9 +28,11 @@ export const ShippingCostDisplay = ({ mobileHome, deliveryAddress }: ShippingCos
   // Trigger calculation when component mounts
   useEffect(() => {
     if (deliveryAddress && !shippingCost.breakdown && !shippingCost.isCalculating) {
+      // Clear cached calculations to ensure fresh calculation with 15% markup
+      clearCalculations();
       calculateShippingCost(mobileHome, deliveryAddress);
     }
-  }, [mobileHome.id, deliveryAddress.zipCode, calculateShippingCost]);
+  }, [mobileHome.id, deliveryAddress.zipCode, calculateShippingCost, clearCalculations]);
 
   if (shippingCost.error) {
     return (

@@ -23,7 +23,7 @@ interface ShippingCostResult {
 }
 
 export const useShippingCost = () => {
-  const { calculateShipping, getShippingCalculation, isCalculating } = useShippingCalculation();
+  const { calculateShipping, getShippingCalculation, isCalculating, clearCalculations } = useShippingCalculation();
 
   const calculateShippingCost = async (
     mobileHome: MobileHome,
@@ -206,6 +206,7 @@ export const useShippingCost = () => {
 
   return {
     calculateShippingCost,
-    getShippingCost
+    getShippingCost,
+    clearCalculations
   };
 };

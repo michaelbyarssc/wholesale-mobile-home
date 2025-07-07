@@ -217,18 +217,25 @@ export const useShoppingCart = (user?: User | null) => {
   const clearCart = useCallback(() => {
     console.log('🔍 clearCart called');
     try {
-      console.log('🔍 Setting cart items to empty array and clearing address');
+      console.log('🔍 Setting cart items to empty array and clearing all addresses');
       setCartItems([]);
       setDeliveryAddress(null);
       
-      // Also clear from localStorage
+      // Also clear from localStorage - this removes all cart data including addresses
       if (currentUser !== undefined) {
         const cartDataKey = getStorageKey('cart_data');
         localStorage.removeItem(cartDataKey);
-        console.log('🔍 Cleared cart from localStorage for user:', currentUser?.id || 'anonymous');
+        console.log('🔍 Cleared cart and all addresses from localStorage for user:', currentUser?.id || 'anonymous');
       }
       
-      console.log('🔍 Cart cleared successfully');
+      // Clear any other address-related localStorage keys
+      const addressKeys = ['delivery_address', 'shipping_address', 'customer_address'];
+      addressKeys.forEach(key => {
+        const fullKey = currentUser ? `${key}_${currentUser.id}` : key;
+        localStorage.removeItem(fullKey);
+      });
+      
+      console.log('🔍 Cart and all addresses cleared successfully');
     } catch (error) {
       console.error('🔍 Error clearing cart:', error);
     }

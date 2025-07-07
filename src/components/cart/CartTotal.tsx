@@ -42,8 +42,25 @@ export const CartTotal = ({
   
   console.log('🚛 CartTotal - Line 183 will display shipping cost as:', formatPrice(totalShippingCost), '- Raw value:', totalShippingCost);
   
-  // Calculate SC sales tax
-  const salesTax = deliveryAddress?.state.toLowerCase() === 'sc' ? 500 : 0;
+  // Calculate sales tax by state
+  const calculateSalesTax = (state: string, subtotal: number): number => {
+    const stateCode = state.toLowerCase();
+    
+    switch (stateCode) {
+      case 'sc':
+        return 500; // Fixed $5 for SC
+      case 'ga':
+        return Math.round(subtotal * 0.08); // 8% of subtotal
+      case 'al':
+        return Math.round(subtotal * 0.02); // 2% of subtotal
+      case 'fl':
+        return Math.round(subtotal * 0.03); // 3% of subtotal
+      default:
+        return 0; // No tax for other states
+    }
+  };
+  
+  const salesTax = deliveryAddress ? calculateSalesTax(deliveryAddress.state, subtotal) : 0;
   
   // Calculate total
   const total = subtotal + totalShippingCost + salesTax;
@@ -187,7 +204,7 @@ export const CartTotal = ({
             
             {salesTax > 0 && (
               <div className="flex justify-between text-gray-600">
-                <span>SC Sales Tax:</span>
+                <span>{deliveryAddress.state.toUpperCase()} Sales Tax:</span>
                 <span>{formatPrice(salesTax)}</span>
               </div>
             )}

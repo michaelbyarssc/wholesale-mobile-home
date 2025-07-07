@@ -38,11 +38,15 @@ serve(async (req) => {
     // Get customer information
     let customerInfo = { name: 'N/A', email: 'N/A', phone: 'N/A' }
     if (user_id) {
+      console.log('🔍 send-estimate-to-sales-rep: Looking up customer profile for user_id:', user_id)
+      
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('first_name, last_name, email, phone_number')
         .eq('user_id', user_id)
-        .single()
+        .maybeSingle()
+
+      console.log('🔍 send-estimate-to-sales-rep: Profile query result:', { profile, profileError })
 
       if (profile && !profileError) {
         customerInfo = {
@@ -50,7 +54,12 @@ serve(async (req) => {
           email: profile.email || 'N/A',
           phone: profile.phone_number || 'N/A'
         }
+        console.log('🔍 send-estimate-to-sales-rep: Customer info populated:', customerInfo)
+      } else {
+        console.log('🔍 send-estimate-to-sales-rep: No profile found or error occurred:', profileError)
       }
+    } else {
+      console.log('🔍 send-estimate-to-sales-rep: No user_id provided, using default customer info')
     }
 
     // Get customer markup for price calculations

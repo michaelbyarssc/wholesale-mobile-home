@@ -138,11 +138,11 @@ serve(async (req) => {
         case 'sc':
           return 500 // Fixed $5 for SC
         case 'ga':
-          return Math.round((subtotal + shipping) * 0.08) // 8% of subtotal + shipping
+          return (subtotal + shipping) * 0.08 // 8% of subtotal + shipping
         case 'al':
-          return Math.round((subtotal + shipping) * 0.02) // 2% of subtotal + shipping
+          return (subtotal + shipping) * 0.02 // 2% of subtotal + shipping
         case 'fl':
-          return Math.round((subtotal + shipping) * 0.03) // 3% of subtotal + shipping
+          return (subtotal + shipping) * 0.03 // 3% of subtotal + shipping
         default:
           return 0 // No tax for other states
       }

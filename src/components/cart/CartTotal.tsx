@@ -53,17 +53,17 @@ export const CartTotal = ({
         return 500; // Fixed $5 for SC
       case 'ga':
         const taxableAmountGA = subtotal + shipping;
-        const gaTax = Math.round(taxableAmountGA * 0.08); // 8% of subtotal + shipping
+        const gaTax = taxableAmountGA * 0.08; // 8% of subtotal + shipping
         console.log('🔍 GA tax calculation:', { taxableAmount: taxableAmountGA, percentage: 0.08, result: gaTax });
         return gaTax;
       case 'al':
         const taxableAmountAL = subtotal + shipping;
-        const alTax = Math.round(taxableAmountAL * 0.02); // 2% of subtotal + shipping
+        const alTax = taxableAmountAL * 0.02; // 2% of subtotal + shipping
         console.log('🔍 AL tax calculation:', { taxableAmount: taxableAmountAL, percentage: 0.02, result: alTax });
         return alTax;
       case 'fl':
         const taxableAmountFL = subtotal + shipping;
-        const flTax = Math.round(taxableAmountFL * 0.03); // 3% of subtotal + shipping
+        const flTax = taxableAmountFL * 0.03; // 3% of subtotal + shipping
         console.log('🔍 FL tax calculation:', { taxableAmount: taxableAmountFL, percentage: 0.03, result: flTax });
         return flTax;
       default:

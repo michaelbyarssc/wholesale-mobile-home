@@ -189,6 +189,9 @@ export const ShoppingCart = ({
   const totalShippingCost = useMemo(() => {
     if (!deliveryAddress || cartItems.length === 0) return 0;
     
+    // Trigger calculation if not already done
+    calculateShippingCost(cartItems[0].mobileHome, deliveryAddress);
+    
     const shippingCost = getShippingCost(cartItems[0].mobileHome, deliveryAddress);
     console.log('🛒 ShoppingCart shipping calculation DETAILED:', {
       mobileHome: cartItems[0].mobileHome.model,
@@ -202,7 +205,7 @@ export const ShoppingCart = ({
     
     console.log('🛒 ShoppingCart - EXACT VALUE being passed to CartTotal:', shippingCost.totalCost, typeof shippingCost.totalCost);
     return shippingCost.totalCost;
-  }, [deliveryAddress, cartItems]);
+  }, [deliveryAddress, cartItems, calculateShippingCost, getShippingCost]);
 
   if (isLoading) {
     return (

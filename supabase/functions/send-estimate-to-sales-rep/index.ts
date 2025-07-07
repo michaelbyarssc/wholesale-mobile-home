@@ -202,9 +202,23 @@ serve(async (req) => {
     // In a real implementation, you'd want to integrate with the shipping calculation logic
     const shippingCost = Math.max(0, total_amount - subtotal)
     
-    // Calculate corrected shipping cost and sales tax
-    const correctedShippingCost = Math.max(0, total_amount - subtotal)
+    // Calculate shipping cost (simplified - using total amount minus subtotal and sales tax)
+    // First calculate preliminary shipping to get sales tax
+    const preliminaryShipping = Math.max(0, total_amount - subtotal)
+    const preliminarySalesTax = deliveryAddress ? calculateSalesTax(deliveryAddress.state, subtotal, preliminaryShipping) : 0
+    
+    // Now calculate corrected shipping cost by removing sales tax from the equation
+    const correctedShippingCost = Math.max(0, total_amount - subtotal - preliminarySalesTax)
     const salesTax = deliveryAddress ? calculateSalesTax(deliveryAddress.state, subtotal, correctedShippingCost) : 0
+    
+    console.log('🔍 send-estimate-to-sales-rep: Shipping calculation:', {
+      total_amount,
+      subtotal,
+      preliminaryShipping,
+      preliminarySalesTax,
+      correctedShippingCost,
+      finalSalesTax: salesTax
+    })
     
     // Build email content with cart-like structure
     let emailContent = `

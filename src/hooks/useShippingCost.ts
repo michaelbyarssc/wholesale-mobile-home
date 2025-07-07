@@ -69,8 +69,9 @@ export const useShippingCost = () => {
       // Flat rate
       const flatRate = 1000;
       
-      // Total cost
-      const totalCost = baseCost + permitCost + hotelCost + flatRate;
+      // Total cost with 15% markup
+      const subtotal = baseCost + permitCost + hotelCost + flatRate;
+      const totalCost = Math.round(subtotal * 1.15);
       
       return {
         baseCost,
@@ -158,8 +159,9 @@ export const useShippingCost = () => {
     // Flat rate
     const flatRate = 1000;
     
-    // Total cost
-    const totalCost = baseCost + permitCost + hotelCost + flatRate;
+    // Total cost with 15% markup
+    const subtotal = baseCost + permitCost + hotelCost + flatRate;
+    const totalCost = Math.round(subtotal * 1.15);
     
     return {
       baseCost,

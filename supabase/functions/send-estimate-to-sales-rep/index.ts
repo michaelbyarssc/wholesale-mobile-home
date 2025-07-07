@@ -131,18 +131,18 @@ serve(async (req) => {
     }
 
     // Helper function to calculate sales tax by state (matching cart logic)
-    const calculateSalesTax = (state: string, subtotal: number): number => {
+    const calculateSalesTax = (state: string, subtotal: number, shipping: number): number => {
       const stateCode = state.toLowerCase()
       
       switch (stateCode) {
         case 'sc':
           return 500 // Fixed $5 for SC
         case 'ga':
-          return Math.round(subtotal * 0.08) // 8% of subtotal
+          return Math.round((subtotal + shipping) * 0.08) // 8% of subtotal + shipping
         case 'al':
-          return Math.round(subtotal * 0.02) // 2% of subtotal
+          return Math.round((subtotal + shipping) * 0.02) // 2% of subtotal + shipping
         case 'fl':
-          return Math.round(subtotal * 0.03) // 3% of subtotal
+          return Math.round((subtotal + shipping) * 0.03) // 3% of subtotal + shipping
         default:
           return 0 // No tax for other states
       }
@@ -202,8 +202,9 @@ serve(async (req) => {
     // In a real implementation, you'd want to integrate with the shipping calculation logic
     const shippingCost = Math.max(0, total_amount - subtotal)
     
-    // Calculate sales tax
-    const salesTax = deliveryAddress ? calculateSalesTax(deliveryAddress.state, subtotal) : 0
+    // Calculate corrected shipping cost and sales tax
+    const correctedShippingCost = Math.max(0, total_amount - subtotal)
+    const salesTax = deliveryAddress ? calculateSalesTax(deliveryAddress.state, subtotal, correctedShippingCost) : 0
     
     // Build email content with cart-like structure
     let emailContent = `
@@ -308,8 +309,7 @@ serve(async (req) => {
       emailContent += `</div>`
     })
 
-    // Calculate the corrected shipping cost and total
-    const correctedShippingCost = Math.max(0, total_amount - subtotal - salesTax)
+    // Calculate the final total
     const calculatedTotal = subtotal + correctedShippingCost + salesTax
 
     // Add cost breakdown section (like the cart display)

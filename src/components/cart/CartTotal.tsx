@@ -43,25 +43,28 @@ export const CartTotal = ({
   console.log('🚛 CartTotal - Line 183 will display shipping cost as:', formatPrice(totalShippingCost), '- Raw value:', totalShippingCost);
   
   // Calculate sales tax by state
-  const calculateSalesTax = (state: string, subtotal: number): number => {
+  const calculateSalesTax = (state: string, subtotal: number, shipping: number): number => {
     const stateCode = state.toLowerCase();
     
-    console.log('🔍 Sales tax calculation:', { state: stateCode, subtotal });
+    console.log('🔍 Sales tax calculation:', { state: stateCode, subtotal, shipping });
     
     switch (stateCode) {
       case 'sc':
         return 500; // Fixed $5 for SC
       case 'ga':
-        const gaTax = Math.round(subtotal * 0.08); // 8% of subtotal
-        console.log('🔍 GA tax calculation:', { subtotal, percentage: 0.08, result: gaTax });
+        const taxableAmountGA = subtotal + shipping;
+        const gaTax = Math.round(taxableAmountGA * 0.08); // 8% of subtotal + shipping
+        console.log('🔍 GA tax calculation:', { taxableAmount: taxableAmountGA, percentage: 0.08, result: gaTax });
         return gaTax;
       case 'al':
-        const alTax = Math.round(subtotal * 0.02); // 2% of subtotal
-        console.log('🔍 AL tax calculation:', { subtotal, percentage: 0.02, result: alTax });
+        const taxableAmountAL = subtotal + shipping;
+        const alTax = Math.round(taxableAmountAL * 0.02); // 2% of subtotal + shipping
+        console.log('🔍 AL tax calculation:', { taxableAmount: taxableAmountAL, percentage: 0.02, result: alTax });
         return alTax;
       case 'fl':
-        const flTax = Math.round(subtotal * 0.03); // 3% of subtotal
-        console.log('🔍 FL tax calculation:', { subtotal, percentage: 0.03, result: flTax });
+        const taxableAmountFL = subtotal + shipping;
+        const flTax = Math.round(taxableAmountFL * 0.03); // 3% of subtotal + shipping
+        console.log('🔍 FL tax calculation:', { taxableAmount: taxableAmountFL, percentage: 0.03, result: flTax });
         return flTax;
       default:
         console.log('🔍 No tax for state:', stateCode);
@@ -69,7 +72,7 @@ export const CartTotal = ({
     }
   };
   
-  const salesTax = deliveryAddress ? calculateSalesTax(deliveryAddress.state, subtotal) : 0;
+  const salesTax = deliveryAddress ? calculateSalesTax(deliveryAddress.state, subtotal, totalShippingCost) : 0;
   console.log('🔍 Final sales tax:', { state: deliveryAddress?.state, salesTax });
   
   // Calculate total

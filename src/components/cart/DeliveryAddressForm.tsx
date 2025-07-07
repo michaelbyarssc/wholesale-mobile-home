@@ -55,9 +55,19 @@ export const DeliveryAddressForm = ({
   };
 
   const handleSave = () => {
-    if (validateForm()) {
-      onAddressChange(formData);
-      setIsEditing(false);
+    console.log('🔍 handleSave called with formData:', formData);
+    try {
+      if (validateForm()) {
+        console.log('🔍 Form validation passed, calling onAddressChange');
+        onAddressChange(formData);
+        console.log('🔍 onAddressChange completed, setting editing to false');
+        setIsEditing(false);
+      } else {
+        console.log('🔍 Form validation failed, errors:', errors);
+      }
+    } catch (error) {
+      console.error('🔍 Error in handleSave:', error);
+      // Don't let the error bubble up to ErrorBoundary
     }
   };
 

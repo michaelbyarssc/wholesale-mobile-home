@@ -35,10 +35,12 @@ export const CartTotal = ({
   console.log('🚛 CartTotal - Received props:', {
     totalShippingCost,
     deliveryAddress: !!deliveryAddress,
-    cartItemsLength: cartItems.length
+    cartItemsLength: cartItems.length,
+    totalShippingCostType: typeof totalShippingCost,
+    formattedShippingCost: formatPrice(totalShippingCost)
   });
   
-  console.log('🚛 CartTotal - Line 181 will show shipping as:', formatPrice(totalShippingCost));
+  console.log('🚛 CartTotal - Line 183 will display shipping cost as:', formatPrice(totalShippingCost), '- Raw value:', totalShippingCost);
   
   // Calculate SC sales tax
   const salesTax = deliveryAddress?.state.toLowerCase() === 'sc' ? 500 : 0;

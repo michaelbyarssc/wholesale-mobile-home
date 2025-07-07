@@ -120,6 +120,7 @@ export const CartTotal = ({
       const { data, error } = await supabase.functions.invoke('send-estimate-to-sales-rep', {
         body: {
           cart_items: cartItems,
+          delivery_address: deliveryAddress,
           total_amount: total,
           sales_rep_email: 'michaelbyarssc@gmail.com',
           user_id: userId

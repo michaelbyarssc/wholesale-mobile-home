@@ -16,10 +16,11 @@ serve(async (req) => {
   }
 
   try {
-    const { cart_items, total_amount, sales_rep_email, user_id } = await req.json()
+    const { cart_items, delivery_address, total_amount, sales_rep_email, user_id } = await req.json()
 
     console.log('🔍 send-estimate-to-sales-rep: Received request:', {
       cart_items: cart_items?.length || 0,
+      delivery_address: !!delivery_address,
       total_amount,
       sales_rep_email,
       user_id
@@ -120,18 +121,104 @@ serve(async (req) => {
       return Math.floor(Math.max(pricing1, pricing2))
     }
 
-    // Build email content
+    // Helper function to calculate sales tax by state (matching cart logic)
+    const calculateSalesTax = (state: string, subtotal: number): number => {
+      const stateCode = state.toLowerCase()
+      
+      switch (stateCode) {
+        case 'sc':
+          return 500 // Fixed $5 for SC
+        case 'ga':
+          return Math.round(subtotal * 0.08) // 8% of subtotal
+        case 'al':
+          return Math.round(subtotal * 0.02) // 2% of subtotal
+        case 'fl':
+          return Math.round(subtotal * 0.03) // 3% of subtotal
+        default:
+          return 0 // No tax for other states
+      }
+    }
+
+    // Use the delivery address passed as parameter
+    const deliveryAddress = delivery_address
+    
+    // Calculate subtotal (sum of all item prices)
+    let subtotal = 0
+    cart_items.forEach((item: any) => {
+      const home = item.mobileHome
+      const displayHomePrice = calculateMobileHomePrice(home)
+      subtotal += displayHomePrice
+      
+      // Add services cost
+      if (item.selectedServices) {
+        item.selectedServices.forEach((serviceId: string) => {
+          const service = servicesData.find(s => s.id === serviceId)
+          if (service) {
+            const homeWidth = home.width_feet || 0
+            const isDoubleWide = homeWidth >= 16
+            let baseServicePrice = service.price || 0
+            
+            if (isDoubleWide && service.double_wide_price) {
+              baseServicePrice = service.double_wide_price
+            } else if (!isDoubleWide && service.single_wide_price) {
+              baseServicePrice = service.single_wide_price
+            }
+            
+            const finalServicePrice = Math.floor(baseServicePrice * (1 + customerMarkup / 100))
+            subtotal += finalServicePrice
+          }
+        })
+      }
+      
+      // Add home options cost
+      if (item.selectedHomeOptions) {
+        item.selectedHomeOptions.forEach((selectedOption: any) => {
+          const option = selectedOption.option
+          const quantity = selectedOption.quantity || 1
+          
+          let baseOptionPrice = 0
+          if (option.pricing_type === 'per_sqft' && home.square_footage) {
+            baseOptionPrice = (option.price_per_sqft || 0) * home.square_footage
+          } else {
+            baseOptionPrice = option.cost_price || 0
+          }
+          
+          const finalOptionPrice = Math.floor(baseOptionPrice * (1 + customerMarkup / 100))
+          subtotal += finalOptionPrice * quantity
+        })
+      }
+    })
+
+    // Calculate shipping cost (simplified - using total amount minus subtotal for now)
+    // In a real implementation, you'd want to integrate with the shipping calculation logic
+    const shippingCost = Math.max(0, total_amount - subtotal)
+    
+    // Calculate sales tax
+    const salesTax = deliveryAddress ? calculateSalesTax(deliveryAddress.state, subtotal) : 0
+    
+    // Build email content with cart-like structure
     let emailContent = `
-<h2>New Cart Estimate Request</h2>
+<div style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px;">
+  <h2 style="color: #333; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px;">New Cart Estimate Request</h2>
 
-<h3>Customer Information:</h3>
-<ul>
-  <li><strong>Name:</strong> ${customerInfo.name}</li>
-  <li><strong>Email:</strong> ${customerInfo.email}</li>
-  <li><strong>Phone:</strong> ${customerInfo.phone}</li>
-</ul>
+  <div style="background: #f9fafb; padding: 15px; border-radius: 8px; margin: 20px 0;">
+    <h3 style="color: #374151; margin-top: 0;">Customer Information</h3>
+    <table style="width: 100%; border-collapse: collapse;">
+      <tr><td style="padding: 5px 0;"><strong>Name:</strong></td><td>${customerInfo.name}</td></tr>
+      <tr><td style="padding: 5px 0;"><strong>Email:</strong></td><td>${customerInfo.email}</td></tr>
+      <tr><td style="padding: 5px 0;"><strong>Phone:</strong></td><td>${customerInfo.phone}</td></tr>
+    </table>
+  </div>
 
-<h3>Cart Details:</h3>
+  ${deliveryAddress ? `
+  <div style="background: #f0f9ff; padding: 15px; border-radius: 8px; margin: 20px 0;">
+    <h3 style="color: #374151; margin-top: 0;">📍 Delivery Address</h3>
+    <p style="margin: 5px 0;">${deliveryAddress.street || ''}</p>
+    <p style="margin: 5px 0;">${deliveryAddress.city || ''}, ${deliveryAddress.state || ''} ${deliveryAddress.zipCode || ''}</p>
+  </div>
+  ` : ''}
+
+  <h3 style="color: #374151;">🏠 Items in Cart</h3>
 `
 
     // Process each cart item
@@ -212,15 +299,51 @@ serve(async (req) => {
       emailContent += `</div>`
     })
 
-    // Round down the total amount
-    const roundedTotalAmount = Math.floor(total_amount)
+    // Calculate the corrected shipping cost and total
+    const correctedShippingCost = Math.max(0, total_amount - subtotal - salesTax)
+    const calculatedTotal = subtotal + correctedShippingCost + salesTax
 
+    // Add cost breakdown section (like the cart display)
     emailContent += `
-<h3>Total Amount: $${roundedTotalAmount.toLocaleString()}</h3>
+  <div style="background: #f9fafb; padding: 20px; border-radius: 8px; margin: 20px 0; border-top: 2px solid #e5e7eb;">
+    <h3 style="color: #374151; margin-top: 0;">💰 Cost Breakdown</h3>
+    
+    <div style="border-collapse: collapse; width: 100%;">
+      <div style="display: flex; justify-content: space-between; padding: 8px 0; color: #6b7280;">
+        <span>Subtotal:</span>
+        <span>$${subtotal.toLocaleString()}</span>
+      </div>
+      
+      ${correctedShippingCost > 0 ? `
+      <div style="display: flex; justify-content: space-between; padding: 8px 0; color: #6b7280;">
+        <span>🚛 Shipping:</span>
+        <span>$${correctedShippingCost.toLocaleString()}</span>
+      </div>
+      ` : ''}
+      
+      ${salesTax > 0 && deliveryAddress ? `
+      <div style="display: flex; justify-content: space-between; padding: 8px 0; color: #6b7280;">
+        <span>${deliveryAddress.state.toUpperCase()} Sales Tax:</span>
+        <span>$${salesTax.toLocaleString()}</span>
+      </div>
+      ` : ''}
+      
+      <div style="display: flex; justify-content: space-between; padding: 12px 0; font-size: 18px; font-weight: bold; color: #059669; border-top: 2px solid #e5e7eb; margin-top: 8px;">
+        <span>Total:</span>
+        <span>$${Math.floor(calculatedTotal).toLocaleString()}</span>
+      </div>
+    </div>
+  </div>
 
-<p>This estimate was generated from the customer's shopping cart and requires your review.</p>
-<p>Please contact the customer to discuss next steps.</p>
-<p><em>Note: All prices shown reflect what the customer sees on the website. All prices are rounded down to the nearest whole dollar.</em></p>
+  <div style="background: #fef3c7; padding: 15px; border-radius: 8px; margin: 20px 0;">
+    <p style="margin: 0; color: #92400e;"><strong>📧 Action Required:</strong> This estimate was generated from the customer's shopping cart and requires your review.</p>
+    <p style="margin: 10px 0 0 0; color: #92400e;">Please contact the customer to discuss next steps.</p>
+  </div>
+  
+  <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 12px;">
+    <p><em>Note: All prices shown reflect what the customer sees on the website. All prices are rounded down to the nearest whole dollar.</em></p>
+  </div>
+</div>
 `
 
     console.log('🔍 send-estimate-to-sales-rep: Sending email to:', sales_rep_email)

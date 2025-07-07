@@ -73,6 +73,18 @@ export const useShippingCost = () => {
       const subtotal = baseCost + permitCost + hotelCost + flatRate;
       const totalCost = Math.round(subtotal * 1.15);
       
+      console.log('🚢 Shipping calculation breakdown:', {
+        baseCost,
+        permitCost,
+        hotelCost,
+        flatRate,
+        subtotal,
+        markup: '15%',
+        totalCost,
+        distance,
+        isDoubleWide
+      });
+      
       return {
         baseCost,
         permitCost,
@@ -162,6 +174,18 @@ export const useShippingCost = () => {
     // Total cost with 15% markup
     const subtotal = baseCost + permitCost + hotelCost + flatRate;
     const totalCost = Math.round(subtotal * 1.15);
+    
+    console.log('🚢 getShippingCost breakdown:', {
+      baseCost,
+      permitCost,
+      hotelCost,
+      flatRate,
+      subtotal,
+      markup: '15%',
+      totalCost,
+      distance,
+      isDoubleWide
+    });
     
     return {
       baseCost,

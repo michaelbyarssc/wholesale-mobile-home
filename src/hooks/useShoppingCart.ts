@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
+import { User } from '@supabase/supabase-js';
 
 type HomeOption = Database['public']['Tables']['home_options']['Row'];
 
@@ -24,18 +25,38 @@ export type CartItem = {
   selectedHomeOptions: { option: HomeOption; quantity: number }[];
 };
 
-export const useShoppingCart = () => {
+export const useShoppingCart = (user?: User | null) => {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [deliveryAddress, setDeliveryAddress] = useState<DeliveryAddress | null>(null);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState<User | null>(user || null);
+
+  // Get current user if not provided
+  useEffect(() => {
+    if (!user) {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        setCurrentUser(session?.user || null);
+      });
+    } else {
+      setCurrentUser(user);
+    }
+  }, [user]);
+
+  // Helper function to get user-specific localStorage keys
+  const getStorageKey = (baseKey: string) => {
+    return currentUser ? `${baseKey}_${currentUser.id}` : baseKey;
+  };
 
   // Load cart data from localStorage on mount
   useEffect(() => {
+    if (!currentUser && !isLoading) return; // Wait for user to load
+    
     const loadCart = () => {
       try {
-        const savedCartData = localStorage.getItem('cart_data');
-        console.log('🔍 Loading cart from localStorage:', savedCartData);
+        const cartDataKey = getStorageKey('cart_data');
+        const savedCartData = localStorage.getItem(cartDataKey);
+        console.log('🔍 Loading cart from localStorage for user:', currentUser?.id || 'anonymous', 'key:', cartDataKey, 'data:', savedCartData);
         
         if (savedCartData) {
           const parsed: CartData = JSON.parse(savedCartData);
@@ -45,25 +66,32 @@ export const useShoppingCart = () => {
             setDeliveryAddress(parsed.deliveryAddress || null);
           } else {
             console.log('🔍 Invalid cart data format, clearing cart');
-            localStorage.removeItem('cart_data');
+            localStorage.removeItem(cartDataKey);
             setCartItems([]);
             setDeliveryAddress(null);
           }
         } else {
           // Try to migrate old format
-          const savedItems = localStorage.getItem('cart_items');
+          const cartItemsKey = getStorageKey('cart_items');
+          const savedItems = localStorage.getItem(cartItemsKey);
           if (savedItems) {
             const parsed = JSON.parse(savedItems);
             if (Array.isArray(parsed)) {
               setCartItems(parsed);
-              localStorage.removeItem('cart_items'); // Remove old format
+              localStorage.removeItem(cartItemsKey); // Remove old format
             }
+          } else {
+            // Clear cart for new user session
+            setCartItems([]);
+            setDeliveryAddress(null);
           }
         }
       } catch (error) {
         console.error('🔍 Error loading cart from localStorage:', error);
-        localStorage.removeItem('cart_data');
-        localStorage.removeItem('cart_items');
+        const cartDataKey = getStorageKey('cart_data');
+        const cartItemsKey = getStorageKey('cart_items');
+        localStorage.removeItem(cartDataKey);
+        localStorage.removeItem(cartItemsKey);
         setCartItems([]);
         setDeliveryAddress(null);
       } finally {
@@ -72,23 +100,24 @@ export const useShoppingCart = () => {
     };
 
     loadCart();
-  }, []);
+  }, [currentUser]); // Re-load when user changes
 
   // Save cart data to localStorage whenever cartItems or deliveryAddress changes
   useEffect(() => {
-    if (!isLoading) {
+    if (!isLoading && currentUser !== undefined) { // Wait for user to be determined
       try {
         const cartData: CartData = {
           items: cartItems,
           deliveryAddress: deliveryAddress
         };
-        console.log('🔍 Saving cart data to localStorage:', cartItems.length, 'items, address:', !!deliveryAddress);
-        localStorage.setItem('cart_data', JSON.stringify(cartData));
+        const cartDataKey = getStorageKey('cart_data');
+        console.log('🔍 Saving cart data to localStorage for user:', currentUser?.id || 'anonymous', 'key:', cartDataKey, 'items:', cartItems.length, 'address:', !!deliveryAddress);
+        localStorage.setItem(cartDataKey, JSON.stringify(cartData));
       } catch (error) {
         console.error('🔍 Error saving cart to localStorage:', error);
       }
     }
-  }, [cartItems, deliveryAddress, isLoading]);
+  }, [cartItems, deliveryAddress, isLoading, currentUser]);
 
   const addToCart = useCallback((
     mobileHome: Database['public']['Tables']['mobile_homes']['Row'], 
@@ -191,11 +220,19 @@ export const useShoppingCart = () => {
       console.log('🔍 Setting cart items to empty array and clearing address');
       setCartItems([]);
       setDeliveryAddress(null);
+      
+      // Also clear from localStorage
+      if (currentUser !== undefined) {
+        const cartDataKey = getStorageKey('cart_data');
+        localStorage.removeItem(cartDataKey);
+        console.log('🔍 Cleared cart from localStorage for user:', currentUser?.id || 'anonymous');
+      }
+      
       console.log('🔍 Cart cleared successfully');
     } catch (error) {
       console.error('🔍 Error clearing cart:', error);
     }
-  }, []);
+  }, [currentUser, getStorageKey]);
 
   const toggleCart = useCallback(() => {
     console.log('🔍 toggleCart called, current isCartOpen:', isCartOpen);

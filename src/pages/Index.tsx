@@ -16,7 +16,13 @@ const Index = () => {
   
   const navigate = useNavigate();
   
-  // ALL hooks must be called at the top level before any conditional logic
+  // State hooks first
+  const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [userProfile, setUserProfile] = useState<{ first_name?: string } | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  
+  // Shopping cart hook after user state is declared
   const {
     cartItems,
     deliveryAddress,
@@ -31,13 +37,7 @@ const Index = () => {
     closeCart,
     setIsCartOpen,
     isLoading: cartLoading,
-  } = useShoppingCart();
-
-  // State hooks after shopping cart hook
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
-  const [userProfile, setUserProfile] = useState<{ first_name?: string } | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  } = useShoppingCart(user);
   
   console.log('Index component: All hooks initialized', { user: user?.id, isLoading, cartItems: cartItems.length });
 

@@ -19,7 +19,7 @@ type HomeOption = Database['public']['Tables']['home_options']['Row'];
 const EstimateForm = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { cartItems, clearCart } = useShoppingCart();
+  const { cartItems, clearCart } = useShoppingCart(null); // Estimates can be anonymous
   const { markupPercentage, calculatePrice, calculateHomeOptionPrice } = useCustomerPricing(null);
   
   const [services, setServices] = useState<any[]>([]);

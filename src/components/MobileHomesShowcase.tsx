@@ -334,7 +334,7 @@ export const MobileHomesShowcase = ({
         {/* Clickable overlay for navigation to detail page */}
         <div 
           onClick={() => window.open(`/home/${home.id}`, '_blank')}
-          className="absolute inset-0 z-10 bg-transparent group-hover:bg-blue-50/20 transition-colors"
+          className="absolute inset-0 z-0 bg-transparent group-hover:bg-blue-50/20 transition-colors"
         />
         <CardHeader className="pb-4">
           <div className="flex justify-between items-start">

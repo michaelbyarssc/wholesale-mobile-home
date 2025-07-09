@@ -7,6 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
 import { useShoppingCart } from '@/hooks/useShoppingCart';
 import { Header } from '@/components/layout/Header';
+import { ChatWidget } from '@/components/chat/ChatWidget';
 import { HeroSection } from '@/components/layout/HeroSection';
 import { FeaturesSection } from '@/components/layout/FeaturesSection';
 import { CTASection } from '@/components/layout/CTASection';
@@ -311,6 +312,9 @@ const Index = () => {
 
       {/* Floating Social Proof */}
       <SocialProofBanner variant="floating" />
+
+      {/* Chat Widget */}
+      <ChatWidget userId={user?.id} />
 
       <Footer />
     </div>

@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      activity_feed: {
+        Row: {
+          action: string
+          actor_id: string | null
+          created_at: string
+          description: string
+          entity_id: string | null
+          entity_type: string
+          id: string
+          metadata: Json | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          created_at?: string
+          description: string
+          entity_id?: string | null
+          entity_type: string
+          id?: string
+          metadata?: Json | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          created_at?: string
+          description?: string
+          entity_id?: string | null
+          entity_type?: string
+          id?: string
+          metadata?: Json | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       admin_audit_log: {
         Row: {
           action: string
@@ -171,6 +207,139 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      chat_messages: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          message_type: string
+          metadata: Json | null
+          read_at: string | null
+          sender_id: string | null
+          sender_type: string
+          session_id: string
+          updated_at: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          message_type?: string
+          metadata?: Json | null
+          read_at?: string | null
+          sender_id?: string | null
+          sender_type: string
+          session_id: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          message_type?: string
+          metadata?: Json | null
+          read_at?: string | null
+          sender_id?: string | null
+          sender_type?: string
+          session_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "chat_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_participants: {
+        Row: {
+          created_at: string
+          id: string
+          joined_at: string
+          left_at: string | null
+          role: string
+          session_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          joined_at?: string
+          left_at?: string | null
+          role?: string
+          session_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          joined_at?: string
+          left_at?: string | null
+          role?: string
+          session_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_participants_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "chat_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_sessions: {
+        Row: {
+          agent_id: string | null
+          created_at: string
+          department: string | null
+          ended_at: string | null
+          id: string
+          metadata: Json | null
+          priority: string
+          session_token: string
+          started_at: string
+          status: string
+          subject: string | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          agent_id?: string | null
+          created_at?: string
+          department?: string | null
+          ended_at?: string | null
+          id?: string
+          metadata?: Json | null
+          priority?: string
+          session_token: string
+          started_at?: string
+          status?: string
+          subject?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          agent_id?: string | null
+          created_at?: string
+          department?: string | null
+          ended_at?: string | null
+          id?: string
+          metadata?: Json | null
+          priority?: string
+          session_token?: string
+          started_at?: string
+          status?: string
+          subject?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
       }
       customer_interactions: {
         Row: {
@@ -985,6 +1154,90 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_preferences: {
+        Row: {
+          created_at: string
+          email_notifications: boolean
+          estimate_updates: boolean
+          id: string
+          inventory_updates: boolean
+          notification_frequency: string
+          price_updates: boolean
+          push_notifications: boolean
+          system_notifications: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email_notifications?: boolean
+          estimate_updates?: boolean
+          id?: string
+          inventory_updates?: boolean
+          notification_frequency?: string
+          price_updates?: boolean
+          push_notifications?: boolean
+          system_notifications?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email_notifications?: boolean
+          estimate_updates?: boolean
+          id?: string
+          inventory_updates?: boolean
+          notification_frequency?: string
+          price_updates?: boolean
+          push_notifications?: boolean
+          system_notifications?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      notifications: {
+        Row: {
+          category: string
+          created_at: string
+          data: Json | null
+          expires_at: string | null
+          id: string
+          message: string
+          read_at: string | null
+          title: string
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          data?: Json | null
+          expires_at?: string | null
+          id?: string
+          message: string
+          read_at?: string | null
+          title: string
+          type?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          data?: Json | null
+          expires_at?: string | null
+          id?: string
+          message?: string
+          read_at?: string | null
+          title?: string
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           approved: boolean
@@ -1157,6 +1410,63 @@ export type Database = {
           },
         ]
       }
+      saved_searches: {
+        Row: {
+          created_at: string
+          filters: Json
+          id: string
+          last_used_at: string
+          name: string
+          search_query: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          filters?: Json
+          id?: string
+          last_used_at?: string
+          name: string
+          search_query?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          filters?: Json
+          id?: string
+          last_used_at?: string
+          name?: string
+          search_query?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      search_history: {
+        Row: {
+          created_at: string
+          id: string
+          result_count: number
+          search_query: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          result_count?: number
+          search_query: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          result_count?: number
+          search_query?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       services: {
         Row: {
           active: boolean
@@ -1327,6 +1637,59 @@ export type Database = {
         }
         Relationships: []
       }
+      support_tickets: {
+        Row: {
+          assigned_to: string | null
+          category: string
+          chat_session_id: string | null
+          created_at: string
+          description: string
+          id: string
+          metadata: Json | null
+          priority: string
+          status: string
+          title: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          assigned_to?: string | null
+          category?: string
+          chat_session_id?: string | null
+          created_at?: string
+          description: string
+          id?: string
+          metadata?: Json | null
+          priority?: string
+          status?: string
+          title: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          assigned_to?: string | null
+          category?: string
+          chat_session_id?: string | null
+          created_at?: string
+          description?: string
+          id?: string
+          metadata?: Json | null
+          priority?: string
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_tickets_chat_session_id_fkey"
+            columns: ["chat_session_id"]
+            isOneToOne: false
+            referencedRelation: "chat_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       testimonials: {
         Row: {
           approved: boolean
@@ -1431,6 +1794,38 @@ export type Database = {
       check_password_strength: {
         Args: { password: string }
         Returns: Json
+      }
+      cleanup_expired_notifications: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
+      create_activity: {
+        Args: {
+          p_user_id: string
+          p_actor_id: string
+          p_action: string
+          p_entity_type: string
+          p_entity_id: string
+          p_description: string
+          p_metadata?: Json
+        }
+        Returns: string
+      }
+      create_notification: {
+        Args: {
+          p_user_id: string
+          p_title: string
+          p_message: string
+          p_type?: string
+          p_category?: string
+          p_data?: Json
+          p_expires_hours?: number
+        }
+        Returns: string
+      }
+      generate_chat_session_token: {
+        Args: Record<PropertyKey, never>
+        Returns: string
       }
       generate_invoice_number: {
         Args: Record<PropertyKey, never>

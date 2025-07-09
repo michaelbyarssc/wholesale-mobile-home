@@ -15,6 +15,7 @@ import NotFound from "./pages/NotFound";
 import { MobileHomeDetail } from "./pages/MobileHomeDetail";
 import FAQ from "./pages/FAQ";
 import Blog from "./pages/Blog";
+import Support from "./pages/Support";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
@@ -39,6 +40,7 @@ const App = () => (
             <Route path="/approve-estimate/:token" element={<ApproveEstimate />} />
             <Route path="/faq" element={<FAQ />} />
             <Route path="/blog" element={<Blog />} />
+            <Route path="/support" element={<Support />} />
             <Route path="/admin" element={
               <ProtectedRoute adminOnly>
                 <Admin />

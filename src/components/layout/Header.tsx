@@ -2,8 +2,8 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { useNavigate } from 'react-router-dom';
-import { ShoppingCart as CartIcon, LogOut, User, Lock, Menu, Phone, Mail, X, Download } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
+import { ShoppingCart as CartIcon, LogOut, User, Lock, Menu, Phone, Mail, X, Download, MessageCircle } from 'lucide-react';
 import { User as SupabaseUser } from '@supabase/supabase-js';
 import { CartItem } from '@/hooks/useShoppingCart';
 import { PasswordChangeDialog } from '@/components/auth/PasswordChangeDialog';
@@ -104,18 +104,27 @@ export const Header = ({
             {/* Right side - User Actions */}
             <div className="flex items-center gap-2 sm:gap-3">
               {!user ? (
-                <Button 
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    console.log('Login button clicked, navigating to /auth');
-                    navigate('/auth');
-                  }}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-6 py-2 sm:py-2.5 font-medium rounded-lg shadow-sm transition-all duration-200 text-sm sm:text-base cursor-pointer"
-                >
-                  <span className="hidden sm:inline">Login</span>
-                  <span className="sm:hidden">Login</span>
-                </Button>
+                <>
+                  <Link 
+                    to="/support" 
+                    className="hidden sm:flex items-center gap-2 text-gray-600 hover:text-blue-600 transition-colors"
+                  >
+                    <MessageCircle className="h-4 w-4" />
+                    <span className="font-medium">Support</span>
+                  </Link>
+                  <Button 
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      console.log('Login button clicked, navigating to /auth');
+                      navigate('/auth');
+                    }}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-6 py-2 sm:py-2.5 font-medium rounded-lg shadow-sm transition-all duration-200 text-sm sm:text-base cursor-pointer"
+                  >
+                    <span className="hidden sm:inline">Login</span>
+                    <span className="sm:hidden">Login</span>
+                  </Button>
+                </>
               ) : (
                 <>
                   {/* Desktop User Menu */}
@@ -127,6 +136,15 @@ export const Header = ({
                       <span className="font-medium">Welcome, {displayName}</span>
                     </div>
                     
+                    {/* Support Link */}
+                    <Link 
+                      to="/support" 
+                      className="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition-colors"
+                    >
+                      <MessageCircle className="h-4 w-4" />
+                      <span className="font-medium">Support</span>
+                    </Link>
+
                     {/* PWA Install Button */}
                     {canInstall && (
                       <Button
@@ -256,6 +274,14 @@ export const Header = ({
 
               {/* Menu Actions */}
               <div className="space-y-2 px-2 pt-2 border-t border-gray-100">
+                <Link
+                  to="/support"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center gap-3 p-3 text-gray-600 hover:text-blue-600 transition-colors"
+                >
+                  <MessageCircle className="h-4 w-4" />
+                  <span className="font-medium">Support</span>
+                </Link>
                 <UserSettingsDialog 
                   user={user} 
                   userProfile={userProfile} 

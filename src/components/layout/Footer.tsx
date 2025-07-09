@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { Phone, Mail, MapPin } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 export const Footer = () => {
   return (
@@ -51,6 +52,22 @@ export const Footer = () => {
                 >
                   Mobile Homes
                 </a>
+              </li>
+              <li>
+                <Link 
+                  to="/faq" 
+                  className="text-blue-100 hover:text-white transition-colors text-sm sm:text-base block py-1"
+                >
+                  FAQ
+                </Link>
+              </li>
+              <li>
+                <Link 
+                  to="/blog" 
+                  className="text-blue-100 hover:text-white transition-colors text-sm sm:text-base block py-1"
+                >
+                  Resources & Guides
+                </Link>
               </li>
               <li>
                 <a 

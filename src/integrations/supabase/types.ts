@@ -384,6 +384,83 @@ export type Database = {
         }
         Relationships: []
       }
+      faq_categories: {
+        Row: {
+          active: boolean
+          created_at: string
+          description: string | null
+          display_order: number
+          id: string
+          name: string
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          id?: string
+          name: string
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          id?: string
+          name?: string
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      faqs: {
+        Row: {
+          active: boolean
+          answer: string
+          category_id: string | null
+          created_at: string
+          display_order: number
+          featured: boolean
+          id: string
+          question: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          answer: string
+          category_id?: string | null
+          created_at?: string
+          display_order?: number
+          featured?: boolean
+          id?: string
+          question: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          answer?: string
+          category_id?: string | null
+          created_at?: string
+          display_order?: number
+          featured?: boolean
+          id?: string
+          question?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "faqs_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "faq_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       follow_ups: {
         Row: {
           assigned_to: string | null

@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { MobileHomeImageCarousel } from '@/components/MobileHomeImageCarousel';
 import { MobileHomeServicesDialog } from '@/components/MobileHomeServicesDialog';
+import { OptimizedImage } from '@/components/OptimizedImage';
 import { useCustomerPricing } from '@/hooks/useCustomerPricing';
 import { useWishlist } from '@/hooks/useWishlist';
 import { useHomeComparison } from '@/hooks/useHomeComparison';
@@ -253,13 +254,14 @@ export const MobileHomeDetail: React.FC = () => {
               <TabsContent value="all" className="mt-4">
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                   {homeImages.map((image, index) => (
-                    <div key={image.id} className="aspect-video rounded-lg overflow-hidden bg-gray-100">
-                      <img
-                        src={image.image_url}
-                        alt={image.alt_text || `${getHomeName(mobileHome)} view ${index + 1}`}
-                        className="w-full h-full object-cover hover:scale-105 transition-transform cursor-pointer"
-                      />
-                    </div>
+                    <OptimizedImage
+                      key={image.id}
+                      src={image.image_url}
+                      alt={image.alt_text || `${getHomeName(mobileHome)} view ${index + 1}`}
+                      aspectRatio="video"
+                      className="rounded-lg hover:scale-105 transition-transform cursor-pointer"
+                      sizes="(max-width: 640px) 50vw, 33vw"
+                    />
                   ))}
                 </div>
               </TabsContent>
@@ -267,13 +269,14 @@ export const MobileHomeDetail: React.FC = () => {
               <TabsContent value="exterior" className="mt-4">
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                   {exteriorImages.map((image, index) => (
-                    <div key={image.id} className="aspect-video rounded-lg overflow-hidden bg-gray-100">
-                      <img
-                        src={image.image_url}
-                        alt={image.alt_text || `${getHomeName(mobileHome)} exterior ${index + 1}`}
-                        className="w-full h-full object-cover hover:scale-105 transition-transform cursor-pointer"
-                      />
-                    </div>
+                    <OptimizedImage
+                      key={image.id}
+                      src={image.image_url}
+                      alt={image.alt_text || `${getHomeName(mobileHome)} exterior ${index + 1}`}
+                      aspectRatio="video"
+                      className="rounded-lg hover:scale-105 transition-transform cursor-pointer"
+                      sizes="(max-width: 640px) 50vw, 33vw"
+                    />
                   ))}
                 </div>
               </TabsContent>
@@ -281,13 +284,14 @@ export const MobileHomeDetail: React.FC = () => {
               <TabsContent value="interior" className="mt-4">
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                   {interiorImages.map((image, index) => (
-                    <div key={image.id} className="aspect-video rounded-lg overflow-hidden bg-gray-100">
-                      <img
-                        src={image.image_url}
-                        alt={image.alt_text || `${getHomeName(mobileHome)} interior ${index + 1}`}
-                        className="w-full h-full object-cover hover:scale-105 transition-transform cursor-pointer"
-                      />
-                    </div>
+                    <OptimizedImage
+                      key={image.id}
+                      src={image.image_url}
+                      alt={image.alt_text || `${getHomeName(mobileHome)} interior ${index + 1}`}
+                      aspectRatio="video"
+                      className="rounded-lg hover:scale-105 transition-transform cursor-pointer"
+                      sizes="(max-width: 640px) 50vw, 33vw"
+                    />
                   ))}
                 </div>
               </TabsContent>
@@ -295,13 +299,14 @@ export const MobileHomeDetail: React.FC = () => {
               <TabsContent value="floorplan" className="mt-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {floorPlanImages.map((image, index) => (
-                    <div key={image.id} className="aspect-video rounded-lg overflow-hidden bg-gray-100">
-                      <img
-                        src={image.image_url}
-                        alt={image.alt_text || `${getHomeName(mobileHome)} floor plan ${index + 1}`}
-                        className="w-full h-full object-cover hover:scale-105 transition-transform cursor-pointer"
-                      />
-                    </div>
+                    <OptimizedImage
+                      key={image.id}
+                      src={image.image_url}
+                      alt={image.alt_text || `${getHomeName(mobileHome)} floor plan ${index + 1}`}
+                      aspectRatio="video"
+                      className="rounded-lg hover:scale-105 transition-transform cursor-pointer"
+                      sizes="(max-width: 640px) 100vw, 50vw"
+                    />
                   ))}
                 </div>
               </TabsContent>

@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Edit2, X, GripVertical } from 'lucide-react';
 import { Draggable } from '@hello-pangea/dnd';
+import { OptimizedImage } from '@/components/OptimizedImage';
 
 interface MobileHomeImage {
   id: string;
@@ -63,11 +64,13 @@ export const ImageItem = ({
             </div>
             
             {/* Image Preview */}
-            <div className="flex-shrink-0">
-              <img
+            <div className="flex-shrink-0 relative">
+              <OptimizedImage
                 src={image.image_url}
                 alt={image.alt_text || ''}
                 className="w-20 h-20 object-cover rounded-md border"
+                aspectRatio="square"
+                sizes="80px"
               />
               {index === 0 && (
                 <div className="absolute -top-1 -left-1 bg-green-500 text-white text-xs px-2 py-1 rounded-full">

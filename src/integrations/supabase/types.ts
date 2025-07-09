@@ -880,6 +880,111 @@ export type Database = {
         }
         Relationships: []
       }
+      newsletter_campaigns: {
+        Row: {
+          campaign_type: string
+          clicked_count: number | null
+          content: string
+          created_at: string
+          created_by: string | null
+          id: string
+          opened_count: number | null
+          recipients_count: number | null
+          scheduled_at: string | null
+          sent_at: string | null
+          status: string
+          subject: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          campaign_type?: string
+          clicked_count?: number | null
+          content: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          opened_count?: number | null
+          recipients_count?: number | null
+          scheduled_at?: string | null
+          sent_at?: string | null
+          status?: string
+          subject: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          campaign_type?: string
+          clicked_count?: number | null
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          opened_count?: number | null
+          recipients_count?: number | null
+          scheduled_at?: string | null
+          sent_at?: string | null
+          status?: string
+          subject?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      newsletter_subscribers: {
+        Row: {
+          created_at: string
+          email: string
+          email_verified: boolean
+          first_name: string | null
+          id: string
+          last_email_sent_at: string | null
+          last_name: string | null
+          phone: string | null
+          preferences: Json | null
+          source: string | null
+          status: string
+          subscribed_at: string
+          unsubscribed_at: string | null
+          updated_at: string
+          verification_token: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          email_verified?: boolean
+          first_name?: string | null
+          id?: string
+          last_email_sent_at?: string | null
+          last_name?: string | null
+          phone?: string | null
+          preferences?: Json | null
+          source?: string | null
+          status?: string
+          subscribed_at?: string
+          unsubscribed_at?: string | null
+          updated_at?: string
+          verification_token?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          email_verified?: boolean
+          first_name?: string | null
+          id?: string
+          last_email_sent_at?: string | null
+          last_name?: string | null
+          phone?: string | null
+          preferences?: Json | null
+          source?: string | null
+          status?: string
+          subscribed_at?: string
+          unsubscribed_at?: string | null
+          updated_at?: string
+          verification_token?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           approved: boolean
@@ -1241,6 +1346,10 @@ export type Database = {
         Returns: Json
       }
       generate_invoice_number: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      generate_unsubscribe_token: {
         Args: Record<PropertyKey, never>
         Returns: string
       }

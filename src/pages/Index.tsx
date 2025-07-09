@@ -10,6 +10,7 @@ import { Header } from '@/components/layout/Header';
 import { HeroSection } from '@/components/layout/HeroSection';
 import { FeaturesSection } from '@/components/layout/FeaturesSection';
 import { CTASection } from '@/components/layout/CTASection';
+import { NewsletterCTASection } from '@/components/layout/NewsletterCTASection';
 import { Footer } from '@/components/layout/Footer';
 import { LoadingSpinner } from '@/components/loading/LoadingSpinner';
 import { HeaderSkeleton } from '@/components/loading/HeaderSkeleton';
@@ -263,6 +264,8 @@ const Index = () => {
       </section>
       
       <TestimonialsSection />
+
+      <NewsletterCTASection />
 
       <CTASection user={user} />
 

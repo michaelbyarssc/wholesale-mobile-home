@@ -2,11 +2,24 @@
 import React from 'react';
 import { Phone, Mail, MapPin } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { NewsletterSignup } from '@/components/NewsletterSignup';
 
 export const Footer = () => {
   return (
     <footer className="bg-blue-900 text-white py-12 sm:py-16 lg:py-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Newsletter Signup Section */}
+        <div className="mb-12 lg:mb-16">
+          <div className="max-w-2xl mx-auto">
+            <NewsletterSignup
+              variant="inline"
+              title="Stay Updated on New Inventory"
+              description="Be the first to know about new mobile homes, special offers, and price updates."
+              className="bg-blue-800/50 border-blue-700"
+            />
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 sm:gap-10 lg:gap-12">
           <div className="sm:col-span-2 lg:col-span-1">
             <h3 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">

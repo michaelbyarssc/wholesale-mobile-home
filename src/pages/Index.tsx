@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MobileHomesShowcase } from '@/components/MobileHomesShowcase';
 import { TestimonialsSection } from '@/components/reviews/TestimonialsSection';
+import { FinancingCalculator } from '@/components/financing/FinancingCalculator';
 import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
 import { useShoppingCart } from '@/hooks/useShoppingCart';
@@ -245,6 +246,21 @@ const Index = () => {
       </div>
 
       <FeaturesSection />
+      
+      {/* Financing Calculator Section */}
+      <section className="py-16 bg-gradient-to-r from-blue-50 to-indigo-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-extrabold text-gray-900 sm:text-4xl">
+              Calculate Your Monthly Payments
+            </h2>
+            <p className="mt-4 text-xl text-gray-600">
+              Get an instant estimate of your financing options for your dream mobile home
+            </p>
+          </div>
+          <FinancingCalculator />
+        </div>
+      </section>
       
       <TestimonialsSection />
 

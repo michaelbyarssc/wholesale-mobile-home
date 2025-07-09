@@ -330,15 +330,13 @@ export const MobileHomesShowcase = ({
     const homeFeatures = getHomeFeatures(home.features);
     
     return (
-      <Card key={home.id} className="overflow-hidden hover:shadow-lg transition-shadow group cursor-pointer">
-        {/* Clickable overlay for navigation to detail page */}
-        <div 
-          onClick={() => window.open(`/home/${home.id}`, '_blank')}
-          className="absolute inset-0 z-0 bg-transparent group-hover:bg-blue-50/20 transition-colors"
-        />
+      <Card key={home.id} className="overflow-hidden hover:shadow-lg transition-shadow group">
         <CardHeader className="pb-4">
           <div className="flex justify-between items-start">
-            <CardTitle className="text-xl font-bold text-gray-900">
+            <CardTitle 
+              className="text-xl font-bold text-gray-900 cursor-pointer hover:text-blue-600 transition-colors"
+              onClick={() => window.open(`/home/${home.id}`, '_blank')}
+            >
               {getHomeName(home)}
             </CardTitle>
             <div className="flex items-center gap-2">

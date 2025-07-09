@@ -3,12 +3,13 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
-import { ShoppingCart as CartIcon, LogOut, User, Lock, Menu, Phone, Mail, X } from 'lucide-react';
+import { ShoppingCart as CartIcon, LogOut, User, Lock, Menu, Phone, Mail, X, Download } from 'lucide-react';
 import { User as SupabaseUser } from '@supabase/supabase-js';
 import { CartItem } from '@/hooks/useShoppingCart';
 import { PasswordChangeDialog } from '@/components/auth/PasswordChangeDialog';
 import { UserSettingsDialog } from '@/components/auth/UserSettingsDialog';
 import { useBusinessInfo } from '@/hooks/useBusinessInfo';
+import { usePWA } from '@/hooks/usePWA';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -41,6 +42,7 @@ export const Header = ({
   const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { data: businessInfo } = useBusinessInfo();
+  const { canInstall, installApp } = usePWA();
 
   const displayName = userProfile?.first_name || 'User';
 
@@ -51,6 +53,14 @@ export const Header = ({
   const handleProfileUpdated = () => {
     if (onProfileUpdated) {
       onProfileUpdated();
+    }
+  };
+
+  const handleInstallApp = async () => {
+    try {
+      await installApp();
+    } catch (error) {
+      console.error('Failed to install app:', error);
     }
   };
 
@@ -111,6 +121,19 @@ export const Header = ({
                       </div>
                       <span className="font-medium">Welcome, {displayName}</span>
                     </div>
+                    
+                    {/* PWA Install Button */}
+                    {canInstall && (
+                      <Button
+                        onClick={handleInstallApp}
+                        variant="outline"
+                        size="sm"
+                        className="text-primary border-primary/30 hover:bg-primary/10"
+                      >
+                        <Download className="h-4 w-4 mr-2" />
+                        Install App
+                      </Button>
+                    )}
                     
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>

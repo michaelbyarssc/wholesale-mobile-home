@@ -10,6 +10,8 @@ import { FeaturesSection } from '@/components/layout/FeaturesSection';
 import { CTASection } from '@/components/layout/CTASection';
 import { Footer } from '@/components/layout/Footer';
 import { LoadingSpinner } from '@/components/layout/LoadingSpinner';
+import { InstallPrompt } from '@/components/pwa/InstallPrompt';
+import { OfflineIndicator } from '@/components/pwa/OfflineIndicator';
 
 const Index = () => {
   console.log('Index component: Starting to render');
@@ -197,6 +199,9 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-green-50 to-yellow-50">
+      {/* PWA Components */}
+      <OfflineIndicator variant="alert" />
+      
       <Header 
         user={user}
         userProfile={userProfile}
@@ -215,6 +220,11 @@ const Index = () => {
       </div>
 
       <HeroSection user={user} />
+
+      {/* PWA Install Prompt */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <InstallPrompt variant="inline" />
+      </div>
 
       <div id="mobile-homes">
         <MobileHomesShowcase 

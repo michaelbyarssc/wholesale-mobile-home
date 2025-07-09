@@ -108,16 +108,17 @@ export const MobileHomeFilters: React.FC<MobileHomeFiltersProps> = ({
 
   if (isCollapsed) {
     return (
-      <div className="mb-6">
+      <div className="mb-4 sm:mb-6">
         <Button 
           onClick={onToggleCollapse}
           variant="outline" 
-          className="w-full flex items-center justify-center gap-2"
+          className="w-full flex items-center justify-center gap-2 py-3 touch-manipulation"
+          size="lg"
         >
           <Filter className="h-4 w-4" />
-          Show Filters
+          <span className="text-base">Show Filters</span>
           {hasActiveFilters && (
-            <Badge variant="secondary" className="ml-2">
+            <Badge variant="secondary" className="ml-2 bg-blue-100 text-blue-800">
               {[
                 filters.widthType !== 'all' ? 1 : 0,
                 filters.priceRange[0] > priceRange[0] || filters.priceRange[1] < priceRange[1] ? 1 : 0,
@@ -135,31 +136,33 @@ export const MobileHomeFilters: React.FC<MobileHomeFiltersProps> = ({
   }
 
   return (
-    <Card className="mb-6">
-      <CardHeader className="pb-4">
+    <Card className="mb-4 sm:mb-6">
+      <CardHeader className="pb-3 sm:pb-4">
         <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
-            <Filter className="h-5 w-5" />
+          <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
+            <Filter className="h-4 w-4 sm:h-5 sm:w-5" />
             Filter Mobile Homes
           </CardTitle>
-          <div className="flex gap-2">
+          <div className="flex gap-1 sm:gap-2">
             {hasActiveFilters && (
-              <Button onClick={clearAllFilters} variant="ghost" size="sm">
-                <FilterX className="h-4 w-4 mr-1" />
-                Clear All
+              <Button onClick={clearAllFilters} variant="ghost" size="sm" className="text-xs sm:text-sm px-2 sm:px-3">
+                <FilterX className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                <span className="hidden sm:inline">Clear All</span>
+                <span className="sm:hidden">Clear</span>
               </Button>
             )}
-            <Button onClick={onToggleCollapse} variant="ghost" size="sm">
-              Hide Filters
+            <Button onClick={onToggleCollapse} variant="ghost" size="sm" className="text-xs sm:text-sm px-2 sm:px-3">
+              <span className="hidden sm:inline">Hide Filters</span>
+              <span className="sm:hidden">Hide</span>
             </Button>
           </div>
         </div>
       </CardHeader>
-      <CardContent className="space-y-6">
+      <CardContent className="space-y-4 sm:space-y-6">
         {/* Width Type Filter */}
         <div>
           <Label className="text-sm font-medium mb-2 block">Home Width</Label>
-          <div className="flex gap-2">
+          <div className="grid grid-cols-3 gap-2 sm:flex sm:gap-2">
             {[
               { key: 'all', label: 'All Homes' },
               { key: 'single', label: 'Single Wide' },
@@ -170,8 +173,12 @@ export const MobileHomeFilters: React.FC<MobileHomeFiltersProps> = ({
                 onClick={() => updateFilters({ widthType: key as FilterState['widthType'] })}
                 variant={filters.widthType === key ? "default" : "outline"}
                 size="sm"
+                className="text-xs sm:text-sm touch-manipulation"
               >
-                {label}
+                <span className="sm:hidden">
+                  {key === 'all' ? 'All' : key === 'single' ? 'Single' : 'Double'}
+                </span>
+                <span className="hidden sm:inline">{label}</span>
               </Button>
             ))}
           </div>
@@ -181,42 +188,46 @@ export const MobileHomeFilters: React.FC<MobileHomeFiltersProps> = ({
 
         {/* Price Range */}
         <div>
-          <Label className="text-sm font-medium mb-2 block">
+          <Label className="text-sm font-medium mb-3 block">
             Price Range: ${filters.priceRange[0].toLocaleString()} - ${filters.priceRange[1].toLocaleString()}
           </Label>
-          <Slider
-            min={priceRange[0]}
-            max={priceRange[1]}
-            step={5000}
-            value={filters.priceRange}
-            onValueChange={(value) => updateFilters({ priceRange: value as [number, number] })}
-            className="w-full"
-          />
+          <div className="px-2">
+            <Slider
+              min={priceRange[0]}
+              max={priceRange[1]}
+              step={5000}
+              value={filters.priceRange}
+              onValueChange={(value) => updateFilters({ priceRange: value as [number, number] })}
+              className="w-full touch-manipulation"
+            />
+          </div>
         </div>
 
         {/* Square Footage Range */}
         <div>
-          <Label className="text-sm font-medium mb-2 block">
+          <Label className="text-sm font-medium mb-3 block">
             Square Footage: {filters.squareFootageRange[0]} - {filters.squareFootageRange[1]} sq ft
           </Label>
-          <Slider
-            min={squareFootageRange[0]}
-            max={squareFootageRange[1]}
-            step={50}
-            value={filters.squareFootageRange}
-            onValueChange={(value) => updateFilters({ squareFootageRange: value as [number, number] })}
-            className="w-full"
-          />
+          <div className="px-2">
+            <Slider
+              min={squareFootageRange[0]}
+              max={squareFootageRange[1]}
+              step={50}
+              value={filters.squareFootageRange}
+              onValueChange={(value) => updateFilters({ squareFootageRange: value as [number, number] })}
+              className="w-full touch-manipulation"
+            />
+          </div>
         </div>
 
         <Separator />
 
         {/* Bedrooms */}
         <div>
-          <Label className="text-sm font-medium mb-2 block">Bedrooms</Label>
-          <div className="flex flex-wrap gap-2">
+          <Label className="text-sm font-medium mb-3 block">Bedrooms</Label>
+          <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-3 sm:gap-4">
             {uniqueBedrooms.map(count => (
-              <div key={count} className="flex items-center space-x-2">
+              <div key={count} className="flex items-center space-x-2 touch-manipulation">
                 <Checkbox
                   id={`bedrooms-${count}`}
                   checked={filters.bedrooms.includes(count.toString())}
@@ -228,8 +239,9 @@ export const MobileHomeFilters: React.FC<MobileHomeFiltersProps> = ({
                       updateFilters({ bedrooms: filters.bedrooms.filter(b => b !== countStr) });
                     }
                   }}
+                  className="h-5 w-5"
                 />
-                <Label htmlFor={`bedrooms-${count}`} className="text-sm">
+                <Label htmlFor={`bedrooms-${count}`} className="text-sm touch-manipulation cursor-pointer">
                   {count} {count === 1 ? 'Bedroom' : 'Bedrooms'}
                 </Label>
               </div>
@@ -239,10 +251,10 @@ export const MobileHomeFilters: React.FC<MobileHomeFiltersProps> = ({
 
         {/* Bathrooms */}
         <div>
-          <Label className="text-sm font-medium mb-2 block">Bathrooms</Label>
-          <div className="flex flex-wrap gap-2">
+          <Label className="text-sm font-medium mb-3 block">Bathrooms</Label>
+          <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-3 sm:gap-4">
             {uniqueBathrooms.map(count => (
-              <div key={count} className="flex items-center space-x-2">
+              <div key={count} className="flex items-center space-x-2 touch-manipulation">
                 <Checkbox
                   id={`bathrooms-${count}`}
                   checked={filters.bathrooms.includes(count.toString())}
@@ -254,8 +266,9 @@ export const MobileHomeFilters: React.FC<MobileHomeFiltersProps> = ({
                       updateFilters({ bathrooms: filters.bathrooms.filter(b => b !== countStr) });
                     }
                   }}
+                  className="h-5 w-5"
                 />
-                <Label htmlFor={`bathrooms-${count}`} className="text-sm">
+                <Label htmlFor={`bathrooms-${count}`} className="text-sm touch-manipulation cursor-pointer">
                   {count} {count === 1 ? 'Bathroom' : 'Bathrooms'}
                 </Label>
               </div>
@@ -267,10 +280,10 @@ export const MobileHomeFilters: React.FC<MobileHomeFiltersProps> = ({
 
         {/* Manufacturers */}
         <div>
-          <Label className="text-sm font-medium mb-2 block">Manufacturer</Label>
-          <div className="flex flex-wrap gap-2">
+          <Label className="text-sm font-medium mb-3 block">Manufacturer</Label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {uniqueManufacturers.map(manufacturer => (
-              <div key={manufacturer} className="flex items-center space-x-2">
+              <div key={manufacturer} className="flex items-center space-x-2 touch-manipulation">
                 <Checkbox
                   id={`manufacturer-${manufacturer}`}
                   checked={filters.manufacturers.includes(manufacturer)}
@@ -281,8 +294,9 @@ export const MobileHomeFilters: React.FC<MobileHomeFiltersProps> = ({
                       updateFilters({ manufacturers: filters.manufacturers.filter(m => m !== manufacturer) });
                     }
                   }}
+                  className="h-5 w-5"
                 />
-                <Label htmlFor={`manufacturer-${manufacturer}`} className="text-sm">
+                <Label htmlFor={`manufacturer-${manufacturer}`} className="text-sm touch-manipulation cursor-pointer">
                   {manufacturer}
                 </Label>
               </div>
@@ -293,10 +307,10 @@ export const MobileHomeFilters: React.FC<MobileHomeFiltersProps> = ({
         {/* Features */}
         {uniqueFeatures.length > 0 && (
           <div>
-            <Label className="text-sm font-medium mb-2 block">Features</Label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-40 overflow-y-auto">
+            <Label className="text-sm font-medium mb-3 block">Features</Label>
+            <div className="grid grid-cols-1 gap-2 max-h-48 sm:max-h-40 overflow-y-auto border rounded-lg p-3">
               {uniqueFeatures.map(feature => (
-                <div key={feature} className="flex items-center space-x-2">
+                <div key={feature} className="flex items-center space-x-2 touch-manipulation">
                   <Checkbox
                     id={`feature-${feature}`}
                     checked={filters.features.includes(feature)}
@@ -307,8 +321,9 @@ export const MobileHomeFilters: React.FC<MobileHomeFiltersProps> = ({
                         updateFilters({ features: filters.features.filter(f => f !== feature) });
                       }
                     }}
+                    className="h-5 w-5"
                   />
-                  <Label htmlFor={`feature-${feature}`} className="text-sm">
+                  <Label htmlFor={`feature-${feature}`} className="text-sm touch-manipulation cursor-pointer leading-tight">
                     {feature}
                   </Label>
                 </div>

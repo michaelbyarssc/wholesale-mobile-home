@@ -507,15 +507,15 @@ export const MobileHomesShowcase = ({
   return (
     <section className="py-20 bg-amber-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-16">
-          <h3 className="text-3xl font-bold text-gray-900 mb-4">
+        <div className="text-center mb-8 sm:mb-16">
+          <h3 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2 sm:mb-4">
             Our Mobile Home Models
           </h3>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+          <p className="text-base sm:text-lg text-gray-600 max-w-2xl mx-auto px-4">
             Explore our premium collection of mobile homes featuring modern designs, 
             quality construction, and thoughtful amenities for comfortable living.
             {!user && (
-              <span className="block mt-2 text-blue-600 font-medium">
+              <span className="block mt-2 text-blue-600 font-medium text-sm sm:text-base">
                 Login to view your personalized pricing and add items to your cart.
               </span>
             )}
@@ -533,31 +533,54 @@ export const MobileHomesShowcase = ({
 
         {uniqueSeries.length === 0 ? (
           <div className="text-center py-8">
-            <p className="text-lg text-gray-600">No mobile homes available for the selected filter.</p>
+            <p className="text-base sm:text-lg text-gray-600">No mobile homes available for the selected filter.</p>
             <p className="text-sm text-gray-500 mt-2">
               Try selecting a different width category above.
             </p>
           </div>
         ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <div className="flex justify-center mb-8">
-              <div className="inline-flex rounded-lg border border-gray-200 bg-white p-1">
-                {uniqueSeries.map((series) => {
-                  const seriesHomes = filteredHomes.filter(home => home.series === series);
-                  return (
-                    <button
-                      key={series}
-                      onClick={() => setActiveTab(series)}
-                      className={`px-6 py-3 rounded-md text-base font-medium transition-colors ${
-                        activeTab === series
-                          ? 'bg-blue-600 text-white'
-                          : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'
-                      }`}
-                    >
-                      {series} Series ({seriesHomes.length})
-                    </button>
-                  );
-                })}
+            <div className="flex justify-center mb-6 sm:mb-8">
+              <div className="w-full max-w-4xl">
+                {/* Mobile: Horizontal scroll */}
+                <div className="flex sm:hidden overflow-x-auto pb-2 gap-2">
+                  {uniqueSeries.map((series) => {
+                    const seriesHomes = filteredHomes.filter(home => home.series === series);
+                    return (
+                      <button
+                        key={series}
+                        onClick={() => setActiveTab(series)}
+                        className={`px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap touch-manipulation ${
+                          activeTab === series
+                            ? 'bg-blue-600 text-white'
+                            : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50 bg-white border border-gray-200'
+                        }`}
+                      >
+                        {series} ({seriesHomes.length})
+                      </button>
+                    );
+                  })}
+                </div>
+                
+                {/* Desktop: Centered buttons */}
+                <div className="hidden sm:inline-flex rounded-lg border border-gray-200 bg-white p-1 w-full justify-center">
+                  {uniqueSeries.map((series) => {
+                    const seriesHomes = filteredHomes.filter(home => home.series === series);
+                    return (
+                      <button
+                        key={series}
+                        onClick={() => setActiveTab(series)}
+                        className={`px-4 lg:px-6 py-2 lg:py-3 rounded-md text-sm lg:text-base font-medium transition-colors touch-manipulation ${
+                          activeTab === series
+                            ? 'bg-blue-600 text-white'
+                            : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'
+                        }`}
+                      >
+                        {series} Series ({seriesHomes.length})
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
 
@@ -566,13 +589,13 @@ export const MobileHomesShowcase = ({
               console.log(`Rendering ${series} series with ${seriesHomes.length} homes:`, seriesHomes);
               
               return (
-                <TabsContent key={series} value={series}>
-                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <TabsContent key={series} value={series} className="mt-0">
+                  <div className="grid gap-4 sm:gap-6 lg:gap-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                     {seriesHomes.length > 0 ? (
                       seriesHomes.map((home, index) => renderHomeCard(home, index))
                     ) : (
                       <div className="col-span-full text-center py-8">
-                        <p className="text-gray-500">No {series} series models available for the selected width category.</p>
+                        <p className="text-gray-500 text-sm sm:text-base">No {series} series models available for the selected width category.</p>
                       </div>
                     )}
                   </div>
@@ -647,11 +670,11 @@ export const MobileHomesShowcase = ({
         {wishlistCount > 0 && (
           <Button
             onClick={() => setIsWishlistOpen(true)}
-            className="fixed bottom-4 right-4 z-40 rounded-full shadow-lg bg-red-500 hover:bg-red-600 text-white"
+            className="fixed bottom-20 sm:bottom-4 right-4 z-40 rounded-full shadow-lg bg-red-500 hover:bg-red-600 text-white touch-manipulation"
             size="lg"
           >
-            <Heart className="h-5 w-5 mr-2 fill-current" />
-            Wishlist ({wishlistCount})
+            <Heart className="h-4 w-4 sm:h-5 sm:w-5 mr-1 sm:mr-2 fill-current" />
+            <span className="text-xs sm:text-sm">Wishlist ({wishlistCount})</span>
           </Button>
         )}
       </div>

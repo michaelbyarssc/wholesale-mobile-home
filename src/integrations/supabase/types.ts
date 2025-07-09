@@ -113,6 +113,223 @@ export type Database = {
         }
         Relationships: []
       }
+      appointment_notifications: {
+        Row: {
+          appointment_id: string
+          created_at: string
+          email_sent: boolean
+          id: string
+          notification_type: string
+          scheduled_for: string | null
+          sent_at: string | null
+          sms_sent: boolean
+        }
+        Insert: {
+          appointment_id: string
+          created_at?: string
+          email_sent?: boolean
+          id?: string
+          notification_type: string
+          scheduled_for?: string | null
+          sent_at?: string | null
+          sms_sent?: boolean
+        }
+        Update: {
+          appointment_id?: string
+          created_at?: string
+          email_sent?: boolean
+          id?: string
+          notification_type?: string
+          scheduled_for?: string | null
+          sent_at?: string | null
+          sms_sent?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointment_notifications_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      appointment_slots: {
+        Row: {
+          available: boolean
+          created_at: string
+          current_bookings: number
+          date: string
+          end_time: string
+          id: string
+          location_address: string | null
+          location_type: string
+          max_bookings: number
+          mobile_home_id: string | null
+          notes: string | null
+          start_time: string
+          updated_at: string
+        }
+        Insert: {
+          available?: boolean
+          created_at?: string
+          current_bookings?: number
+          date: string
+          end_time: string
+          id?: string
+          location_address?: string | null
+          location_type?: string
+          max_bookings?: number
+          mobile_home_id?: string | null
+          notes?: string | null
+          start_time: string
+          updated_at?: string
+        }
+        Update: {
+          available?: boolean
+          created_at?: string
+          current_bookings?: number
+          date?: string
+          end_time?: string
+          id?: string
+          location_address?: string | null
+          location_type?: string
+          max_bookings?: number
+          mobile_home_id?: string | null
+          notes?: string | null
+          start_time?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointment_slots_mobile_home_id_fkey"
+            columns: ["mobile_home_id"]
+            isOneToOne: false
+            referencedRelation: "mobile_homes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      appointment_templates: {
+        Row: {
+          active: boolean
+          created_at: string
+          day_of_week: number
+          duration_minutes: number
+          end_time: string
+          id: string
+          location_type: string
+          max_bookings: number
+          name: string
+          start_time: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          day_of_week: number
+          duration_minutes?: number
+          end_time: string
+          id?: string
+          location_type?: string
+          max_bookings?: number
+          name: string
+          start_time: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          day_of_week?: number
+          duration_minutes?: number
+          end_time?: string
+          id?: string
+          location_type?: string
+          max_bookings?: number
+          name?: string
+          start_time?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      appointments: {
+        Row: {
+          agent_id: string | null
+          appointment_type: string
+          confirmation_token: string | null
+          confirmed_at: string | null
+          created_at: string
+          customer_email: string
+          customer_name: string
+          customer_phone: string
+          id: string
+          mobile_home_id: string | null
+          notes: string | null
+          party_size: number
+          reminder_sent: boolean
+          slot_id: string
+          special_requests: string | null
+          status: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          agent_id?: string | null
+          appointment_type?: string
+          confirmation_token?: string | null
+          confirmed_at?: string | null
+          created_at?: string
+          customer_email: string
+          customer_name: string
+          customer_phone: string
+          id?: string
+          mobile_home_id?: string | null
+          notes?: string | null
+          party_size?: number
+          reminder_sent?: boolean
+          slot_id: string
+          special_requests?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          agent_id?: string | null
+          appointment_type?: string
+          confirmation_token?: string | null
+          confirmed_at?: string | null
+          created_at?: string
+          customer_email?: string
+          customer_name?: string
+          customer_phone?: string
+          id?: string
+          mobile_home_id?: string | null
+          notes?: string | null
+          party_size?: number
+          reminder_sent?: boolean
+          slot_id?: string
+          special_requests?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointments_mobile_home_id_fkey"
+            columns: ["mobile_home_id"]
+            isOneToOne: false
+            referencedRelation: "mobile_homes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_slot_id_fkey"
+            columns: ["slot_id"]
+            isOneToOne: false
+            referencedRelation: "appointment_slots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       blog_categories: {
         Row: {
           active: boolean
@@ -1821,6 +2038,10 @@ export type Database = {
           p_data?: Json
           p_expires_hours?: number
         }
+        Returns: string
+      }
+      generate_appointment_confirmation_token: {
+        Args: Record<PropertyKey, never>
         Returns: string
       }
       generate_chat_session_token: {

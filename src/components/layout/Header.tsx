@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useNavigate, Link } from 'react-router-dom';
-import { ShoppingCart as CartIcon, LogOut, User, Lock, Menu, Phone, Mail, X, Download, MessageCircle } from 'lucide-react';
+import { ShoppingCart as CartIcon, LogOut, User, Lock, Menu, Phone, Mail, X, Download, MessageCircle, Calendar } from 'lucide-react';
 import { User as SupabaseUser } from '@supabase/supabase-js';
 import { CartItem } from '@/hooks/useShoppingCart';
 import { PasswordChangeDialog } from '@/components/auth/PasswordChangeDialog';
@@ -145,6 +145,15 @@ export const Header = ({
                       <span className="font-medium">Support</span>
                     </Link>
 
+                    {/* Appointments Link */}
+                    <Link 
+                      to="/appointments" 
+                      className="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition-colors"
+                    >
+                      <Calendar className="h-4 w-4" />
+                      <span className="font-medium">Book Viewing</span>
+                    </Link>
+
                     {/* PWA Install Button */}
                     {canInstall && (
                       <Button
@@ -281,6 +290,14 @@ export const Header = ({
                 >
                   <MessageCircle className="h-4 w-4" />
                   <span className="font-medium">Support</span>
+                </Link>
+                <Link
+                  to="/appointments"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center gap-3 p-3 text-gray-600 hover:text-blue-600 transition-colors"
+                >
+                  <Calendar className="h-4 w-4" />
+                  <span className="font-medium">Book Viewing</span>
                 </Link>
                 <UserSettingsDialog 
                   user={user} 

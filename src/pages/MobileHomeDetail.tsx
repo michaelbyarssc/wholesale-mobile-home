@@ -29,6 +29,7 @@ import { MobileHomeServicesDialog } from '@/components/MobileHomeServicesDialog'
 import { OptimizedImage } from '@/components/OptimizedImage';
 import { useCustomerPricing } from '@/hooks/useCustomerPricing';
 import { MobileHomeReviews } from '@/components/reviews/MobileHomeReviews';
+import { AppointmentBookingWidget } from '@/components/appointments/AppointmentBookingWidget';
 import { useWishlist } from '@/hooks/useWishlist';
 import { useHomeComparison } from '@/hooks/useHomeComparison';
 import { useShoppingCart } from '@/hooks/useShoppingCart';
@@ -420,6 +421,13 @@ export const MobileHomeDetail: React.FC = () => {
                 )}
               </CardContent>
             </Card>
+
+            {/* Appointment Booking */}
+            <AppointmentBookingWidget 
+              userId={user?.id}
+              mobileHomeId={mobileHome.id}
+              mobileHomeName={getHomeName(mobileHome)}
+            />
 
             {/* Specifications */}
             <Card>

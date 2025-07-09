@@ -12,6 +12,7 @@ import EstimateForm from "./pages/EstimateForm";
 import MyEstimates from "./pages/MyEstimates";
 import ApproveEstimate from "./pages/ApproveEstimate";
 import NotFound from "./pages/NotFound";
+import { MobileHomeDetail } from "./pages/MobileHomeDetail";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
@@ -26,6 +27,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/home/:id" element={<MobileHomeDetail />} />
             <Route path="/estimate" element={<EstimateForm />} />
             <Route path="/my-estimates" element={
               <ProtectedRoute>

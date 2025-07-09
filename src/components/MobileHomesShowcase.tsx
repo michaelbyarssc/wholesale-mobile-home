@@ -266,7 +266,12 @@ export const MobileHomesShowcase = ({
     const homeFeatures = getHomeFeatures(home.features);
     
     return (
-      <Card key={home.id} className="overflow-hidden hover:shadow-lg transition-shadow">
+      <Card key={home.id} className="overflow-hidden hover:shadow-lg transition-shadow group cursor-pointer">
+        {/* Clickable overlay for navigation to detail page */}
+        <div 
+          onClick={() => window.open(`/home/${home.id}`, '_blank')}
+          className="absolute inset-0 z-10 bg-transparent group-hover:bg-blue-50/20 transition-colors"
+        />
         <CardHeader className="pb-4">
           <div className="flex justify-between items-start">
             <CardTitle className="text-xl font-bold text-gray-900">
@@ -381,10 +386,14 @@ export const MobileHomesShowcase = ({
           )}
 
           {/* Action Buttons */}
-          <div className="space-y-2">
+          <div className="space-y-2 relative z-20">
             {/* Wishlist Button - Always visible */}
             <Button
-              onClick={() => toggleWishlist(home)}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                toggleWishlist(home);
+              }}
               variant="outline"
               className={`w-full flex items-center gap-2 ${
                 isInWishlist(home.id) 
@@ -398,7 +407,11 @@ export const MobileHomesShowcase = ({
 
             {/* Compare Button - Always visible */}
             <Button
-              onClick={() => addToComparison(home)}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                addToComparison(home);
+              }}
               variant="outline"
               className="w-full flex items-center gap-2"
               disabled={isInComparison(home.id)}
@@ -424,7 +437,11 @@ export const MobileHomesShowcase = ({
               </Button>
             ) : (
               <Button 
-                onClick={() => window.location.href = '/auth'}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  window.location.href = '/auth';
+                }}
                 className="w-full"
                 variant="outline"
                 type="button"

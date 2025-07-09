@@ -10,6 +10,7 @@ import { MobileHomesTab } from '@/components/admin/MobileHomesTab';
 import { ServicesTab } from '@/components/admin/ServicesTab';
 import { ReviewsTab } from '@/components/admin/ReviewsTab';
 import { AdminAnalytics } from '@/components/admin/AdminAnalytics';
+import { CRMDashboard } from '@/components/admin/CRMDashboard';
 import { SettingsTab } from '@/components/admin/SettingsTab';
 import { UserManagementTab } from '@/components/admin/UserManagementTab';
 import { AuditLogTab } from '@/components/admin/AuditLogTab';
@@ -125,6 +126,7 @@ const Admin = () => {
       'users': 'Users',
       'reviews': 'Reviews',
       'analytics': 'Analytics',
+      'crm': 'CRM',
       'super-admin': 'Admin',
       'settings': 'Settings',
       'audit': 'Audit'
@@ -181,21 +183,28 @@ const Admin = () => {
             className={`${mobile ? 'justify-start w-full h-12 text-base' : ''} text-xs sm:text-sm`}
             onClick={() => handleTabChange('analytics')}
           >
-            Analytics
-          </Button>
-          <Button
-            variant={activeTab === 'settings' ? 'default' : 'ghost'}
-            className={`${mobile ? 'justify-start w-full h-12 text-base' : ''} text-xs sm:text-sm`}
-            onClick={() => handleTabChange('settings')}
-          >
-            Settings
-          </Button>
-          <Button
-            variant={activeTab === 'audit' ? 'default' : 'ghost'}
-            className={`${mobile ? 'justify-start w-full h-12 text-base' : ''} text-xs sm:text-sm`}
-            onClick={() => handleTabChange('audit')}
-          >
-            Audit Log
+             Analytics
+           </Button>
+           <Button
+             variant={activeTab === 'crm' ? 'default' : 'ghost'}
+             className={`${mobile ? 'justify-start w-full h-12 text-base' : ''} text-xs sm:text-sm`}
+             onClick={() => handleTabChange('crm')}
+           >
+             CRM
+           </Button>
+           <Button
+             variant={activeTab === 'settings' ? 'default' : 'ghost'}
+             className={`${mobile ? 'justify-start w-full h-12 text-base' : ''} text-xs sm:text-sm`}
+             onClick={() => handleTabChange('settings')}
+           >
+             Settings
+           </Button>
+           <Button
+             variant={activeTab === 'audit' ? 'default' : 'ghost'}
+             className={`${mobile ? 'justify-start w-full h-12 text-base' : ''} text-xs sm:text-sm`}
+             onClick={() => handleTabChange('audit')}
+           >
+             Audit Log
           </Button>
         </>
       )}
@@ -274,13 +283,14 @@ const Admin = () => {
         <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-3 sm:space-y-4 md:space-y-6">
           {/* Desktop Tab List - Hidden on mobile since we use sheet menu */}
           {!isMobile && isSuperAdmin && (
-            <TabsList className="grid w-full grid-cols-9 h-auto p-1">
+            <TabsList className="grid w-full grid-cols-10 h-auto p-1">
               <TabsTrigger value="mobile-homes" className="text-xs lg:text-sm">Homes</TabsTrigger>
               <TabsTrigger value="services" className="text-xs lg:text-sm">Services</TabsTrigger>
               <TabsTrigger value="home-options" className="text-xs lg:text-sm">Options</TabsTrigger>
               <TabsTrigger value="users" className="text-xs lg:text-sm">Users</TabsTrigger>
               <TabsTrigger value="reviews" className="text-xs lg:text-sm">Reviews</TabsTrigger>
               <TabsTrigger value="analytics" className="text-xs lg:text-sm">Analytics</TabsTrigger>
+              <TabsTrigger value="crm" className="text-xs lg:text-sm">CRM</TabsTrigger>
               <TabsTrigger value="super-admin" className="text-xs lg:text-sm">Admin</TabsTrigger>
               <TabsTrigger value="settings" className="text-xs lg:text-sm">Settings</TabsTrigger>
               <TabsTrigger value="audit" className="text-xs lg:text-sm">Audit</TabsTrigger>
@@ -333,6 +343,10 @@ const Admin = () => {
 
               <TabsContent value="analytics" className="mt-2 sm:mt-4">
                 <AdminAnalytics />
+              </TabsContent>
+
+              <TabsContent value="crm" className="mt-2 sm:mt-4">
+                <CRMDashboard />
               </TabsContent>
             </>
           )}

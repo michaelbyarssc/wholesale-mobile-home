@@ -105,8 +105,13 @@ export const Header = ({
             <div className="flex items-center gap-2 sm:gap-3">
               {!user ? (
                 <Button 
-                  onClick={() => navigate('/auth')}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-6 py-2 sm:py-2.5 font-medium rounded-lg shadow-sm transition-all duration-200 text-sm sm:text-base"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('Login button clicked, navigating to /auth');
+                    navigate('/auth');
+                  }}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-6 py-2 sm:py-2.5 font-medium rounded-lg shadow-sm transition-all duration-200 text-sm sm:text-base cursor-pointer"
                 >
                   <span className="hidden sm:inline">Login</span>
                   <span className="sm:hidden">Login</span>

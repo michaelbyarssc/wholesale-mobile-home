@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MobileHomesShowcase } from '@/components/MobileHomesShowcase';
+import { TestimonialsSection } from '@/components/reviews/TestimonialsSection';
 import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
 import { useShoppingCart } from '@/hooks/useShoppingCart';
@@ -244,6 +245,8 @@ const Index = () => {
       </div>
 
       <FeaturesSection />
+      
+      <TestimonialsSection />
 
       <CTASection user={user} />
 

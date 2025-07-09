@@ -549,6 +549,82 @@ export type Database = {
         }
         Relationships: []
       }
+      review_helpful_votes: {
+        Row: {
+          created_at: string
+          id: string
+          review_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          review_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          review_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "review_helpful_votes_review_id_fkey"
+            columns: ["review_id"]
+            isOneToOne: false
+            referencedRelation: "reviews"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reviews: {
+        Row: {
+          content: string
+          created_at: string
+          helpful_votes: number
+          id: string
+          mobile_home_id: string
+          rating: number
+          title: string
+          updated_at: string
+          user_id: string
+          verified_purchase: boolean
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          helpful_votes?: number
+          id?: string
+          mobile_home_id: string
+          rating: number
+          title: string
+          updated_at?: string
+          user_id: string
+          verified_purchase?: boolean
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          helpful_votes?: number
+          id?: string
+          mobile_home_id?: string
+          rating?: number
+          title?: string
+          updated_at?: string
+          user_id?: string
+          verified_purchase?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reviews_mobile_home_id_fkey"
+            columns: ["mobile_home_id"]
+            isOneToOne: false
+            referencedRelation: "mobile_homes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       services: {
         Row: {
           active: boolean
@@ -671,6 +747,45 @@ export type Database = {
           markup_percentage?: number
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      testimonials: {
+        Row: {
+          approved: boolean
+          content: string
+          created_at: string
+          customer_location: string | null
+          customer_name: string
+          featured: boolean
+          id: string
+          image_url: string | null
+          rating: number
+          updated_at: string
+        }
+        Insert: {
+          approved?: boolean
+          content: string
+          created_at?: string
+          customer_location?: string | null
+          customer_name: string
+          featured?: boolean
+          id?: string
+          image_url?: string | null
+          rating: number
+          updated_at?: string
+        }
+        Update: {
+          approved?: boolean
+          content?: string
+          created_at?: string
+          customer_location?: string | null
+          customer_name?: string
+          featured?: boolean
+          id?: string
+          image_url?: string | null
+          rating?: number
+          updated_at?: string
         }
         Relationships: []
       }

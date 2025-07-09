@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { MobileHomesTab } from '@/components/admin/MobileHomesTab';
 import { ServicesTab } from '@/components/admin/ServicesTab';
+import { ReviewsTab } from '@/components/admin/ReviewsTab';
 import { SettingsTab } from '@/components/admin/SettingsTab';
 import { UserManagementTab } from '@/components/admin/UserManagementTab';
 import { AuditLogTab } from '@/components/admin/AuditLogTab';
@@ -263,11 +264,12 @@ const Admin = () => {
         <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-3 sm:space-y-4 md:space-y-6">
           {/* Desktop Tab List - Hidden on mobile since we use sheet menu */}
           {!isMobile && isSuperAdmin && (
-            <TabsList className="grid w-full grid-cols-7 h-auto p-1">
+            <TabsList className="grid w-full grid-cols-8 h-auto p-1">
               <TabsTrigger value="mobile-homes" className="text-xs lg:text-sm">Homes</TabsTrigger>
               <TabsTrigger value="services" className="text-xs lg:text-sm">Services</TabsTrigger>
               <TabsTrigger value="home-options" className="text-xs lg:text-sm">Options</TabsTrigger>
               <TabsTrigger value="users" className="text-xs lg:text-sm">Users</TabsTrigger>
+              <TabsTrigger value="reviews" className="text-xs lg:text-sm">Reviews</TabsTrigger>
               <TabsTrigger value="super-admin" className="text-xs lg:text-sm">Admin</TabsTrigger>
               <TabsTrigger value="settings" className="text-xs lg:text-sm">Settings</TabsTrigger>
               <TabsTrigger value="audit" className="text-xs lg:text-sm">Audit</TabsTrigger>
@@ -312,6 +314,10 @@ const Admin = () => {
 
               <TabsContent value="audit" className="mt-2 sm:mt-4">
                 <AuditLogTab />
+              </TabsContent>
+
+              <TabsContent value="reviews" className="mt-2 sm:mt-4">
+                <ReviewsTab />
               </TabsContent>
             </>
           )}

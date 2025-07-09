@@ -28,6 +28,7 @@ import { MobileHomeImageCarousel } from '@/components/MobileHomeImageCarousel';
 import { MobileHomeServicesDialog } from '@/components/MobileHomeServicesDialog';
 import { OptimizedImage } from '@/components/OptimizedImage';
 import { useCustomerPricing } from '@/hooks/useCustomerPricing';
+import { MobileHomeReviews } from '@/components/reviews/MobileHomeReviews';
 import { useWishlist } from '@/hooks/useWishlist';
 import { useHomeComparison } from '@/hooks/useHomeComparison';
 import { useShoppingCart } from '@/hooks/useShoppingCart';
@@ -502,6 +503,14 @@ export const MobileHomeDetail: React.FC = () => {
               </Card>
             )}
           </div>
+        </div>
+        
+        {/* Reviews Section */}
+        <div className="mt-12">
+          <MobileHomeReviews 
+            mobileHomeId={mobileHome.id} 
+            currentUserId={user?.id}
+          />
         </div>
       </div>
 

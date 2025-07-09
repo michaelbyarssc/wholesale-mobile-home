@@ -5,12 +5,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Home, Bed, Bath, Maximize, Ruler } from 'lucide-react';
+import { Home, Bed, Bath, Maximize, Ruler, Scale } from 'lucide-react';
 import { MobileHomeImageCarousel } from './MobileHomeImageCarousel';
 import { MobileHomeServicesDialog } from './MobileHomeServicesDialog';
 import { ShoppingCart } from './ShoppingCart';
 import { MobileHomeFilters, FilterState } from './MobileHomeFilters';
+import { HomeComparisonModal } from './HomeComparisonModal';
+import { ComparisonBar } from './ComparisonBar';
 import { useCustomerPricing } from '@/hooks/useCustomerPricing';
+import { useHomeComparison } from '@/hooks/useHomeComparison';
 import { CartItem, DeliveryAddress } from '@/hooks/useShoppingCart';
 import { User } from '@supabase/supabase-js';
 import { formatPrice } from '@/lib/utils';
@@ -59,6 +62,19 @@ export const MobileHomesShowcase = ({
   const [selectedHomeForServices, setSelectedHomeForServices] = useState<MobileHome | null>(null);
   const [isFiltersCollapsed, setIsFiltersCollapsed] = useState(true);
   const { calculateMobileHomePrice, loading: pricingLoading } = useCustomerPricing(user);
+  
+  // Initialize home comparison functionality
+  const {
+    comparedHomes,
+    isComparisonOpen,
+    addToComparison,
+    removeFromComparison,
+    clearComparison,
+    isInComparison,
+    openComparison,
+    closeComparison,
+    comparisonCount
+  } = useHomeComparison();
   
   console.log('🔍 MobileHomesShowcase render - cart items from props:', cartItems.length);
   console.log('🔍 MobileHomesShowcase - selectedHomeForServices:', selectedHomeForServices?.id);
@@ -348,31 +364,45 @@ export const MobileHomesShowcase = ({
             </div>
           )}
 
-          {/* Add to Cart Button - Only show for logged in users */}
-          {user ? (
-            <Button 
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                console.log('🔍 Button clicked for home:', home.id);
-                handleAddToCart(home);
-              }}
-              className="w-full"
-              variant={isInCart ? "outline" : "default"}
-              type="button"
-            >
-              {isInCart ? 'Update in Cart' : 'Add to Cart'}
-            </Button>
-          ) : (
-            <Button 
-              onClick={() => window.location.href = '/auth'}
-              className="w-full"
+          {/* Action Buttons */}
+          <div className="space-y-2">
+            {/* Compare Button - Always visible */}
+            <Button
+              onClick={() => addToComparison(home)}
               variant="outline"
-              type="button"
+              className="w-full flex items-center gap-2"
+              disabled={isInComparison(home.id)}
             >
-              Login to Add to Cart
+              <Scale className="h-4 w-4" />
+              {isInComparison(home.id) ? 'Added to Compare' : 'Compare'}
             </Button>
-          )}
+
+            {/* Add to Cart Button - Only show for logged in users */}
+            {user ? (
+              <Button 
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  console.log('🔍 Button clicked for home:', home.id);
+                  handleAddToCart(home);
+                }}
+                className="w-full"
+                variant={isInCart ? "outline" : "default"}
+                type="button"
+              >
+                {isInCart ? 'Update in Cart' : 'Add to Cart'}
+              </Button>
+            ) : (
+              <Button 
+                onClick={() => window.location.href = '/auth'}
+                className="w-full"
+                variant="outline"
+                type="button"
+              >
+                Login to Add to Cart
+              </Button>
+            )}
+          </div>
         </CardContent>
       </Card>
     );
@@ -533,6 +563,24 @@ export const MobileHomesShowcase = ({
             />
           </>
         )}
+
+        {/* Home Comparison Components */}
+        <ComparisonBar
+          homes={comparedHomes}
+          onRemoveHome={removeFromComparison}
+          onViewComparison={openComparison}
+          onClearAll={clearComparison}
+        />
+
+        <HomeComparisonModal
+          isOpen={isComparisonOpen}
+          onClose={closeComparison}
+          homes={comparedHomes}
+          onRemoveHome={removeFromComparison}
+          onClearAll={clearComparison}
+          homeImages={homeImages}
+          user={user}
+        />
       </div>
     </section>
   );

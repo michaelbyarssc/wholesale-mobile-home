@@ -17,6 +17,10 @@ import { WishlistModal } from './WishlistModal';
 import { SearchResultsHeader } from './search/SearchResultsHeader';
 import { NoResultsState } from './search/NoResultsState';
 import { useSearchDebounce } from '@/hooks/useSearchDebounce';
+import { MobileHomeCardSkeleton } from './loading/MobileHomeCardSkeleton';
+import { FiltersSkeleton } from './loading/FiltersSkeleton';
+import { TabsSkeleton } from './loading/TabsSkeleton';
+import { LoadingSpinner } from './loading/LoadingSpinner';
 import { useCustomerPricing } from '@/hooks/useCustomerPricing';
 import { useHomeComparison } from '@/hooks/useHomeComparison';
 import { useWishlist } from '@/hooks/useWishlist';
@@ -363,8 +367,9 @@ export const MobileHomesShowcase = ({
                 <p className="text-sm text-gray-500 mt-1">Your price</p>
               </div>
             ) : (
-              <div className="mt-2">
-                <span className="text-lg text-gray-500 italic">Loading your pricing...</span>
+              <div className="mt-2 flex items-center">
+                <LoadingSpinner size="sm" className="mr-2" />
+                <span className="text-sm text-gray-500 italic">Loading your pricing...</span>
               </div>
             )
           ) : (
@@ -583,18 +588,22 @@ export const MobileHomesShowcase = ({
         </div>
 
         {/* Enhanced Search & Filtering */}
-        <MobileHomeFilters
-          homes={mobileHomes}
-          filters={filters}
-          onFiltersChange={setFilters}
-          isCollapsed={isFiltersCollapsed}
-          onToggleCollapse={() => setIsFiltersCollapsed(!isFiltersCollapsed)}
-          showSearch={true}
-          searchResultCount={isSearchActive ? filteredHomes.length : undefined}
-        />
+        {isLoading ? (
+          <FiltersSkeleton />
+        ) : (
+          <MobileHomeFilters
+            homes={mobileHomes}
+            filters={filters}
+            onFiltersChange={setFilters}
+            isCollapsed={isFiltersCollapsed}
+            onToggleCollapse={() => setIsFiltersCollapsed(!isFiltersCollapsed)}
+            showSearch={true}
+            searchResultCount={isSearchActive ? filteredHomes.length : undefined}
+          />
+        )}
         
         {/* Search Results Header - Only show when search is active */}
-        {isSearchActive && (
+        {isSearchActive && !isLoading && (
           <SearchResultsHeader
             searchQuery={debouncedSearchQuery}
             resultCount={filteredHomes.length}
@@ -605,95 +614,107 @@ export const MobileHomesShowcase = ({
           />
         )}
 
-        {/* No Results State */}
-        {filteredHomes.length === 0 ? (
-          isSearchActive ? (
-            <NoResultsState
-              searchQuery={debouncedSearchQuery}
-              onClearSearch={clearSearch}
-              onClearFilters={hasActiveFilters ? clearAllFilters : undefined}
-              hasActiveFilters={hasActiveFilters}
-            />
-          ) : (
-            <div className="text-center py-8">
-              <p className="text-base sm:text-lg text-gray-600">No mobile homes available for the selected filters.</p>
-              <p className="text-sm text-gray-500 mt-2">
-                Try adjusting your filter settings above.
-              </p>
+        {/* Loading State */}
+        {isLoading ? (
+          <div className="space-y-6">
+            <TabsSkeleton />
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 sm:gap-8">
+              <MobileHomeCardSkeleton count={6} />
             </div>
-          )
-        ) : uniqueSeries.length === 0 ? (
-          <div className="text-center py-8">
-            <p className="text-base sm:text-lg text-gray-600">No mobile homes available for the selected series.</p>
-            <p className="text-sm text-gray-500 mt-2">
-              Try selecting a different series above.
-            </p>
           </div>
         ) : (
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <div className="flex justify-center mb-6 sm:mb-8">
-              <div className="w-full max-w-4xl">
-                {/* Mobile: Horizontal scroll */}
-                <div className="flex sm:hidden overflow-x-auto pb-2 gap-2">
-                  {uniqueSeries.map((series) => {
-                    const seriesHomes = filteredHomes.filter(home => home.series === series);
-                    return (
-                      <button
-                        key={series}
-                        onClick={() => setActiveTab(series)}
-                        className={`px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap touch-manipulation ${
-                          activeTab === series
-                            ? 'bg-blue-600 text-white'
-                            : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50 bg-white border border-gray-200'
-                        }`}
-                      >
-                        {series} ({seriesHomes.length})
-                      </button>
-                    );
-                  })}
+          <>
+            {/* No Results State */}
+            {filteredHomes.length === 0 ? (
+              isSearchActive ? (
+                <NoResultsState
+                  searchQuery={debouncedSearchQuery}
+                  onClearSearch={clearSearch}
+                  onClearFilters={hasActiveFilters ? clearAllFilters : undefined}
+                  hasActiveFilters={hasActiveFilters}
+                />
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-base sm:text-lg text-gray-600">No mobile homes available for the selected filters.</p>
+                  <p className="text-sm text-gray-500 mt-2">
+                    Try adjusting your filter settings above.
+                  </p>
                 </div>
-                
-                {/* Desktop: Centered buttons */}
-                <div className="hidden sm:inline-flex rounded-lg border border-gray-200 bg-white p-1 w-full justify-center">
-                  {uniqueSeries.map((series) => {
-                    const seriesHomes = filteredHomes.filter(home => home.series === series);
-                    return (
-                      <button
-                        key={series}
-                        onClick={() => setActiveTab(series)}
-                        className={`px-4 lg:px-6 py-2 lg:py-3 rounded-md text-sm lg:text-base font-medium transition-colors touch-manipulation ${
-                          activeTab === series
-                            ? 'bg-blue-600 text-white'
-                            : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'
-                        }`}
-                      >
-                        {series} Series ({seriesHomes.length})
-                      </button>
-                    );
-                  })}
-                </div>
+              )
+            ) : uniqueSeries.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-base sm:text-lg text-gray-600">No mobile homes available for the selected series.</p>
+                <p className="text-sm text-gray-500 mt-2">
+                  Try selecting a different series above.
+                </p>
               </div>
-            </div>
-
-            {uniqueSeries.map((series) => {
-              const seriesHomes = filteredHomes.filter(home => home.series === series);
-              console.log(`Rendering ${series} series with ${seriesHomes.length} homes:`, seriesHomes);
-              
-              return (
-                <TabsContent key={series} value={series} className="mt-0">
-                  <div className="grid gap-4 sm:gap-6 lg:gap-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                    {seriesHomes.length > 0 ? (
-                      seriesHomes.map((home, index) => renderHomeCard(home, index))
-                    ) : (
-                      <div className="col-span-full text-center py-8">
-                        <p className="text-gray-500 text-sm sm:text-base">No {series} series models available for the selected width category.</p>
-                      </div>
-                    )}
+            ) : (
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                <div className="flex justify-center mb-6 sm:mb-8">
+                  <div className="w-full max-w-4xl">
+                    {/* Mobile: Horizontal scroll */}
+                    <div className="flex sm:hidden overflow-x-auto pb-2 gap-2">
+                      {uniqueSeries.map((series) => {
+                        const seriesHomes = filteredHomes.filter(home => home.series === series);
+                        return (
+                          <button
+                            key={series}
+                            onClick={() => setActiveTab(series)}
+                            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap touch-manipulation ${
+                              activeTab === series
+                                ? 'bg-blue-600 text-white'
+                                : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50 bg-white border border-gray-200'
+                            }`}
+                          >
+                            {series} ({seriesHomes.length})
+                          </button>
+                        );
+                      })}
+                    </div>
+                    
+                    {/* Desktop: Centered buttons */}
+                    <div className="hidden sm:inline-flex rounded-lg border border-gray-200 bg-white p-1 w-full justify-center">
+                      {uniqueSeries.map((series) => {
+                        const seriesHomes = filteredHomes.filter(home => home.series === series);
+                        return (
+                          <button
+                            key={series}
+                            onClick={() => setActiveTab(series)}
+                            className={`px-4 lg:px-6 py-2 lg:py-3 rounded-md text-sm lg:text-base font-medium transition-colors touch-manipulation ${
+                              activeTab === series
+                                ? 'bg-blue-600 text-white'
+                                : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'
+                            }`}
+                          >
+                            {series} Series ({seriesHomes.length})
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
-                </TabsContent>
-              );
-            })}
-          </Tabs>
+                </div>
+
+                {uniqueSeries.map((series) => {
+                  const seriesHomes = filteredHomes.filter(home => home.series === series);
+                  console.log(`Rendering ${series} series with ${seriesHomes.length} homes:`, seriesHomes);
+                  
+                  return (
+                    <TabsContent key={series} value={series} className="mt-0">
+                      <div className="grid gap-4 sm:gap-6 lg:gap-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                        {seriesHomes.length > 0 ? (
+                          seriesHomes.map((home, index) => renderHomeCard(home, index))
+                        ) : (
+                          <div className="col-span-full text-center py-8">
+                            <p className="text-gray-500 text-sm sm:text-base">No {series} series models available for the selected width category.</p>
+                          </div>
+                        )}
+                      </div>
+                    </TabsContent>
+                  );
+                })}
+              </Tabs>
+            )}
+          </>
         )}
 
         {/* Shopping Cart - Only show for logged in users */}
@@ -724,7 +745,6 @@ export const MobileHomesShowcase = ({
             />
           </>
         )}
-
         {/* Home Comparison Components */}
         <ComparisonBar
           homes={comparedHomes}

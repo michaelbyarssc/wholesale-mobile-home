@@ -9,7 +9,8 @@ import { HeroSection } from '@/components/layout/HeroSection';
 import { FeaturesSection } from '@/components/layout/FeaturesSection';
 import { CTASection } from '@/components/layout/CTASection';
 import { Footer } from '@/components/layout/Footer';
-import { LoadingSpinner } from '@/components/layout/LoadingSpinner';
+import { LoadingSpinner } from '@/components/loading/LoadingSpinner';
+import { HeaderSkeleton } from '@/components/loading/HeaderSkeleton';
 import { InstallPrompt } from '@/components/pwa/InstallPrompt';
 import { OfflineIndicator } from '@/components/pwa/OfflineIndicator';
 

@@ -14,42 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      activity_feed: {
-        Row: {
-          action: string
-          actor_id: string | null
-          created_at: string
-          description: string
-          entity_id: string | null
-          entity_type: string
-          id: string
-          metadata: Json | null
-          user_id: string | null
-        }
-        Insert: {
-          action: string
-          actor_id?: string | null
-          created_at?: string
-          description: string
-          entity_id?: string | null
-          entity_type: string
-          id?: string
-          metadata?: Json | null
-          user_id?: string | null
-        }
-        Update: {
-          action?: string
-          actor_id?: string | null
-          created_at?: string
-          description?: string
-          entity_id?: string | null
-          entity_type?: string
-          id?: string
-          metadata?: Json | null
-          user_id?: string | null
-        }
-        Relationships: []
-      }
       admin_audit_log: {
         Row: {
           action: string
@@ -1021,90 +985,6 @@ export type Database = {
         }
         Relationships: []
       }
-      notification_preferences: {
-        Row: {
-          created_at: string
-          email_notifications: boolean
-          estimate_updates: boolean
-          id: string
-          inventory_updates: boolean
-          notification_frequency: string
-          price_updates: boolean
-          push_notifications: boolean
-          system_notifications: boolean
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          email_notifications?: boolean
-          estimate_updates?: boolean
-          id?: string
-          inventory_updates?: boolean
-          notification_frequency?: string
-          price_updates?: boolean
-          push_notifications?: boolean
-          system_notifications?: boolean
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          email_notifications?: boolean
-          estimate_updates?: boolean
-          id?: string
-          inventory_updates?: boolean
-          notification_frequency?: string
-          price_updates?: boolean
-          push_notifications?: boolean
-          system_notifications?: boolean
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-      notifications: {
-        Row: {
-          category: string
-          created_at: string
-          data: Json | null
-          expires_at: string | null
-          id: string
-          message: string
-          read_at: string | null
-          title: string
-          type: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          category?: string
-          created_at?: string
-          data?: Json | null
-          expires_at?: string | null
-          id?: string
-          message: string
-          read_at?: string | null
-          title: string
-          type?: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          category?: string
-          created_at?: string
-          data?: Json | null
-          expires_at?: string | null
-          id?: string
-          message?: string
-          read_at?: string | null
-          title?: string
-          type?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
       profiles: {
         Row: {
           approved: boolean
@@ -1276,63 +1156,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      saved_searches: {
-        Row: {
-          created_at: string
-          filters: Json
-          id: string
-          last_used_at: string
-          name: string
-          search_query: string | null
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          filters?: Json
-          id?: string
-          last_used_at?: string
-          name: string
-          search_query?: string | null
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          filters?: Json
-          id?: string
-          last_used_at?: string
-          name?: string
-          search_query?: string | null
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-      search_history: {
-        Row: {
-          created_at: string
-          id: string
-          result_count: number
-          search_query: string
-          user_id: string | null
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          result_count?: number
-          search_query: string
-          user_id?: string | null
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          result_count?: number
-          search_query?: string
-          user_id?: string | null
-        }
-        Relationships: []
       }
       services: {
         Row: {
@@ -1608,34 +1431,6 @@ export type Database = {
       check_password_strength: {
         Args: { password: string }
         Returns: Json
-      }
-      cleanup_expired_notifications: {
-        Args: Record<PropertyKey, never>
-        Returns: number
-      }
-      create_activity: {
-        Args: {
-          p_user_id: string
-          p_actor_id: string
-          p_action: string
-          p_entity_type: string
-          p_entity_id: string
-          p_description: string
-          p_metadata?: Json
-        }
-        Returns: string
-      }
-      create_notification: {
-        Args: {
-          p_user_id: string
-          p_title: string
-          p_message: string
-          p_type?: string
-          p_category?: string
-          p_data?: Json
-          p_expires_hours?: number
-        }
-        Returns: string
       }
       generate_invoice_number: {
         Args: Record<PropertyKey, never>

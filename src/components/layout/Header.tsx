@@ -1,10 +1,9 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
 import { ShoppingCart as CartIcon, LogOut, User, Lock, Menu, Phone, Mail, X, Download } from 'lucide-react';
-import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { User as SupabaseUser } from '@supabase/supabase-js';
 import { CartItem } from '@/hooks/useShoppingCart';
 import { PasswordChangeDialog } from '@/components/auth/PasswordChangeDialog';
@@ -128,10 +127,7 @@ export const Header = ({
                       <span className="font-medium">Welcome, {displayName}</span>
                     </div>
                     
-                     {/* Notification Bell */}
-                     <NotificationBell />
-                     
-                     {/* PWA Install Button */}
+                    {/* PWA Install Button */}
                     {canInstall && (
                       <Button
                         onClick={handleInstallApp}

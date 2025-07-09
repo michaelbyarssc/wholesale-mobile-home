@@ -9,6 +9,7 @@ import { Home, Bed, Bath, Maximize, Ruler } from 'lucide-react';
 import { MobileHomeImageCarousel } from './MobileHomeImageCarousel';
 import { MobileHomeServicesDialog } from './MobileHomeServicesDialog';
 import { ShoppingCart } from './ShoppingCart';
+import { MobileHomeFilters, FilterState } from './MobileHomeFilters';
 import { useCustomerPricing } from '@/hooks/useCustomerPricing';
 import { CartItem, DeliveryAddress } from '@/hooks/useShoppingCart';
 import { User } from '@supabase/supabase-js';
@@ -55,8 +56,8 @@ export const MobileHomesShowcase = ({
   setIsCartOpen
 }: MobileHomesShowcaseProps) => {
   const [activeTab, setActiveTab] = useState('');
-  const [widthFilter, setWidthFilter] = useState<'all' | 'single' | 'double'>('all');
   const [selectedHomeForServices, setSelectedHomeForServices] = useState<MobileHome | null>(null);
+  const [isFiltersCollapsed, setIsFiltersCollapsed] = useState(true);
   const { calculateMobileHomePrice, loading: pricingLoading } = useCustomerPricing(user);
   
   console.log('🔍 MobileHomesShowcase render - cart items from props:', cartItems.length);
@@ -106,15 +107,72 @@ export const MobileHomesShowcase = ({
     }
   });
 
-  // Filter homes based on width
+  // Initialize comprehensive filters
+  const [filters, setFilters] = useState<FilterState>(() => {
+    // Calculate initial ranges from data once available
+    const prices = mobileHomes.map(h => h.price).filter(Boolean);
+    const sqft = mobileHomes.map(h => h.square_footage).filter(Boolean);
+    
+    return {
+      priceRange: prices.length > 0 ? [Math.min(...prices), Math.max(...prices)] as [number, number] : [0, 200000] as [number, number],
+      squareFootageRange: sqft.length > 0 ? [Math.min(...sqft), Math.max(...sqft)] as [number, number] : [400, 2000] as [number, number],
+      bedrooms: [],
+      bathrooms: [],
+      manufacturers: [],
+      features: [],
+      widthType: 'all'
+    };
+  });
+
+  // Update filter ranges when home data changes
+  React.useEffect(() => {
+    if (mobileHomes.length > 0) {
+      const prices = mobileHomes.map(h => h.price).filter(Boolean);
+      const sqft = mobileHomes.map(h => h.square_footage).filter(Boolean);
+      
+      setFilters(prev => ({
+        ...prev,
+        priceRange: prev.priceRange[0] === 0 && prev.priceRange[1] === 200000 
+          ? (prices.length > 0 ? [Math.min(...prices), Math.max(...prices)] as [number, number] : [0, 200000] as [number, number])
+          : prev.priceRange,
+        squareFootageRange: prev.squareFootageRange[0] === 400 && prev.squareFootageRange[1] === 2000
+          ? (sqft.length > 0 ? [Math.min(...sqft), Math.max(...sqft)] as [number, number] : [400, 2000] as [number, number])
+          : prev.squareFootageRange
+      }));
+    }
+  }, [mobileHomes]);
+
+  // Comprehensive filtering logic
   const getFilteredHomes = (homes: MobileHome[]) => {
-    if (widthFilter === 'single') {
-      return homes.filter(home => !home.width_feet || home.width_feet <= 18);
-    }
-    if (widthFilter === 'double') {
-      return homes.filter(home => home.width_feet && home.width_feet > 18);
-    }
-    return homes;
+    return homes.filter(home => {
+      // Width filter
+      if (filters.widthType === 'single' && (home.width_feet && home.width_feet > 18)) return false;
+      if (filters.widthType === 'double' && (!home.width_feet || home.width_feet <= 18)) return false;
+      
+      // Price range filter
+      if (home.price && (home.price < filters.priceRange[0] || home.price > filters.priceRange[1])) return false;
+      
+      // Square footage filter
+      if (home.square_footage && (home.square_footage < filters.squareFootageRange[0] || home.square_footage > filters.squareFootageRange[1])) return false;
+      
+      // Bedrooms filter
+      if (filters.bedrooms.length > 0 && (!home.bedrooms || !filters.bedrooms.includes(home.bedrooms.toString()))) return false;
+      
+      // Bathrooms filter
+      if (filters.bathrooms.length > 0 && (!home.bathrooms || !filters.bathrooms.includes(home.bathrooms.toString()))) return false;
+      
+      // Manufacturer filter
+      if (filters.manufacturers.length > 0 && !filters.manufacturers.includes(home.manufacturer)) return false;
+      
+      // Features filter
+      if (filters.features.length > 0) {
+        const homeFeatures = getHomeFeatures(home.features);
+        const hasRequiredFeatures = filters.features.every(feature => homeFeatures.includes(feature));
+        if (!hasRequiredFeatures) return false;
+      }
+      
+      return true;
+    });
   };
 
   const filteredHomes = getFilteredHomes(mobileHomes);
@@ -329,7 +387,7 @@ export const MobileHomesShowcase = ({
     uniqueSeries,
     activeTab,
     cartItemsCount: cartItems.length,
-    widthFilter,
+    filtersActive: filters.widthType !== 'all' || filters.bedrooms.length > 0 || filters.manufacturers.length > 0,
     filteredHomesCount: filteredHomes.length
   });
 
@@ -387,43 +445,14 @@ export const MobileHomesShowcase = ({
           </p>
         </div>
 
-        {/* Width Filter Tabs */}
-        <div className="mb-8">
-          <div className="flex justify-center">
-            <div className="inline-flex rounded-lg border border-gray-200 bg-white p-1">
-              <button
-                onClick={() => setWidthFilter('all')}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                  widthFilter === 'all'
-                    ? 'bg-blue-600 text-white'
-                    : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'
-                }`}
-              >
-                All Homes ({mobileHomes.length})
-              </button>
-              <button
-                onClick={() => setWidthFilter('single')}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                  widthFilter === 'single'
-                    ? 'bg-blue-600 text-white'
-                    : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'
-                }`}
-              >
-                Single Wide ({mobileHomes.filter(h => !h.width_feet || h.width_feet <= 18).length})
-              </button>
-              <button
-                onClick={() => setWidthFilter('double')}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                  widthFilter === 'double'
-                    ? 'bg-blue-600 text-white'
-                    : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'
-                }`}
-              >
-                Double Wide ({mobileHomes.filter(h => h.width_feet && h.width_feet > 18).length})
-              </button>
-            </div>
-          </div>
-        </div>
+        {/* Enhanced Search & Filtering */}
+        <MobileHomeFilters
+          homes={mobileHomes}
+          filters={filters}
+          onFiltersChange={setFilters}
+          isCollapsed={isFiltersCollapsed}
+          onToggleCollapse={() => setIsFiltersCollapsed(!isFiltersCollapsed)}
+        />
 
         {uniqueSeries.length === 0 ? (
           <div className="text-center py-8">

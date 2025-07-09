@@ -1039,6 +1039,48 @@ export type Database = {
         }
         Relationships: []
       }
+      recent_purchases: {
+        Row: {
+          active: boolean
+          created_at: string
+          customer_first_name: string
+          customer_location: string
+          display_until: string
+          id: string
+          mobile_home_manufacturer: string
+          mobile_home_model: string
+          purchase_amount: number | null
+          purchase_date: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          customer_first_name: string
+          customer_location: string
+          display_until?: string
+          id?: string
+          mobile_home_manufacturer: string
+          mobile_home_model: string
+          purchase_amount?: number | null
+          purchase_date?: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          customer_first_name?: string
+          customer_location?: string
+          display_until?: string
+          id?: string
+          mobile_home_manufacturer?: string
+          mobile_home_model?: string
+          purchase_amount?: number | null
+          purchase_date?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       review_helpful_votes: {
         Row: {
           created_at: string
@@ -1215,6 +1257,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      social_proof_settings: {
+        Row: {
+          created_at: string
+          customer_count: number
+          homes_sold_count: number
+          id: string
+          recent_purchases_limit: number
+          show_customer_count: boolean
+          show_homes_sold: boolean
+          show_recent_purchases: boolean
+          show_testimonials: boolean
+          testimonials_rotation_seconds: number
+          updated_at: string
+          years_in_business: number
+        }
+        Insert: {
+          created_at?: string
+          customer_count?: number
+          homes_sold_count?: number
+          id?: string
+          recent_purchases_limit?: number
+          show_customer_count?: boolean
+          show_homes_sold?: boolean
+          show_recent_purchases?: boolean
+          show_testimonials?: boolean
+          testimonials_rotation_seconds?: number
+          updated_at?: string
+          years_in_business?: number
+        }
+        Update: {
+          created_at?: string
+          customer_count?: number
+          homes_sold_count?: number
+          id?: string
+          recent_purchases_limit?: number
+          show_customer_count?: boolean
+          show_homes_sold?: boolean
+          show_recent_purchases?: boolean
+          show_testimonials?: boolean
+          testimonials_rotation_seconds?: number
+          updated_at?: string
+          years_in_business?: number
+        }
+        Relationships: []
       }
       super_admin_markups: {
         Row: {

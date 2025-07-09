@@ -16,6 +16,8 @@ import { LoadingSpinner } from '@/components/loading/LoadingSpinner';
 import { HeaderSkeleton } from '@/components/loading/HeaderSkeleton';
 import { InstallPrompt } from '@/components/pwa/InstallPrompt';
 import { OfflineIndicator } from '@/components/pwa/OfflineIndicator';
+import { SocialProofBanner } from '@/components/SocialProofBanner';
+import { FeaturedTestimonials } from '@/components/FeaturedTestimonials';
 
 const Index = () => {
   console.log('Index component: Starting to render');
@@ -216,6 +218,9 @@ const Index = () => {
         onProfileUpdated={handleProfileUpdated}
       />
 
+      {/* Social Proof Header */}
+      <SocialProofBanner variant="header" />
+
       {/* Top competitive pricing message */}
       <div className="bg-green-600 text-white py-4 text-center">
         <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold">
@@ -247,6 +252,21 @@ const Index = () => {
       </div>
 
       <FeaturesSection />
+
+      {/* Social Proof Stats Section */}
+      <section className="py-16 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-extrabold text-gray-900 sm:text-4xl mb-4">
+              Trusted by Thousands
+            </h2>
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+              Join the growing community of satisfied customers who have found their perfect home with us
+            </p>
+          </div>
+          <SocialProofBanner variant="embedded" />
+        </div>
+      </section>
       
       {/* Financing Calculator Section */}
       <section className="py-16 bg-gradient-to-r from-blue-50 to-indigo-100">
@@ -263,7 +283,20 @@ const Index = () => {
         </div>
       </section>
       
-      <TestimonialsSection />
+      {/* Enhanced Testimonials Section */}
+      <section className="py-16 bg-gradient-to-br from-gray-50 to-gray-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-extrabold text-gray-900 sm:text-4xl mb-4">
+              What Our Customers Say
+            </h2>
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+              Real stories from real customers who found their perfect mobile home with us
+            </p>
+          </div>
+          <FeaturedTestimonials variant="carousel" />
+        </div>
+      </section>
 
       <NewsletterCTASection />
 
@@ -275,6 +308,9 @@ const Index = () => {
           The absolute best deal is always ensured with our verified price match guarantee!
         </h2>
       </div>
+
+      {/* Floating Social Proof */}
+      <SocialProofBanner variant="floating" />
 
       <Footer />
     </div>

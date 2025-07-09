@@ -4,6 +4,7 @@ import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ImageGalleryModal } from './ImageGalleryModal';
+import { OptimizedImage } from './OptimizedImage';
 
 interface MobileHomeImage {
   id: string;
@@ -110,25 +111,28 @@ export const MobileHomeImageCarousel = ({ images, homeModel }: MobileHomeImageCa
         <CarouselContent>
           {validImages.map((image, index) => (
             <CarouselItem key={`${image.id}-${retryAttempts}`}>
-              <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden relative">
-                <img 
-                  src={image.image_url} 
+              <div className="relative">
+                <OptimizedImage
+                  src={image.image_url}
                   alt={image.alt_text || `${homeModel} ${image.image_type}`}
-                  className="w-full h-full object-cover hover:scale-105 transition-transform duration-300 cursor-pointer"
+                  aspectRatio="video"
+                  className="rounded-lg cursor-pointer hover:scale-105 transition-transform duration-300"
+                  priority={index === 0}
                   onError={() => handleImageError(image.id, image.image_url)}
                   onLoad={() => handleImageLoad(image.id)}
                   onClick={() => handleImageClick(index)}
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                 />
                 {/* Image type badge */}
-                <div className="absolute top-2 right-2 bg-black bg-opacity-70 text-white px-2 py-1 rounded text-xs capitalize">
+                <div className="absolute top-2 right-2 bg-black/70 text-white px-2 py-1 rounded text-xs capitalize">
                   {image.image_type}
                 </div>
                 {/* Image counter */}
-                <div className="absolute bottom-2 right-2 bg-black bg-opacity-70 text-white px-2 py-1 rounded text-xs">
+                <div className="absolute bottom-2 right-2 bg-black/70 text-white px-2 py-1 rounded text-xs">
                   {index + 1} / {validImages.length}
                 </div>
                 {/* Click to enlarge hint */}
-                <div className="absolute bottom-2 left-2 bg-black bg-opacity-70 text-white px-2 py-1 rounded text-xs opacity-0 hover:opacity-100 transition-opacity">
+                <div className="absolute bottom-2 left-2 bg-black/70 text-white px-2 py-1 rounded text-xs opacity-0 hover:opacity-100 transition-opacity">
                   Click to enlarge
                 </div>
               </div>

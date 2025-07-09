@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { OptimizedImage } from './OptimizedImage';
 
 interface MobileHomeImage {
   id: string;
@@ -118,10 +119,13 @@ export const ImageGalleryModal = ({
           )}
 
           {/* Main image */}
-          <img
+          <OptimizedImage
             src={currentImage.image_url}
             alt={currentImage.alt_text || `${homeModel} ${currentImage.image_type}`}
             className="max-w-full max-h-full object-contain"
+            priority={true}
+            placeholder="empty"
+            sizes="100vw"
           />
 
           {/* Thumbnail strip */}
@@ -138,10 +142,11 @@ export const ImageGalleryModal = ({
                         : 'border-transparent opacity-70 hover:opacity-100'
                     }`}
                   >
-                    <img
+                    <OptimizedImage
                       src={image.image_url}
                       alt={`Thumbnail ${index + 1}`}
                       className="w-full h-full object-cover"
+                      sizes="64px"
                     />
                   </button>
                 ))}

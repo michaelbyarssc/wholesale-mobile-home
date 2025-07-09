@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Home, Bed, Bath, Maximize, Ruler, Scale, Heart } from 'lucide-react';
 import { MobileHomeImageCarousel } from './MobileHomeImageCarousel';
+import { OptimizedImage } from './OptimizedImage';
 import { MobileHomeServicesDialog } from './MobileHomeServicesDialog';
 import { ShoppingCart } from './ShoppingCart';
 import { MobileHomeFilters, FilterState } from './MobileHomeFilters';

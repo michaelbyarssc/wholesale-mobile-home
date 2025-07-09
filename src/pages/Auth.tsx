@@ -64,26 +64,28 @@ const Auth = () => {
 
     checkAdminStatus();
 
-    // Check if user is already logged in and redirect appropriately
-    const checkUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        // Check if user is admin
-        const { data: roleData } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', user.id)
-          .eq('role', 'admin')
-          .single();
+    // Only redirect if not coming from a password reset
+    if (type !== 'recovery') {
+      const checkUser = async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          // Check if user is admin
+          const { data: roleData } = await supabase
+            .from('user_roles')
+            .select('role')
+            .eq('user_id', user.id)
+            .eq('role', 'admin')
+            .single();
 
-        if (roleData) {
-          navigate('/admin');
-        } else {
-          navigate('/');
+          if (roleData) {
+            navigate('/admin');
+          } else {
+            navigate('/');
+          }
         }
-      }
-    };
-    checkUser();
+      };
+      checkUser();
+    }
 
     // Listen for auth changes and redirect appropriately
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {

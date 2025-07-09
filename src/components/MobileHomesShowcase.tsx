@@ -5,15 +5,17 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Home, Bed, Bath, Maximize, Ruler, Scale } from 'lucide-react';
+import { Home, Bed, Bath, Maximize, Ruler, Scale, Heart } from 'lucide-react';
 import { MobileHomeImageCarousel } from './MobileHomeImageCarousel';
 import { MobileHomeServicesDialog } from './MobileHomeServicesDialog';
 import { ShoppingCart } from './ShoppingCart';
 import { MobileHomeFilters, FilterState } from './MobileHomeFilters';
 import { HomeComparisonModal } from './HomeComparisonModal';
 import { ComparisonBar } from './ComparisonBar';
+import { WishlistModal } from './WishlistModal';
 import { useCustomerPricing } from '@/hooks/useCustomerPricing';
 import { useHomeComparison } from '@/hooks/useHomeComparison';
+import { useWishlist } from '@/hooks/useWishlist';
 import { CartItem, DeliveryAddress } from '@/hooks/useShoppingCart';
 import { User } from '@supabase/supabase-js';
 import { formatPrice } from '@/lib/utils';
@@ -75,6 +77,20 @@ export const MobileHomesShowcase = ({
     closeComparison,
     comparisonCount
   } = useHomeComparison();
+
+  // Initialize wishlist functionality
+  const {
+    wishlistItems,
+    isLoading: wishlistLoading,
+    addToWishlist,
+    removeFromWishlist,
+    clearWishlist,
+    isInWishlist,
+    toggleWishlist,
+    wishlistCount
+  } = useWishlist(user);
+
+  const [isWishlistOpen, setIsWishlistOpen] = useState(false);
   
   console.log('🔍 MobileHomesShowcase render - cart items from props:', cartItems.length);
   console.log('🔍 MobileHomesShowcase - selectedHomeForServices:', selectedHomeForServices?.id);
@@ -366,6 +382,20 @@ export const MobileHomesShowcase = ({
 
           {/* Action Buttons */}
           <div className="space-y-2">
+            {/* Wishlist Button - Always visible */}
+            <Button
+              onClick={() => toggleWishlist(home)}
+              variant="outline"
+              className={`w-full flex items-center gap-2 ${
+                isInWishlist(home.id) 
+                  ? 'text-red-500 border-red-200 hover:border-red-300' 
+                  : 'hover:text-red-500'
+              }`}
+            >
+              <Heart className={`h-4 w-4 ${isInWishlist(home.id) ? 'fill-current' : ''}`} />
+              {isInWishlist(home.id) ? 'Saved to Wishlist' : 'Add to Wishlist'}
+            </Button>
+
             {/* Compare Button - Always visible */}
             <Button
               onClick={() => addToComparison(home)}
@@ -581,6 +611,32 @@ export const MobileHomesShowcase = ({
           homeImages={homeImages}
           user={user}
         />
+
+        {/* Wishlist Components */}
+        <WishlistModal
+          isOpen={isWishlistOpen}
+          onClose={() => setIsWishlistOpen(false)}
+          homes={wishlistItems}
+          onRemoveHome={removeFromWishlist}
+          onClearAll={clearWishlist}
+          homeImages={homeImages}
+          user={user}
+          onAddToCart={handleAddToCart}
+          onAddToComparison={addToComparison}
+          isInComparison={isInComparison}
+        />
+
+        {/* Floating Wishlist Button */}
+        {wishlistCount > 0 && (
+          <Button
+            onClick={() => setIsWishlistOpen(true)}
+            className="fixed bottom-4 right-4 z-40 rounded-full shadow-lg bg-red-500 hover:bg-red-600 text-white"
+            size="lg"
+          >
+            <Heart className="h-5 w-5 mr-2 fill-current" />
+            Wishlist ({wishlistCount})
+          </Button>
+        )}
       </div>
     </section>
   );

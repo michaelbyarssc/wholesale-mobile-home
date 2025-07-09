@@ -62,11 +62,7 @@ export const MobileHomesShowcase = ({
   setIsCartOpen
 }: MobileHomesShowcaseProps) => {
   const [activeTab, setActiveTab] = useState('');
-  // Search and sort state
-  const [searchQuery, setSearchQuery] = useState('');
-  const [sortBy, setSortBy] = useState<SortOption>('name-asc');
-  const [viewMode, setViewMode] = useState<ViewMode>('grid');
-  const [showFilters, setShowFilters] = useState(false);
+  const [selectedHomeForServices, setSelectedHomeForServices] = useState<MobileHome | null>(null);
   const [isFiltersCollapsed, setIsFiltersCollapsed] = useState(true);
   const { calculateMobileHomePrice, loading: pricingLoading } = useCustomerPricing(user);
   
@@ -179,32 +175,29 @@ export const MobileHomesShowcase = ({
     }
   }, [mobileHomes]);
 
-  // Comprehensive filtering and searching logic
-  const getFilteredAndSearchedHomes = (homes: MobileHome[]) => {
-    let filtered = homes.filter(home => {
-      // Search filter
-      if (searchQuery.trim()) {
-        const query = searchQuery.toLowerCase();
-        const searchableText = [
-          home.model,
-          home.display_name,
-          home.manufacturer,
-          home.series,
-          ...(Array.isArray(home.features) ? home.features.filter(f => typeof f === 'string') : [])
-        ].join(' ').toLowerCase();
-        
-        if (!searchableText.includes(query)) return false;
-      }
-
-      // Apply existing filters
+  // Comprehensive filtering logic
+  const getFilteredHomes = (homes: MobileHome[]) => {
+    return homes.filter(home => {
+      // Width filter
       if (filters.widthType === 'single' && (home.width_feet && home.width_feet > 18)) return false;
       if (filters.widthType === 'double' && (!home.width_feet || home.width_feet <= 18)) return false;
+      
+      // Price range filter
       if (home.price && (home.price < filters.priceRange[0] || home.price > filters.priceRange[1])) return false;
+      
+      // Square footage filter
       if (home.square_footage && (home.square_footage < filters.squareFootageRange[0] || home.square_footage > filters.squareFootageRange[1])) return false;
+      
+      // Bedrooms filter
       if (filters.bedrooms.length > 0 && (!home.bedrooms || !filters.bedrooms.includes(home.bedrooms.toString()))) return false;
+      
+      // Bathrooms filter
       if (filters.bathrooms.length > 0 && (!home.bathrooms || !filters.bathrooms.includes(home.bathrooms.toString()))) return false;
+      
+      // Manufacturer filter
       if (filters.manufacturers.length > 0 && !filters.manufacturers.includes(home.manufacturer)) return false;
       
+      // Features filter
       if (filters.features.length > 0) {
         const homeFeatures = getHomeFeatures(home.features);
         const hasRequiredFeatures = filters.features.every(feature => homeFeatures.includes(feature));
@@ -213,24 +206,9 @@ export const MobileHomesShowcase = ({
       
       return true;
     });
-
-    // Apply sorting
-    filtered.sort((a, b) => {
-      switch (sortBy) {
-        case 'price-asc': return (a.price || 0) - (b.price || 0);
-        case 'price-desc': return (b.price || 0) - (a.price || 0);
-        case 'size-asc': return (a.square_footage || 0) - (b.square_footage || 0);
-        case 'size-desc': return (b.square_footage || 0) - (a.square_footage || 0);
-        case 'name-desc': return getHomeName(b).localeCompare(getHomeName(a));
-        case 'newest': return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-        default: return getHomeName(a).localeCompare(getHomeName(b));
-      }
-    });
-
-    return filtered;
   };
 
-  const filteredHomes = getFilteredAndSearchedHomes(mobileHomes);
+  const filteredHomes = getFilteredHomes(mobileHomes);
 
   // Get unique series from the filtered mobile homes data and sort with Tru first
   const uniqueSeries = [...new Set(filteredHomes.map(home => home.series))].sort((a, b) => {

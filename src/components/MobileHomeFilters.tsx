@@ -8,11 +8,13 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { FilterX, Filter } from 'lucide-react';
+import { GlobalSearchBar } from '@/components/search/GlobalSearchBar';
 import type { Database } from '@/integrations/supabase/types';
 
 type MobileHome = Database['public']['Tables']['mobile_homes']['Row'];
 
 export interface FilterState {
+  searchQuery: string;
   priceRange: [number, number];
   squareFootageRange: [number, number];
   bedrooms: string[];
@@ -28,6 +30,8 @@ interface MobileHomeFiltersProps {
   onFiltersChange: (filters: FilterState) => void;
   isCollapsed: boolean;
   onToggleCollapse: () => void;
+  showSearch?: boolean;
+  searchResultCount?: number;
 }
 
 export const MobileHomeFilters: React.FC<MobileHomeFiltersProps> = ({
@@ -35,7 +39,9 @@ export const MobileHomeFilters: React.FC<MobileHomeFiltersProps> = ({
   filters,
   onFiltersChange,
   isCollapsed,
-  onToggleCollapse
+  onToggleCollapse,
+  showSearch = true,
+  searchResultCount
 }) => {
   // Calculate min/max values from available homes
   const priceRange = React.useMemo(() => {
@@ -85,6 +91,7 @@ export const MobileHomeFilters: React.FC<MobileHomeFiltersProps> = ({
 
   const clearAllFilters = () => {
     onFiltersChange({
+      searchQuery: '',
       priceRange: priceRange,
       squareFootageRange: squareFootageRange,
       bedrooms: [],
@@ -96,6 +103,7 @@ export const MobileHomeFilters: React.FC<MobileHomeFiltersProps> = ({
   };
 
   const hasActiveFilters = 
+    filters.searchQuery.trim() !== '' ||
     filters.priceRange[0] > priceRange[0] ||
     filters.priceRange[1] < priceRange[1] ||
     filters.squareFootageRange[0] > squareFootageRange[0] ||
@@ -120,6 +128,7 @@ export const MobileHomeFilters: React.FC<MobileHomeFiltersProps> = ({
           {hasActiveFilters && (
             <Badge variant="secondary" className="ml-2 bg-blue-100 text-blue-800">
               {[
+                filters.searchQuery.trim() !== '' ? 1 : 0,
                 filters.widthType !== 'all' ? 1 : 0,
                 filters.priceRange[0] > priceRange[0] || filters.priceRange[1] < priceRange[1] ? 1 : 0,
                 filters.squareFootageRange[0] > squareFootageRange[0] || filters.squareFootageRange[1] < squareFootageRange[1] ? 1 : 0,
@@ -159,6 +168,21 @@ export const MobileHomeFilters: React.FC<MobileHomeFiltersProps> = ({
         </div>
       </CardHeader>
       <CardContent className="space-y-4 sm:space-y-6">
+        {/* Search Bar */}
+        {showSearch && (
+          <div>
+            <Label className="text-sm font-medium mb-3 block">Search Mobile Homes</Label>
+            <GlobalSearchBar
+              searchQuery={filters.searchQuery}
+              onSearchChange={(query) => updateFilters({ searchQuery: query })}
+              resultCount={searchResultCount}
+              placeholder="Search by name, manufacturer, features..."
+              className="w-full"
+            />
+          </div>
+        )}
+        
+        {showSearch && <Separator />}
         {/* Width Type Filter */}
         <div>
           <Label className="text-sm font-medium mb-2 block">Home Width</Label>

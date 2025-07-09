@@ -14,6 +14,9 @@ import { MobileHomeFilters, FilterState } from './MobileHomeFilters';
 import { HomeComparisonModal } from './HomeComparisonModal';
 import { ComparisonBar } from './ComparisonBar';
 import { WishlistModal } from './WishlistModal';
+import { SearchResultsHeader } from './search/SearchResultsHeader';
+import { NoResultsState } from './search/NoResultsState';
+import { useSearchDebounce } from '@/hooks/useSearchDebounce';
 import { useCustomerPricing } from '@/hooks/useCustomerPricing';
 import { useHomeComparison } from '@/hooks/useHomeComparison';
 import { useWishlist } from '@/hooks/useWishlist';
@@ -147,6 +150,7 @@ export const MobileHomesShowcase = ({
     const sqft = mobileHomes.map(h => h.square_footage).filter(Boolean);
     
     return {
+      searchQuery: '',
       priceRange: prices.length > 0 ? [Math.min(...prices), Math.max(...prices)] as [number, number] : [0, 200000] as [number, number],
       squareFootageRange: sqft.length > 0 ? [Math.min(...sqft), Math.max(...sqft)] as [number, number] : [400, 2000] as [number, number],
       bedrooms: [],
@@ -175,9 +179,29 @@ export const MobileHomesShowcase = ({
     }
   }, [mobileHomes]);
 
-  // Comprehensive filtering logic
+  // Debounced search query for performance
+  const debouncedSearchQuery = useSearchDebounce(filters.searchQuery, 300);
+
+  // Comprehensive filtering and search logic
   const getFilteredHomes = (homes: MobileHome[]) => {
     return homes.filter(home => {
+      // Search filter - check all text content
+      if (debouncedSearchQuery.trim() !== '') {
+        const searchTerm = debouncedSearchQuery.toLowerCase();
+        const homeName = getHomeName(home).toLowerCase();
+        const manufacturer = home.manufacturer.toLowerCase();
+        const model = home.model.toLowerCase();
+        const series = home.series.toLowerCase();
+        const description = (home.description || '').toLowerCase();
+        const features = getHomeFeatures(home.features).join(' ').toLowerCase();
+        
+        const searchableText = `${homeName} ${manufacturer} ${model} ${series} ${description} ${features}`;
+        
+        if (!searchableText.includes(searchTerm)) {
+          return false;
+        }
+      }
+      
       // Width filter
       if (filters.widthType === 'single' && (home.width_feet && home.width_feet > 18)) return false;
       if (filters.widthType === 'double' && (!home.width_feet || home.width_feet <= 18)) return false;
@@ -209,6 +233,41 @@ export const MobileHomesShowcase = ({
   };
 
   const filteredHomes = getFilteredHomes(mobileHomes);
+
+  // Check if search is active
+  const isSearchActive = debouncedSearchQuery.trim() !== '';
+  
+  // Check if any filters are active (excluding search)
+  const hasActiveFilters = 
+    filters.priceRange[0] !== 0 || filters.priceRange[1] !== 200000 ||
+    filters.squareFootageRange[0] !== 400 || filters.squareFootageRange[1] !== 2000 ||
+    filters.bedrooms.length > 0 ||
+    filters.bathrooms.length > 0 ||
+    filters.manufacturers.length > 0 ||
+    filters.features.length > 0 ||
+    filters.widthType !== 'all';
+
+  // Clear search function
+  const clearSearch = () => {
+    setFilters(prev => ({ ...prev, searchQuery: '' }));
+  };
+
+  // Clear all filters function
+  const clearAllFilters = () => {
+    const prices = mobileHomes.map(h => h.price).filter(Boolean);
+    const sqft = mobileHomes.map(h => h.square_footage).filter(Boolean);
+    
+    setFilters({
+      searchQuery: '',
+      priceRange: prices.length > 0 ? [Math.min(...prices), Math.max(...prices)] as [number, number] : [0, 200000] as [number, number],
+      squareFootageRange: sqft.length > 0 ? [Math.min(...sqft), Math.max(...sqft)] as [number, number] : [400, 2000] as [number, number],
+      bedrooms: [],
+      bathrooms: [],
+      manufacturers: [],
+      features: [],
+      widthType: 'all'
+    });
+  };
 
   // Get unique series from the filtered mobile homes data and sort with Tru first
   const uniqueSeries = [...new Set(filteredHomes.map(home => home.series))].sort((a, b) => {
@@ -530,13 +589,44 @@ export const MobileHomesShowcase = ({
           onFiltersChange={setFilters}
           isCollapsed={isFiltersCollapsed}
           onToggleCollapse={() => setIsFiltersCollapsed(!isFiltersCollapsed)}
+          showSearch={true}
+          searchResultCount={isSearchActive ? filteredHomes.length : undefined}
         />
+        
+        {/* Search Results Header - Only show when search is active */}
+        {isSearchActive && (
+          <SearchResultsHeader
+            searchQuery={debouncedSearchQuery}
+            resultCount={filteredHomes.length}
+            totalCount={mobileHomes.length}
+            onClearSearch={clearSearch}
+            hasActiveFilters={hasActiveFilters}
+            onToggleFilters={() => setIsFiltersCollapsed(!isFiltersCollapsed)}
+          />
+        )}
 
-        {uniqueSeries.length === 0 ? (
+        {/* No Results State */}
+        {filteredHomes.length === 0 ? (
+          isSearchActive ? (
+            <NoResultsState
+              searchQuery={debouncedSearchQuery}
+              onClearSearch={clearSearch}
+              onClearFilters={hasActiveFilters ? clearAllFilters : undefined}
+              hasActiveFilters={hasActiveFilters}
+            />
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-base sm:text-lg text-gray-600">No mobile homes available for the selected filters.</p>
+              <p className="text-sm text-gray-500 mt-2">
+                Try adjusting your filter settings above.
+              </p>
+            </div>
+          )
+        ) : uniqueSeries.length === 0 ? (
           <div className="text-center py-8">
-            <p className="text-base sm:text-lg text-gray-600">No mobile homes available for the selected filter.</p>
+            <p className="text-base sm:text-lg text-gray-600">No mobile homes available for the selected series.</p>
             <p className="text-sm text-gray-500 mt-2">
-              Try selecting a different width category above.
+              Try selecting a different series above.
             </p>
           </div>
         ) : (

@@ -16,6 +16,8 @@ import { ComparisonBar } from './ComparisonBar';
 import { WishlistModal } from './WishlistModal';
 import { SearchResultsHeader } from './search/SearchResultsHeader';
 import { NoResultsState } from './search/NoResultsState';
+import { AdvancedSearchBar } from './search/AdvancedSearchBar';
+import { SortOptions, SortOption } from './search/SortOptions';
 import { useSearchDebounce } from '@/hooks/useSearchDebounce';
 import { MobileHomeCardSkeleton } from './loading/MobileHomeCardSkeleton';
 import { FiltersSkeleton } from './loading/FiltersSkeleton';
@@ -72,6 +74,7 @@ export const MobileHomesShowcase = ({
   const [activeTab, setActiveTab] = useState('');
   const [selectedHomeForServices, setSelectedHomeForServices] = useState<MobileHome | null>(null);
   const [isFiltersCollapsed, setIsFiltersCollapsed] = useState(true);
+  const [sortBy, setSortBy] = useState<SortOption>('featured');
   const { calculateMobileHomePrice, loading: pricingLoading } = useCustomerPricing(user);
   
   // Initialize home comparison functionality
@@ -238,6 +241,31 @@ export const MobileHomesShowcase = ({
   };
 
   const filteredHomes = getFilteredHomes(mobileHomes);
+  
+  // Sort filtered homes based on sort option
+  const sortedHomes = React.useMemo(() => {
+    const homes = [...filteredHomes];
+    
+    switch (sortBy) {
+      case 'price-low':
+        return homes.sort((a, b) => (a.price || 0) - (b.price || 0));
+      case 'price-high':
+        return homes.sort((a, b) => (b.price || 0) - (a.price || 0));
+      case 'sqft-low':
+        return homes.sort((a, b) => (a.square_footage || 0) - (b.square_footage || 0));
+      case 'sqft-high':
+        return homes.sort((a, b) => (b.square_footage || 0) - (a.square_footage || 0));
+      case 'newest':
+        return homes.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      case 'bedrooms-high':
+        return homes.sort((a, b) => (b.bedrooms || 0) - (a.bedrooms || 0));
+      case 'bedrooms-low':
+        return homes.sort((a, b) => (a.bedrooms || 0) - (b.bedrooms || 0));
+      case 'featured':
+      default:
+        return homes.sort((a, b) => a.display_order - b.display_order);
+    }
+  }, [filteredHomes, sortBy]);
 
   // Check if search is active
   const isSearchActive = debouncedSearchQuery.trim() !== '';
@@ -274,8 +302,8 @@ export const MobileHomesShowcase = ({
     });
   };
 
-  // Get unique series from the filtered mobile homes data and sort with Tru first
-  const uniqueSeries = [...new Set(filteredHomes.map(home => home.series))].sort((a, b) => {
+  // Get unique series from the sorted filtered homes data and sort with Tru first
+  const uniqueSeries = [...new Set(sortedHomes.map(home => home.series))].sort((a, b) => {
     if (a === 'Tru') return -1;
     if (b === 'Tru') return 1;
     return a.localeCompare(b);
@@ -593,18 +621,56 @@ export const MobileHomesShowcase = ({
           </p>
         </div>
 
-        {/* Enhanced Search & Filtering */}
-        {isLoading ? (
-          <FiltersSkeleton />
-        ) : (
+        {/* Advanced Search Bar - Always Visible */}
+        <div className="mb-6">
+          <AdvancedSearchBar
+            searchQuery={filters.searchQuery}
+            onSearchChange={(query) => setFilters(prev => ({ ...prev, searchQuery: query }))}
+            resultCount={filteredHomes.length}
+            placeholder="Search by name, model, manufacturer, features..."
+            user={user}
+            filters={filters}
+            onFiltersChange={setFilters}
+            className="max-w-2xl mx-auto"
+          />
+        </div>
+
+        {/* Sort and Filter Controls */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+          <SortOptions
+            sortBy={sortBy}
+            onSortChange={setSortBy}
+            resultCount={filteredHomes.length}
+          />
+          
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setIsFiltersCollapsed(!isFiltersCollapsed)}
+              className="flex items-center gap-2 px-4 py-2 text-sm border rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.707A1 1 0 013 7V4z" />
+              </svg>
+              {isFiltersCollapsed ? 'Show Filters' : 'Hide Filters'}
+              {hasActiveFilters && (
+                <span className="bg-primary text-primary-foreground text-xs px-2 py-1 rounded-full">
+                  Active
+                </span>
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Enhanced Filters - Collapsible */}
+        {!isFiltersCollapsed && !isLoading && (
           <MobileHomeFilters
             homes={mobileHomes}
             filters={filters}
             onFiltersChange={setFilters}
-            isCollapsed={isFiltersCollapsed}
-            onToggleCollapse={() => setIsFiltersCollapsed(!isFiltersCollapsed)}
-            showSearch={true}
-            searchResultCount={isSearchActive ? filteredHomes.length : undefined}
+            isCollapsed={false}
+            onToggleCollapse={() => setIsFiltersCollapsed(true)}
+            showSearch={false}
+            searchResultCount={filteredHomes.length}
           />
         )}
         
@@ -631,7 +697,7 @@ export const MobileHomesShowcase = ({
         ) : (
           <>
             {/* No Results State */}
-            {filteredHomes.length === 0 ? (
+            {sortedHomes.length === 0 ? (
               isSearchActive ? (
                 <NoResultsState
                   searchQuery={debouncedSearchQuery}
@@ -701,7 +767,7 @@ export const MobileHomesShowcase = ({
                 </div>
 
                 {uniqueSeries.map((series) => {
-                  const seriesHomes = filteredHomes.filter(home => home.series === series);
+                  const seriesHomes = sortedHomes.filter(home => home.series === series);
                   console.log(`Rendering ${series} series with ${seriesHomes.length} homes:`, seriesHomes);
                   
                   return (

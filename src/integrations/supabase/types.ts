@@ -1157,6 +1157,63 @@ export type Database = {
           },
         ]
       }
+      saved_searches: {
+        Row: {
+          created_at: string
+          filters: Json
+          id: string
+          last_used_at: string
+          name: string
+          search_query: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          filters?: Json
+          id?: string
+          last_used_at?: string
+          name: string
+          search_query?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          filters?: Json
+          id?: string
+          last_used_at?: string
+          name?: string
+          search_query?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      search_history: {
+        Row: {
+          created_at: string
+          id: string
+          result_count: number
+          search_query: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          result_count?: number
+          search_query: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          result_count?: number
+          search_query?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       services: {
         Row: {
           active: boolean

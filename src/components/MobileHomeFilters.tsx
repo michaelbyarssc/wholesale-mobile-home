@@ -168,7 +168,7 @@ export const MobileHomeFilters: React.FC<MobileHomeFiltersProps> = ({
         </div>
       </CardHeader>
       <CardContent className="space-y-4 sm:space-y-6">
-        {/* Search Bar */}
+        {/* Advanced Search Bar */}
         {showSearch && (
           <div>
             <Label className="text-sm font-medium mb-3 block">Search Mobile Homes</Label>

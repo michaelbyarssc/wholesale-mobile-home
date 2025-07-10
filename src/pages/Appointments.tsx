@@ -89,7 +89,7 @@ const Appointments = () => {
                   </ul>
                 </div>
                 <div>
-                  <h4 className="font-semibold mb-3">During Your Visit</h4>
+                  <h4 className="font-semibold mb-3">During Your Call</h4>
                   <ul className="space-y-2 text-sm">
                     <li>• View multiple models to compare features</li>
                     <li>• Ask about customization options and upgrades</li>

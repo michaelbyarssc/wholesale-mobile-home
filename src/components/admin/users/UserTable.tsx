@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { UserProfile } from './UserEditDialog';
 import { UserTableRow } from './UserTableRow';
+import { CreatedByDisplay } from './CreatedByDisplay';
 import { supabase } from '@/integrations/supabase/client';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -70,19 +71,29 @@ export const UserTable = ({ userProfiles, onUserUpdated }: UserTableProps) => {
                       <div className="text-xs text-muted-foreground">{profile.phone_number}</div>
                     )}
                   </div>
-                  <div className="text-xs text-muted-foreground">
-                    {new Date(profile.created_at).toLocaleDateString()}
-                  </div>
-                </div>
-                
-                {isSuperAdmin && profile.role && (
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground">Role:</span>
-                    <span className="text-xs font-medium text-foreground capitalize">
-                      {profile.role.replace('_', ' ')}
-                    </span>
-                  </div>
-                )}
+                   <div className="text-xs text-muted-foreground">
+                     {new Date(profile.created_at).toLocaleDateString()}
+                   </div>
+                 </div>
+                 
+                 {isSuperAdmin && profile.role && (
+                   <div className="flex items-center gap-2">
+                     <span className="text-xs text-muted-foreground">Role:</span>
+                     <span className="text-xs font-medium text-foreground capitalize">
+                       {profile.role.replace('_', ' ')}
+                     </span>
+                   </div>
+                 )}
+
+                 {isSuperAdmin && (
+                   <div className="flex items-center gap-2">
+                     <span className="text-xs text-muted-foreground">Created by:</span>
+                     <CreatedByDisplay 
+                       createdBy={profile.created_by} 
+                       className="text-xs font-medium text-foreground"
+                     />
+                   </div>
+                 )}
                 
                 <div className="flex items-center justify-between pt-2 border-t border-border">
                   <div className="text-xs text-muted-foreground">

@@ -41,6 +41,7 @@ import { InteractionForm } from './crm/InteractionForm';
 import { FollowUpForm } from './crm/FollowUpForm';
 import { AnonymousChatUsers } from './AnonymousChatUsers';
 import { ChatLeadsReview } from './crm/ChatLeadsReview';
+import { CRMAutomationWrapper } from './automation/CRMAutomationWrapper';
 
 interface Lead {
   id: string;
@@ -340,6 +341,7 @@ export const CRMDashboard = ({ userRole, currentUserId }: CRMDashboardProps) => 
           <TabsTrigger value="follow-ups">Follow-ups</TabsTrigger>
           <TabsTrigger value="chat-reviews">Chat Reviews</TabsTrigger>
           <TabsTrigger value="anonymous-chats">Anonymous Chats</TabsTrigger>
+          <TabsTrigger value="automations">Automations</TabsTrigger>
           <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
         </TabsList>
 
@@ -557,6 +559,10 @@ export const CRMDashboard = ({ userRole, currentUserId }: CRMDashboardProps) => 
 
         <TabsContent value="anonymous-chats" className="space-y-4">
           <AnonymousChatUsers />
+        </TabsContent>
+
+        <TabsContent value="automations" className="space-y-4">
+          <CRMAutomationWrapper />
         </TabsContent>
 
         <TabsContent value="pipeline" className="space-y-4">

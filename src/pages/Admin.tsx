@@ -16,7 +16,7 @@ import { UserManagementTab } from '@/components/admin/UserManagementTab';
 import { AuditLogTab } from '@/components/admin/AuditLogTab';
 import { SuperAdminMarkupTab } from '@/components/admin/SuperAdminMarkupTab';
 import { AdminCalendarDashboard } from '@/components/admin/calendar/AdminCalendarDashboard';
-import { AutomationTab } from '@/components/admin/AutomationTab';
+
 import { Menu, X } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { HomeOptionsTab } from '@/components/admin/HomeOptionsTab';
@@ -186,13 +186,6 @@ const Admin = () => {
         >
           CRM
         </Button>
-        <Button
-          variant={activeTab === 'automation' ? 'default' : 'ghost'}
-          className={`${mobile ? 'justify-start w-full h-12 text-base' : ''} text-xs sm:text-sm`}
-          onClick={() => handleTabChange('automation')}
-        >
-          Automation
-        </Button>
       {isSuperAdmin && (
         <>
           <Button
@@ -300,7 +293,7 @@ const Admin = () => {
         <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-3 sm:space-y-4 md:space-y-6">
           {/* Desktop Tab List - Hidden on mobile since we use sheet menu */}
           {!isMobile && isSuperAdmin && (
-            <TabsList className="grid w-full grid-cols-11 h-auto p-1">
+            <TabsList className="grid w-full grid-cols-10 h-auto p-1">
               <TabsTrigger value="mobile-homes" className="text-xs lg:text-sm">Homes</TabsTrigger>
               <TabsTrigger value="services" className="text-xs lg:text-sm">Services</TabsTrigger>
               <TabsTrigger value="home-options" className="text-xs lg:text-sm">Options</TabsTrigger>
@@ -357,9 +350,6 @@ const Admin = () => {
             />
           </TabsContent>
 
-          <TabsContent value="automation" className="mt-2 sm:mt-4">
-            <AutomationTab />
-          </TabsContent>
 
           {isSuperAdmin && (
             <>

@@ -74,6 +74,7 @@ export const MobileHomesShowcase = ({
   const [selectedHomeForServices, setSelectedHomeForServices] = useState<MobileHome | null>(null);
   const [isFiltersCollapsed, setIsFiltersCollapsed] = useState(true);
   const { calculateMobileHomePrice, loading: pricingLoading } = useCustomerPricing(user);
+  const { trackMobileHomeView, trackEvent } = useAnalytics();
   
   // Initialize home comparison functionality
   const {

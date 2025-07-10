@@ -470,13 +470,136 @@ export const CRMDashboard = ({ userRole, currentUserId }: CRMDashboardProps) => 
                     </div>
 
                     <div className="flex items-center gap-2">
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => setSelectedLead(lead)}
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => setSelectedLead(lead)}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                          <DialogHeader>
+                            <DialogTitle>Lead Details</DialogTitle>
+                          </DialogHeader>
+                          {selectedLead && (
+                            <div className="space-y-6">
+                              {/* Basic Info */}
+                              <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                  <Label className="text-sm font-medium text-muted-foreground">Name</Label>
+                                  <p className="text-sm">{selectedLead.first_name} {selectedLead.last_name}</p>
+                                </div>
+                                <div>
+                                  <Label className="text-sm font-medium text-muted-foreground">Status</Label>
+                                  <div className="mt-1">{getStatusBadge(selectedLead.status)}</div>
+                                </div>
+                                <div>
+                                  <Label className="text-sm font-medium text-muted-foreground">Email</Label>
+                                  <p className="text-sm">{selectedLead.email}</p>
+                                </div>
+                                <div>
+                                  <Label className="text-sm font-medium text-muted-foreground">Phone</Label>
+                                  <p className="text-sm">{selectedLead.phone || 'N/A'}</p>
+                                </div>
+                                <div>
+                                  <Label className="text-sm font-medium text-muted-foreground">Company</Label>
+                                  <p className="text-sm">{selectedLead.company || 'N/A'}</p>
+                                </div>
+                                <div>
+                                  <Label className="text-sm font-medium text-muted-foreground">Lead Score</Label>
+                                  <p className="text-sm">{selectedLead.lead_score || 0}/100</p>
+                                </div>
+                              </div>
+
+                              {/* Financial Info */}
+                              <Separator />
+                              <div>
+                                <h4 className="text-sm font-medium mb-3">Financial Information</h4>
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div>
+                                    <Label className="text-sm font-medium text-muted-foreground">Estimated Budget</Label>
+                                    <p className="text-sm">{selectedLead.estimated_budget ? `$${selectedLead.estimated_budget.toLocaleString()}` : 'N/A'}</p>
+                                  </div>
+                                  <div>
+                                    <Label className="text-sm font-medium text-muted-foreground">Timeline</Label>
+                                    <p className="text-sm">{selectedLead.estimated_timeline || 'N/A'}</p>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Lead Source & Dates */}
+                              <Separator />
+                              <div>
+                                <h4 className="text-sm font-medium mb-3">Lead Information</h4>
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div>
+                                    <Label className="text-sm font-medium text-muted-foreground">Lead Source</Label>
+                                    <p className="text-sm">{selectedLead.lead_sources?.name || 'N/A'}</p>
+                                  </div>
+                                  <div>
+                                    <Label className="text-sm font-medium text-muted-foreground">Created</Label>
+                                    <p className="text-sm">{new Date(selectedLead.created_at).toLocaleDateString()}</p>
+                                  </div>
+                                  <div>
+                                    <Label className="text-sm font-medium text-muted-foreground">Last Contacted</Label>
+                                    <p className="text-sm">{selectedLead.last_contacted_at ? new Date(selectedLead.last_contacted_at).toLocaleDateString() : 'Never'}</p>
+                                  </div>
+                                  <div>
+                                    <Label className="text-sm font-medium text-muted-foreground">Next Follow-up</Label>
+                                    <p className="text-sm">{selectedLead.next_follow_up_at ? new Date(selectedLead.next_follow_up_at).toLocaleDateString() : 'Not scheduled'}</p>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Notes */}
+                              {selectedLead.notes && (
+                                <>
+                                  <Separator />
+                                  <div>
+                                    <h4 className="text-sm font-medium mb-3">Notes</h4>
+                                    <p className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-md">{selectedLead.notes}</p>
+                                  </div>
+                                </>
+                              )}
+
+                              {/* Action Buttons */}
+                              <Separator />
+                              <div className="flex gap-3">
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => {
+                                    setSelectedLead(selectedLead);
+                                    setShowLeadDialog(true);
+                                  }}
+                                >
+                                  <Edit className="h-4 w-4 mr-1" />
+                                  Edit Lead
+                                </Button>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => setShowInteractionDialog(true)}
+                                >
+                                  <MessageSquare className="h-4 w-4 mr-1" />
+                                  Log Interaction
+                                </Button>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => setShowFollowUpDialog(true)}
+                                >
+                                  <Clock className="h-4 w-4 mr-1" />
+                                  Schedule Follow-up
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+                        </DialogContent>
+                      </Dialog>
                       <Button variant="ghost" size="sm">
                         <MoreHorizontal className="h-4 w-4" />
                       </Button>

@@ -116,7 +116,7 @@ export const NewsletterSignup = ({
         <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
           <div className="flex-1">
             <h3 className="font-semibold mb-1 text-slate-50">{title}</h3>
-            <p className="text-sm text-muted-foreground">{description}</p>
+            <p className="text-sm text-slate-50">{description}</p>
           </div>
           <form onSubmit={handleSubmit} className="flex gap-2 w-full sm:w-auto">
             <Input type="email" placeholder="Enter your email" value={email} onChange={e => setEmail(e.target.value)} className="flex-1 sm:w-64" disabled={isLoading} />

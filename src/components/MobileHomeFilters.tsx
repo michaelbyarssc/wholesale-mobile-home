@@ -45,43 +45,45 @@ export const MobileHomeFilters: React.FC<MobileHomeFiltersProps> = ({
 }) => {
   // Calculate min/max values from available homes
   const priceRange = React.useMemo(() => {
-    const prices = homes.map(h => h.price).filter(Boolean);
+    const prices = homes && Array.isArray(homes) ? homes.map(h => h.price).filter(Boolean) : [];
     return prices.length > 0 ? [Math.min(...prices), Math.max(...prices)] as [number, number] : [0, 200000] as [number, number];
   }, [homes]);
 
   const squareFootageRange = React.useMemo(() => {
-    const sqft = homes.map(h => h.square_footage).filter(Boolean);
+    const sqft = homes && Array.isArray(homes) ? homes.map(h => h.square_footage).filter(Boolean) : [];
     return sqft.length > 0 ? [Math.min(...sqft), Math.max(...sqft)] as [number, number] : [400, 2000] as [number, number];
   }, [homes]);
 
   // Get unique values for dropdowns
   const uniqueManufacturers = React.useMemo(() => 
-    [...new Set(homes.map(h => h.manufacturer).filter(Boolean))].sort(),
+    homes && Array.isArray(homes) ? [...new Set(homes.map(h => h.manufacturer).filter(Boolean))].sort() : [],
     [homes]
   );
 
   const uniqueBedrooms = React.useMemo(() =>
-    [...new Set(homes.map(h => h.bedrooms).filter(Boolean))].sort((a, b) => a - b),
+    homes && Array.isArray(homes) ? [...new Set(homes.map(h => h.bedrooms).filter(Boolean))].sort((a, b) => a - b) : [],
     [homes]
   );
 
   const uniqueBathrooms = React.useMemo(() =>
-    [...new Set(homes.map(h => h.bathrooms).filter(Boolean))].sort((a, b) => a - b),
+    homes && Array.isArray(homes) ? [...new Set(homes.map(h => h.bathrooms).filter(Boolean))].sort((a, b) => a - b) : [],
     [homes]
   );
 
   // Extract all unique features from all homes
   const uniqueFeatures = React.useMemo(() => {
     const allFeatures = new Set<string>();
-    homes.forEach(home => {
-      if (home.features && Array.isArray(home.features)) {
-        home.features.forEach(feature => {
-          if (typeof feature === 'string') {
-            allFeatures.add(feature);
-          }
-        });
-      }
-    });
+    if (homes && Array.isArray(homes)) {
+      homes.forEach(home => {
+        if (home.features && Array.isArray(home.features)) {
+          home.features.forEach(feature => {
+            if (typeof feature === 'string') {
+              allFeatures.add(feature);
+            }
+          });
+        }
+      });
+    }
     return Array.from(allFeatures).sort();
   }, [homes]);
 

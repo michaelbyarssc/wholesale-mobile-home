@@ -169,7 +169,7 @@ export const MobileHomesShowcase = ({
 
   // Update filter ranges when home data changes
   React.useEffect(() => {
-    if (mobileHomes.length > 0) {
+    if (mobileHomes && mobileHomes.length > 0) {
       const prices = mobileHomes.map(h => h.price).filter(Boolean);
       const sqft = mobileHomes.map(h => h.square_footage).filter(Boolean);
       
@@ -190,6 +190,7 @@ export const MobileHomesShowcase = ({
 
   // Comprehensive filtering and search logic
   const getFilteredHomes = (homes: MobileHome[]) => {
+    if (!homes || !Array.isArray(homes)) return [];
     return homes.filter(home => {
       // Search filter - check all text content
       if (debouncedSearchQuery.trim() !== '') {

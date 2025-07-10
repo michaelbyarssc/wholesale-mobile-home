@@ -638,13 +638,15 @@ export const MobileHomesShowcase = ({
           </p>
         </div>
 
-        {/* Saved Searches */}
-        <SavedSearches
-          currentFilters={filters}
-          currentSearchQuery={filters.searchQuery}
-          onApplySearch={handleApplySearch}
-          resultCount={filteredHomes.length}
-        />
+        {/* Saved Searches - Only show when user has saved homes */}
+        {wishlistCount > 0 && (
+          <SavedSearches
+            currentFilters={filters}
+            currentSearchQuery={filters.searchQuery}
+            onApplySearch={handleApplySearch}
+            resultCount={filteredHomes.length}
+          />
+        )}
 
         {/* Enhanced Search & Filtering */}
         {isLoading ? (

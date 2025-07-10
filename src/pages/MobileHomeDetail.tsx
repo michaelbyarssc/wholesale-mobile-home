@@ -37,6 +37,8 @@ import { useAnalytics } from '@/hooks/useAnalytics';
 import { formatPrice } from '@/lib/utils';
 import { User, Session } from '@supabase/supabase-js';
 import type { Database } from '@/integrations/supabase/types';
+import { SEO } from '@/components/SEO';
+import { Breadcrumbs } from '@/components/Breadcrumbs';
 
 type MobileHome = Database['public']['Tables']['mobile_homes']['Row'];
 type HomeOption = Database['public']['Tables']['home_options']['Row'];
@@ -202,8 +204,74 @@ export const MobileHomeDetail: React.FC = () => {
   const interiorImages = homeImages.filter(img => img.image_type === 'interior');
   const floorPlanImages = homeImages.filter(img => img.image_type === 'floor_plan');
 
+  // Generate SEO data for this mobile home
+  const homeName = getHomeName(mobileHome);
+  const primaryImage = exteriorImages[0]?.image_url || homeImages[0]?.image_url || '/images/mobile-home-exterior-1.jpg';
+  
+  const mobileHomeStructuredData = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    "name": homeName,
+    "description": mobileHome.description || `${homeName} - Quality mobile home from ${mobileHome.manufacturer}`,
+    "brand": {
+      "@type": "Brand",
+      "name": mobileHome.manufacturer
+    },
+    "model": mobileHome.model,
+    "category": "Mobile Home",
+    "image": primaryImage,
+    "offers": {
+      "@type": "Offer",
+      "priceCurrency": "USD",
+      "price": mobileHome.price,
+      "priceValidUntil": new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 30 days from now
+      "availability": "https://schema.org/InStock",
+      "seller": {
+        "@type": "LocalBusiness",
+        "name": "Wholesale Mobile Home"
+      }
+    },
+    "additionalProperty": [
+      ...(mobileHome.square_footage ? [{
+        "@type": "PropertyValue",
+        "name": "Square Footage",
+        "value": `${mobileHome.square_footage} sq ft`
+      }] : []),
+      ...(mobileHome.bedrooms ? [{
+        "@type": "PropertyValue", 
+        "name": "Bedrooms",
+        "value": mobileHome.bedrooms
+      }] : []),
+      ...(mobileHome.bathrooms ? [{
+        "@type": "PropertyValue",
+        "name": "Bathrooms", 
+        "value": mobileHome.bathrooms
+      }] : []),
+      ...(mobileHome.width_feet && mobileHome.length_feet ? [{
+        "@type": "PropertyValue",
+        "name": "Dimensions",
+        "value": `${mobileHome.width_feet}' × ${mobileHome.length_feet}'`
+      }] : [])
+    ]
+  };
+
+  const breadcrumbItems = [
+    { label: 'Home', path: '/' },
+    { label: 'Mobile Homes', path: '/#mobile-homes' },
+    { label: homeName, path: `/home/${mobileHome.id}`, isActive: true }
+  ];
+
   return (
     <div className="min-h-screen bg-gray-50">
+      <SEO 
+        title={`${homeName} - ${mobileHome.series} Series Mobile Home for Sale`}
+        description={`${homeName} - ${mobileHome.description || `Quality ${mobileHome.series} series mobile home from ${mobileHome.manufacturer}. ${mobileHome.square_footage ? `${mobileHome.square_footage} sq ft` : ''} ${mobileHome.bedrooms ? `${mobileHome.bedrooms} bed` : ''} ${mobileHome.bathrooms ? `${mobileHome.bathrooms} bath` : ''}. Get instant pricing and delivery estimates.`}`}
+        keywords={`${homeName}, ${mobileHome.manufacturer} mobile home, ${mobileHome.series} series, ${mobileHome.model}, mobile home for sale, manufactured home, ${mobileHome.bedrooms ? `${mobileHome.bedrooms} bedroom` : ''}, ${mobileHome.bathrooms ? `${mobileHome.bathrooms} bathroom` : ''}`}
+        image={primaryImage}
+        url={`https://wholesalemobilehome.com/home/${mobileHome.id}`}
+        type="product"
+        structuredData={mobileHomeStructuredData}
+      />
       {/* Header Navigation */}
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
@@ -232,6 +300,8 @@ export const MobileHomeDetail: React.FC = () => {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Breadcrumbs */}
+        <Breadcrumbs items={breadcrumbItems} className="mb-6" />
         <div className="grid lg:grid-cols-2 gap-8">
           {/* Left Column - Images */}
           <div className="space-y-6">

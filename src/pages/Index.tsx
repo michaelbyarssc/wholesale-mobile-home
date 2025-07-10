@@ -19,6 +19,7 @@ import { InstallPrompt } from '@/components/pwa/InstallPrompt';
 import { OfflineIndicator } from '@/components/pwa/OfflineIndicator';
 
 import { FeaturedTestimonials } from '@/components/FeaturedTestimonials';
+import { SEO } from '@/components/SEO';
 
 const Index = () => {
   console.log('Index component: Starting to render');
@@ -204,8 +205,39 @@ const Index = () => {
 
   console.log('Index component: Rendering main content');
 
+  // Generate homepage structured data
+  const homepageStructuredData = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "WholesaleMobileHome.com",
+    "alternateName": "Wholesale Mobile Home",
+    "url": "https://wholesalemobilehome.com",
+    "description": "Browse quality mobile homes at wholesale prices. Get instant quotes, view detailed specs, and save thousands.",
+    "potentialAction": {
+      "@type": "SearchAction",
+      "target": {
+        "@type": "EntryPoint",
+        "urlTemplate": "https://wholesalemobilehome.com/?search={search_term_string}"
+      },
+      "query-input": "required name=search_term_string"
+    },
+    "offers": {
+      "@type": "AggregateOffer",
+      "priceCurrency": "USD",
+      "lowPrice": "15000",
+      "highPrice": "150000",
+      "offerCount": "50+"
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-green-50 to-yellow-50">
+      <SEO 
+        title="Wholesale Mobile Homes for Sale | Quality Homes at Best Prices"
+        description="Browse quality mobile homes at wholesale prices. Get instant quotes, view detailed specs, and save thousands. Clayton, Champion, and Fleetwood homes available with financing options."
+        keywords="mobile homes for sale, wholesale mobile homes, manufactured homes, modular homes, clayton homes, champion homes, fleetwood homes, mobile home financing, affordable housing, single wide, double wide"
+        structuredData={homepageStructuredData}
+      />
       {/* PWA Components */}
       <OfflineIndicator variant="alert" />
       

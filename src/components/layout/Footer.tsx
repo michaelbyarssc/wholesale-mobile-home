@@ -3,10 +3,31 @@ import React from 'react';
 import { Phone, Mail, MapPin } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { NewsletterSignup } from '@/components/NewsletterSignup';
+import { Helmet } from 'react-helmet-async';
 
 export const Footer = () => {
+  const organizationSchema = {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "Wholesale Mobile Home",
+    "url": "https://wholesalemobilehome.com",
+    "logo": "https://wholesalemobilehome.com/images/icon-192x192.png",
+    "description": "Quality mobile homes at wholesale prices with professional installation and financing options",
+    "contactPoint": {
+      "@type": "ContactPoint",
+      "telephone": "+1-800-MOBILEH",
+      "contactType": "sales",
+      "availableLanguage": "English"
+    }
+  };
+
   return (
     <footer className="bg-blue-900 text-white py-12 sm:py-16 lg:py-20">
+      <Helmet>
+        <script type="application/ld+json">
+          {JSON.stringify(organizationSchema)}
+        </script>
+      </Helmet>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Newsletter Signup Section */}
         <div className="mb-12 lg:mb-16">

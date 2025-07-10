@@ -12,6 +12,8 @@ import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { useAuthUser } from "@/hooks/useAuthUser";
 import { useShoppingCart } from "@/hooks/useShoppingCart";
+import { SEO } from "@/components/SEO";
+import { Breadcrumbs } from "@/components/Breadcrumbs";
 
 type FAQ = Tables<"faqs"> & {
   faq_categories: Pick<Tables<"faq_categories">, "name" | "slug"> | null;
@@ -91,8 +93,27 @@ export default function FAQ() {
 
   const filteredFaqs = selectedCategory || searchTerm ? faqs : [];
 
+  const faqStructuredData = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": featuredFaqs.map(faq => ({
+      "@type": "Question",
+      "name": faq.question,
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": faq.answer
+      }
+    }))
+  };
+
   return (
     <div className="min-h-screen bg-background">
+      <SEO 
+        title="Frequently Asked Questions - Mobile Home Sales & Service"
+        description="Get answers to common questions about mobile home purchases, financing, delivery, installation, and more. Expert guidance for your mobile home buying journey."
+        keywords="mobile home FAQ, mobile home questions, mobile home financing, mobile home delivery, mobile home installation, manufactured home questions"
+        structuredData={faqStructuredData}
+      />
       <Header
         user={user}
         userProfile={userProfile}
@@ -114,6 +135,8 @@ export default function FAQ() {
       </div>
 
       <div className="container mx-auto px-4 py-8">
+        {/* Breadcrumbs */}
+        <Breadcrumbs className="mb-6" />
         {/* Search and Filter */}
         <div className="flex flex-col md:flex-row gap-4 mb-8">
           <div className="relative flex-1">

@@ -114,7 +114,7 @@ export const MobileHomeImageCarousel = ({ images, homeModel }: MobileHomeImageCa
               <div className="relative">
                 <OptimizedImage
                   src={image.image_url}
-                  alt={image.alt_text || `${homeModel} ${image.image_type}`}
+                  alt={image.alt_text || `${homeModel} ${image.image_type} view - mobile home for sale with quality construction and modern features`}
                   aspectRatio="video"
                   className="rounded-lg cursor-pointer hover:scale-105 transition-transform duration-300"
                   priority={index === 0}

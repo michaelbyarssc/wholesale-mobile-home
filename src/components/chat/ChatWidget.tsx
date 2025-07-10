@@ -188,8 +188,25 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ userId, className }) => 
                         />
                       </div>
                       <Button 
-                        onClick={handleContactFormSubmit}
-                        disabled={!customerName.trim() || !customerPhone.trim() || isLoading}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          if (!customerName.trim() || !customerPhone.trim()) {
+                            // Add visual feedback for empty fields
+                            const nameInput = document.getElementById('customer-name');
+                            const phoneInput = document.getElementById('customer-phone');
+                            if (!customerName.trim() && nameInput) {
+                              nameInput.focus();
+                              nameInput.classList.add('border-red-500');
+                              setTimeout(() => nameInput.classList.remove('border-red-500'), 2000);
+                            } else if (!customerPhone.trim() && phoneInput) {
+                              phoneInput.focus();
+                              phoneInput.classList.add('border-red-500');
+                              setTimeout(() => phoneInput.classList.remove('border-red-500'), 2000);
+                            }
+                            return;
+                          }
+                          handleContactFormSubmit(e);
+                        }}
                         className="w-full mt-4"
                       >
                         ⭐ {isLoading ? 'Starting...' : 'Start Chat'}

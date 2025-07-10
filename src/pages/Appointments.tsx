@@ -126,7 +126,7 @@ const Appointments = () => {
                   </div>
                   <h4 className="font-semibold mb-2"> Business Hours </h4>
                   <p className="text-sm text-muted-foreground mb-2">Give us a call or schedule a call above</p>
-                  <p className="font-medium">Mon-Sat 9AM-6PM</p>
+                  <p className="font-medium">Mon-Sat 8AM-6PM</p>
                 </div>
                 
                 <div className="text-center">

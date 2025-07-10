@@ -80,7 +80,7 @@ const Appointments = () => {
             <CardContent>
               <div className="grid md:grid-cols-2 gap-6">
                 <div>
-                  <h4 className="font-semibold mb-3">Before Your Visit</h4>
+                  <h4 className="font-semibold mb-3">Before Your Call</h4>
                   <ul className="space-y-2 text-sm">
                     <li>• Think about your budget and financing needs</li>
                     <li>• Consider the size and layout you prefer</li>

@@ -340,7 +340,7 @@ export const useAppointmentScheduling = (userId?: string) => {
       supabase.removeChannel(slotsChannel);
       supabase.removeChannel(appointmentsChannel);
     };
-  }, [fetchAvailableSlots, fetchUserAppointments, userId]);
+  }, [userId]); // Only depend on userId, not the callback functions
 
   // Load initial data
   useEffect(() => {

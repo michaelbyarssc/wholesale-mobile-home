@@ -34,7 +34,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ userId }) => {
 
   const handleStartChat = async (department: string = 'general') => {
     setSelectedDepartment(department);
-    await initializeChat('General Inquiry', department);
+    // The ChatWidget will handle the anonymous user flow
   };
 
   return (

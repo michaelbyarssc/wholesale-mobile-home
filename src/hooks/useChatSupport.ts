@@ -20,11 +20,11 @@ export const useChatSupport = (userId?: string) => {
   const { toast } = useToast();
 
   // Initialize chat session
-  const initializeChat = useCallback(async (subject?: string, department?: string) => {
-    if (!userId) {
+  const initializeChat = useCallback(async (subject?: string, department?: string, customerInfo?: { name: string; phone: string }) => {
+    if (!userId && !customerInfo) {
       toast({
-        title: "Authentication Required",
-        description: "Please sign in to start a chat session.",
+        title: "Information Required",
+        description: "Please provide your name and phone number to start a chat.",
         variant: "destructive"
       });
       return null;
@@ -32,33 +32,42 @@ export const useChatSupport = (userId?: string) => {
 
     setIsLoading(true);
     try {
-      // Check for existing active session
-      const { data: existingSession } = await supabase
-        .from('chat_sessions')
-        .select('*, chat_messages(*)')
-        .eq('user_id', userId)
-        .eq('status', 'active')
-        .order('created_at', { referencedTable: 'chat_messages', ascending: true })
-        .maybeSingle();
+      // Check for existing active session (only for authenticated users)
+      if (userId) {
+        const { data: existingSession } = await supabase
+          .from('chat_sessions')
+          .select('*, chat_messages(*)')
+          .eq('user_id', userId)
+          .eq('status', 'active')
+          .order('created_at', { referencedTable: 'chat_messages', ascending: true })
+          .maybeSingle();
 
-      if (existingSession) {
-        setCurrentSession(existingSession);
-        setMessages(existingSession.chat_messages || []);
-        setIsConnected(true);
-        return existingSession;
+        if (existingSession) {
+          setCurrentSession(existingSession);
+          setMessages(existingSession.chat_messages || []);
+          setIsConnected(true);
+          return existingSession;
+        }
       }
 
       // Create new session
       const sessionToken = `chat_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       
+      const sessionMetadata = customerInfo ? {
+        customer_name: customerInfo.name,
+        customer_phone: customerInfo.phone,
+        anonymous: true
+      } : {};
+
       const { data: newSession, error } = await supabase
         .from('chat_sessions')
         .insert({
-          user_id: userId,
+          user_id: userId || null,
           session_token: sessionToken,
           subject: subject || 'General Inquiry',
           department: department || 'general',
-          status: 'active'
+          status: 'active',
+          metadata: sessionMetadata
         })
         .select('*, chat_messages(*)')
         .single();
@@ -66,7 +75,10 @@ export const useChatSupport = (userId?: string) => {
       if (error) throw error;
 
       // Send welcome message
-      await sendMessage("Hello! How can we help you today?", 'system');
+      const welcomeMessage = customerInfo 
+        ? `Hello ${customerInfo.name}! How can we help you today?`
+        : "Hello! How can we help you today?";
+      await sendMessage(welcomeMessage, 'system');
 
       setCurrentSession(newSession);
       setMessages(newSession.chat_messages || []);
@@ -101,7 +113,7 @@ export const useChatSupport = (userId?: string) => {
         .insert({
           session_id: currentSession.id,
           sender_type: senderType,
-          sender_id: senderType === 'user' ? userId : null,
+          sender_id: senderType === 'user' ? userId || null : null,
           content: content.trim(),
           message_type: 'text'
         })

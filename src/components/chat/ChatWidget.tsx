@@ -1,10 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { MessageCircle, X, Send, Minimize2, Maximize2 } from 'lucide-react';
+import { MessageCircle, X, Send, Minimize2, Maximize2, User, Phone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
 import { useChatSupport } from '@/hooks/useChatSupport';
 import { cn } from '@/lib/utils';
 
@@ -18,6 +19,9 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ userId, className }) => 
   const [isMinimized, setIsMinimized] = useState(false);
   const [newMessage, setNewMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [showContactForm, setShowContactForm] = useState(false);
+  const [customerName, setCustomerName] = useState('');
+  const [customerPhone, setCustomerPhone] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
   const {
@@ -39,10 +43,24 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ userId, className }) => 
   }, [messages]);
 
   const handleStartChat = async () => {
+    if (!userId && !showContactForm) {
+      setShowContactForm(true);
+      setIsOpen(true);
+      return;
+    }
+    
     if (!isConnected) {
-      await initializeChat();
+      await initializeChat(undefined, undefined, !userId ? { name: customerName, phone: customerPhone } : undefined);
     }
     setIsOpen(true);
+  };
+
+  const handleContactFormSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!customerName.trim() || !customerPhone.trim()) return;
+    
+    setShowContactForm(false);
+    await initializeChat(undefined, undefined, { name: customerName, phone: customerPhone });
   };
 
   const handleSendMessage = async (e: React.FormEvent) => {
@@ -93,11 +111,9 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ userId, className }) => 
         >
           <MessageCircle className="h-6 w-6" />
         </Button>
-        {!userId && (
-          <div className="absolute -top-12 right-0 bg-black text-white text-xs px-2 py-1 rounded opacity-75">
-            Sign in to chat
-          </div>
-        )}
+        <div className="absolute -top-12 right-0 bg-black text-white text-xs px-2 py-1 rounded opacity-75">
+          Chat with us
+        </div>
       </div>
     );
   }
@@ -136,25 +152,79 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ userId, className }) => 
           <CardContent className="p-0 flex flex-col h-80">
             {!isConnected ? (
               <div className="flex-1 flex items-center justify-center p-4">
-                <div className="text-center">
-                  <MessageCircle className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                  <h3 className="font-medium mb-2">Start a conversation</h3>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Get instant help from our support team
-                  </p>
-                  <Button 
-                    onClick={handleStartChat} 
-                    disabled={!userId || isLoading}
-                    className="w-full"
-                  >
-                    {isLoading ? 'Connecting...' : 'Start Chat'}
-                  </Button>
-                  {!userId && (
-                    <p className="text-xs text-muted-foreground mt-2">
-                      Please sign in to start a chat
+                {showContactForm && !userId ? (
+                  <div className="w-full space-y-4">
+                    <div className="text-center">
+                      <User className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                      <h3 className="font-medium mb-2">Let's get started</h3>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Please provide your details to begin the chat
+                      </p>
+                    </div>
+                    <form onSubmit={handleContactFormSubmit} className="space-y-3">
+                      <div className="space-y-2">
+                        <Label htmlFor="customer-name" className="text-sm font-medium">
+                          Your Name
+                        </Label>
+                        <Input
+                          id="customer-name"
+                          value={customerName}
+                          onChange={(e) => setCustomerName(e.target.value)}
+                          placeholder="Enter your full name"
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="customer-phone" className="text-sm font-medium">
+                          Phone Number
+                        </Label>
+                        <Input
+                          id="customer-phone"
+                          value={customerPhone}
+                          onChange={(e) => setCustomerPhone(e.target.value)}
+                          placeholder="Enter your phone number"
+                          type="tel"
+                          required
+                        />
+                      </div>
+                      <div className="flex gap-2 pt-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => {
+                            setShowContactForm(false);
+                            setIsOpen(false);
+                          }}
+                          className="flex-1"
+                        >
+                          Cancel
+                        </Button>
+                        <Button 
+                          type="submit"
+                          disabled={!customerName.trim() || !customerPhone.trim() || isLoading}
+                          className="flex-1"
+                        >
+                          {isLoading ? 'Starting...' : 'Start Chat'}
+                        </Button>
+                      </div>
+                    </form>
+                  </div>
+                ) : (
+                  <div className="text-center">
+                    <MessageCircle className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                    <h3 className="font-medium mb-2">Start a conversation</h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Get instant help from our support team
                     </p>
-                  )}
-                </div>
+                    <Button 
+                      onClick={handleStartChat} 
+                      disabled={isLoading}
+                      className="w-full"
+                    >
+                      {isLoading ? 'Connecting...' : 'Start Chat'}
+                    </Button>
+                  </div>
+                )}
               </div>
             ) : (
               <>

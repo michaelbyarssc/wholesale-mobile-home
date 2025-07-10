@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { AutomationTemplateForm } from './AutomationTemplateForm';
-import { MessageTemplateForm } from './MessageTemplateForm';
+import { AutomationTemplateManager } from './AutomationTemplateManager';
+import { MessageTemplateManager } from './MessageTemplateManager';
 import { AutomationExecutions } from './AutomationExecutions';
 import { AutomationSettings } from './AutomationSettings';
 import { supabase } from '@/integrations/supabase/client';
@@ -84,18 +84,11 @@ export const CalendarAutomationWrapper = () => {
         </TabsList>
 
         <TabsContent value="templates" className="mt-4">
-          <AutomationTemplateForm 
-            messageTemplates={messageTemplates}
-            onSubmit={handleSubmit}
-            onCancel={handleCancel}
-          />
+          <AutomationTemplateManager />
         </TabsContent>
 
         <TabsContent value="messages" className="mt-4">
-          <MessageTemplateForm 
-            onSubmit={handleSubmit}
-            onCancel={handleCancel}
-          />
+          <MessageTemplateManager />
         </TabsContent>
 
         <TabsContent value="executions" className="mt-4">

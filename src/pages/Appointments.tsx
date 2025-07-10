@@ -47,15 +47,6 @@ const Appointments = () => {
               </CardContent>
             </Card>
             
-            <Card className="text-center">
-              <CardContent className="pt-6">
-                <MapPin className="h-12 w-12 mx-auto mb-4 text-primary" />
-                <h3 className="font-semibold mb-2">Multiple Locations</h3>
-                <p className="text-sm text-muted-foreground">
-                  Showroom visits, on-site tours, or virtual consultations
-                </p>
-              </CardContent>
-            </Card>
             
             <Card className="text-center">
               <CardContent className="pt-6">

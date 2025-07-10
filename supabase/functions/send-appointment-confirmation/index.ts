@@ -1,5 +1,11 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { Resend } from 'npm:resend@2.0.0'
+import React from 'npm:react@18.3.1'
+import { renderAsync } from 'npm:@react-email/components@0.0.22'
+import { AppointmentConfirmationEmail } from './_templates/appointment-confirmation.tsx'
+
+const resend = new Resend(Deno.env.get('RESEND_API_KEY'))
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -51,112 +57,62 @@ serve(async (req) => {
 
     // Format appointment details for email
     const appointmentDate = new Date(appointment.appointment_slots.date)
-    const appointmentTime = appointment.appointment_slots.start_time
-    const endTime = appointment.appointment_slots.end_time
+    const formattedDate = appointmentDate.toLocaleDateString('en-US', { 
+      weekday: 'long', 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    })
+    const formattedTime = `${appointment.appointment_slots.start_time} - ${appointment.appointment_slots.end_time}`
     
-    const locationDetails = {
-      showroom: 'Our Showroom - 123 Mobile Home Blvd, Your City, ST 12345',
-      on_site: appointment.appointment_slots.location_address || 'On-site location',
-      virtual: 'Virtual meeting - Link will be sent before the appointment'
-    }
+    const locationAddress = appointment.appointment_slots.location_type === 'showroom' 
+      ? 'Our Showroom - 123 Mobile Home Blvd, Your City, ST 12345'
+      : appointment.appointment_slots.location_address || 'On-site location'
 
-    // Here you would integrate with your email service (Resend, etc.)
-    // For now, we'll just log the confirmation details
-    console.log('Appointment confirmation details:', {
-      customerName: appointment.customer_name,
-      customerEmail: appointment.customer_email,
-      appointmentDate: appointmentDate.toLocaleDateString(),
-      appointmentTime: `${appointmentTime} - ${endTime}`,
-      locationType: appointment.appointment_slots.location_type,
-      locationAddress: locationDetails[appointment.appointment_slots.location_type] || 'TBD',
-      mobileHome: appointment.mobile_homes ? 
-        `${appointment.mobile_homes.manufacturer} ${appointment.mobile_homes.model}` : 
-        'General consultation',
-      confirmationToken: appointment.confirmation_token,
-      partySize: appointment.party_size,
-      specialRequests: appointment.special_requests
+    const mobileHomeName = appointment.mobile_homes 
+      ? `${appointment.mobile_homes.manufacturer} ${appointment.mobile_homes.model}${appointment.mobile_homes.display_name ? ` (${appointment.mobile_homes.display_name})` : ''}`
+      : undefined
+
+    console.log('Sending appointment confirmation email to:', appointment.customer_email)
+
+    // Get business settings for email branding
+    const { data: businessSettings } = await supabase
+      .from('admin_settings')
+      .select('setting_key, setting_value')
+      .in('setting_key', ['business_name', 'business_logo', 'business_phone', 'business_email'])
+
+    const settings = businessSettings?.reduce((acc, setting) => {
+      acc[setting.setting_key] = setting.setting_value
+      return acc
+    }, {} as Record<string, string>) || {}
+
+    // Render professional appointment confirmation email
+    const emailHtml = await renderAsync(
+      React.createElement(AppointmentConfirmationEmail, {
+        customerName: appointment.customer_name,
+        appointmentDate: formattedDate,
+        appointmentTime: formattedTime,
+        appointmentType: appointment.appointment_type,
+        locationType: appointment.appointment_slots.location_type,
+        locationAddress,
+        mobileHomeName,
+        specialRequests: appointment.special_requests,
+        confirmationToken: appointment.confirmation_token,
+        businessName: settings.business_name || 'Wholesale Homes of the Carolinas',
+        businessLogo: settings.business_logo,
+        businessPhone: settings.business_phone || '(864) 680-4030',
+        businessEmail: settings.business_email || 'Info@WholesaleMobileHome.com',
+      })
+    )
+
+    const emailResponse = await resend.emails.send({
+      from: `${settings.business_name || 'Wholesale Homes of the Carolinas'} <onboarding@resend.dev>`,
+      to: [appointment.customer_email],
+      subject: 'Appointment Confirmed - Mobile Home Solutions',
+      html: emailHtml,
     })
 
-    // In a real implementation, you would send the email here
-    // Example structure for email content:
-    const emailContent = {
-      to: appointment.customer_email,
-      subject: 'Appointment Confirmation - Mobile Home Viewing',
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #2563eb;">Your Appointment is Confirmed!</h2>
-          
-          <p>Dear ${appointment.customer_name},</p>
-          
-          <p>Thank you for scheduling an appointment with us. Here are your appointment details:</p>
-          
-          <div style="background-color: #f8fafc; padding: 20px; border-radius: 8px; margin: 20px 0;">
-            <h3 style="margin-top: 0; color: #374151;">Appointment Details</h3>
-            
-            <p><strong>Date:</strong> ${appointmentDate.toLocaleDateString('en-US', { 
-              weekday: 'long', 
-              year: 'numeric', 
-              month: 'long', 
-              day: 'numeric' 
-            })}</p>
-            
-            <p><strong>Time:</strong> ${appointmentTime} - ${endTime}</p>
-            
-            <p><strong>Type:</strong> ${appointment.appointment_type === 'viewing' ? 'Home Viewing' : 
-              appointment.appointment_type === 'consultation' ? 'Consultation' :
-              appointment.appointment_type === 'inspection' ? 'Inspection' : 'Delivery Planning'}</p>
-            
-            <p><strong>Location:</strong> ${locationDetails[appointment.appointment_slots.location_type]}</p>
-            
-            <p><strong>Party Size:</strong> ${appointment.party_size} ${appointment.party_size === 1 ? 'person' : 'people'}</p>
-            
-            ${appointment.mobile_homes ? `
-              <p><strong>Home:</strong> ${appointment.mobile_homes.manufacturer} ${appointment.mobile_homes.model}
-              ${appointment.mobile_homes.display_name ? ` (${appointment.mobile_homes.display_name})` : ''}</p>
-            ` : ''}
-            
-            ${appointment.special_requests ? `
-              <p><strong>Special Requests:</strong> ${appointment.special_requests}</p>
-            ` : ''}
-            
-            <p><strong>Confirmation #:</strong> ${appointment.confirmation_token}</p>
-          </div>
-          
-          <div style="background-color: #ecfdf5; border-left: 4px solid #10b981; padding: 15px; margin: 20px 0;">
-            <h4 style="margin-top: 0; color: #065f46;">What to Expect</h4>
-            <ul style="color: #064e3b; margin: 0;">
-              <li>One of our experienced agents will meet you at the scheduled time</li>
-              <li>Feel free to ask questions about features, pricing, and financing options</li>
-              <li>We'll provide detailed information about delivery and setup</li>
-              <li>Bring any questions or requirements you have in mind</li>
-            </ul>
-          </div>
-          
-          <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 20px 0;">
-            <h4 style="margin-top: 0; color: #92400e;">Important Notes</h4>
-            <ul style="color: #78350f; margin: 0;">
-              <li>Please arrive 5-10 minutes early</li>
-              <li>If you need to reschedule, please call us at least 24 hours in advance</li>
-              <li>Contact us at (864) 680-4030 if you have any questions</li>
-            </ul>
-          </div>
-          
-          <p>We're excited to help you find your perfect mobile home!</p>
-          
-          <p>Best regards,<br>The WholesaleMobileHome.com Team</p>
-          
-          <hr style="margin: 30px 0; border: none; border-top: 1px solid #e5e7eb;">
-          
-          <div style="font-size: 12px; color: #6b7280;">
-            <p>WholesaleMobileHome.com<br>
-            Phone: (864) 680-4030<br>
-            Email: Info@WholesaleMobileHome.com</p>
-            
-            <p>If you need to cancel or reschedule, please contact us as soon as possible.</p>
-          </div>
-        </div>
-      `
-    }
+    console.log('Email sent successfully:', emailResponse)
 
     return new Response(
       JSON.stringify({ 

@@ -2,6 +2,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { Resend } from 'npm:resend@2.0.0'
+import React from 'npm:react@18.3.1'
+import { renderAsync } from 'npm:@react-email/components@0.0.22'
+import { EstimateEmail } from './_templates/estimate-email.tsx'
+import { AdminNotificationEmail } from './_templates/admin-notification.tsx'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -152,29 +156,39 @@ Created: ${new Date(estimate.created_at).toLocaleDateString()}
     let emailsSent = 0
     const emailResults = []
 
+    // Get business settings for email branding
+    const { data: businessSettings } = await supabase
+      .from('admin_settings')
+      .select('setting_key, setting_value')
+      .in('setting_key', ['business_name', 'business_logo', 'business_address', 'business_phone', 'business_email'])
+
+    const settings = businessSettings?.reduce((acc, setting) => {
+      acc[setting.setting_key] = setting.setting_value
+      return acc
+    }, {} as Record<string, string>) || {}
+
     try {
-      // Send email to customer with approval link
+      // Render professional email template for customer
+      const customerEmailHtml = await renderAsync(
+        React.createElement(EstimateEmail, {
+          customerName: estimate.customer_name,
+          estimateDetails,
+          totalAmount: estimate.total_amount,
+          approvalUrl,
+          businessName: settings.business_name || 'Wholesale Homes of the Carolinas',
+          businessLogo: settings.business_logo,
+          businessAddress: settings.business_address,
+          businessPhone: settings.business_phone,
+          businessEmail: settings.business_email,
+        })
+      )
+
+      // Send email to customer with professional template
       const customerEmailResult = await resend.emails.send({
-        from: 'Wholesale Homes of the Carolinas <onboarding@resend.dev>',
+        from: `${settings.business_name || 'Wholesale Homes of the Carolinas'} <onboarding@resend.dev>`,
         to: [estimate.customer_email],
-        subject: `Your Mobile Home Estimate #${estimate.id} - Action Required`,
-        html: `
-          <h2>Thank you for your interest!</h2>
-          <p>Here are your estimate details:</p>
-          <pre style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; font-family: monospace;">${estimateDetails}</pre>
-          
-          <div style="background-color: #3b82f6; color: white; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center;">
-            <h3>Ready to Proceed?</h3>
-            <p>Click the button below to approve your estimate and convert it to an invoice:</p>
-            <a href="${approvalUrl}" style="display: inline-block; background-color: #1d4ed8; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 10px;">
-              Approve Estimate
-            </a>
-          </div>
-          
-          <p><strong>Important:</strong> Once approved, this estimate will become an invoice due on receipt.</p>
-          <p>If you have any questions, please contact us directly.</p>
-          <p>Best regards,<br>Wholesale Homes of the Carolinas</p>
-        `,
+        subject: `Your Mobile Home Estimate #${estimate.id} - Ready for Review`,
+        html: customerEmailHtml,
       })
 
       console.log('Customer email sent:', customerEmailResult)
@@ -190,17 +204,25 @@ Created: ${new Date(estimate.created_at).toLocaleDateString()}
       for (const admin of adminUsers) {
         if (admin.email) {
           try {
+            // Render professional admin notification email
+            const adminEmailHtml = await renderAsync(
+              React.createElement(AdminNotificationEmail, {
+                customerName: estimate.customer_name,
+                customerEmail: estimate.customer_email,
+                customerPhone: estimate.customer_phone,
+                estimateDetails,
+                totalAmount: estimate.total_amount,
+                approvalUrl,
+                businessName: settings.business_name || 'Wholesale Homes of the Carolinas',
+                businessLogo: settings.business_logo,
+              })
+            )
+
             const adminEmailResult = await resend.emails.send({
-              from: 'Wholesale Homes of the Carolinas <onboarding@resend.dev>',
+              from: `${settings.business_name || 'Wholesale Homes of the Carolinas'} Admin <onboarding@resend.dev>`,
               to: [admin.email],
               subject: `New Estimate Submitted #${estimate.id}`,
-              html: `
-                <h2>New Estimate Submitted</h2>
-                <p>A new estimate has been submitted and requires your attention:</p>
-                <pre style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; font-family: monospace;">${estimateDetails}</pre>
-                <p><strong>Customer Approval Link:</strong> <a href="${approvalUrl}">${approvalUrl}</a></p>
-                <p>Please review this estimate in the admin dashboard.</p>
-              `,
+              html: adminEmailHtml,
             })
 
             console.log(`Admin email sent to ${admin.email}:`, adminEmailResult)

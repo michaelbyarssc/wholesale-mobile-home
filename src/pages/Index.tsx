@@ -19,6 +19,8 @@ import { InstallPrompt } from '@/components/pwa/InstallPrompt';
 import { OfflineIndicator } from '@/components/pwa/OfflineIndicator';
 
 import { FeaturedTestimonials } from '@/components/FeaturedTestimonials';
+import { TestimonialForm } from '@/components/reviews/TestimonialForm';
+import { Button } from '@/components/ui/button';
 import { SEO } from '@/components/SEO';
 
 const Index = () => {
@@ -31,6 +33,7 @@ const Index = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [userProfile, setUserProfile] = useState<{ first_name?: string } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [showTestimonialForm, setShowTestimonialForm] = useState(false);
   
   // Shopping cart hook after user state is declared
   const {
@@ -326,6 +329,29 @@ const Index = () => {
             </p>
           </div>
           <FeaturedTestimonials variant="carousel" />
+          
+          {/* Share Your Experience Button/Form */}
+          <div className="mt-12">
+            {!showTestimonialForm ? (
+              <div className="text-center">
+                <Button
+                  onClick={() => setShowTestimonialForm(true)}
+                  size="lg"
+                  className="px-6 py-3"
+                >
+                  Share Your Experience
+                </Button>
+                <p className="mt-2 text-sm text-gray-600">
+                  Have a great experience with us? Let others know!
+                </p>
+              </div>
+            ) : (
+              <TestimonialForm
+                onSuccess={() => setShowTestimonialForm(false)}
+                onCancel={() => setShowTestimonialForm(false)}
+              />
+            )}
+          </div>
         </div>
       </section>
 

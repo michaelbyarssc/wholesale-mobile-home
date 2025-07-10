@@ -842,7 +842,7 @@ export const MobileHomesShowcase = ({
         {wishlistCount > 0 && (
           <Button
             onClick={() => setIsWishlistOpen(true)}
-            className="fixed bottom-20 sm:bottom-4 right-4 z-40 rounded-full shadow-lg bg-red-500 hover:bg-red-600 text-white touch-manipulation"
+            className="fixed bottom-20 sm:bottom-4 left-4 z-40 rounded-full shadow-lg bg-red-500 hover:bg-red-600 text-white touch-manipulation"
             size="lg"
           >
             <Heart className="h-4 w-4 sm:h-5 sm:w-5 mr-1 sm:mr-2 fill-current" />

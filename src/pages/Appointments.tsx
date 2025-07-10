@@ -74,10 +74,8 @@ const Appointments = () => {
           {/* Information Section */}
           <Card className="bg-gradient-to-r from-blue-50 to-indigo-50">
             <CardHeader>
-              <CardTitle>What to Expect During Your Visit</CardTitle>
-              <CardDescription>
-                Make the most of your appointment with these helpful tips
-              </CardDescription>
+              <CardTitle>What to Expect During Your Call</CardTitle>
+              <CardDescription>Make the most of your call with these helpful tips</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid md:grid-cols-2 gap-6">

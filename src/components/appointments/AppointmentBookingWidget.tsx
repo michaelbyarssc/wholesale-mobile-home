@@ -116,9 +116,7 @@ export const AppointmentBookingWidget: React.FC<AppointmentBookingWidgetProps> =
           Schedule a Viewing
         </CardTitle>
         <CardDescription>
-          {mobileHomeName 
-            ? `Book an appointment to view the ${mobileHomeName}` 
-            : 'Book an appointment to view our mobile homes'}
+          Book an appointment to chat about our mobile homes
         </CardDescription>
       </CardHeader>
       <CardContent>

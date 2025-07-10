@@ -205,6 +205,13 @@ export const TestimonialForm = ({ onSuccess, onCancel }: TestimonialFormProps) =
                 type="submit" 
                 disabled={isSubmitting}
                 className="flex-1"
+                onClick={() => {
+                  console.log('🔘 Submit button clicked');
+                  console.log('📊 Form state:', form.formState);
+                  console.log('🌟 Current rating:', rating);
+                  console.log('📝 Form values:', form.getValues());
+                  console.log('❌ Form errors:', form.formState.errors);
+                }}
               >
                 {isSubmitting ? "Submitting..." : "Submit Testimonial"}
               </Button>

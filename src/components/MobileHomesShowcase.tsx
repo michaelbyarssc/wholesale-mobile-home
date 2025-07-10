@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Home, Bed, Bath, Maximize, Ruler, Scale, Heart } from 'lucide-react';
+import { Home, Bed, Bath, Maximize, Ruler, Scale, Heart, Eye } from 'lucide-react';
 import { MobileHomeImageCarousel } from './MobileHomeImageCarousel';
 import { OptimizedImage } from './OptimizedImage';
 import { MobileHomeServicesDialog } from './MobileHomeServicesDialog';
@@ -15,6 +15,8 @@ import { MobileHomeFilters, FilterState } from './MobileHomeFilters';
 import { HomeComparisonModal } from './HomeComparisonModal';
 import { ComparisonBar } from './ComparisonBar';
 import { WishlistModal } from './WishlistModal';
+import { SavedSearches } from './search/SavedSearches';
+import { MobileHomeQuickView } from './MobileHomeQuickView';
 import { SearchResultsHeader } from './search/SearchResultsHeader';
 import { NoResultsState } from './search/NoResultsState';
 import { useSearchDebounce } from '@/hooks/useSearchDebounce';
@@ -327,6 +329,10 @@ export const MobileHomesShowcase = ({
     setSelectedHomeForServices(null);
   }, [addToCart]);
 
+  const handleApplySearch = useCallback((searchQuery: string, newFilters: FilterState) => {
+    setFilters({ ...newFilters, searchQuery });
+  }, []);
+
   const renderHomeCard = (home: MobileHome, index: number) => {
     const homeImageList = getHomeImages(home.id);
     const isInCart = cartItems.some(item => item.mobileHome.id === home.id);
@@ -493,6 +499,32 @@ export const MobileHomesShowcase = ({
               {isInComparison(home.id) ? 'Added to Compare' : 'Compare'}
             </Button>
 
+            {/* Quick View Button */}
+            <MobileHomeQuickView
+              home={home}
+              images={homeImageList.map(img => ({
+                ...img,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              }))}
+              userPrice={user && !pricingLoading ? calculateMobileHomePrice(home) : undefined}
+              onAddToCart={user ? handleAddToCart : undefined}
+              onToggleWishlist={toggleWishlist}
+              isInWishlist={isInWishlist(home.id)}
+            >
+              <Button
+                variant="outline"
+                className="w-full flex items-center gap-2"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+              >
+                <Eye className="h-4 w-4" />
+                Quick View
+              </Button>
+            </MobileHomeQuickView>
+
             {/* Add to Cart Button - Only show for logged in users */}
             {user ? (
               <Button 
@@ -609,6 +641,14 @@ export const MobileHomesShowcase = ({
             )}
           </p>
         </div>
+
+        {/* Saved Searches */}
+        <SavedSearches
+          currentFilters={filters}
+          currentSearchQuery={filters.searchQuery}
+          onApplySearch={handleApplySearch}
+          resultCount={filteredHomes.length}
+        />
 
         {/* Enhanced Search & Filtering */}
         {isLoading ? (

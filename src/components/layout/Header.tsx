@@ -135,7 +135,7 @@ export const Header = ({
                       className="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition-colors font-medium"
                     >
                       <Calendar className="h-4 w-4" />
-                      <span>Book Viewing</span>
+                      <span>Book A Call</span>
                     </Link>
 
                     {/* PWA Install Button */}
@@ -250,7 +250,7 @@ export const Header = ({
                   className="flex items-center gap-3 p-3 text-gray-600 hover:text-blue-600 hover:bg-gray-50 rounded-lg transition-colors"
                 >
                   <Calendar className="h-4 w-4" />
-                  <span className="font-medium">Book Viewing</span>
+                  <span className="font-medium">Book A Call</span>
                 </Link>
                 <Link
                   to="/faq"

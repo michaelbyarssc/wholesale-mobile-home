@@ -180,7 +180,16 @@ export const useChatSupport = (userId?: string) => {
       if (error) throw error;
 
       if (data?.response) {
-        await sendMessage(data.response, 'ai');
+        // Send AI response without triggering another AI response
+        await supabase
+          .from('chat_messages')
+          .insert({
+            session_id: currentSession.id,
+            sender_type: 'ai',
+            sender_id: null,
+            content: data.response,
+            message_type: 'text'
+          });
       }
     } catch (error) {
       console.error('Error getting AI response:', error);
@@ -191,7 +200,16 @@ export const useChatSupport = (userId?: string) => {
         "Your inquiry is important to us. Please hold while I find the best person to assist you."
       ];
       const randomResponse = fallbackResponses[Math.floor(Math.random() * fallbackResponses.length)];
-      await sendMessage(randomResponse, 'ai');
+      // Send fallback response without triggering another AI response
+      await supabase
+        .from('chat_messages')
+        .insert({
+          session_id: currentSession.id,
+          sender_type: 'ai',
+          sender_id: null,
+          content: randomResponse,
+          message_type: 'text'
+        });
     }
   }, [currentSession, messages, sendMessage]);
 

@@ -57,82 +57,139 @@ serve(async (req) => {
   }
 })
 
-// Generate response using OpenAI API
+// Generate response using OpenAI Assistants API
 async function generateOpenAIResponse(userMessage: string, chatHistory: any[]): Promise<string> {
   if (!openAIApiKey) {
     console.error('OpenAI API key not configured')
     return "I apologize, but I'm currently unable to process your request. Please try again later or contact our support team."
   }
 
+  const assistantId = 'asst_B2fBwdSnxpTvBOEZs87WWrfH';
+
   try {
-    // Prepare chat history for OpenAI format
-    const messages = [
-      {
-        role: 'system',
-        content: `You are a helpful AI assistant for a mobile home dealership. You help customers with:
-        - Mobile home pricing and specifications
-        - Financing options and payment plans
-        - Delivery and setup services
-        - Home customization and upgrades
-        - Scheduling appointments and consultations
-        - General mobile home information
-
-        Be friendly, professional, and helpful. If you don't know specific pricing or availability, offer to connect them with a specialist. Keep responses concise but informative.
-        
-        When discussing pricing, mention that prices vary based on size, features, and location, and offer to help them get a personalized estimate.
-        
-        For complex questions about financing, delivery logistics, or specific product availability, offer to connect them with the appropriate specialist.
-        
-        Company details:
-        - We work with reputable manufacturers like Clayton, Champion, and other trusted brands
-        - We offer single-wide (600-1,300 sq ft) and double-wide (1,000-2,300 sq ft) homes
-        - All homes are HUD-compliant and come with manufacturer warranties
-        - We provide complete setup services including site preparation and utility connections
-        - Financing options available through our partners
-        - Phone: 1-800-555-HOMES (1-800-555-4663)
-        - Hours: Mon-Fri 8AM-8PM EST, Sat-Sun 9AM-5PM EST`
-      }
-    ]
-
-    // Add recent chat history (last 10 messages to stay within token limits)
-    const recentHistory = chatHistory.slice(-10)
-    for (const msg of recentHistory) {
-      messages.push({
-        role: msg.sender_type === 'user' ? 'user' : 'assistant',
-        content: msg.content
-      })
-    }
-
-    // Add current user message
-    messages.push({
-      role: 'user',
-      content: userMessage
-    })
-
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    // Create a new thread for this conversation
+    const threadResponse = await fetch('https://api.openai.com/v1/threads', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${openAIApiKey}`,
         'Content-Type': 'application/json',
+        'OpenAI-Beta': 'assistants=v2'
       },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: messages,
-        max_tokens: 500,
-        temperature: 0.7,
-      }),
-    })
+      body: JSON.stringify({})
+    });
 
-    if (!response.ok) {
-      console.error('OpenAI API error:', response.status, response.statusText)
+    if (!threadResponse.ok) {
+      console.error('Failed to create thread:', threadResponse.status, threadResponse.statusText)
       return "I apologize, but I'm having trouble processing your request right now. Please try again in a moment."
     }
 
-    const data = await response.json()
-    return data.choices[0].message.content || "I apologize, but I couldn't generate a response. Please try rephrasing your question."
+    const thread = await threadResponse.json();
+    const threadId = thread.id;
+
+    // Add recent chat history to the thread (last 5 messages to avoid token limits)
+    const recentHistory = chatHistory.slice(-5);
+    for (const msg of recentHistory) {
+      await fetch(`https://api.openai.com/v1/threads/${threadId}/messages`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openAIApiKey}`,
+          'Content-Type': 'application/json',
+          'OpenAI-Beta': 'assistants=v2'
+        },
+        body: JSON.stringify({
+          role: msg.sender_type === 'user' ? 'user' : 'assistant',
+          content: msg.content
+        })
+      });
+    }
+
+    // Add the current user message
+    await fetch(`https://api.openai.com/v1/threads/${threadId}/messages`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openAIApiKey}`,
+        'Content-Type': 'application/json',
+        'OpenAI-Beta': 'assistants=v2'
+      },
+      body: JSON.stringify({
+        role: 'user',
+        content: userMessage
+      })
+    });
+
+    // Run the assistant
+    const runResponse = await fetch(`https://api.openai.com/v1/threads/${threadId}/runs`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openAIApiKey}`,
+        'Content-Type': 'application/json',
+        'OpenAI-Beta': 'assistants=v2'
+      },
+      body: JSON.stringify({
+        assistant_id: assistantId
+      })
+    });
+
+    if (!runResponse.ok) {
+      console.error('Failed to run assistant:', runResponse.status, runResponse.statusText)
+      return "I apologize, but I'm having trouble processing your request right now. Please try again in a moment."
+    }
+
+    const run = await runResponse.json();
+    const runId = run.id;
+
+    // Poll for completion
+    let runStatus = 'queued';
+    let attempts = 0;
+    const maxAttempts = 30; // 30 seconds max wait time
+
+    while (runStatus !== 'completed' && runStatus !== 'failed' && attempts < maxAttempts) {
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
+      
+      const statusResponse = await fetch(`https://api.openai.com/v1/threads/${threadId}/runs/${runId}`, {
+        headers: {
+          'Authorization': `Bearer ${openAIApiKey}`,
+          'OpenAI-Beta': 'assistants=v2'
+        }
+      });
+
+      if (statusResponse.ok) {
+        const statusData = await statusResponse.json();
+        runStatus = statusData.status;
+      }
+      
+      attempts++;
+    }
+
+    if (runStatus !== 'completed') {
+      console.error('Assistant run did not complete successfully:', runStatus)
+      return "I apologize, but I'm taking too long to process your request. Please try again or contact our support team."
+    }
+
+    // Get the assistant's response
+    const messagesResponse = await fetch(`https://api.openai.com/v1/threads/${threadId}/messages`, {
+      headers: {
+        'Authorization': `Bearer ${openAIApiKey}`,
+        'OpenAI-Beta': 'assistants=v2'
+      }
+    });
+
+    if (!messagesResponse.ok) {
+      console.error('Failed to get messages:', messagesResponse.status, messagesResponse.statusText)
+      return "I apologize, but I couldn't retrieve the response. Please try again."
+    }
+
+    const messages = await messagesResponse.json();
+    const assistantMessage = messages.data.find((msg: any) => msg.role === 'assistant');
+    
+    if (assistantMessage && assistantMessage.content && assistantMessage.content[0]) {
+      return assistantMessage.content[0].text.value;
+    }
+
+    return "I apologize, but I couldn't generate a response. Please try rephrasing your question."
 
   } catch (error) {
-    console.error('Error calling OpenAI API:', error)
+    console.error('Error calling OpenAI Assistants API:', error)
     return "I'm sorry, but I'm experiencing technical difficulties. Please try again later or contact our support team for immediate assistance."
   }
 }

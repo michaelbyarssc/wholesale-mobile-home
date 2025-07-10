@@ -808,6 +808,54 @@ export type Database = {
           },
         ]
       }
+      calendar_event_mappings: {
+        Row: {
+          appointment_id: string
+          calendar_connection_id: string
+          created_at: string
+          google_event_id: string
+          id: string
+          last_synced_at: string | null
+          sync_status: string
+          updated_at: string
+        }
+        Insert: {
+          appointment_id: string
+          calendar_connection_id: string
+          created_at?: string
+          google_event_id: string
+          id?: string
+          last_synced_at?: string | null
+          sync_status?: string
+          updated_at?: string
+        }
+        Update: {
+          appointment_id?: string
+          calendar_connection_id?: string
+          created_at?: string
+          google_event_id?: string
+          id?: string
+          last_synced_at?: string | null
+          sync_status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calendar_event_mappings_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calendar_event_mappings_calendar_connection_id_fkey"
+            columns: ["calendar_connection_id"]
+            isOneToOne: false
+            referencedRelation: "user_calendar_connections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chat_data_capture_settings: {
         Row: {
           active: boolean
@@ -2381,6 +2429,96 @@ export type Database = {
           image_url?: string | null
           rating?: number
           updated_at?: string
+        }
+        Relationships: []
+      }
+      user_calendar_connections: {
+        Row: {
+          access_token: string
+          calendar_id: string
+          calendar_name: string
+          calendar_timezone: string | null
+          created_at: string
+          google_account_email: string
+          id: string
+          is_default_for_appointments: boolean
+          is_primary: boolean
+          refresh_token: string
+          token_expires_at: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token: string
+          calendar_id: string
+          calendar_name: string
+          calendar_timezone?: string | null
+          created_at?: string
+          google_account_email: string
+          id?: string
+          is_default_for_appointments?: boolean
+          is_primary?: boolean
+          refresh_token: string
+          token_expires_at: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token?: string
+          calendar_id?: string
+          calendar_name?: string
+          calendar_timezone?: string | null
+          created_at?: string
+          google_account_email?: string
+          id?: string
+          is_default_for_appointments?: boolean
+          is_primary?: boolean
+          refresh_token?: string
+          token_expires_at?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_calendar_preferences: {
+        Row: {
+          auto_create_events: boolean
+          check_availability: boolean
+          created_at: string
+          event_privacy: string
+          event_title_template: string | null
+          id: string
+          include_customer_details: boolean
+          include_mobile_home_details: boolean
+          sync_enabled: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          auto_create_events?: boolean
+          check_availability?: boolean
+          created_at?: string
+          event_privacy?: string
+          event_title_template?: string | null
+          id?: string
+          include_customer_details?: boolean
+          include_mobile_home_details?: boolean
+          sync_enabled?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          auto_create_events?: boolean
+          check_availability?: boolean
+          created_at?: string
+          event_privacy?: string
+          event_title_template?: string | null
+          id?: string
+          include_customer_details?: boolean
+          include_mobile_home_details?: boolean
+          sync_enabled?: boolean
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useNavigate, Link } from 'react-router-dom';
-import { ShoppingCart as CartIcon, LogOut, User, Lock, Menu, Phone, Mail, X, Download, Calendar } from 'lucide-react';
+import { ShoppingCart as CartIcon, LogOut, User, Lock, Menu, Phone, Mail, X, Download, Calendar, Home } from 'lucide-react';
 import { User as SupabaseUser } from '@supabase/supabase-js';
 import { CartItem } from '@/hooks/useShoppingCart';
 import { PasswordChangeDialog } from '@/components/auth/PasswordChangeDialog';
@@ -98,6 +98,15 @@ export const Header = ({
 
             {/* Right side - Actions */}
             <div className="flex items-center gap-3">
+              {/* Home Icon - Always visible */}
+              <Link
+                to="/"
+                className="flex items-center justify-center p-2 text-gray-600 hover:text-blue-600 hover:bg-gray-50 rounded-lg transition-colors"
+                title="Go to Home"
+              >
+                <Home className="h-5 w-5" />
+              </Link>
+              
               {!user ? (
                 <Button 
                   onClick={(e) => {

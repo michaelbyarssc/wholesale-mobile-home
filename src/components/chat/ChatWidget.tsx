@@ -187,26 +187,24 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ userId, className }) => 
                           required
                         />
                       </div>
-                      <div className="flex gap-2 pt-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => {
-                            setShowContactForm(false);
-                            setIsOpen(false);
-                          }}
-                          className="flex-1"
-                        >
-                          Cancel
-                        </Button>
-                        <Button 
-                          type="submit"
-                          disabled={!customerName.trim() || !customerPhone.trim() || isLoading}
-                          className="flex-1"
-                        >
-                          {isLoading ? 'Starting...' : 'Start Chat'}
-                        </Button>
-                      </div>
+                      <Button 
+                        onClick={handleContactFormSubmit}
+                        disabled={!customerName.trim() || !customerPhone.trim() || isLoading}
+                        className="w-full mt-4"
+                      >
+                        ⭐ {isLoading ? 'Starting...' : 'Start Chat'}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          setShowContactForm(false);
+                          setIsOpen(false);
+                        }}
+                        className="w-full mt-2"
+                      >
+                        Cancel
+                      </Button>
                     </form>
                   </div>
                 ) : (

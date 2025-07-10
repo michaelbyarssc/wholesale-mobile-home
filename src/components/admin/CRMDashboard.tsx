@@ -100,6 +100,7 @@ export const CRMDashboard = ({ userRole, currentUserId }: CRMDashboardProps) => 
   const [loading, setLoading] = useState(true);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [showLeadDialog, setShowLeadDialog] = useState(false);
+  const [showLeadDetailsDialog, setShowLeadDetailsDialog] = useState(false);
   const [showInteractionDialog, setShowInteractionDialog] = useState(false);
   const [showFollowUpDialog, setShowFollowUpDialog] = useState(false);
   const [filterStatus, setFilterStatus] = useState<string>('all');
@@ -470,12 +471,15 @@ export const CRMDashboard = ({ userRole, currentUserId }: CRMDashboardProps) => 
                     </div>
 
                     <div className="flex items-center gap-2">
-                      <Dialog>
+                      <Dialog open={showLeadDetailsDialog} onOpenChange={setShowLeadDetailsDialog}>
                         <DialogTrigger asChild>
                           <Button 
                             variant="ghost" 
                             size="sm"
-                            onClick={() => setSelectedLead(lead)}
+                            onClick={() => {
+                              setSelectedLead(lead);
+                              setShowLeadDetailsDialog(true);
+                            }}
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
@@ -572,7 +576,7 @@ export const CRMDashboard = ({ userRole, currentUserId }: CRMDashboardProps) => 
                                   variant="outline" 
                                   size="sm"
                                   onClick={() => {
-                                    setSelectedLead(selectedLead);
+                                    setShowLeadDetailsDialog(false);
                                     setShowLeadDialog(true);
                                   }}
                                 >
@@ -582,7 +586,10 @@ export const CRMDashboard = ({ userRole, currentUserId }: CRMDashboardProps) => 
                                 <Button 
                                   variant="outline" 
                                   size="sm"
-                                  onClick={() => setShowInteractionDialog(true)}
+                                  onClick={() => {
+                                    setShowLeadDetailsDialog(false);
+                                    setShowInteractionDialog(true);
+                                  }}
                                 >
                                   <MessageSquare className="h-4 w-4 mr-1" />
                                   Log Interaction
@@ -590,7 +597,10 @@ export const CRMDashboard = ({ userRole, currentUserId }: CRMDashboardProps) => 
                                 <Button 
                                   variant="outline" 
                                   size="sm"
-                                  onClick={() => setShowFollowUpDialog(true)}
+                                  onClick={() => {
+                                    setShowLeadDetailsDialog(false);
+                                    setShowFollowUpDialog(true);
+                                  }}
                                 >
                                   <Clock className="h-4 w-4 mr-1" />
                                   Schedule Follow-up

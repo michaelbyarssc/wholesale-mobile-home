@@ -161,11 +161,14 @@ export const TestimonialForm = ({ onSuccess, onCancel }: TestimonialFormProps) =
             <div>
               <label className="text-sm font-medium">Rating *</label>
               <div className="mt-2">
-                <StarRating 
-                  rating={rating} 
-                  onRatingChange={setRating} 
-                  size="lg"
-                />
+              <StarRating
+                rating={rating}
+                onRatingChange={(newRating) => {
+                  setRating(newRating);
+                  form.setValue('rating', newRating);
+                }}
+                size="lg"
+              />
               </div>
               {rating === 0 && form.formState.isSubmitted && (
                 <p className="text-sm text-destructive mt-1">Rating is required</p>

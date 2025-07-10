@@ -317,7 +317,7 @@ const Index = () => {
         </div>
       </section>
       
-      {/* Enhanced Testimonials Section */}
+          {/* Enhanced Testimonials Section */}
       <section className="py-16 bg-gradient-to-br from-gray-50 to-gray-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
@@ -328,20 +328,21 @@ const Index = () => {
               Real stories from real customers who found their perfect mobile home with us
             </p>
           </div>
+          
           <FeaturedTestimonials variant="carousel" />
           
-          {/* Share Your Experience Button/Form */}
+          {/* Share Your Experience Button/Form - Always visible */}
           <div className="mt-12">
             {!showTestimonialForm ? (
               <div className="text-center">
                 <Button
                   onClick={() => setShowTestimonialForm(true)}
                   size="lg"
-                  className="px-6 py-3"
+                  className="bg-primary hover:bg-primary/90 text-white px-8 py-4 text-lg font-semibold rounded-lg shadow-lg transition-all duration-200 hover:shadow-xl"
                 >
                   Share Your Experience
                 </Button>
-                <p className="mt-2 text-sm text-gray-600">
+                <p className="mt-3 text-sm text-gray-600">
                   Have a great experience with us? Let others know!
                 </p>
               </div>

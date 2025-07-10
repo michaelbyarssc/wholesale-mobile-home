@@ -34,6 +34,7 @@ export const useChatSupport = (userId?: string) => {
     try {
       // Check for existing active session (only for authenticated users)
       if (userId) {
+        console.log('Checking for existing session for authenticated user:', userId);
         const { data: existingSession } = await supabase
           .from('chat_sessions')
           .select('*, chat_messages(*)')
@@ -42,10 +43,12 @@ export const useChatSupport = (userId?: string) => {
           .order('created_at', { referencedTable: 'chat_messages', ascending: true })
           .maybeSingle();
 
+        console.log('Existing session found:', existingSession);
         if (existingSession) {
           setCurrentSession(existingSession);
           setMessages(existingSession.chat_messages || []);
           setIsConnected(true);
+          console.log('Reusing existing session with', existingSession.chat_messages?.length || 0, 'messages');
           return existingSession;
         }
       }
@@ -129,6 +132,7 @@ export const useChatSupport = (userId?: string) => {
     if (!currentSession || !content.trim()) return null;
 
     try {
+      console.log('Sending message for session:', currentSession.id, 'user:', userId, 'content:', content.substring(0, 50) + '...');
       const { data: message, error } = await supabase
         .from('chat_messages')
         .insert({
@@ -142,6 +146,7 @@ export const useChatSupport = (userId?: string) => {
         .single();
 
       if (error) throw error;
+      console.log('Message sent successfully:', message.id);
 
       // If this is a user message and we have AI enabled, trigger AI response
       if (senderType === 'user' && content.trim()) {
@@ -389,6 +394,7 @@ export const useChatSupport = (userId?: string) => {
 
     const loadExistingSession = async () => {
       try {
+        console.log('Loading existing session for user:', userId);
         const { data: session } = await supabase
           .from('chat_sessions')
           .select('*, chat_messages(*)')
@@ -397,10 +403,14 @@ export const useChatSupport = (userId?: string) => {
           .order('created_at', { referencedTable: 'chat_messages', ascending: true })
           .maybeSingle();
 
+        console.log('Found existing session:', session);
         if (session) {
+          console.log('Setting session with messages:', session.chat_messages?.length || 0);
           setCurrentSession(session);
           setMessages(session.chat_messages || []);
           setIsConnected(true);
+        } else {
+          console.log('No existing active session found for user');
         }
       } catch (error) {
         console.error('Error loading existing session:', error);

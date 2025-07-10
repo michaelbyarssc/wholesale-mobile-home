@@ -122,17 +122,6 @@ export default function FAQ() {
         onLogout={handleLogout}
         onToggleCart={toggleCart}
       />
-      {/* Hero Section */}
-      <div className="bg-gradient-primary py-16">
-        <div className="container mx-auto px-4 text-center">
-          <h1 className="text-4xl md:text-6xl font-bold text-white mb-4">
-            Frequently Asked Questions
-          </h1>
-          <p className="text-xl text-white/90 max-w-2xl mx-auto">
-            Find answers to common questions about mobile homes, financing, and our services
-          </p>
-        </div>
-      </div>
 
       <div className="container mx-auto px-4 py-8">
         {/* Breadcrumbs */}

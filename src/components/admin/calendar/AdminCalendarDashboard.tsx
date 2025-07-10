@@ -5,6 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { CalendarIntegrationTab } from '@/components/calendar/CalendarIntegrationTab';
+import { CalendarSettings } from '@/components/calendar/CalendarSettings';
 import { CalendarView } from './CalendarView';
 import { CalendarAutomationWrapper } from '../automation/CalendarAutomationWrapper';
 import { supabase } from '@/integrations/supabase/client';
@@ -147,10 +148,14 @@ export function AdminCalendarDashboard({ userRole, currentUserId }: AdminCalenda
       ) : (
         /* Admin viewing their own calendar OR Super Admin managing their own */
         <Tabs defaultValue="calendar" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="calendar" className="flex items-center gap-2">
               <Calendar className="h-4 w-4" />
               Calendar View
+            </TabsTrigger>
+            <TabsTrigger value="settings" className="flex items-center gap-2">
+              <Settings className="h-4 w-4" />
+              Settings
             </TabsTrigger>
             <TabsTrigger value="automations" className="flex items-center gap-2">
               <Settings className="h-4 w-4" />
@@ -176,6 +181,10 @@ export function AdminCalendarDashboard({ userRole, currentUserId }: AdminCalenda
             </Card>
 
             <CalendarView />
+          </TabsContent>
+
+          <TabsContent value="settings" className="space-y-6">
+            <CalendarSettings />
           </TabsContent>
 
           <TabsContent value="automations" className="space-y-6">

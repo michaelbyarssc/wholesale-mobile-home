@@ -713,6 +713,238 @@ export type Database = {
           },
         ]
       }
+      automation_executions: {
+        Row: {
+          automation_template_id: string
+          created_at: string
+          customer_email: string | null
+          customer_phone: string | null
+          error_message: string | null
+          executed_at: string | null
+          id: string
+          lead_id: string | null
+          message_content: string | null
+          message_subject: string | null
+          metadata: Json | null
+          scheduled_for: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          automation_template_id: string
+          created_at?: string
+          customer_email?: string | null
+          customer_phone?: string | null
+          error_message?: string | null
+          executed_at?: string | null
+          id?: string
+          lead_id?: string | null
+          message_content?: string | null
+          message_subject?: string | null
+          metadata?: Json | null
+          scheduled_for: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          automation_template_id?: string
+          created_at?: string
+          customer_email?: string | null
+          customer_phone?: string | null
+          error_message?: string | null
+          executed_at?: string | null
+          id?: string
+          lead_id?: string | null
+          message_content?: string | null
+          message_subject?: string | null
+          metadata?: Json | null
+          scheduled_for?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_executions_automation_template_id_fkey"
+            columns: ["automation_template_id"]
+            isOneToOne: false
+            referencedRelation: "automation_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "automation_executions_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      automation_message_templates: {
+        Row: {
+          active: boolean
+          content: string
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          subject: string | null
+          template_type: string
+          updated_at: string
+          variables: Json | null
+        }
+        Insert: {
+          active?: boolean
+          content: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          subject?: string | null
+          template_type: string
+          updated_at?: string
+          variables?: Json | null
+        }
+        Update: {
+          active?: boolean
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          subject?: string | null
+          template_type?: string
+          updated_at?: string
+          variables?: Json | null
+        }
+        Relationships: []
+      }
+      automation_opt_outs: {
+        Row: {
+          created_at: string
+          email: string | null
+          id: string
+          lead_id: string | null
+          opt_out_type: string
+          phone: string | null
+          reason: string | null
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          lead_id?: string | null
+          opt_out_type: string
+          phone?: string | null
+          reason?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          lead_id?: string | null
+          opt_out_type?: string
+          phone?: string | null
+          reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_opt_outs_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      automation_settings: {
+        Row: {
+          description: string | null
+          id: string
+          setting_key: string
+          setting_value: Json
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          description?: string | null
+          id?: string
+          setting_key: string
+          setting_value?: Json
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          description?: string | null
+          id?: string
+          setting_key?: string
+          setting_value?: Json
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      automation_templates: {
+        Row: {
+          active: boolean
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          max_executions_per_lead: number | null
+          message_template_id: string | null
+          name: string
+          target_audience: string
+          trigger_conditions: Json | null
+          trigger_delay_days: number | null
+          trigger_delay_hours: number | null
+          trigger_event: string
+          trigger_type: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          max_executions_per_lead?: number | null
+          message_template_id?: string | null
+          name: string
+          target_audience: string
+          trigger_conditions?: Json | null
+          trigger_delay_days?: number | null
+          trigger_delay_hours?: number | null
+          trigger_event: string
+          trigger_type: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          max_executions_per_lead?: number | null
+          message_template_id?: string | null
+          name?: string
+          target_audience?: string
+          trigger_conditions?: Json | null
+          trigger_delay_days?: number | null
+          trigger_delay_hours?: number | null
+          trigger_event?: string
+          trigger_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_templates_message_template_id_fkey"
+            columns: ["message_template_id"]
+            isOneToOne: false
+            referencedRelation: "automation_message_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       blog_categories: {
         Row: {
           active: boolean
@@ -2660,6 +2892,15 @@ export type Database = {
       is_admin: {
         Args: Record<PropertyKey, never> | { user_id: string }
         Returns: boolean
+      }
+      process_automation_variables: {
+        Args: {
+          content: string
+          lead_data?: Json
+          appointment_data?: Json
+          mobile_home_data?: Json
+        }
+        Returns: string
       }
       validate_email: {
         Args: { email: string }

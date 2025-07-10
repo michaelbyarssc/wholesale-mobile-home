@@ -16,6 +16,7 @@ import { UserManagementTab } from '@/components/admin/UserManagementTab';
 import { AuditLogTab } from '@/components/admin/AuditLogTab';
 import { SuperAdminMarkupTab } from '@/components/admin/SuperAdminMarkupTab';
 import { AdminCalendarDashboard } from '@/components/admin/calendar/AdminCalendarDashboard';
+import { AutomationTab } from '@/components/admin/AutomationTab';
 import { Menu, X } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { HomeOptionsTab } from '@/components/admin/HomeOptionsTab';
@@ -185,6 +186,13 @@ const Admin = () => {
         >
           CRM
         </Button>
+        <Button
+          variant={activeTab === 'automation' ? 'default' : 'ghost'}
+          className={`${mobile ? 'justify-start w-full h-12 text-base' : ''} text-xs sm:text-sm`}
+          onClick={() => handleTabChange('automation')}
+        >
+          Automation
+        </Button>
       {isSuperAdmin && (
         <>
           <Button
@@ -347,6 +355,10 @@ const Admin = () => {
               userRole={isSuperAdmin ? 'super_admin' : 'admin'} 
               currentUserId={user?.id} 
             />
+          </TabsContent>
+
+          <TabsContent value="automation" className="mt-2 sm:mt-4">
+            <AutomationTab />
           </TabsContent>
 
           {isSuperAdmin && (

@@ -55,14 +55,6 @@ export const MobileHomeQuickView: React.FC<MobileHomeQuickViewProps> = ({
               <h2 className="text-xl font-bold">{homeName}</h2>
               <p className="text-lg text-primary font-semibold">${displayPrice.toLocaleString()}</p>
             </div>
-            <Button
-              variant="outline"
-              onClick={() => navigate(`/mobile-home/${home.id}`)}
-              className="flex items-center gap-2"
-            >
-              <Eye className="h-4 w-4" />
-              View Details
-            </Button>
           </DialogTitle>
         </DialogHeader>
 

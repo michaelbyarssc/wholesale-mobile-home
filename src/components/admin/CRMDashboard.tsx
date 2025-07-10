@@ -8,10 +8,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format } from 'date-fns';
+import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { 
   CalendarIcon,
   Plus, 
@@ -32,7 +33,8 @@ import {
   MoreHorizontal,
   Edit,
   Trash2,
-  Eye
+  Eye,
+  GripVertical
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -102,6 +104,45 @@ export const CRMDashboard = ({ userRole, currentUserId }: CRMDashboardProps) => 
   const [showFollowUpDialog, setShowFollowUpDialog] = useState(false);
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
+
+  const updateLeadStatus = async (leadId: string, newStatus: string) => {
+    try {
+      const { error } = await supabase
+        .from('leads')
+        .update({ status: newStatus })
+        .eq('id', leadId);
+
+      if (error) throw error;
+
+      // Update local state
+      setLeads(prevLeads => 
+        prevLeads.map(lead => 
+          lead.id === leadId ? { ...lead, status: newStatus } : lead
+        )
+      );
+
+      toast({
+        title: "Success",
+        description: "Lead status updated successfully",
+      });
+    } catch (error) {
+      console.error('Error updating lead status:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update lead status",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleDragEnd = (result: any) => {
+    if (!result.destination) return;
+
+    const { draggableId, destination } = result;
+    const newStatus = destination.droppableId;
+    
+    updateLeadStatus(draggableId, newStatus);
+  };
 
   const leadStatuses = [
     { value: 'new', label: 'New', color: 'bg-blue-500' },
@@ -566,44 +607,71 @@ export const CRMDashboard = ({ userRole, currentUserId }: CRMDashboardProps) => 
         </TabsContent>
 
         <TabsContent value="pipeline" className="space-y-4">
-          <PipelineView leads={leads} />
+          <PipelineView leads={leads} onDragEnd={handleDragEnd} />
         </TabsContent>
       </Tabs>
     </div>
   );
 };
 
-const PipelineView = ({ leads }: { leads: Lead[] }) => {
+const PipelineView = ({ leads, onDragEnd }: { leads: Lead[]; onDragEnd: (result: any) => void }) => {
   return (
-    <div className="grid gap-4 md:grid-cols-4">
-      {[
-        { status: 'new', label: 'New Leads' },
-        { status: 'qualified', label: 'Qualified' },
-        { status: 'proposal', label: 'Proposal' },
-        { status: 'closed_won', label: 'Closed Won' }
-      ].map(column => (
-        <Card key={column.status}>
-          <CardHeader>
-            <CardTitle className="text-sm">{column.label}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {leads
-                .filter(lead => lead.status === column.status)
-                .map(lead => (
-                  <div key={lead.id} className="p-2 bg-muted rounded text-sm">
-                    {lead.first_name} {lead.last_name}
-                    {lead.estimated_budget && (
-                      <div className="text-xs text-muted-foreground">
-                        ${lead.estimated_budget.toLocaleString()}
-                      </div>
-                    )}
+    <DragDropContext onDragEnd={onDragEnd}>
+      <div className="grid gap-4 md:grid-cols-4">
+        {[
+          { status: 'new', label: 'New Leads' },
+          { status: 'qualified', label: 'Qualified' }, 
+          { status: 'proposal', label: 'Proposal' },
+          { status: 'closed_won', label: 'Closed Won' }
+        ].map(column => (
+          <Card key={column.status}>
+            <CardHeader>
+              <CardTitle className="text-sm">{column.label}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Droppable droppableId={column.status}>
+                {(provided) => (
+                  <div 
+                    {...provided.droppableProps}
+                    ref={provided.innerRef}
+                    className="space-y-2 min-h-[200px]"
+                  >
+                    {leads
+                      .filter(lead => lead.status === column.status)
+                      .map((lead, index) => (
+                        <Draggable key={lead.id} draggableId={lead.id} index={index}>
+                          {(provided, snapshot) => (
+                            <div
+                              ref={provided.innerRef}
+                              {...provided.draggableProps}
+                              {...provided.dragHandleProps}
+                              className={`p-2 bg-muted rounded text-sm cursor-grab active:cursor-grabbing transition-colors ${
+                                snapshot.isDragging ? 'bg-primary/10 shadow-lg' : ''
+                              }`}
+                            >
+                              <div className="flex items-center gap-2">
+                                <GripVertical className="h-3 w-3 text-muted-foreground" />
+                                <div className="flex-1">
+                                  {lead.first_name} {lead.last_name}
+                                  {lead.estimated_budget && (
+                                    <div className="text-xs text-muted-foreground">
+                                      ${lead.estimated_budget.toLocaleString()}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </Draggable>
+                      ))}
+                    {provided.placeholder}
                   </div>
-                ))}
-            </div>
-          </CardContent>
-        </Card>
-      ))}
-    </div>
+                )}
+              </Droppable>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </DragDropContext>
   );
 };

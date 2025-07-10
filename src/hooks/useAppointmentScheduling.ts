@@ -304,41 +304,56 @@ export const useAppointmentScheduling = (userId?: string) => {
 
   // Set up real-time subscriptions
   useEffect(() => {
-    const slotsChannel = supabase
-      .channel('appointment-slots-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'appointment_slots'
-        },
-        () => {
-          fetchAvailableSlots();
-        }
-      )
-      .subscribe();
+    let slotsChannel: any = null;
+    let appointmentsChannel: any = null;
 
-    const appointmentsChannel = supabase
-      .channel('appointments-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'appointments'
-        },
-        () => {
-          if (userId) {
-            fetchUserAppointments();
+    try {
+      slotsChannel = supabase
+        .channel(`appointment-slots-changes-${Math.random()}`) // Unique channel name
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'appointment_slots'
+          },
+          () => {
+            fetchAvailableSlots();
           }
-        }
-      )
-      .subscribe();
+        )
+        .subscribe();
+
+      appointmentsChannel = supabase
+        .channel(`appointments-changes-${Math.random()}`) // Unique channel name
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'appointments'
+          },
+          () => {
+            if (userId) {
+              fetchUserAppointments();
+            }
+          }
+        )
+        .subscribe();
+    } catch (error) {
+      console.error('Error setting up real-time subscriptions:', error);
+    }
 
     return () => {
-      supabase.removeChannel(slotsChannel);
-      supabase.removeChannel(appointmentsChannel);
+      try {
+        if (slotsChannel) {
+          supabase.removeChannel(slotsChannel);
+        }
+        if (appointmentsChannel) {
+          supabase.removeChannel(appointmentsChannel);
+        }
+      } catch (error) {
+        console.error('Error cleaning up subscriptions:', error);
+      }
     };
   }, [userId]); // Only depend on userId, not the callback functions
 

@@ -185,6 +185,19 @@ export const MobileHomesShowcase = ({
     }
   }, [mobileHomes]);
 
+  // Helper functions - defined before use to avoid temporal dead zone
+  const getHomeName = (home: MobileHome) => {
+    return home.display_name || `${home.manufacturer} ${home.model}`;
+  };
+
+  const getHomeFeatures = (features: any): string[] => {
+    if (!features) return [];
+    if (Array.isArray(features)) {
+      return features.filter(feature => typeof feature === 'string');
+    }
+    return [];
+  };
+
   // Debounced search query for performance
   const debouncedSearchQuery = useSearchDebounce(filters.searchQuery, 300);
 
@@ -299,17 +312,6 @@ export const MobileHomesShowcase = ({
     return images;
   };
 
-  const getHomeName = (home: MobileHome) => {
-    return home.display_name || `${home.manufacturer} ${home.model}`;
-  };
-
-  const getHomeFeatures = (features: any): string[] => {
-    if (!features) return [];
-    if (Array.isArray(features)) {
-      return features.filter(feature => typeof feature === 'string');
-    }
-    return [];
-  };
 
   const handleAddToCart = useCallback((home: MobileHome) => {
     console.log('🔍 Add to cart button clicked for:', home.id, home.model);

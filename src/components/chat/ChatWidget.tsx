@@ -187,41 +187,43 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ userId, className }) => 
                           required
                         />
                       </div>
-                      <Button 
-                        onClick={(e) => {
-                          e.preventDefault();
-                          if (!customerName.trim() || !customerPhone.trim()) {
-                            // Add visual feedback for empty fields
-                            const nameInput = document.getElementById('customer-name');
-                            const phoneInput = document.getElementById('customer-phone');
-                            if (!customerName.trim() && nameInput) {
-                              nameInput.focus();
-                              nameInput.classList.add('border-red-500');
-                              setTimeout(() => nameInput.classList.remove('border-red-500'), 2000);
-                            } else if (!customerPhone.trim() && phoneInput) {
-                              phoneInput.focus();
-                              phoneInput.classList.add('border-red-500');
-                              setTimeout(() => phoneInput.classList.remove('border-red-500'), 2000);
+                      <div className="space-y-3 pt-4">
+                        <Button 
+                          onClick={(e) => {
+                            e.preventDefault();
+                            if (!customerName.trim() || !customerPhone.trim()) {
+                              // Add visual feedback for empty fields
+                              const nameInput = document.getElementById('customer-name');
+                              const phoneInput = document.getElementById('customer-phone');
+                              if (!customerName.trim() && nameInput) {
+                                nameInput.focus();
+                                nameInput.classList.add('border-red-500');
+                                setTimeout(() => nameInput.classList.remove('border-red-500'), 2000);
+                              } else if (!customerPhone.trim() && phoneInput) {
+                                phoneInput.focus();
+                                phoneInput.classList.add('border-red-500');
+                                setTimeout(() => phoneInput.classList.remove('border-red-500'), 2000);
+                              }
+                              return;
                             }
-                            return;
-                          }
-                          handleContactFormSubmit(e);
-                        }}
-                        className="w-full mt-4"
-                      >
-                        ⭐ {isLoading ? 'Starting...' : 'Start Chat'}
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => {
-                          setShowContactForm(false);
-                          setIsOpen(false);
-                        }}
-                        className="w-full mt-2"
-                      >
-                        Cancel
-                      </Button>
+                            handleContactFormSubmit(e);
+                          }}
+                          className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
+                        >
+                          ⭐ {isLoading ? 'Starting...' : 'Start Chat'}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => {
+                            setShowContactForm(false);
+                            setIsOpen(false);
+                          }}
+                          className="w-full"
+                        >
+                          Cancel
+                        </Button>
+                      </div>
                     </form>
                   </div>
                 ) : (

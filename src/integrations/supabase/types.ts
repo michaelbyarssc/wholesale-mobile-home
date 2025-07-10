@@ -808,6 +808,36 @@ export type Database = {
           },
         ]
       }
+      chat_data_capture_settings: {
+        Row: {
+          active: boolean
+          created_at: string
+          description: string | null
+          id: string
+          setting_key: string
+          setting_value: Json
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          description?: string | null
+          id?: string
+          setting_key: string
+          setting_value?: Json
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          description?: string | null
+          id?: string
+          setting_key?: string
+          setting_value?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
       chat_messages: {
         Row: {
           content: string
@@ -944,50 +974,75 @@ export type Database = {
       customer_interactions: {
         Row: {
           attachments: Json | null
+          captured_data: Json | null
+          chat_session_id: string | null
+          chat_transcript: string | null
           completed_at: string | null
+          confidence_scores: Json | null
           created_at: string
           created_by: string | null
           description: string | null
+          extraction_reviewed: boolean | null
           id: string
           interaction_type: string
           lead_id: string | null
           metadata: Json | null
           outcome: string | null
+          page_source: string | null
           scheduled_at: string | null
           subject: string
           updated_at: string
         }
         Insert: {
           attachments?: Json | null
+          captured_data?: Json | null
+          chat_session_id?: string | null
+          chat_transcript?: string | null
           completed_at?: string | null
+          confidence_scores?: Json | null
           created_at?: string
           created_by?: string | null
           description?: string | null
+          extraction_reviewed?: boolean | null
           id?: string
           interaction_type: string
           lead_id?: string | null
           metadata?: Json | null
           outcome?: string | null
+          page_source?: string | null
           scheduled_at?: string | null
           subject: string
           updated_at?: string
         }
         Update: {
           attachments?: Json | null
+          captured_data?: Json | null
+          chat_session_id?: string | null
+          chat_transcript?: string | null
           completed_at?: string | null
+          confidence_scores?: Json | null
           created_at?: string
           created_by?: string | null
           description?: string | null
+          extraction_reviewed?: boolean | null
           id?: string
           interaction_type?: string
           lead_id?: string | null
           metadata?: Json | null
           outcome?: string | null
+          page_source?: string | null
           scheduled_at?: string | null
           subject?: string
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "customer_interactions_chat_session_id_fkey"
+            columns: ["chat_session_id"]
+            isOneToOne: false
+            referencedRelation: "chat_sessions"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "customer_interactions_lead_id_fkey"
             columns: ["lead_id"]
@@ -2441,6 +2496,10 @@ export type Database = {
       }
       generate_unsubscribe_token: {
         Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      get_chat_lead_source: {
+        Args: { page_path: string }
         Returns: string
       }
       get_popular_mobile_homes: {

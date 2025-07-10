@@ -225,6 +225,55 @@ export const useChatSupport = (userId?: string) => {
     if (!currentSession) return;
 
     try {
+      // Before ending, extract data and save to CRM if we have enough conversation
+      if (messages.length > 2) {
+        const anonymousUser = currentSession.user_id === null;
+        
+        let customerInfo = null;
+        
+        if (anonymousUser) {
+          // For anonymous users, get info from anonymous_chat_users table
+          const { data: anonUser } = await supabase
+            .from('anonymous_chat_users')
+            .select('customer_name, customer_phone')
+            .eq('session_id', currentSession.id)
+            .single();
+          
+          if (anonUser) {
+            customerInfo = {
+              name: anonUser.customer_name,
+              phone: anonUser.customer_phone,
+              email: null
+            };
+          }
+        } else if (userId) {
+          // For authenticated users, we could get more info from profiles
+          customerInfo = {
+            name: 'Authenticated User',
+            email: null, // You might want to get actual email from user profile
+            phone: null
+          };
+        }
+
+        // Extract data and save to CRM if we have customer info
+        if (customerInfo) {
+          try {
+            await supabase.functions.invoke('extract-chat-data', {
+              body: {
+                chatSessionId: currentSession.id,
+                messages: messages,
+                customerInfo: customerInfo,
+                pageSource: window.location.pathname
+              }
+            });
+            console.log('Chat data extracted and saved to CRM');
+          } catch (extractError) {
+            console.error('Failed to extract chat data:', extractError);
+            // Don't block chat ending if extraction fails
+          }
+        }
+      }
+
       await supabase
         .from('chat_sessions')
         .update({
@@ -239,7 +288,7 @@ export const useChatSupport = (userId?: string) => {
 
       toast({
         title: "Chat Ended",
-        description: "Thank you for contacting us. Your session has been saved."
+        description: "Thank you for contacting us. Your conversation has been saved."
       });
     } catch (error) {
       console.error('Error ending chat:', error);
@@ -249,7 +298,7 @@ export const useChatSupport = (userId?: string) => {
         variant: "destructive"
       });
     }
-  }, [currentSession, toast]);
+  }, [currentSession, messages, userId, toast]);
 
   // Create support ticket
   const createSupportTicket = useCallback(async (title: string, description: string, category: string = 'general', priority: string = 'medium') => {

@@ -120,7 +120,7 @@ export const NewsletterSignup = ({
           </div>
           <form onSubmit={handleSubmit} className="flex gap-2 w-full sm:w-auto">
             <Input type="email" placeholder="Enter your email" value={email} onChange={e => setEmail(e.target.value)} className="flex-1 sm:w-64" disabled={isLoading} />
-            <Button type="submit" disabled={isLoading || !email.trim()} className="shrink-0">
+            <Button type="submit" disabled={isLoading || !email.trim()} className="shrink-0 font-bold">
               {isLoading ? "..." : "Subscribe"}
             </Button>
           </form>

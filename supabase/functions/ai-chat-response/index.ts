@@ -35,7 +35,7 @@ serve(async (req) => {
     }
 
     // Analyze user message and generate appropriate response
-    const response = await generateOpenAIResponse(userMessage, chatHistory)
+    const response = await generateOpenAIResponse(userMessage, chatHistory, session, supabase)
 
     // Return the response - let the client handle saving to database
     return new Response(
@@ -58,7 +58,7 @@ serve(async (req) => {
 })
 
 // Generate response using OpenAI Assistants API
-async function generateOpenAIResponse(userMessage: string, chatHistory: any[]): Promise<string> {
+async function generateOpenAIResponse(userMessage: string, chatHistory: any[], session: any, supabase: any): Promise<string> {
   if (!openAIApiKey) {
     console.error('OpenAI API key not configured')
     return "I apologize, but I'm currently unable to process your request. Please try again later or contact our support team."
@@ -67,40 +67,53 @@ async function generateOpenAIResponse(userMessage: string, chatHistory: any[]): 
   const assistantId = 'asst_B2fBwdSnxpTvBOEZs87WWrfH';
 
   try {
-    // Create a new thread for this conversation
-    const threadResponse = await fetch('https://api.openai.com/v1/threads', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
-        'Content-Type': 'application/json',
-        'OpenAI-Beta': 'assistants=v2'
-      },
-      body: JSON.stringify({})
-    });
+    let threadId = session.metadata?.thread_id;
 
-    if (!threadResponse.ok) {
-      console.error('Failed to create thread:', threadResponse.status, threadResponse.statusText)
-      return "I apologize, but I'm having trouble processing your request right now. Please try again in a moment."
-    }
-
-    const thread = await threadResponse.json();
-    const threadId = thread.id;
-
-    // Add recent chat history to the thread (last 5 messages to avoid token limits)
-    const recentHistory = chatHistory.slice(-5);
-    for (const msg of recentHistory) {
-      await fetch(`https://api.openai.com/v1/threads/${threadId}/messages`, {
+    // Create a new thread only if we don't have one
+    if (!threadId) {
+      const threadResponse = await fetch('https://api.openai.com/v1/threads', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${openAIApiKey}`,
           'Content-Type': 'application/json',
           'OpenAI-Beta': 'assistants=v2'
         },
-        body: JSON.stringify({
-          role: msg.sender_type === 'user' ? 'user' : 'assistant',
-          content: msg.content
-        })
+        body: JSON.stringify({})
       });
+
+      if (!threadResponse.ok) {
+        console.error('Failed to create thread:', threadResponse.status, threadResponse.statusText)
+        return "I apologize, but I'm having trouble processing your request right now. Please try again in a moment."
+      }
+
+      const thread = await threadResponse.json();
+      threadId = thread.id;
+
+      // Save thread ID to session metadata
+      const currentMetadata = session.metadata || {};
+      await supabase
+        .from('chat_sessions')
+        .update({
+          metadata: { ...currentMetadata, thread_id: threadId }
+        })
+        .eq('id', session.id);
+
+      // Add chat history to the new thread
+      const recentHistory = chatHistory.slice(-10);
+      for (const msg of recentHistory) {
+        await fetch(`https://api.openai.com/v1/threads/${threadId}/messages`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${openAIApiKey}`,
+            'Content-Type': 'application/json',
+            'OpenAI-Beta': 'assistants=v2'
+          },
+          body: JSON.stringify({
+            role: msg.sender_type === 'user' ? 'user' : 'assistant',
+            content: msg.content
+          })
+        });
+      }
     }
 
     // Add the current user message

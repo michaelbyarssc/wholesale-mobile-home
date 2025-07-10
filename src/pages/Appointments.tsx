@@ -41,9 +41,7 @@ const Appointments = () => {
               <CardContent className="pt-6">
                 <Users className="h-12 w-12 mx-auto mb-4 text-primary" />
                 <h3 className="font-semibold mb-2">Expert Guidance</h3>
-                <p className="text-sm text-muted-foreground">
-                  Meet with our knowledgeable sales team and mobile home experts
-                </p>
+                <p className="text-sm text-muted-foreground">Talk with our knowledgeable sales team and mobile home experts</p>
               </CardContent>
             </Card>
             

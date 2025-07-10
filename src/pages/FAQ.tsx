@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -28,6 +29,7 @@ export default function FAQ() {
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
   
+  const navigate = useNavigate();
   const { user, userProfile, handleLogout, isLoading: authLoading } = useAuthUser();
   const { cartItems, toggleCart } = useShoppingCart();
 
@@ -289,7 +291,7 @@ export default function FAQ() {
               </p>
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
                 <Button>Get an Estimate</Button>
-                <Button variant="outline">Contact Us</Button>
+                <Button variant="outline" onClick={() => navigate('/appointments')}>Contact Us</Button>
               </div>
             </CardContent>
           </Card>

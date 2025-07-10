@@ -52,6 +52,9 @@ export const LeadForm = ({ leadSources, onSave, lead, currentUserId }: LeadFormP
     setLoading(true);
 
     try {
+      console.log('LeadForm - Creating lead with currentUserId:', currentUserId);
+      console.log('LeadForm - Form data:', formData);
+      
       const submitData = {
         ...formData,
         estimated_budget: formData.estimated_budget ? parseFloat(formData.estimated_budget as string) : null,
@@ -62,6 +65,8 @@ export const LeadForm = ({ leadSources, onSave, lead, currentUserId }: LeadFormP
           assigned_to: currentUserId 
         })
       };
+      
+      console.log('LeadForm - Submit data:', submitData);
 
       let error;
       if (lead) {
@@ -73,9 +78,12 @@ export const LeadForm = ({ leadSources, onSave, lead, currentUserId }: LeadFormP
         error = updateError;
       } else {
         // Create new lead
-        const { error: insertError } = await supabase
+        const { data: insertData, error: insertError } = await supabase
           .from('leads')
-          .insert([submitData]);
+          .insert([submitData])
+          .select();
+        
+        console.log('LeadForm - Insert result:', insertData, 'error:', insertError);
         error = insertError;
       }
 

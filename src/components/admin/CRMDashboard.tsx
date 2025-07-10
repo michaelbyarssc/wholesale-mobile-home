@@ -166,6 +166,8 @@ export const CRMDashboard = ({ userRole, currentUserId }: CRMDashboardProps) => 
     try {
       setLoading(true);
       
+      console.log('fetchData - userRole:', userRole, 'currentUserId:', currentUserId);
+      
       // Build the leads query with role-based filtering
       let leadsQuery = supabase
         .from('leads')
@@ -176,11 +178,14 @@ export const CRMDashboard = ({ userRole, currentUserId }: CRMDashboardProps) => 
       
       // For regular admins, only show leads they're assigned to or created
       if (userRole === 'admin') {
+        console.log('Filtering leads for admin user:', currentUserId);
         leadsQuery = leadsQuery.or(`assigned_to.eq.${currentUserId},user_id.eq.${currentUserId}`);
       }
       
       const { data: leadsData, error: leadsError } = await leadsQuery
         .order('created_at', { ascending: false });
+      
+      console.log('fetchData - leadsData:', leadsData, 'leadsError:', leadsError);
 
       if (leadsError) throw leadsError;
 

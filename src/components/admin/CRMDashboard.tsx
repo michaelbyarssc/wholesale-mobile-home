@@ -329,7 +329,10 @@ export const CRMDashboard = ({ userRole, currentUserId }: CRMDashboardProps) => 
                 currentUserId={currentUserId}
                 onSave={() => {
                   setShowLeadDialog(false);
-                  fetchData();
+                  // Add small delay to ensure database transaction is committed
+                  setTimeout(() => {
+                    fetchData();
+                  }, 100);
                 }}
               />
             </DialogContent>

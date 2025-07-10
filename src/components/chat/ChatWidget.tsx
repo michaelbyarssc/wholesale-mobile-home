@@ -187,13 +187,6 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ userId, className }) => 
                           required
                         />
                       </div>
-                      <Button 
-                        type="submit"
-                        disabled={!customerName.trim() || !customerPhone.trim() || isLoading}
-                        className="w-full"
-                      >
-                        ⭐ Start Chat
-                      </Button>
                       <div className="flex gap-2 pt-2">
                         <Button
                           type="button"

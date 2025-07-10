@@ -101,7 +101,7 @@ export const Header = ({
               {/* Home Icon - Always visible */}
               <Link
                 to="/"
-                className="flex items-center justify-center p-2 text-gray-600 hover:text-blue-600 hover:bg-gray-50 rounded-lg transition-colors"
+                className="flex items-center justify-center p-2 sm:p-3 text-gray-600 hover:text-blue-600 hover:bg-gray-50 rounded-lg transition-colors touch-manipulation"
                 title="Go to Home"
               >
                 <Home className="h-5 w-5" />
@@ -114,7 +114,7 @@ export const Header = ({
                     e.stopPropagation();
                     navigate('/auth');
                   }}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 sm:px-6 py-2.5 font-medium rounded-lg shadow-sm transition-all duration-200"
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 sm:px-6 py-2.5 font-medium rounded-lg shadow-sm transition-all duration-200 touch-manipulation"
                 >
                   Login
                 </Button>
@@ -184,7 +184,7 @@ export const Header = ({
                     <Button
                       onClick={onToggleCart}
                       variant="outline"
-                      className="relative border-gray-300 hover:border-blue-400 hover:bg-blue-50 transition-all duration-200 px-4 py-2"
+                      className="relative border-gray-300 hover:border-blue-400 hover:bg-blue-50 transition-all duration-200 px-4 py-2 touch-manipulation"
                       size="sm"
                     >
                       <CartIcon className="h-4 w-4 mr-2" />
@@ -204,14 +204,14 @@ export const Header = ({
                   <Button
                     onClick={onToggleCart}
                     variant="outline"
-                    className="relative border-gray-300 hover:border-blue-400 hover:bg-blue-50 transition-all duration-200 lg:hidden p-2"
+                    className="relative border-gray-300 hover:border-blue-400 hover:bg-blue-50 transition-all duration-200 lg:hidden p-3 touch-manipulation"
                     size="sm"
                   >
-                    <CartIcon className="h-4 w-4" />
+                    <CartIcon className="h-5 w-5" />
                     {cartItems.length > 0 && (
                       <Badge 
                         variant="destructive" 
-                        className="absolute -top-1 -right-1 h-4 w-4 rounded-full p-0 flex items-center justify-center text-xs font-bold"
+                        className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs font-bold"
                       >
                         {cartItems.length}
                       </Badge>
@@ -221,7 +221,7 @@ export const Header = ({
                   <Button
                     onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                     variant="ghost"
-                    className="lg:hidden p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100"
+                    className="lg:hidden p-3 text-gray-600 hover:text-gray-800 hover:bg-gray-100 touch-manipulation"
                     size="sm"
                   >
                     {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}

@@ -404,38 +404,48 @@ export const MobileHomesShowcase = ({
             homeModel={getHomeName(home)}
           />
 
-          {/* Specifications Grid */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="flex flex-col items-center text-center text-sm">
-              <div className="flex items-center space-x-1 text-gray-600 mb-1">
-                <Maximize className="h-4 w-4 text-blue-600" />
-                <span>Square Footage:</span>
+          {/* Specifications Grid - Mobile Optimized */}
+          <div className="space-y-3 sm:space-y-4">
+            {/* Top row - Square footage and dimensions on mobile stack */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+              <div className="flex flex-col items-center text-center p-3 bg-gray-50 rounded-lg">
+                <div className="flex items-center space-x-1 text-gray-600 mb-2">
+                  <Maximize className="h-4 w-4 text-blue-600" />
+                  <span className="text-sm font-medium">Square Footage</span>
+                </div>
+                <span className="font-bold text-lg text-gray-900">{home.square_footage || 'N/A'} sq ft</span>
               </div>
-              <span className="font-semibold text-lg">{home.square_footage || 'N/A'} sq ft</span>
-            </div>
-            
-            <div className="flex flex-col items-center text-center text-sm">
-              <div className="flex items-center space-x-1 text-gray-600 mb-1">
-                <Ruler className="h-4 w-4 text-blue-600" />
-                <span>Dimensions:</span>
+              
+              <div className="flex flex-col items-center text-center p-3 bg-gray-50 rounded-lg">
+                <div className="flex items-center space-x-1 text-gray-600 mb-2">
+                  <Ruler className="h-4 w-4 text-blue-600" />
+                  <span className="text-sm font-medium">Dimensions</span>
+                </div>
+                <span className="font-bold text-lg text-gray-900">
+                  {home.length_feet && home.width_feet 
+                    ? `${home.width_feet}' × ${home.length_feet}'` 
+                    : 'N/A'}
+                </span>
               </div>
-              <span className="font-semibold text-lg">
-                {home.length_feet && home.width_feet 
-                  ? `${home.width_feet}' × ${home.length_feet}'` 
-                  : 'N/A'}
-              </span>
             </div>
             
-            <div className="flex items-center space-x-2 text-sm">
-              <Bed className="h-4 w-4 text-blue-600" />
-              <span className="text-gray-600">Bedrooms:</span>
-              <span className="font-semibold">{home.bedrooms || 'N/A'}</span>
-            </div>
-            
-            <div className="flex items-center space-x-2 text-sm">
-              <Bath className="h-4 w-4 text-blue-600" />
-              <span className="text-gray-600">Bathrooms:</span>
-              <span className="font-semibold">{home.bathrooms || 'N/A'}</span>
+            {/* Bottom row - Bedrooms and bathrooms */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex items-center justify-center space-x-2 p-3 bg-blue-50 rounded-lg">
+                <Bed className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                <div className="text-center">
+                  <span className="text-xs text-gray-600 block">Bedrooms</span>
+                  <span className="font-bold text-gray-900">{home.bedrooms || 'N/A'}</span>
+                </div>
+              </div>
+              
+              <div className="flex items-center justify-center space-x-2 p-3 bg-blue-50 rounded-lg">
+                <Bath className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                <div className="text-center">
+                  <span className="text-xs text-gray-600 block">Bathrooms</span>
+                  <span className="font-bold text-gray-900">{home.bathrooms || 'N/A'}</span>
+                </div>
+              </div>
             </div>
           </div>
 

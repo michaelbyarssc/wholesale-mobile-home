@@ -147,7 +147,7 @@ export const FeaturedTestimonials = ({
 
   if (variant === "grid") {
     return (
-      <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 ${className}`}>
+      <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 ${className}`}>
         {testimonials.slice(0, 6).map((testimonial) => (
           <Card key={testimonial.id} className="h-full">
             <CardContent className="p-6 h-full flex flex-col">
@@ -185,28 +185,28 @@ export const FeaturedTestimonials = ({
   return (
     <div className={`relative ${className}`}>
       <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
-        <CardContent className="p-8 lg:p-12">
+        <CardContent className="p-4 sm:p-6 lg:p-12">
           <div className="text-center max-w-4xl mx-auto">
-            <Quote className="w-12 h-12 text-primary/40 mx-auto mb-6" />
+            <Quote className="w-8 h-8 sm:w-12 sm:h-12 text-primary/40 mx-auto mb-4 sm:mb-6" />
             
-            <div className="flex justify-center mb-6">
+            <div className="flex justify-center mb-4 sm:mb-6">
               {renderStars(currentTestimonial.rating)}
             </div>
             
-            <blockquote className="text-xl lg:text-2xl text-gray-700 font-medium leading-relaxed mb-8">
+            <blockquote className="text-lg sm:text-xl lg:text-2xl text-gray-700 font-medium leading-relaxed mb-6 sm:mb-8 px-2">
               "{currentTestimonial.content}"
             </blockquote>
             
-            <div className="flex items-center justify-center gap-4">
-              <Avatar className="w-12 h-12">
-                <AvatarFallback className="text-lg">
+            <div className="flex items-center justify-center gap-3 sm:gap-4">
+              <Avatar className="w-10 h-10 sm:w-12 sm:h-12">
+                <AvatarFallback className="text-sm sm:text-lg">
                   {currentTestimonial.customer_name.split(' ').map(n => n[0]).join('')}
                 </AvatarFallback>
               </Avatar>
               <div className="text-left">
-                <p className="font-semibold text-lg">{currentTestimonial.customer_name}</p>
+                <p className="font-semibold text-base sm:text-lg">{currentTestimonial.customer_name}</p>
                 {currentTestimonial.customer_location && (
-                  <p className="text-muted-foreground">{currentTestimonial.customer_location}</p>
+                  <p className="text-sm text-muted-foreground">{currentTestimonial.customer_location}</p>
                 )}
               </div>
             </div>
@@ -214,25 +214,26 @@ export const FeaturedTestimonials = ({
         </CardContent>
       </Card>
 
-      {/* Navigation */}
+       {/* Navigation - Mobile Optimized */}
       {testimonials.length > 1 && (
-        <div className="flex justify-center items-center gap-4 mt-6">
+        <div className="flex justify-center items-center gap-3 sm:gap-4 mt-4 sm:mt-6">
           <Button
             variant="outline"
             size="icon"
             onClick={prevTestimonial}
             onMouseEnter={() => setIsAutoPlaying(false)}
             onMouseLeave={() => setIsAutoPlaying(true)}
+            className="h-10 w-10 sm:h-11 sm:w-11 touch-manipulation"
           >
             <ChevronLeft className="w-4 h-4" />
           </Button>
           
-          <div className="flex gap-2">
+          <div className="flex gap-1 sm:gap-2">
             {testimonials.map((_, index) => (
               <button
                 key={index}
                 onClick={() => setCurrentIndex(index)}
-                className={`w-2 h-2 rounded-full transition-colors ${
+                className={`w-3 h-3 sm:w-2 sm:h-2 rounded-full transition-colors touch-manipulation ${
                   index === currentIndex ? 'bg-primary' : 'bg-gray-300'
                 }`}
                 onMouseEnter={() => setIsAutoPlaying(false)}
@@ -247,6 +248,7 @@ export const FeaturedTestimonials = ({
             onClick={nextTestimonial}
             onMouseEnter={() => setIsAutoPlaying(false)}
             onMouseLeave={() => setIsAutoPlaying(true)}
+            className="h-10 w-10 sm:h-11 sm:w-11 touch-manipulation"
           >
             <ChevronRight className="w-4 h-4" />
           </Button>

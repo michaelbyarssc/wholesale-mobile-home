@@ -129,9 +129,9 @@ export const FinancingCalculator = () => {
         </p>
       </CardHeader>
       <CardContent>
-        <div className="grid md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Input Section */}
-          <div className="space-y-4">
+          <div className="space-y-4 order-2 lg:order-1">
             <div className="space-y-2">
               <Label htmlFor="homePrice">Home Price</Label>
               <div className="relative">
@@ -218,7 +218,7 @@ export const FinancingCalculator = () => {
               </p>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="propertyTaxes">Property Taxes (Annual)</Label>
                 <div className="relative">
@@ -252,13 +252,13 @@ export const FinancingCalculator = () => {
           </div>
 
           {/* Results Section */}
-          <div className="space-y-4">
+          <div className="space-y-4 order-1 lg:order-2">
             {results && loanType !== 'cash' ? (
               <Tabs defaultValue="overview" className="w-full">
-                <TabsList className="grid w-full grid-cols-3">
-                  <TabsTrigger value="overview">Overview</TabsTrigger>
-                  <TabsTrigger value="breakdown">Breakdown</TabsTrigger>
-                  <TabsTrigger value="schedule">Schedule</TabsTrigger>
+                <TabsList className="grid w-full grid-cols-3 text-xs sm:text-sm">
+                  <TabsTrigger value="overview" className="px-2 sm:px-4">Overview</TabsTrigger>
+                  <TabsTrigger value="breakdown" className="px-2 sm:px-4">Breakdown</TabsTrigger>
+                  <TabsTrigger value="schedule" className="px-2 sm:px-4">Schedule</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="overview" className="space-y-4">
@@ -273,7 +273,7 @@ export const FinancingCalculator = () => {
                     </CardContent>
                   </Card>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <Card>
                       <CardContent className="pt-4">
                         <div className="flex items-center gap-2">

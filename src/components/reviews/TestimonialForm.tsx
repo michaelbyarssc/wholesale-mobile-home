@@ -57,13 +57,21 @@ export const TestimonialForm = ({ onSuccess, onCancel }: TestimonialFormProps) =
         .from('testimonials')
         .insert({
           customer_name: data.customerName,
-          location: data.location,
+          customer_location: data.location,
           content: data.content,
           rating: rating,
           approved: false // Testimonials need admin approval
         });
 
       if (error) throw error;
+
+      // Clear the testimonials cache so fresh data loads
+      if (typeof window !== 'undefined') {
+        const testimonialsCache = (window as any).testimonialsCache;
+        if (testimonialsCache) {
+          (window as any).testimonialsCache = null;
+        }
+      }
 
       toast({
         title: "Thank you!",

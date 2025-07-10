@@ -10,14 +10,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useAppointmentScheduling } from '@/hooks/useAppointmentScheduling';
 import { format, parseISO } from 'date-fns';
-
 interface AppointmentBookingWidgetProps {
   userId?: string;
   mobileHomeId?: string;
   mobileHomeName?: string;
   className?: string;
 }
-
 export const AppointmentBookingWidget: React.FC<AppointmentBookingWidgetProps> = ({
   userId,
   mobileHomeId,
@@ -34,24 +32,20 @@ export const AppointmentBookingWidget: React.FC<AppointmentBookingWidgetProps> =
     appointmentType: 'viewing',
     specialRequests: ''
   });
-
   const {
     isLoading,
     availableSlots,
     bookAppointment
   } = useAppointmentScheduling(userId);
-
   const handleBooking = async () => {
     if (!selectedSlot || !formData.customerName || !formData.customerEmail || !formData.customerPhone) {
       return;
     }
-
     try {
       await bookAppointment(selectedSlot.id, {
         ...formData,
         mobileHomeId
       });
-
       setIsDialogOpen(false);
       setSelectedSlot(null);
       setFormData({
@@ -66,7 +60,6 @@ export const AppointmentBookingWidget: React.FC<AppointmentBookingWidgetProps> =
       console.error('Booking failed:', error);
     }
   };
-
   const getLocationTypeIcon = (locationType: string) => {
     switch (locationType) {
       case 'showroom':
@@ -79,7 +72,6 @@ export const AppointmentBookingWidget: React.FC<AppointmentBookingWidgetProps> =
         return <MapPin className="h-4 w-4" />;
     }
   };
-
   const getLocationTypeName = (locationType: string) => {
     switch (locationType) {
       case 'showroom':
@@ -94,9 +86,7 @@ export const AppointmentBookingWidget: React.FC<AppointmentBookingWidgetProps> =
   };
 
   // Filter slots for specific mobile home if provided
-  const filteredSlots = mobileHomeId 
-    ? availableSlots.filter(slot => !slot.mobile_home_id || slot.mobile_home_id === mobileHomeId)
-    : availableSlots;
+  const filteredSlots = mobileHomeId ? availableSlots.filter(slot => !slot.mobile_home_id || slot.mobile_home_id === mobileHomeId) : availableSlots;
 
   // Group slots by date
   const slotsByDate = filteredSlots.reduce((acc, slot) => {
@@ -107,9 +97,7 @@ export const AppointmentBookingWidget: React.FC<AppointmentBookingWidgetProps> =
     acc[date].push(slot);
     return acc;
   }, {} as Record<string, typeof filteredSlots>);
-
-  return (
-    <Card className={className}>
+  return <Card className={className}>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Calendar className="h-5 w-5" />
@@ -121,8 +109,7 @@ export const AppointmentBookingWidget: React.FC<AppointmentBookingWidgetProps> =
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {Object.keys(slotsByDate).length === 0 ? (
-            <div className="text-center py-8">
+          {Object.keys(slotsByDate).length === 0 ? <div className="text-center py-8">
               <Calendar className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
               <h3 className="font-medium mb-2">No Available Appointments</h3>
               <p className="text-sm text-muted-foreground mb-4">
@@ -132,26 +119,18 @@ export const AppointmentBookingWidget: React.FC<AppointmentBookingWidgetProps> =
                 <Phone className="h-4 w-4 mr-2" />
                 Call to Schedule
               </Button>
-            </div>
-          ) : (
-            <div className="space-y-4 max-h-80 overflow-y-auto">
-              {Object.entries(slotsByDate).slice(0, 7).map(([date, slots]) => (
-                <div key={date} className="space-y-2">
+            </div> : <div className="space-y-4 max-h-80 overflow-y-auto">
+              {Object.entries(slotsByDate).slice(0, 7).map(([date, slots]) => <div key={date} className="space-y-2">
                   <h4 className="font-medium text-sm">
                     {format(parseISO(date), 'EEEE, MMMM d, yyyy')}
                   </h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {slots.map((slot) => (
-                      <Dialog key={slot.id} open={isDialogOpen && selectedSlot?.id === slot.id} onOpenChange={(open) => {
-                        setIsDialogOpen(open);
-                        if (!open) setSelectedSlot(null);
-                      }}>
+                    {slots.map(slot => <Dialog key={slot.id} open={isDialogOpen && selectedSlot?.id === slot.id} onOpenChange={open => {
+                setIsDialogOpen(open);
+                if (!open) setSelectedSlot(null);
+              }}>
                         <DialogTrigger asChild>
-                          <Button
-                            variant="outline"
-                            className="justify-start text-left h-auto p-3"
-                            onClick={() => setSelectedSlot(slot)}
-                          >
+                          <Button variant="outline" className="justify-start text-left h-auto p-3" onClick={() => setSelectedSlot(slot)}>
                             <div className="flex flex-col gap-1 w-full">
                               <div className="flex items-center gap-2">
                                 <Clock className="h-3 w-3" />
@@ -186,28 +165,24 @@ export const AppointmentBookingWidget: React.FC<AppointmentBookingWidgetProps> =
                             <div className="grid grid-cols-2 gap-4">
                               <div className="space-y-2">
                                 <Label htmlFor="name">Full Name *</Label>
-                                <Input
-                                  id="name"
-                                  value={formData.customerName}
-                                  onChange={(e) => setFormData(prev => ({ ...prev, customerName: e.target.value }))}
-                                  placeholder="John Doe"
-                                />
+                                <Input id="name" value={formData.customerName} onChange={e => setFormData(prev => ({
+                          ...prev,
+                          customerName: e.target.value
+                        }))} placeholder="John Doe" />
                               </div>
                               <div className="space-y-2">
                                 <Label htmlFor="party-size">Party Size</Label>
-                                <Select
-                                  value={formData.partySize.toString()}
-                                  onValueChange={(value) => setFormData(prev => ({ ...prev, partySize: parseInt(value) }))}
-                                >
+                                <Select value={formData.partySize.toString()} onValueChange={value => setFormData(prev => ({
+                          ...prev,
+                          partySize: parseInt(value)
+                        }))}>
                                   <SelectTrigger>
                                     <SelectValue />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    {[1, 2, 3, 4, 5, 6].map(size => (
-                                      <SelectItem key={size} value={size.toString()}>
+                                    {[1, 2, 3, 4, 5, 6].map(size => <SelectItem key={size} value={size.toString()}>
                                         {size} {size === 1 ? 'person' : 'people'}
-                                      </SelectItem>
-                                    ))}
+                                      </SelectItem>)}
                                   </SelectContent>
                                 </Select>
                               </div>
@@ -215,32 +190,26 @@ export const AppointmentBookingWidget: React.FC<AppointmentBookingWidgetProps> =
 
                             <div className="space-y-2">
                               <Label htmlFor="email">Email Address *</Label>
-                              <Input
-                                id="email"
-                                type="email"
-                                value={formData.customerEmail}
-                                onChange={(e) => setFormData(prev => ({ ...prev, customerEmail: e.target.value }))}
-                                placeholder="john@example.com"
-                              />
+                              <Input id="email" type="email" value={formData.customerEmail} onChange={e => setFormData(prev => ({
+                        ...prev,
+                        customerEmail: e.target.value
+                      }))} placeholder="john@example.com" />
                             </div>
 
                             <div className="space-y-2">
                               <Label htmlFor="phone">Phone Number *</Label>
-                              <Input
-                                id="phone"
-                                type="tel"
-                                value={formData.customerPhone}
-                                onChange={(e) => setFormData(prev => ({ ...prev, customerPhone: e.target.value }))}
-                                placeholder="(555) 123-4567"
-                              />
+                              <Input id="phone" type="tel" value={formData.customerPhone} onChange={e => setFormData(prev => ({
+                        ...prev,
+                        customerPhone: e.target.value
+                      }))} placeholder="(555) 123-4567" />
                             </div>
 
                             <div className="space-y-2">
                               <Label htmlFor="appointment-type">Appointment Type</Label>
-                              <Select
-                                value={formData.appointmentType}
-                                onValueChange={(value) => setFormData(prev => ({ ...prev, appointmentType: value }))}
-                              >
+                              <Select value={formData.appointmentType} onValueChange={value => setFormData(prev => ({
+                        ...prev,
+                        appointmentType: value
+                      }))}>
                                 <SelectTrigger>
                                   <SelectValue />
                                 </SelectTrigger>
@@ -255,46 +224,32 @@ export const AppointmentBookingWidget: React.FC<AppointmentBookingWidgetProps> =
 
                             <div className="space-y-2">
                               <Label htmlFor="special-requests">Special Requests</Label>
-                              <Textarea
-                                id="special-requests"
-                                value={formData.specialRequests}
-                                onChange={(e) => setFormData(prev => ({ ...prev, specialRequests: e.target.value }))}
-                                placeholder="Any specific questions or requirements..."
-                                rows={3}
-                              />
+                              <Textarea id="special-requests" value={formData.specialRequests} onChange={e => setFormData(prev => ({
+                        ...prev,
+                        specialRequests: e.target.value
+                      }))} placeholder="Any specific questions or requirements..." rows={3} />
                             </div>
 
                             <div className="flex gap-2">
-                              <Button
-                                onClick={() => setIsDialogOpen(false)}
-                                variant="outline"
-                                className="flex-1"
-                              >
+                              <Button onClick={() => setIsDialogOpen(false)} variant="outline" className="flex-1">
                                 Cancel
                               </Button>
-                              <Button
-                                onClick={handleBooking}
-                                disabled={isLoading || !formData.customerName || !formData.customerEmail || !formData.customerPhone}
-                                className="flex-1"
-                              >
+                              <Button onClick={handleBooking} disabled={isLoading || !formData.customerName || !formData.customerEmail || !formData.customerPhone} className="flex-1">
                                 {isLoading ? 'Booking...' : 'Book Appointment'}
                               </Button>
                             </div>
                           </div>
                         </DialogContent>
-                      </Dialog>
-                    ))}
+                      </Dialog>)}
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
+                </div>)}
+            </div>}
 
           <div className="pt-4 border-t">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Users className="h-4 w-4" />
-                <span>Free consultation included</span>
+                <span>Free Consultation Included</span>
               </div>
               <Button variant="ghost" size="sm">
                 <Mail className="h-4 w-4 mr-2" />
@@ -304,6 +259,5 @@ export const AppointmentBookingWidget: React.FC<AppointmentBookingWidgetProps> =
           </div>
         </div>
       </CardContent>
-    </Card>
-  );
+    </Card>;
 };

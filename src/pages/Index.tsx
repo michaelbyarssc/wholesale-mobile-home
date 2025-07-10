@@ -18,7 +18,7 @@ import { HeaderSkeleton } from '@/components/loading/HeaderSkeleton';
 import { InstallPrompt } from '@/components/pwa/InstallPrompt';
 import { OfflineIndicator } from '@/components/pwa/OfflineIndicator';
 
-import { FeaturedTestimonials } from '@/components/FeaturedTestimonials';
+
 import { TestimonialForm } from '@/components/reviews/TestimonialForm';
 import { Button } from '@/components/ui/button';
 import { SEO } from '@/components/SEO';
@@ -328,8 +328,6 @@ const Index = () => {
               Real stories from real customers who found their perfect mobile home with us
             </p>
           </div>
-          
-          <FeaturedTestimonials variant="carousel" />
           
           {/* Share Your Experience Button/Form - Always visible */}
           <div className="mt-12">

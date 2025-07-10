@@ -30,7 +30,7 @@ import { useWishlist } from '@/hooks/useWishlist';
 import { CartItem, DeliveryAddress } from '@/hooks/useShoppingCart';
 import { User } from '@supabase/supabase-js';
 import { formatPrice } from '@/lib/utils';
-import { FeaturedTestimonials } from './FeaturedTestimonials';
+
 import type { Database } from '@/integrations/supabase/types';
 
 type MobileHome = Database['public']['Tables']['mobile_homes']['Row'];
@@ -457,12 +457,6 @@ export const MobileHomesShowcase = ({
             </div>
           )}
 
-          {/* Social Proof Testimonial - Show occasionally for added trust */}
-          {index % 3 === 0 && (
-            <div className="pt-2 border-t border-gray-100">
-              <FeaturedTestimonials variant="compact" />
-            </div>
-          )}
 
           {/* Action Buttons */}
           <div className="space-y-2 relative z-20">

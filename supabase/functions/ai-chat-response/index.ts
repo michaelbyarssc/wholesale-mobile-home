@@ -138,13 +138,14 @@ async function generateOpenAIResponse(userMessage: string, chatHistory: any[]): 
     const run = await runResponse.json();
     const runId = run.id;
 
-    // Poll for completion
+    // Poll for completion with increased timeout
     let runStatus = 'queued';
     let attempts = 0;
-    const maxAttempts = 30; // 30 seconds max wait time
+    const maxAttempts = 60; // 60 seconds max wait time
+    const pollInterval = 1000; // 1 second intervals
 
-    while (runStatus !== 'completed' && runStatus !== 'failed' && attempts < maxAttempts) {
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
+    while (runStatus !== 'completed' && runStatus !== 'failed' && runStatus !== 'cancelled' && runStatus !== 'expired' && attempts < maxAttempts) {
+      await new Promise(resolve => setTimeout(resolve, pollInterval));
       
       const statusResponse = await fetch(`https://api.openai.com/v1/threads/${threadId}/runs/${runId}`, {
         headers: {
@@ -156,14 +157,28 @@ async function generateOpenAIResponse(userMessage: string, chatHistory: any[]): 
       if (statusResponse.ok) {
         const statusData = await statusResponse.json();
         runStatus = statusData.status;
+        console.log(`Assistant run status: ${runStatus} (attempt ${attempts + 1}/${maxAttempts})`);
+        
+        // Handle specific error states
+        if (runStatus === 'failed') {
+          console.error('Assistant run failed:', statusData.last_error);
+          return "I encountered an error while processing your request. Please try again or rephrase your question.";
+        }
+        
+        if (runStatus === 'cancelled' || runStatus === 'expired') {
+          console.error('Assistant run was cancelled or expired:', runStatus);
+          return "Your request was cancelled or expired. Please try again.";
+        }
+      } else {
+        console.error('Failed to check run status:', statusResponse.status, statusResponse.statusText);
       }
       
       attempts++;
     }
 
     if (runStatus !== 'completed') {
-      console.error('Assistant run did not complete successfully:', runStatus)
-      return "I apologize, but I'm taking too long to process your request. Please try again or contact our support team."
+      console.error('Assistant run timed out. Final status:', runStatus, 'after', attempts, 'attempts');
+      return "I'm taking longer than expected to process your request. Please try again with a simpler question or contact our support team.";
     }
 
     // Get the assistant's response

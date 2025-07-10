@@ -71,7 +71,7 @@ export const Header = ({
             {/* Left side - Brand */}
             <div className="flex-1 min-w-0">
               <Link to="/" className="block group">
-                <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 tracking-tight group-hover:text-blue-600 transition-colors">
+                <h1 className="text-base sm:text-2xl lg:text-3xl font-bold text-gray-900 tracking-tight group-hover:text-blue-600 transition-colors">
                   WholesaleMobileHome.com
                 </h1>
                 <div className="w-16 h-1 bg-blue-600 mt-1 group-hover:w-20 transition-all duration-300"></div>

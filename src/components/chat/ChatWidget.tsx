@@ -331,6 +331,19 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ userId, className }) => 
             )}
           </CardContent>
         )}
+        
+        {/* Start Chat Button at Bottom */}
+        {!isConnected && !isMinimized && (
+          <div className="p-4 border-t bg-muted/50">
+            <Button 
+              onClick={handleStartChat}
+              disabled={isLoading}
+              className="w-full bg-primary text-primary-foreground hover:bg-primary/90 animate-pulse"
+            >
+              ⭐ {isLoading ? 'Starting...' : 'Start Chat Now'}
+            </Button>
+          </div>
+        )}
       </Card>
     </div>
   );

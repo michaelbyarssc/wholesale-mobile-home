@@ -91,7 +91,7 @@ const Appointments = () => {
                 <div>
                   <h4 className="font-semibold mb-3">During Your Visit</h4>
                   <ul className="space-y-2 text-sm">
-                    <li>• Tour multiple models to compare features</li>
+                    <li>• View multiple models to compare features</li>
                     <li>• Ask about customization options and upgrades</li>
                     <li>• Discuss financing options and payment plans</li>
                     <li>• Learn about delivery, setup, and warranty details</li>

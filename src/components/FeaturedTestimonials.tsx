@@ -9,6 +9,10 @@ import { Tables } from '@/integrations/supabase/types';
 
 type Testimonial = Tables<"testimonials">;
 
+// Global cache to prevent redundant API calls
+let testimonialsCache: Testimonial[] | null = null;
+let testimonialsCachePromise: Promise<Testimonial[]> | null = null;
+
 interface FeaturedTestimonialsProps {
   variant?: "carousel" | "grid" | "compact";
   className?: string;
@@ -26,18 +30,46 @@ export const FeaturedTestimonials = ({
 
   useEffect(() => {
     const fetchTestimonials = async () => {
-      try {
-        const { data } = await supabase
-          .from("testimonials")
-          .select("*")
-          .eq("approved", true)
-          .eq("featured", true)
-          .order("created_at", { ascending: false })
-          .limit(limit);
+      // If we already have cached testimonials, use them
+      if (testimonialsCache) {
+        setTestimonials(testimonialsCache);
+        return;
+      }
 
-        if (data) {
-          setTestimonials(data);
+      // If there's already a request in progress, wait for it
+      if (testimonialsCachePromise) {
+        try {
+          const result = await testimonialsCachePromise;
+          setTestimonials(result);
+        } catch (error) {
+          console.error("Error waiting for testimonials fetch:", error);
         }
+        return;
+      }
+
+      // Start new fetch and cache the promise
+      testimonialsCachePromise = (async () => {
+        try {
+          const { data } = await supabase
+            .from("testimonials")
+            .select("*")
+            .eq("approved", true)
+            .eq("featured", true)
+            .order("created_at", { ascending: false })
+            .limit(limit);
+
+          const result = data || [];
+          testimonialsCache = result;
+          return result;
+        } catch (error) {
+          console.error("Error fetching testimonials:", error);
+          return [];
+        }
+      })();
+
+      try {
+        const result = await testimonialsCachePromise;
+        setTestimonials(result);
       } catch (error) {
         console.error("Error fetching testimonials:", error);
       }

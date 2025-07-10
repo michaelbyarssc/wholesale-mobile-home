@@ -154,14 +154,11 @@ export const MobileHomesShowcase = ({
 
   // Initialize comprehensive filters
   const [filters, setFilters] = useState<FilterState>(() => {
-    // Calculate initial ranges from data once available
-    const prices = mobileHomes.map(h => h.price).filter(Boolean);
-    const sqft = mobileHomes.map(h => h.square_footage).filter(Boolean);
-    
+    // Use safe default values initially
     return {
       searchQuery: '',
-      priceRange: prices.length > 0 ? [Math.min(...prices), Math.max(...prices)] as [number, number] : [0, 200000] as [number, number],
-      squareFootageRange: sqft.length > 0 ? [Math.min(...sqft), Math.max(...sqft)] as [number, number] : [400, 2000] as [number, number],
+      priceRange: [0, 200000] as [number, number],
+      squareFootageRange: [400, 2000] as [number, number],
       bedrooms: [],
       bathrooms: [],
       manufacturers: [],

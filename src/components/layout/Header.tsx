@@ -97,14 +97,14 @@ export const Header = ({
             </div>
 
             {/* Right side - Actions */}
-            <div className="flex items-center gap-3">
-              {/* Home Icon - Always visible */}
+            <div className="flex items-center gap-2 sm:gap-3">
+              {/* Home Icon - Always visible, enhanced for mobile */}
               <Link
                 to="/"
-                className="flex items-center justify-center p-2 sm:p-3 text-gray-600 hover:text-blue-600 hover:bg-gray-50 rounded-lg transition-colors touch-manipulation"
+                className="flex items-center justify-center p-3 sm:p-3 text-gray-600 hover:text-blue-600 hover:bg-gray-50 rounded-lg transition-colors touch-manipulation min-w-[44px] min-h-[44px]"
                 title="Go to Home"
               >
-                <Home className="h-5 w-5" />
+                <Home className="h-6 w-6 sm:h-5 sm:w-5" />
               </Link>
               
               {!user ? (

@@ -116,18 +116,6 @@ export const Header = ({
                 >
                   FAQ
                 </Link>
-                <Link 
-                  to="/blog" 
-                  className="text-gray-600 hover:text-blue-600 transition-colors font-medium"
-                >
-                  Blog
-                </Link>
-                <Link 
-                  to="/estimate" 
-                  className="text-gray-600 hover:text-blue-600 transition-colors font-medium"
-                >
-                  Get Estimate
-                </Link>
               </div>
             </div>
 
@@ -135,13 +123,6 @@ export const Header = ({
             <div className="flex items-center gap-2 sm:gap-3">
               {!user ? (
                 <>
-                  <Link 
-                    to="/support" 
-                    className="hidden sm:flex items-center gap-2 text-gray-600 hover:text-blue-600 transition-colors"
-                  >
-                    <MessageCircle className="h-4 w-4" />
-                    <span className="font-medium">Support</span>
-                  </Link>
                   <Button 
                     onClick={(e) => {
                       e.preventDefault();
@@ -165,15 +146,6 @@ export const Header = ({
                       </div>
                       <span className="font-medium">Welcome, {displayName}</span>
                     </div>
-                    
-                    {/* Support Link */}
-                    <Link 
-                      to="/support" 
-                      className="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition-colors"
-                    >
-                      <MessageCircle className="h-4 w-4" />
-                      <span className="font-medium">Support</span>
-                    </Link>
 
                     {/* Appointments Link */}
                     <Link 
@@ -327,40 +299,10 @@ export const Header = ({
                 >
                   <span className="font-medium">FAQ</span>
                 </Link>
-                <Link
-                  to="/blog"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="flex items-center gap-3 p-3 text-gray-600 hover:text-blue-600 transition-colors"
-                >
-                  <span className="font-medium">Blog</span>
-                </Link>
-                <Link
-                  to="/estimate"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="flex items-center gap-3 p-3 text-gray-600 hover:text-blue-600 transition-colors"
-                >
-                  <span className="font-medium">Get Estimate</span>
-                </Link>
               </div>
 
               {/* Menu Actions */}
               <div className="space-y-2 px-2 pt-2 border-t border-gray-100">
-                <Link
-                  to="/support"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="flex items-center gap-3 p-3 text-gray-600 hover:text-blue-600 transition-colors"
-                >
-                  <MessageCircle className="h-4 w-4" />
-                  <span className="font-medium">Support</span>
-                </Link>
-                <Link
-                  to="/appointments"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="flex items-center gap-3 p-3 text-gray-600 hover:text-blue-600 transition-colors"
-                >
-                  <Calendar className="h-4 w-4" />
-                  <span className="font-medium">Book Viewing</span>
-                </Link>
                 <UserSettingsDialog 
                   user={user} 
                   userProfile={userProfile} 

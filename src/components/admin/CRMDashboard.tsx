@@ -323,13 +323,15 @@ export const CRMDashboard = ({ userRole, currentUserId }: CRMDashboardProps) => 
             </DialogTrigger>
             <DialogContent className="max-w-2xl">
               <DialogHeader>
-                <DialogTitle>Add New Lead</DialogTitle>
+                <DialogTitle>{selectedLead ? 'Edit Lead' : 'Add New Lead'}</DialogTitle>
               </DialogHeader>
               <LeadForm 
                 leadSources={leadSources}
                 currentUserId={currentUserId}
+                lead={selectedLead}
                 onSave={() => {
                   setShowLeadDialog(false);
+                  setSelectedLead(null);
                   // Add small delay to ensure database transaction is committed
                   setTimeout(() => {
                     fetchData();

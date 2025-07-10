@@ -17,7 +17,7 @@ import { LoadingSpinner } from '@/components/loading/LoadingSpinner';
 import { HeaderSkeleton } from '@/components/loading/HeaderSkeleton';
 import { InstallPrompt } from '@/components/pwa/InstallPrompt';
 import { OfflineIndicator } from '@/components/pwa/OfflineIndicator';
-import { SocialProofBanner } from '@/components/SocialProofBanner';
+
 import { FeaturedTestimonials } from '@/components/FeaturedTestimonials';
 
 const Index = () => {
@@ -219,8 +219,6 @@ const Index = () => {
         onProfileUpdated={handleProfileUpdated}
       />
 
-      {/* Social Proof Header */}
-      <SocialProofBanner variant="header" />
 
       {/* Top competitive pricing message */}
       <div className="bg-green-600 text-white py-4 text-center">
@@ -265,7 +263,7 @@ const Index = () => {
               Join the growing community of satisfied customers who have found their perfect home with us
             </p>
           </div>
-          <SocialProofBanner variant="embedded" />
+          
         </div>
       </section>
       
@@ -310,8 +308,6 @@ const Index = () => {
         </h2>
       </div>
 
-      {/* Floating Social Proof */}
-      <SocialProofBanner variant="floating" />
 
       {/* Chat Widget */}
       <ChatWidget userId={user?.id} />

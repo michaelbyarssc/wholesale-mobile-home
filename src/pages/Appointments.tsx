@@ -6,30 +6,23 @@ import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuthUser } from '@/hooks/useAuthUser';
-
 const Appointments = () => {
-  const { user, userProfile, isLoading, handleLogout, handleProfileUpdated } = useAuthUser();
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-green-50 to-yellow-50">
-      <Header 
-        user={user}
-        userProfile={userProfile}
-        cartItems={[]}
-        isLoading={isLoading}
-        onLogout={handleLogout}
-        onToggleCart={() => {}}
-        onProfileUpdated={handleProfileUpdated}
-      />
+  const {
+    user,
+    userProfile,
+    isLoading,
+    handleLogout,
+    handleProfileUpdated
+  } = useAuthUser();
+  return <div className="min-h-screen bg-gradient-to-br from-blue-50 via-green-50 to-yellow-50">
+      <Header user={user} userProfile={userProfile} cartItems={[]} isLoading={isLoading} onLogout={handleLogout} onToggleCart={() => {}} onProfileUpdated={handleProfileUpdated} />
       
       <main className="py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
           {/* Header */}
           <div className="text-center space-y-4">
             <h1 className="text-4xl font-bold">Schedule an Appointment</h1>
-            <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-              Book a viewing appointment to see our mobile homes in person. Our experienced team will guide you through your options and answer all your questions.
-            </p>
+            <p className="text-xl text-muted-foreground max-w-3xl mx-auto">Book an appointment to talk with a representative about our mobile homes. Our experienced team will guide you through your options and answer all your questions.</p>
           </div>
 
           {/* Features */}
@@ -164,8 +157,6 @@ const Appointments = () => {
       </main>
       
       <Footer />
-    </div>
-  );
+    </div>;
 };
-
 export default Appointments;

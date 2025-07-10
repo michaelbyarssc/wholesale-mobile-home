@@ -74,11 +74,21 @@ export const useChatSupport = (userId?: string) => {
 
       if (error) throw error;
 
-      // Send welcome message
+      // Send welcome message after session is created
       const welcomeMessage = customerInfo 
         ? `Hello ${customerInfo.name}! How can we help you today?`
         : "Hello! How can we help you today?";
-      await sendMessage(welcomeMessage, 'system');
+      
+      // Send the welcome message directly without using the sendMessage callback
+      await supabase
+        .from('chat_messages')
+        .insert({
+          session_id: newSession.id,
+          sender_type: 'system',
+          sender_id: null,
+          content: welcomeMessage,
+          message_type: 'text'
+        });
 
       setCurrentSession(newSession);
       setMessages(newSession.chat_messages || []);

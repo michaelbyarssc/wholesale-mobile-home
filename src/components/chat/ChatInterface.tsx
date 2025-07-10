@@ -206,7 +206,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ userId }) => {
 
           <Button 
             onClick={handleCreateTicket}
-            disabled={!userId || !ticketTitle.trim() || !ticketDescription.trim()}
+            disabled={!ticketTitle.trim() || !ticketDescription.trim()}
             className="w-full md:w-auto"
           >
             Create Support Ticket
@@ -214,7 +214,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ userId }) => {
           
           {!userId && (
             <p className="text-sm text-muted-foreground">
-              Please sign in to create support tickets
+              Note: Support tickets for anonymous users will be handled via chat. Please use the chat feature above.
             </p>
           )}
         </CardContent>

@@ -34,20 +34,7 @@ serve(async (req) => {
     // Analyze user message and generate appropriate response
     const response = generateAIResponse(userMessage, chatHistory)
 
-    // Save AI response to database
-    const { error: messageError } = await supabase
-      .from('chat_messages')
-      .insert({
-        session_id: sessionId,
-        sender_type: 'ai',
-        content: response,
-        message_type: 'text'
-      })
-
-    if (messageError) {
-      console.error('Error saving AI message:', messageError)
-    }
-
+    // Return the response - let the client handle saving to database
     return new Response(
       JSON.stringify({ response }),
       {

@@ -24,6 +24,23 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ userId, className }) => 
   const [customerPhone, setCustomerPhone] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
+  // Add error boundary protection for the chat hook
+  let chatHookResult;
+  try {
+    chatHookResult = useChatSupport(userId);
+  } catch (error) {
+    console.error('Error in useChatSupport hook:', error);
+    chatHookResult = {
+      isLoading: false,
+      currentSession: null,
+      messages: [],
+      isConnected: false,
+      initializeChat: async () => null,
+      sendMessage: async () => null,
+      endChat: async () => {}
+    };
+  }
+  
   const {
     isLoading,
     currentSession,
@@ -32,7 +49,7 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ userId, className }) => 
     initializeChat,
     sendMessage,
     endChat
-  } = useChatSupport(userId);
+  } = chatHookResult;
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });

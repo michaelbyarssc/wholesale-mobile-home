@@ -121,7 +121,7 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ userId, className }) => 
   return (
     <div className={cn("fixed bottom-4 right-4 z-50", className)}>
       <Card className={cn(
-        "w-80 h-96 shadow-xl transition-all duration-200",
+        "w-80 h-[450px] shadow-xl transition-all duration-200",
         isMinimized && "h-14"
       )}>
         <CardHeader className="flex flex-row items-center justify-between py-3 px-4 bg-primary text-primary-foreground">

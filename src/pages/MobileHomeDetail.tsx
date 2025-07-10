@@ -33,6 +33,7 @@ import { AppointmentBookingWidget } from '@/components/appointments/AppointmentB
 import { useWishlist } from '@/hooks/useWishlist';
 import { useHomeComparison } from '@/hooks/useHomeComparison';
 import { useShoppingCart } from '@/hooks/useShoppingCart';
+import { useAnalytics } from '@/hooks/useAnalytics';
 import { formatPrice } from '@/lib/utils';
 import { User, Session } from '@supabase/supabase-js';
 import type { Database } from '@/integrations/supabase/types';

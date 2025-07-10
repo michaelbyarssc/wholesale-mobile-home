@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useAnalytics } from '@/hooks/useAnalytics';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -539,6 +540,21 @@ export const MobileHomesShowcase = ({
     filteredHomesCount: filteredHomes.length
   });
 
+  // Track home clicks
+  const handleHomeClick = (home: any) => {
+    trackMobileHomeView({
+      mobileHomeId: home.id,
+      viewType: 'list',
+    });
+    
+    trackEvent({
+      eventType: 'interaction',
+      eventName: 'mobile_home_click',
+      elementId: `mobile-home-${home.id}`,
+      properties: { manufacturer: home.manufacturer, model: home.model },
+    });
+  };
+
   if (isLoading) {
     return (
       <section className="py-20 bg-amber-50">
@@ -797,4 +813,4 @@ export const MobileHomesShowcase = ({
       </div>
     </section>
   );
-};
+}

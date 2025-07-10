@@ -113,6 +113,354 @@ export type Database = {
         }
         Relationships: []
       }
+      analytics_conversions: {
+        Row: {
+          appointment_id: string | null
+          created_at: string
+          estimate_id: string | null
+          funnel_step: string
+          id: string
+          metadata: Json | null
+          mobile_home_id: string | null
+          session_id: string
+          user_id: string | null
+          value: number | null
+        }
+        Insert: {
+          appointment_id?: string | null
+          created_at?: string
+          estimate_id?: string | null
+          funnel_step: string
+          id?: string
+          metadata?: Json | null
+          mobile_home_id?: string | null
+          session_id: string
+          user_id?: string | null
+          value?: number | null
+        }
+        Update: {
+          appointment_id?: string | null
+          created_at?: string
+          estimate_id?: string | null
+          funnel_step?: string
+          id?: string
+          metadata?: Json | null
+          mobile_home_id?: string | null
+          session_id?: string
+          user_id?: string | null
+          value?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "analytics_conversions_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "analytics_conversions_estimate_id_fkey"
+            columns: ["estimate_id"]
+            isOneToOne: false
+            referencedRelation: "estimates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "analytics_conversions_mobile_home_id_fkey"
+            columns: ["mobile_home_id"]
+            isOneToOne: false
+            referencedRelation: "mobile_homes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "analytics_conversions_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "analytics_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      analytics_events: {
+        Row: {
+          created_at: string
+          element_id: string | null
+          element_text: string | null
+          event_name: string
+          event_type: string
+          id: string
+          page_path: string | null
+          properties: Json | null
+          session_id: string
+          user_id: string | null
+          value: number | null
+        }
+        Insert: {
+          created_at?: string
+          element_id?: string | null
+          element_text?: string | null
+          event_name: string
+          event_type: string
+          id?: string
+          page_path?: string | null
+          properties?: Json | null
+          session_id: string
+          user_id?: string | null
+          value?: number | null
+        }
+        Update: {
+          created_at?: string
+          element_id?: string | null
+          element_text?: string | null
+          event_name?: string
+          event_type?: string
+          id?: string
+          page_path?: string | null
+          properties?: Json | null
+          session_id?: string
+          user_id?: string | null
+          value?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "analytics_events_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "analytics_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      analytics_mobile_home_views: {
+        Row: {
+          contact_clicked: boolean | null
+          created_at: string
+          features_clicked: Json | null
+          id: string
+          images_viewed: number | null
+          mobile_home_id: string
+          price_checked: boolean | null
+          session_id: string
+          time_spent: number | null
+          user_id: string | null
+          view_type: string
+        }
+        Insert: {
+          contact_clicked?: boolean | null
+          created_at?: string
+          features_clicked?: Json | null
+          id?: string
+          images_viewed?: number | null
+          mobile_home_id: string
+          price_checked?: boolean | null
+          session_id: string
+          time_spent?: number | null
+          user_id?: string | null
+          view_type: string
+        }
+        Update: {
+          contact_clicked?: boolean | null
+          created_at?: string
+          features_clicked?: Json | null
+          id?: string
+          images_viewed?: number | null
+          mobile_home_id?: string
+          price_checked?: boolean | null
+          session_id?: string
+          time_spent?: number | null
+          user_id?: string | null
+          view_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "analytics_mobile_home_views_mobile_home_id_fkey"
+            columns: ["mobile_home_id"]
+            isOneToOne: false
+            referencedRelation: "mobile_homes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "analytics_mobile_home_views_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "analytics_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      analytics_page_views: {
+        Row: {
+          created_at: string
+          filters_applied: Json | null
+          id: string
+          page_path: string
+          page_title: string | null
+          referrer: string | null
+          scroll_depth: number | null
+          search_query: string | null
+          session_id: string
+          time_on_page: number | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          filters_applied?: Json | null
+          id?: string
+          page_path: string
+          page_title?: string | null
+          referrer?: string | null
+          scroll_depth?: number | null
+          search_query?: string | null
+          session_id: string
+          time_on_page?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          filters_applied?: Json | null
+          id?: string
+          page_path?: string
+          page_title?: string | null
+          referrer?: string | null
+          scroll_depth?: number | null
+          search_query?: string | null
+          session_id?: string
+          time_on_page?: number | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "analytics_page_views_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "analytics_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      analytics_searches: {
+        Row: {
+          clicked_mobile_home_id: string | null
+          clicked_position: number | null
+          created_at: string
+          filters: Json | null
+          id: string
+          result_clicked: boolean | null
+          results_count: number | null
+          search_query: string | null
+          session_id: string
+          user_id: string | null
+        }
+        Insert: {
+          clicked_mobile_home_id?: string | null
+          clicked_position?: number | null
+          created_at?: string
+          filters?: Json | null
+          id?: string
+          result_clicked?: boolean | null
+          results_count?: number | null
+          search_query?: string | null
+          session_id: string
+          user_id?: string | null
+        }
+        Update: {
+          clicked_mobile_home_id?: string | null
+          clicked_position?: number | null
+          created_at?: string
+          filters?: Json | null
+          id?: string
+          result_clicked?: boolean | null
+          results_count?: number | null
+          search_query?: string | null
+          session_id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "analytics_searches_clicked_mobile_home_id_fkey"
+            columns: ["clicked_mobile_home_id"]
+            isOneToOne: false
+            referencedRelation: "mobile_homes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "analytics_searches_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "analytics_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      analytics_sessions: {
+        Row: {
+          browser: string | null
+          city: string | null
+          country: string | null
+          created_at: string
+          device_type: string | null
+          duration_seconds: number | null
+          ended_at: string | null
+          id: string
+          ip_address: unknown | null
+          os: string | null
+          page_views: number | null
+          referrer: string | null
+          region: string | null
+          session_id: string
+          started_at: string
+          user_agent: string | null
+          user_id: string | null
+          utm_campaign: string | null
+          utm_medium: string | null
+          utm_source: string | null
+        }
+        Insert: {
+          browser?: string | null
+          city?: string | null
+          country?: string | null
+          created_at?: string
+          device_type?: string | null
+          duration_seconds?: number | null
+          ended_at?: string | null
+          id?: string
+          ip_address?: unknown | null
+          os?: string | null
+          page_views?: number | null
+          referrer?: string | null
+          region?: string | null
+          session_id: string
+          started_at?: string
+          user_agent?: string | null
+          user_id?: string | null
+          utm_campaign?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+        }
+        Update: {
+          browser?: string | null
+          city?: string | null
+          country?: string | null
+          created_at?: string
+          device_type?: string | null
+          duration_seconds?: number | null
+          ended_at?: string | null
+          id?: string
+          ip_address?: unknown | null
+          os?: string | null
+          page_views?: number | null
+          referrer?: string | null
+          region?: string | null
+          session_id?: string
+          started_at?: string
+          user_agent?: string | null
+          user_id?: string | null
+          utm_campaign?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+        }
+        Relationships: []
+      }
       appointment_notifications: {
         Row: {
           appointment_id: string
@@ -2016,6 +2364,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: number
       }
+      cleanup_old_analytics_data: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
       create_activity: {
         Args: {
           p_user_id: string
@@ -2055,6 +2407,16 @@ export type Database = {
       generate_unsubscribe_token: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      get_popular_mobile_homes: {
+        Args: { days_back?: number; limit_count?: number }
+        Returns: {
+          mobile_home_id: string
+          view_count: number
+          total_time_spent: number
+          avg_time_spent: number
+          conversion_rate: number
+        }[]
       }
       increment_post_views: {
         Args: { post_id: string }

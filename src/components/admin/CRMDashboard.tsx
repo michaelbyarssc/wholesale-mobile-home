@@ -39,6 +39,7 @@ import { useToast } from '@/hooks/use-toast';
 import { LeadForm } from './crm/LeadForm';
 import { InteractionForm } from './crm/InteractionForm';
 import { FollowUpForm } from './crm/FollowUpForm';
+import { AnonymousChatUsers } from './AnonymousChatUsers';
 
 interface Lead {
   id: string;
@@ -307,6 +308,7 @@ export const CRMDashboard = () => {
           <TabsTrigger value="leads">Leads</TabsTrigger>
           <TabsTrigger value="interactions">Recent Interactions</TabsTrigger>
           <TabsTrigger value="follow-ups">Follow-ups</TabsTrigger>
+          <TabsTrigger value="anonymous-chats">Anonymous Chats</TabsTrigger>
           <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
         </TabsList>
 
@@ -516,6 +518,10 @@ export const CRMDashboard = () => {
               </Card>
             ))}
           </div>
+        </TabsContent>
+
+        <TabsContent value="anonymous-chats" className="space-y-4">
+          <AnonymousChatUsers />
         </TabsContent>
 
         <TabsContent value="pipeline" className="space-y-4">

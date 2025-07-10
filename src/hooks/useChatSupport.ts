@@ -74,6 +74,17 @@ export const useChatSupport = (userId?: string) => {
 
       if (error) throw error;
 
+      // Store anonymous user information in dedicated table if provided
+      if (customerInfo) {
+        await supabase
+          .from('anonymous_chat_users')
+          .insert({
+            session_id: newSession.id,
+            customer_name: customerInfo.name,
+            customer_phone: customerInfo.phone
+          });
+      }
+
       // Send welcome message after session is created
       const welcomeMessage = customerInfo 
         ? `Hello ${customerInfo.name}! How can we help you today?`

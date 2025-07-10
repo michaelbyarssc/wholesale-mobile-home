@@ -124,7 +124,7 @@ const Appointments = () => {
                   <div className="bg-primary/10 rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-3">
                     <MapPin className="h-6 w-6 text-primary" />
                   </div>
-                  <h4 className="font-semibold mb-2">Our Business Hours are</h4>
+                  <h4 className="font-semibold mb-2"> Business Hours </h4>
                   <p className="text-sm text-muted-foreground mb-2">Walk-ins welcome during business hours</p>
                   <p className="font-medium">Mon-Sat 9AM-6PM</p>
                 </div>

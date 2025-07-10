@@ -67,10 +67,10 @@ export const UserForm = ({ onUserCreated }: UserFormProps) => {
   const createUserDirectly = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!newUserEmail || !newUserFirstName || !newUserLastName) {
+    if (!newUserEmail || !newUserFirstName || !newUserLastName || !newUserPhoneNumber) {
       toast({
         title: "Error",
-        description: "Please fill in all required fields (Email, First Name, Last Name)",
+        description: "Please fill in all required fields (Email, First Name, Last Name, Phone Number)",
         variant: "destructive",
       });
       return;
@@ -202,13 +202,14 @@ export const UserForm = ({ onUserCreated }: UserFormProps) => {
               />
             </div>
             <div>
-              <Label htmlFor="phoneNumber">Phone Number</Label>
+              <Label htmlFor="phoneNumber">Phone Number *</Label>
               <Input
                 id="phoneNumber"
                 type="tel"
                 value={newUserPhoneNumber}
                 onChange={(e) => setNewUserPhoneNumber(e.target.value)}
                 placeholder="(555) 123-4567"
+                required
               />
             </div>
           </div>

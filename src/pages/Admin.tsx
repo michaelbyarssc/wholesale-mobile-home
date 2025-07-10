@@ -171,13 +171,20 @@ const Admin = () => {
       >
         Users
       </Button>
-      <Button
-        variant={activeTab === 'calendar' ? 'default' : 'ghost'}
-        className={`${mobile ? 'justify-start w-full h-12 text-base' : ''} text-xs sm:text-sm`}
-        onClick={() => handleTabChange('calendar')}
-      >
-        Calendar
-      </Button>
+        <Button
+          variant={activeTab === 'calendar' ? 'default' : 'ghost'}
+          className={`${mobile ? 'justify-start w-full h-12 text-base' : ''} text-xs sm:text-sm`}
+          onClick={() => handleTabChange('calendar')}
+        >
+          Calendar
+        </Button>
+        <Button
+          variant={activeTab === 'crm' ? 'default' : 'ghost'}
+          className={`${mobile ? 'justify-start w-full h-12 text-base' : ''} text-xs sm:text-sm`}
+          onClick={() => handleTabChange('crm')}
+        >
+          CRM
+        </Button>
       {isSuperAdmin && (
         <>
           <Button
@@ -187,20 +194,13 @@ const Admin = () => {
           >
             Super Admin
           </Button>
-          <Button
-            variant={activeTab === 'analytics' ? 'default' : 'ghost'}
-            className={`${mobile ? 'justify-start w-full h-12 text-base' : ''} text-xs sm:text-sm`}
-            onClick={() => handleTabChange('analytics')}
-          >
-             Analytics
-           </Button>
            <Button
-             variant={activeTab === 'crm' ? 'default' : 'ghost'}
+             variant={activeTab === 'analytics' ? 'default' : 'ghost'}
              className={`${mobile ? 'justify-start w-full h-12 text-base' : ''} text-xs sm:text-sm`}
-             onClick={() => handleTabChange('crm')}
+             onClick={() => handleTabChange('analytics')}
            >
-             CRM
-           </Button>
+              Analytics
+            </Button>
            <Button
              variant={activeTab === 'settings' ? 'default' : 'ghost'}
              className={`${mobile ? 'justify-start w-full h-12 text-base' : ''} text-xs sm:text-sm`}
@@ -298,18 +298,19 @@ const Admin = () => {
               <TabsTrigger value="home-options" className="text-xs lg:text-sm">Options</TabsTrigger>
               <TabsTrigger value="users" className="text-xs lg:text-sm">Users</TabsTrigger>
               <TabsTrigger value="calendar" className="text-xs lg:text-sm">Calendar</TabsTrigger>
+              <TabsTrigger value="crm" className="text-xs lg:text-sm">CRM</TabsTrigger>
               <TabsTrigger value="reviews" className="text-xs lg:text-sm">Reviews</TabsTrigger>
               <TabsTrigger value="analytics" className="text-xs lg:text-sm">Analytics</TabsTrigger>
-              <TabsTrigger value="crm" className="text-xs lg:text-sm">CRM</TabsTrigger>
               <TabsTrigger value="super-admin" className="text-xs lg:text-sm">Admin</TabsTrigger>
               <TabsTrigger value="settings" className="text-xs lg:text-sm">Settings</TabsTrigger>
               <TabsTrigger value="audit" className="text-xs lg:text-sm">Audit</TabsTrigger>
             </TabsList>
           )}
           {!isMobile && !isSuperAdmin && (
-            <TabsList className="grid w-full grid-cols-2 h-auto p-1">
+            <TabsList className="grid w-full grid-cols-3 h-auto p-1">
               <TabsTrigger value="users" className="text-sm">Users</TabsTrigger>
               <TabsTrigger value="calendar" className="text-sm">Calendar</TabsTrigger>
+              <TabsTrigger value="crm" className="text-sm">CRM</TabsTrigger>
             </TabsList>
           )}
 
@@ -341,6 +342,13 @@ const Admin = () => {
             />
           </TabsContent>
 
+          <TabsContent value="crm" className="mt-2 sm:mt-4">
+            <CRMDashboard 
+              userRole={isSuperAdmin ? 'super_admin' : 'admin'} 
+              currentUserId={user?.id} 
+            />
+          </TabsContent>
+
           {isSuperAdmin && (
             <>
               <TabsContent value="super-admin" className="mt-2 sm:mt-4">
@@ -363,9 +371,6 @@ const Admin = () => {
                 <AdminAnalytics />
               </TabsContent>
 
-              <TabsContent value="crm" className="mt-2 sm:mt-4">
-                <CRMDashboard />
-              </TabsContent>
             </>
           )}
         </Tabs>

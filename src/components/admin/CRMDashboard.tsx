@@ -83,7 +83,12 @@ interface FollowUp {
   leads?: { first_name: string; last_name: string };
 }
 
-export const CRMDashboard = () => {
+interface CRMDashboardProps {
+  userRole: 'admin' | 'super_admin';
+  currentUserId: string;
+}
+
+export const CRMDashboard = ({ userRole, currentUserId }: CRMDashboardProps) => {
   const { toast } = useToast();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [interactions, setInteractions] = useState<Interaction[]>([]);
@@ -119,34 +124,58 @@ export const CRMDashboard = () => {
     try {
       setLoading(true);
       
-      // Fetch leads with lead sources
-      const { data: leadsData, error: leadsError } = await supabase
+      // Build the leads query with role-based filtering
+      let leadsQuery = supabase
         .from('leads')
         .select(`
           *,
           lead_sources(name)
-        `)
+        `);
+      
+      // For regular admins, only show leads they're assigned to or created
+      if (userRole === 'admin') {
+        leadsQuery = leadsQuery.or(`assigned_to.eq.${currentUserId},user_id.eq.${currentUserId}`);
+      }
+      
+      const { data: leadsData, error: leadsError } = await leadsQuery
         .order('created_at', { ascending: false });
 
       if (leadsError) throw leadsError;
 
-      // Fetch recent interactions
-      const { data: interactionsData, error: interactionsError } = await supabase
+      // Build the interactions query with role-based filtering
+      let interactionsQuery = supabase
         .from('customer_interactions')
-        .select('*')
+        .select(`
+          *,
+          leads(assigned_to, user_id)
+        `);
+      
+      // For regular admins, only show interactions for their leads
+      if (userRole === 'admin') {
+        interactionsQuery = interactionsQuery.or(`created_by.eq.${currentUserId}`);
+      }
+      
+      const { data: interactionsData, error: interactionsError } = await interactionsQuery
         .order('created_at', { ascending: false })
         .limit(50);
 
       if (interactionsError) throw interactionsError;
 
-      // Fetch upcoming follow-ups
-      const { data: followUpsData, error: followUpsError } = await supabase
+      // Build the follow-ups query with role-based filtering  
+      let followUpsQuery = supabase
         .from('follow_ups')
         .select(`
           *,
-          leads(first_name, last_name)
+          leads(first_name, last_name, assigned_to, user_id)
         `)
-        .eq('completed', false)
+        .eq('completed', false);
+      
+      // For regular admins, only show follow-ups they created or are assigned to
+      if (userRole === 'admin') {
+        followUpsQuery = followUpsQuery.or(`assigned_to.eq.${currentUserId},created_by.eq.${currentUserId}`);
+      }
+      
+      const { data: followUpsData, error: followUpsError } = await followUpsQuery
         .order('due_date', { ascending: true });
 
       if (followUpsError) throw followUpsError;

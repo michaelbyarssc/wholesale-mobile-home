@@ -4,6 +4,7 @@ import { useToast } from '@/hooks/use-toast';
 
 interface CalendarConnection {
   id: string;
+  user_id: string;
   google_account_email: string;
   calendar_id: string;
   calendar_name: string;

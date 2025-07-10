@@ -1946,6 +1946,7 @@ export type Database = {
           approved: boolean
           approved_at: string | null
           approved_by: string | null
+          assigned_admin_id: string | null
           created_at: string
           created_by: string | null
           denied: boolean
@@ -1963,6 +1964,7 @@ export type Database = {
           approved?: boolean
           approved_at?: string | null
           approved_by?: string | null
+          assigned_admin_id?: string | null
           created_at?: string
           created_by?: string | null
           denied?: boolean
@@ -1980,6 +1982,7 @@ export type Database = {
           approved?: boolean
           approved_at?: string | null
           approved_by?: string | null
+          assigned_admin_id?: string | null
           created_at?: string
           created_by?: string | null
           denied?: boolean

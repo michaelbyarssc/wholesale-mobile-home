@@ -20,7 +20,9 @@ serve(async (req) => {
     const { action, code, state } = await req.json()
     
     if (action === 'get_auth_url') {
-      const redirectUri = `${req.headers.get('origin')}/calendar-auth-callback`
+      // Use the current domain for redirect URI
+      const origin = req.headers.get('origin') || 'https://cfb3aeb9-c433-4af9-8989-f924e36d65bb.lovableproject.com'
+      const redirectUri = `${origin}/calendar-auth-callback`
       const scope = 'https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/calendar.events'
       
       const authUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth')
@@ -45,6 +47,9 @@ serve(async (req) => {
         throw new Error('No authorization header')
       }
 
+      // Get origin for redirect URI consistency
+      const origin = req.headers.get('origin') || 'https://cfb3aeb9-c433-4af9-8989-f924e36d65bb.lovableproject.com'
+
       // Create Supabase client
       const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!)
       
@@ -65,7 +70,7 @@ serve(async (req) => {
           client_secret: GOOGLE_CLIENT_SECRET!,
           code,
           grant_type: 'authorization_code',
-          redirect_uri: `${req.headers.get('origin')}/calendar-auth-callback`,
+          redirect_uri: `${origin}/calendar-auth-callback`,
         }),
       })
 

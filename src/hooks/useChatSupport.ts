@@ -163,9 +163,16 @@ export const useChatSupport = (userId?: string) => {
     }
   }, [currentSession, userId, toast]);
 
-  // Handle AI response
+  // Handle AI response with duplicate prevention
   const handleAIResponse = useCallback(async (userMessage: string) => {
     if (!currentSession) return;
+
+    // Prevent AI from responding to AI or system messages
+    const recentMessages = messages.slice(-2);
+    const lastMessage = recentMessages[recentMessages.length - 1];
+    if (lastMessage && (lastMessage.sender_type === 'ai' || lastMessage.sender_type === 'system')) {
+      return;
+    }
 
     try {
       // Call edge function for AI response
@@ -297,7 +304,12 @@ export const useChatSupport = (userId?: string) => {
         },
         (payload) => {
           const newMessage = payload.new as ChatMessage;
-          setMessages(prev => [...prev, newMessage]);
+          // Prevent duplicate messages
+          setMessages(prev => {
+            const exists = prev.some(msg => msg.id === newMessage.id);
+            if (exists) return prev;
+            return [...prev, newMessage];
+          });
         }
       )
       .on(

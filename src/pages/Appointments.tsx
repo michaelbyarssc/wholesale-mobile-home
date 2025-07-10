@@ -2,13 +2,18 @@ import React from 'react';
 import { Calendar, Clock, Users, MapPin } from 'lucide-react';
 import { AppointmentBookingWidget } from '@/components/appointments/AppointmentBookingWidget';
 import { MyAppointments } from '@/components/appointments/MyAppointments';
+import { CalendarIntegrationTab } from '@/components/calendar/CalendarIntegrationTab';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuthUser } from '@/hooks/useAuthUser';
+import { useSearchParams } from 'react-router-dom';
 
 const Appointments = () => {
   const { user, userProfile, isLoading, handleLogout, handleProfileUpdated } = useAuthUser();
+  const [searchParams] = useSearchParams();
+  const defaultTab = searchParams.get('tab') || 'appointments';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-green-50 to-yellow-50">
@@ -26,68 +31,88 @@ const Appointments = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
           {/* Header */}
           <div className="text-center space-y-4">
-            <h1 className="text-4xl font-bold">Schedule an Appointment</h1>
+            <h1 className="text-4xl font-bold">Appointments & Calendar</h1>
             <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-              Book a viewing appointment to see our mobile homes in person. Our experienced team will guide you through your options and answer all your questions.
+              Manage your appointments and connect your calendar for seamless scheduling.
             </p>
           </div>
 
-          {/* Features */}
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-            <Card className="text-center">
-              <CardContent className="pt-6">
-                <Calendar className="h-12 w-12 mx-auto mb-4 text-primary" />
-                <h3 className="font-semibold mb-2">Flexible Scheduling</h3>
-                <p className="text-sm text-muted-foreground">
-                  Book appointments that fit your schedule, including weekends
-                </p>
-              </CardContent>
-            </Card>
-            
-            <Card className="text-center">
-              <CardContent className="pt-6">
-                <Users className="h-12 w-12 mx-auto mb-4 text-primary" />
-                <h3 className="font-semibold mb-2">Expert Guidance</h3>
-                <p className="text-sm text-muted-foreground">
-                  Meet with our knowledgeable sales team and mobile home experts
-                </p>
-              </CardContent>
-            </Card>
-            
-            <Card className="text-center">
-              <CardContent className="pt-6">
-                <MapPin className="h-12 w-12 mx-auto mb-4 text-primary" />
-                <h3 className="font-semibold mb-2">Multiple Locations</h3>
-                <p className="text-sm text-muted-foreground">
-                  Showroom visits, on-site tours, or virtual consultations
-                </p>
-              </CardContent>
-            </Card>
-            
-            <Card className="text-center">
-              <CardContent className="pt-6">
-                <Clock className="h-12 w-12 mx-auto mb-4 text-primary" />
-                <h3 className="font-semibold mb-2">No Pressure</h3>
-                <p className="text-sm text-muted-foreground">
-                  Take your time to explore and ask questions without pressure
-                </p>
-              </CardContent>
-            </Card>
-          </div>
+          {/* Tabs */}
+          <Tabs defaultValue={defaultTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="appointments" className="flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                Appointments
+              </TabsTrigger>
+              <TabsTrigger value="calendar" className="flex items-center gap-2">
+                <Calendar className="h-4 w-4" />
+                Calendar Integration
+              </TabsTrigger>
+            </TabsList>
 
-          <div className="grid lg:grid-cols-2 gap-8">
-            {/* Booking Widget */}
-            <div>
-              <h2 className="text-2xl font-bold mb-6">Book New Appointment</h2>
-              <AppointmentBookingWidget userId={user?.id} />
-            </div>
+            <TabsContent value="appointments" className="space-y-8">
+              {/* Features */}
+              <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <Card className="text-center">
+                  <CardContent className="pt-6">
+                    <Calendar className="h-12 w-12 mx-auto mb-4 text-primary" />
+                    <h3 className="font-semibold mb-2">Flexible Scheduling</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Book appointments that fit your schedule, including weekends
+                    </p>
+                  </CardContent>
+                </Card>
+                
+                <Card className="text-center">
+                  <CardContent className="pt-6">
+                    <Users className="h-12 w-12 mx-auto mb-4 text-primary" />
+                    <h3 className="font-semibold mb-2">Expert Guidance</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Meet with our knowledgeable sales team and mobile home experts
+                    </p>
+                  </CardContent>
+                </Card>
+                
+                <Card className="text-center">
+                  <CardContent className="pt-6">
+                    <MapPin className="h-12 w-12 mx-auto mb-4 text-primary" />
+                    <h3 className="font-semibold mb-2">Multiple Locations</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Showroom visits, on-site tours, or virtual consultations
+                    </p>
+                  </CardContent>
+                </Card>
+                
+                <Card className="text-center">
+                  <CardContent className="pt-6">
+                    <Clock className="h-12 w-12 mx-auto mb-4 text-primary" />
+                    <h3 className="font-semibold mb-2">No Pressure</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Take your time to explore and ask questions without pressure
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
 
-            {/* User's Appointments */}
-            <div>
-              <h2 className="text-2xl font-bold mb-6">My Appointments</h2>
-              <MyAppointments userId={user?.id} />
-            </div>
-          </div>
+              <div className="grid lg:grid-cols-2 gap-8">
+                {/* Booking Widget */}
+                <div>
+                  <h2 className="text-2xl font-bold mb-6">Book New Appointment</h2>
+                  <AppointmentBookingWidget userId={user?.id} />
+                </div>
+
+                {/* User's Appointments */}
+                <div>
+                  <h2 className="text-2xl font-bold mb-6">My Appointments</h2>
+                  <MyAppointments userId={user?.id} />
+                </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="calendar" className="space-y-8">
+              <CalendarIntegrationTab />
+            </TabsContent>
+          </Tabs>
 
           {/* Information Section */}
           <Card className="bg-gradient-to-r from-blue-50 to-indigo-50">

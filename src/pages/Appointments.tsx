@@ -26,7 +26,7 @@ const Appointments = () => {
           </div>
 
           {/* Features */}
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12 justify-items-center">
             <Card className="text-center">
               <CardContent className="pt-6">
                 <Calendar className="h-12 w-12 mx-auto mb-4 text-primary" />

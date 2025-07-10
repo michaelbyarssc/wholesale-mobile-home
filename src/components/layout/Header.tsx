@@ -72,10 +72,12 @@ export const Header = ({
             {/* Left side - Business Info */}
             <div className="flex-1 min-w-0">
               <div className="mb-2 lg:mb-3">
-                <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 tracking-tight leading-tight truncate">
-                  WholesaleMobileHome.com
-                </h1>
-                <div className="w-12 sm:w-16 h-1 bg-blue-600 mt-1 lg:mt-2"></div>
+                <Link to="/" className="block">
+                  <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 tracking-tight leading-tight truncate hover:text-blue-600 transition-colors cursor-pointer">
+                    WholesaleMobileHome.com
+                  </h1>
+                  <div className="w-12 sm:w-16 h-1 bg-blue-600 mt-1 lg:mt-2"></div>
+                </Link>
               </div>
               
               {/* Contact Information */}
@@ -98,6 +100,34 @@ export const Header = ({
                   </div>
                   <span className="font-medium text-sm lg:text-base">Info@WholesaleMobileHome.com</span>
                 </a>
+              </div>
+              
+              {/* Navigation Links */}
+              <div className="hidden lg:flex items-center gap-6 mt-2">
+                <Link 
+                  to="/" 
+                  className="text-gray-600 hover:text-blue-600 transition-colors font-medium"
+                >
+                  Home
+                </Link>
+                <Link 
+                  to="/faq" 
+                  className="text-gray-600 hover:text-blue-600 transition-colors font-medium"
+                >
+                  FAQ
+                </Link>
+                <Link 
+                  to="/blog" 
+                  className="text-gray-600 hover:text-blue-600 transition-colors font-medium"
+                >
+                  Blog
+                </Link>
+                <Link 
+                  to="/estimate" 
+                  className="text-gray-600 hover:text-blue-600 transition-colors font-medium"
+                >
+                  Get Estimate
+                </Link>
               </div>
             </div>
 
@@ -279,6 +309,38 @@ export const Header = ({
                   </div>
                   <span className="font-medium">Info@WholesaleMobileHome.com</span>
                 </a>
+              </div>
+
+              {/* Navigation Links for Mobile */}
+              <div className="space-y-2 px-2 pt-2 border-t border-gray-100">
+                <Link
+                  to="/"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center gap-3 p-3 text-gray-600 hover:text-blue-600 transition-colors"
+                >
+                  <span className="font-medium">Home</span>
+                </Link>
+                <Link
+                  to="/faq"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center gap-3 p-3 text-gray-600 hover:text-blue-600 transition-colors"
+                >
+                  <span className="font-medium">FAQ</span>
+                </Link>
+                <Link
+                  to="/blog"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center gap-3 p-3 text-gray-600 hover:text-blue-600 transition-colors"
+                >
+                  <span className="font-medium">Blog</span>
+                </Link>
+                <Link
+                  to="/estimate"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center gap-3 p-3 text-gray-600 hover:text-blue-600 transition-colors"
+                >
+                  <span className="font-medium">Get Estimate</span>
+                </Link>
               </div>
 
               {/* Menu Actions */}

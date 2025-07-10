@@ -26,7 +26,7 @@ interface TestimonialFormProps {
 }
 
 export const TestimonialForm = ({ onSuccess, onCancel }: TestimonialFormProps) => {
-  const [rating, setRating] = useState(0);
+  const [rating, setRating] = useState(5);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
@@ -36,37 +36,21 @@ export const TestimonialForm = ({ onSuccess, onCancel }: TestimonialFormProps) =
       customerName: "",
       location: "",
       content: "",
-      rating: 0
+      rating: 5
     }
   });
 
   const onSubmit = async (data: TestimonialFormData) => {
-    console.log('🔄 Form submitted with data:', data);
-    console.log('⭐ Rating:', rating);
-    
-    if (rating === 0) {
-      console.log('❌ No rating selected');
-      toast({
-        title: "Rating Required",
-        description: "Please select a rating from 1 to 5 stars.",
-        variant: "destructive"
-      });
-      return;
-    }
-
     setIsSubmitting(true);
-    console.log('⏳ Starting testimonial submission...');
 
     try {
       const insertData = {
         customer_name: data.customerName,
         customer_location: data.location,
         content: data.content,
-        rating: rating,
+        rating: data.rating,
         approved: false // Testimonials need admin approval
       };
-      
-      console.log('📝 Inserting testimonial with data:', insertData);
 
       const { data: result, error } = await supabase
         .from('testimonials')
@@ -74,19 +58,7 @@ export const TestimonialForm = ({ onSuccess, onCancel }: TestimonialFormProps) =
         .select();
 
       if (error) {
-        console.error('❌ Database error:', error);
         throw error;
-      }
-
-      console.log('✅ Testimonial inserted successfully:', result);
-
-      // Clear the testimonials cache so fresh data loads
-      if (typeof window !== 'undefined') {
-        const testimonialsCache = (window as any).testimonialsCache;
-        if (testimonialsCache) {
-          (window as any).testimonialsCache = null;
-          console.log('🗑️ Cleared testimonials cache');
-        }
       }
 
       toast({
@@ -94,12 +66,15 @@ export const TestimonialForm = ({ onSuccess, onCancel }: TestimonialFormProps) =
         description: "Your testimonial has been submitted and will be reviewed by our team.",
       });
 
-      form.reset();
-      setRating(0);
+      form.reset({
+        customerName: "",
+        location: "",
+        content: "",
+        rating: 5
+      });
+      setRating(5);
       onSuccess?.();
-      console.log('🎉 Form reset and success callback called');
     } catch (error) {
-      console.error('💥 Error submitting testimonial:', error);
       toast({
         title: "Error",
         description: "Failed to submit testimonial. Please try again.",
@@ -107,7 +82,6 @@ export const TestimonialForm = ({ onSuccess, onCancel }: TestimonialFormProps) =
       });
     } finally {
       setIsSubmitting(false);
-      console.log('🏁 Form submission completed');
     }
   };
 
@@ -208,13 +182,6 @@ export const TestimonialForm = ({ onSuccess, onCancel }: TestimonialFormProps) =
                 type="submit" 
                 disabled={isSubmitting}
                 className="flex-1"
-                onClick={() => {
-                  console.log('🔘 Submit button clicked');
-                  console.log('📊 Form state:', form.formState);
-                  console.log('🌟 Current rating:', rating);
-                  console.log('📝 Form values:', form.getValues());
-                  console.log('❌ Form errors:', form.formState.errors);
-                }}
               >
                 {isSubmitting ? "Submitting..." : "Submit Testimonial"}
               </Button>

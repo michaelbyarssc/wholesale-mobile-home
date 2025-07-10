@@ -15,9 +15,10 @@ interface LeadFormProps {
   leadSources: any[];
   onSave: () => void;
   lead?: any;
+  currentUserId?: string;
 }
 
-export const LeadForm = ({ leadSources, onSave, lead }: LeadFormProps) => {
+export const LeadForm = ({ leadSources, onSave, lead, currentUserId }: LeadFormProps) => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -54,7 +55,12 @@ export const LeadForm = ({ leadSources, onSave, lead }: LeadFormProps) => {
       const submitData = {
         ...formData,
         estimated_budget: formData.estimated_budget ? parseFloat(formData.estimated_budget as string) : null,
-        next_follow_up_at: formData.next_follow_up_at?.toISOString() || null
+        next_follow_up_at: formData.next_follow_up_at?.toISOString() || null,
+        // Associate new leads with the current user
+        ...(lead ? {} : { 
+          user_id: currentUserId,
+          assigned_to: currentUserId 
+        })
       };
 
       let error;

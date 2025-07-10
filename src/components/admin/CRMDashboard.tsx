@@ -321,6 +321,7 @@ export const CRMDashboard = ({ userRole, currentUserId }: CRMDashboardProps) => 
               </DialogHeader>
               <LeadForm 
                 leadSources={leadSources}
+                currentUserId={currentUserId}
                 onSave={() => {
                   setShowLeadDialog(false);
                   fetchData();

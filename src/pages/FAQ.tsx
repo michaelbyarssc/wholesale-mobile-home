@@ -8,6 +8,10 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { LoadingSpinner } from "@/components/loading/LoadingSpinner";
 import { Search, HelpCircle, Star } from "lucide-react";
 import { Tables } from "@/integrations/supabase/types";
+import { Header } from "@/components/layout/Header";
+import { Footer } from "@/components/layout/Footer";
+import { useAuthUser } from "@/hooks/useAuthUser";
+import { useShoppingCart } from "@/hooks/useShoppingCart";
 
 type FAQ = Tables<"faqs"> & {
   faq_categories: Pick<Tables<"faq_categories">, "name" | "slug"> | null;
@@ -21,6 +25,9 @@ export default function FAQ() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
+  
+  const { user, userProfile, handleLogout, isLoading: authLoading } = useAuthUser();
+  const { cartItems, toggleCart } = useShoppingCart();
 
   useEffect(() => {
     const fetchFAQData = async () => {
@@ -86,6 +93,14 @@ export default function FAQ() {
 
   return (
     <div className="min-h-screen bg-background">
+      <Header
+        user={user}
+        userProfile={userProfile}
+        cartItems={cartItems}
+        isLoading={authLoading}
+        onLogout={handleLogout}
+        onToggleCart={toggleCart}
+      />
       {/* Hero Section */}
       <div className="bg-gradient-primary py-16">
         <div className="container mx-auto px-4 text-center">
@@ -268,6 +283,7 @@ export default function FAQ() {
           </Card>
         </div>
       </div>
+      <Footer />
     </div>
   );
 }

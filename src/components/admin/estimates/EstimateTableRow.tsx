@@ -3,7 +3,8 @@ import React from 'react';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
-import { Trash2, Mail, RefreshCw } from 'lucide-react';
+import { Trash2, Mail, RefreshCw, FileText } from 'lucide-react';
+import { EstimateDocuSignButton } from '@/components/estimate-approval/EstimateDocuSignButton';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -116,6 +117,14 @@ export const EstimateTableRow: React.FC<EstimateTableRowProps> = ({
           >
             <Mail className="h-3 w-3" />
           </Button>
+          <EstimateDocuSignButton
+            estimateId={estimate.id}
+            customerEmail={estimate.customer_email}
+            customerName={estimate.customer_name}
+            estimateNumber={estimate.id.slice(-8)}
+            documentType="estimate"
+            hasInvoice={false}
+          />
           <Button 
             size="sm" 
             variant="outline"

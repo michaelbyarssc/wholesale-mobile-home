@@ -10,6 +10,7 @@ import { User } from '@supabase/supabase-js';
 import { Link, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { Home, LogOut, Phone, Mail } from 'lucide-react';
+import { EstimateDocuSignButton } from '@/components/estimate-approval/EstimateDocuSignButton';
 
 interface Estimate {
   id: string;
@@ -314,12 +315,22 @@ const MyEstimates = () => {
                     <div className="pt-2 border-t border-gray-200">
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                         <div>
-                          <p className="text-xl font-bold text-green-600">
-                            Total: ${estimate.total_amount.toLocaleString()}
-                          </p>
-                          <p className="text-xs text-gray-500">*Final pricing may vary based on site conditions</p>
-                        </div>
-                      </div>
+                           <p className="text-xl font-bold text-green-600">
+                             Total: ${estimate.total_amount.toLocaleString()}
+                           </p>
+                           <p className="text-xs text-gray-500">*Final pricing may vary based on site conditions</p>
+                         </div>
+                         <div className="flex flex-col sm:flex-row gap-2">
+                           <EstimateDocuSignButton
+                             estimateId={estimate.id}
+                             customerEmail={estimate.customer_email}
+                             customerName={estimate.customer_name}
+                             estimateNumber={estimate.id.slice(-8)}
+                             documentType="estimate"
+                             hasInvoice={false}
+                           />
+                         </div>
+                       </div>
                     </div>
                   </div>
                 </CardContent>

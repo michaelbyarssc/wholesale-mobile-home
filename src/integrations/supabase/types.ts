@@ -1959,6 +1959,59 @@ export type Database = {
         }
         Relationships: []
       }
+      estimate_documents: {
+        Row: {
+          created_at: string
+          document_type: string
+          document_url: string | null
+          docusign_envelope_id: string | null
+          estimate_id: string
+          id: string
+          recipient_email: string
+          signed_at: string | null
+          status: string
+          template_id: string | null
+          template_name: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          document_type: string
+          document_url?: string | null
+          docusign_envelope_id?: string | null
+          estimate_id: string
+          id?: string
+          recipient_email: string
+          signed_at?: string | null
+          status?: string
+          template_id?: string | null
+          template_name?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          document_type?: string
+          document_url?: string | null
+          docusign_envelope_id?: string | null
+          estimate_id?: string
+          id?: string
+          recipient_email?: string
+          signed_at?: string | null
+          status?: string
+          template_id?: string | null
+          template_name?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "estimate_documents_estimate_id_fkey"
+            columns: ["estimate_id"]
+            isOneToOne: false
+            referencedRelation: "estimates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       estimates: {
         Row: {
           additional_requirements: string | null

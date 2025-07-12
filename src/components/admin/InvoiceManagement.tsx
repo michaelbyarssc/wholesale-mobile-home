@@ -16,7 +16,8 @@ import {
   AlertCircle,
   RotateCw,
   Settings
-} from 'lucide-react';
+ } from 'lucide-react';
+import { EstimateDocuSignButton } from '@/components/estimate-approval/EstimateDocuSignButton';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from "@/hooks/use-toast";
@@ -356,14 +357,23 @@ export const InvoiceManagement = () => {
                           <RotateCw className="h-3 w-3 mr-1" />
                           {syncToQuickBooksMutation.isPending ? 'Syncing...' : 'Sync to QB'}
                         </Button>
-                      )}
+                       )}
 
-                      {invoice.quickbooks_id && (
-                        <div className="text-xs text-muted-foreground">
-                          QB: {invoice.quickbooks_id}
-                        </div>
-                      )}
-                    </div>
+                       <EstimateDocuSignButton
+                         estimateId={invoice.estimate_id || ''}
+                         customerEmail={invoice.customer_email}
+                         customerName={invoice.customer_name}
+                         estimateNumber={invoice.invoice_number}
+                         documentType="invoice"
+                         hasInvoice={true}
+                       />
+
+                       {invoice.quickbooks_id && (
+                         <div className="text-xs text-muted-foreground">
+                           QB: {invoice.quickbooks_id}
+                         </div>
+                       )}
+                     </div>
                   </div>
                 </div>
               ))}

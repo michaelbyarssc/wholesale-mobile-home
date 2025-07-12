@@ -125,6 +125,8 @@ export const CartTotal = ({
           cart_items: cartItems,
           delivery_address: deliveryAddress,
           total_amount: total,
+          shipping_cost: totalShippingCost, // Pass the actual calculated shipping cost
+          sales_tax: salesTax, // Pass the actual calculated sales tax
           sales_rep_email: 'michaelbyarssc@gmail.com',
           user_id: userId
         }

@@ -16,12 +16,14 @@ serve(async (req) => {
   }
 
   try {
-    const { cart_items, delivery_address, total_amount, sales_rep_email, user_id } = await req.json()
+    const { cart_items, delivery_address, total_amount, shipping_cost, sales_tax, sales_rep_email, user_id } = await req.json()
 
     console.log('🔍 send-estimate-to-sales-rep: Received request:', {
       cart_items: cart_items?.length || 0,
       delivery_address: !!delivery_address,
       total_amount,
+      shipping_cost,
+      sales_tax,
       sales_rep_email,
       user_id
     })
@@ -217,21 +219,19 @@ serve(async (req) => {
       }
     })
 
-    // Calculate shipping cost using proper logic
-    const shippingCost = deliveryAddress && cart_items.length > 0 
-      ? calculateShippingCost(cart_items[0].mobileHome, deliveryAddress)
-      : 0
+    // Use the actual shipping cost passed from the cart instead of recalculating
+    const actualShippingCost = shipping_cost || 0
     
-    // Calculate sales tax on subtotal + shipping
-    const salesTax = deliveryAddress ? calculateSalesTax(deliveryAddress.state, subtotal, shippingCost) : 0
+    // Use the actual sales tax passed from the cart instead of recalculating  
+    const actualSalesTax = sales_tax || 0
     
-    // Calculate total
-    const calculatedTotal = subtotal + shippingCost + salesTax
+    // Calculate total using actual values from cart
+    const calculatedTotal = subtotal + actualShippingCost + actualSalesTax
 
-    console.log('🔍 send-estimate-to-sales-rep: Proper calculation order:', {
+    console.log('🔍 send-estimate-to-sales-rep: Using actual cart values:', {
       subtotal,
-      shippingCost,
-      salesTax,
+      actualShippingCost,
+      actualSalesTax,
       calculatedTotal,
       originalTotal: total_amount
     })
@@ -353,17 +353,17 @@ serve(async (req) => {
         <span>$${subtotal.toLocaleString()}</span>
       </div>
       
-      ${shippingCost > 0 ? `
+      ${actualShippingCost > 0 ? `
       <div style="display: flex; justify-content: space-between; padding: 8px 0; color: #6b7280;">
         <span>🚛 Shipping:</span>
-        <span>$${shippingCost.toLocaleString()}</span>
+        <span>$${actualShippingCost.toLocaleString()}</span>
       </div>
       ` : ''}
       
-      ${salesTax > 0 && deliveryAddress ? `
+      ${actualSalesTax > 0 && deliveryAddress ? `
       <div style="display: flex; justify-content: space-between; padding: 8px 0; color: #6b7280;">
         <span>${deliveryAddress.state.toUpperCase()} Sales Tax:</span>
-        <span>$${salesTax.toLocaleString()}</span>
+        <span>$${actualSalesTax.toLocaleString()}</span>
       </div>
       ` : ''}
       
@@ -569,7 +569,7 @@ serve(async (req) => {
     })
 
     // Add shipping as line item if applicable
-    if (shippingCost > 0) {
+    if (actualShippingCost > 0) {
       lineItems.push({
         estimate_id: estimate.id,
         item_type: 'shipping',
@@ -577,8 +577,8 @@ serve(async (req) => {
         name: 'Shipping & Delivery',
         description: deliveryAddress ? `Delivery to ${deliveryAddress.city}, ${deliveryAddress.state}` : 'Shipping & Delivery',
         quantity: 1,
-        unit_price: shippingCost,
-        total_price: shippingCost,
+        unit_price: actualShippingCost,
+        total_price: actualShippingCost,
         category: 'Shipping',
         display_order: displayOrder++,
         metadata: {
@@ -588,7 +588,7 @@ serve(async (req) => {
     }
 
     // Add sales tax as line item if applicable
-    if (salesTax > 0) {
+    if (actualSalesTax > 0) {
       lineItems.push({
         estimate_id: estimate.id,
         item_type: 'tax',
@@ -596,14 +596,14 @@ serve(async (req) => {
         name: `${deliveryAddress?.state?.toUpperCase()} Sales Tax`,
         description: `Sales tax for ${deliveryAddress?.state?.toUpperCase()}`,
         quantity: 1,
-        unit_price: salesTax,
-        total_price: salesTax,
+        unit_price: actualSalesTax,
+        total_price: actualSalesTax,
         category: 'Tax',
         display_order: displayOrder++,
         metadata: {
           tax_rate: deliveryAddress?.state,
           subtotal: subtotal,
-          shipping: shippingCost
+          shipping: actualShippingCost
         }
       })
     }

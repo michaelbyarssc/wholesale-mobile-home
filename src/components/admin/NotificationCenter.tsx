@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Bell, X, Check, AlertCircle, Info, CheckCircle, Users } from 'lucide-react';
+import { Bell, X, Check, AlertCircle, Info, CheckCircle, Users, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -138,6 +138,37 @@ export const NotificationCenter = () => {
     }
   };
 
+  const deleteNotification = async (notificationId: string) => {
+    try {
+      const { error } = await supabase
+        .from('notifications')
+        .delete()
+        .eq('id', notificationId);
+
+      if (error) throw error;
+
+      const deletedNotification = notifications.find(n => n.id === notificationId);
+      setNotifications(prev => prev.filter(n => n.id !== notificationId));
+      
+      // Decrease unread count if the deleted notification was unread
+      if (deletedNotification && !deletedNotification.read_at) {
+        setUnreadCount(prev => Math.max(0, prev - 1));
+      }
+      
+      toast({
+        title: 'Success',
+        description: 'Notification deleted'
+      });
+    } catch (error) {
+      console.error('Error deleting notification:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to delete notification',
+        variant: 'destructive'
+      });
+    }
+  };
+
   const getNotificationIcon = (type: string, category: string) => {
     if (category === 'customer_activity') {
       return <Users className="h-4 w-4" />;
@@ -212,10 +243,9 @@ export const NotificationCenter = () => {
               notifications.map((notification) => (
                 <Card 
                   key={notification.id} 
-                  className={`cursor-pointer transition-colors ${
+                  className={`transition-colors ${
                     !notification.read_at ? 'bg-blue-50 dark:bg-blue-950/20 border-blue-200' : ''
                   }`}
-                  onClick={() => !notification.read_at && markAsRead(notification.id)}
                 >
                   <CardContent className="p-4">
                     <div className="flex items-start gap-3">
@@ -229,14 +259,30 @@ export const NotificationCenter = () => {
                         )}
                       </div>
                       
-                      <div className="flex-1 min-w-0">
+                      <div 
+                        className="flex-1 min-w-0 cursor-pointer"
+                        onClick={() => !notification.read_at && markAsRead(notification.id)}
+                      >
                         <div className="flex items-start justify-between gap-2">
                           <h4 className="font-medium text-sm leading-tight">
                             {notification.title}
                           </h4>
-                          {!notification.read_at && (
-                            <div className="h-2 w-2 bg-blue-500 rounded-full flex-shrink-0 mt-1"></div>
-                          )}
+                          <div className="flex items-center gap-2">
+                            {!notification.read_at && (
+                              <div className="h-2 w-2 bg-blue-500 rounded-full flex-shrink-0 mt-1"></div>
+                            )}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0 opacity-60 hover:opacity-100"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                deleteNotification(notification.id);
+                              }}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
                         </div>
                         
                         <p className="text-sm text-muted-foreground mt-1">

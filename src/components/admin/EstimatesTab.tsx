@@ -851,6 +851,93 @@ export const EstimatesTab = () => {
                             </div>
 
                             <EstimateLineItems estimateId={estimate.id} />
+
+                            {/* Action Buttons */}
+                            <div className="flex justify-end gap-2 pt-4 border-t">
+                              {/* Edit Button - available for draft and sent estimates */}
+                              {(estimate.status === 'draft' || estimate.status === 'sent') && (
+                                <Button 
+                                  variant="outline" 
+                                  onClick={() => {
+                                    setEditingEstimate(estimate);
+                                    setIsEditDialogOpen(true);
+                                  }}
+                                >
+                                  <Edit className="h-4 w-4 mr-2" />
+                                  Edit
+                                </Button>
+                              )}
+
+                              {/* Send Button - available for draft estimates */}
+                              {estimate.status === 'draft' && (
+                                <Dialog>
+                                  <DialogTrigger asChild>
+                                    <Button>
+                                      <Send className="h-4 w-4 mr-2" />
+                                      Send
+                                    </Button>
+                                  </DialogTrigger>
+                                  <DialogContent>
+                                    <DialogHeader>
+                                      <DialogTitle>Send Estimate via DocuSign</DialogTitle>
+                                    </DialogHeader>
+                                    <div className="space-y-4">
+                                      <div>
+                                        <Label>Select DocuSign Template</Label>
+                                        <Select value={selectedTemplate} onValueChange={setSelectedTemplate}>
+                                          <SelectTrigger>
+                                            <SelectValue placeholder="Choose a template" />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            {docusignTemplates.map((template) => (
+                                              <SelectItem key={template.id} value={template.template_id}>
+                                                {template.name}
+                                              </SelectItem>
+                                            ))}
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+                                      <div className="flex justify-end gap-2">
+                                        <Button variant="outline">Cancel</Button>
+                                        <Button 
+                                          onClick={() => sendEstimateMutation.mutate({ 
+                                            estimateId: estimate.id, 
+                                            templateId: selectedTemplate 
+                                          })}
+                                          disabled={!selectedTemplate || sendEstimateMutation.isPending}
+                                        >
+                                          Send Estimate
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  </DialogContent>
+                                </Dialog>
+                              )}
+
+                              {/* Deny Button - available for sent estimates */}
+                              {estimate.status === 'sent' && (
+                                <Button 
+                                  variant="destructive" 
+                                  onClick={() => denyEstimateMutation.mutate(estimate.id)}
+                                  disabled={denyEstimateMutation.isPending}
+                                >
+                                  <X className="h-4 w-4 mr-2" />
+                                  Deny
+                                </Button>
+                              )}
+
+                              {/* Approve Button - available for sent estimates */}
+                              {estimate.status === 'sent' && (
+                                <Button 
+                                  onClick={() => approveEstimateMutation.mutate(estimate.id)}
+                                  disabled={approveEstimateMutation.isPending}
+                                  className="bg-green-600 hover:bg-green-700"
+                                >
+                                  <Check className="h-4 w-4 mr-2" />
+                                  Approve
+                                </Button>
+                              )}
+                            </div>
                           </div>
                         </DialogContent>
                       </Dialog>

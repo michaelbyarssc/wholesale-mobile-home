@@ -24,9 +24,14 @@ serve(async (req) => {
     const token = url.searchParams.get('token')
     
     let estimate;
+    let estimateUuid;
+    
+    console.log('Request method:', req.method);
+    console.log('Token from URL:', token);
     
     // Check if this is a customer approval (with token) or admin approval (with estimate_uuid in body)
     if (token) {
+      console.log('Processing customer approval with token');
       // Customer approval via email link
       const { data: estimateData, error: estimateError } = await supabase
         .from('estimates')
@@ -36,48 +41,69 @@ serve(async (req) => {
         .single()
 
       if (estimateError || !estimateData) {
+        console.error('Customer approval error:', estimateError);
         return new Response('Invalid or expired approval token', { 
           status: 404, 
           headers: corsHeaders 
         })
       }
       estimate = estimateData;
+      estimateUuid = estimate.id;
     } else {
+      console.log('Processing admin approval with estimate_uuid');
       // Admin approval via API call
-      const { estimate_uuid } = await req.json()
-      
-      if (!estimate_uuid) {
-        return new Response('Missing estimate_uuid', { 
+      try {
+        const body = await req.json()
+        console.log('Request body:', body);
+        
+        estimateUuid = body.estimate_uuid;
+        
+        if (!estimateUuid) {
+          console.error('Missing estimate_uuid in request body');
+          return new Response('Missing estimate_uuid', { 
+            status: 400, 
+            headers: corsHeaders 
+          })
+        }
+
+        const { data: estimateData, error: estimateError } = await supabase
+          .from('estimates')
+          .select('*')
+          .eq('id', estimateUuid)
+          .is('approved_at', null)
+          .single()
+
+        if (estimateError || !estimateData) {
+          console.error('Admin approval error:', estimateError);
+          return new Response('Estimate not found or already approved', { 
+            status: 404, 
+            headers: corsHeaders 
+          })
+        }
+        estimate = estimateData;
+      } catch (jsonError) {
+        console.error('Error parsing JSON:', jsonError);
+        return new Response('Invalid JSON in request body', { 
           status: 400, 
           headers: corsHeaders 
         })
       }
-
-      const { data: estimateData, error: estimateError } = await supabase
-        .from('estimates')
-        .select('*')
-        .eq('id', estimate_uuid)
-        .is('approved_at', null)
-        .single()
-
-      if (estimateError || !estimateData) {
-        return new Response('Estimate not found or already approved', { 
-          status: 404, 
-          headers: corsHeaders 
-        })
-      }
-      estimate = estimateData;
     }
 
+    // Add debugging to see what we're passing to the function
+    console.log('About to approve estimate with ID:', estimateUuid, 'Type:', typeof estimateUuid);
+    
     // Call the approve_estimate function
     const { data: invoiceId, error: approvalError } = await supabase
-      .rpc('approve_estimate', { estimate_uuid: estimate.id })
+      .rpc('approve_estimate', { estimate_uuid: estimateUuid })
+
+    console.log('approve_estimate result:', { invoiceId, approvalError });
 
     if (approvalError) {
       console.error('Approval error:', approvalError)
-      return new Response('Failed to approve estimate', { 
+      return new Response(JSON.stringify({ error: 'Failed to approve estimate', details: approvalError }), { 
         status: 500, 
-        headers: corsHeaders 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
     }
 

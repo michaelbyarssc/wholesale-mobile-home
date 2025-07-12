@@ -49,5 +49,8 @@ enable_signup = true
 double_confirm_changes = true
 enable_confirmations = false
 
+[functions.docusign-webhook]
+verify_jwt = false
+
 [functions.extract-chat-data]
 verify_jwt = false

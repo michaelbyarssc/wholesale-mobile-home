@@ -267,17 +267,10 @@ export const EstimatesTab = () => {
     }
   });
 
-  // Approve estimate with DocuSign mutation
-  const approveEstimateWithDocuSignMutation = useMutation({
+  // Send estimate with DocuSign mutation (updates status to sent)
+  const sendEstimateWithDocuSignMutation = useMutation({
     mutationFn: async ({ estimateId, templateId }: { estimateId: string; templateId: string }) => {
-      // First approve the estimate
-      const { data: approvalData, error: approvalError } = await supabase.functions.invoke('approve-estimate', {
-        body: { estimate_uuid: estimateId }
-      });
-
-      if (approvalError) throw approvalError;
-
-      // Then send via DocuSign
+      // Send via DocuSign
       const { data: docusignData, error: docusignError } = await supabase.functions.invoke('docusign-send-estimate', {
         body: { 
           estimateId,
@@ -287,19 +280,28 @@ export const EstimatesTab = () => {
       });
 
       if (docusignError) throw docusignError;
-      return { approvalData, docusignData };
+
+      // Update estimate status to 'sent'
+      const { data: updateData, error: updateError } = await supabase
+        .from('estimates')
+        .update({ status: 'sent' })
+        .eq('id', estimateId);
+
+      if (updateError) throw updateError;
+
+      return { docusignData, updateData };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-estimates'] });
       toast({
-        title: "Estimate Approved & Sent",
-        description: "Estimate has been approved and sent to customer via DocuSign.",
+        title: "Estimate Sent",
+        description: "Estimate has been sent to customer via DocuSign for signature.",
       });
     },
     onError: (error) => {
       toast({
         title: "Error",
-        description: "Failed to approve estimate. Please try again.",
+        description: "Failed to send estimate. Please try again.",
         variant: "destructive",
       });
     }
@@ -757,21 +759,21 @@ export const EstimatesTab = () => {
                         </Button>
                       )}
 
-                      {/* Approve Button - available for sent estimates */}
-                      {estimate.status === 'sent' && (
+                      {/* Send Button - available for draft estimates */}
+                      {estimate.status === 'draft' && (
                         <Dialog>
                           <DialogTrigger asChild>
                             <Button 
                               size="sm"
-                              className="bg-green-600 hover:bg-green-700"
+                              className="bg-blue-600 hover:bg-blue-700"
                             >
-                              <Check className="h-4 w-4 mr-1" />
-                              Approve
+                              <Send className="h-4 w-4 mr-1" />
+                              Send
                             </Button>
                           </DialogTrigger>
                           <DialogContent>
                             <DialogHeader>
-                              <DialogTitle>Approve & Send Estimate via DocuSign</DialogTitle>
+                              <DialogTitle>Send Estimate via DocuSign</DialogTitle>
                             </DialogHeader>
                             <div className="space-y-4">
                               <div>
@@ -792,14 +794,14 @@ export const EstimatesTab = () => {
                               <div className="flex justify-end gap-2">
                                 <Button variant="outline">Cancel</Button>
                                 <Button 
-                                  onClick={() => approveEstimateWithDocuSignMutation.mutate({ 
+                                  onClick={() => sendEstimateWithDocuSignMutation.mutate({ 
                                     estimateId: estimate.id, 
                                     templateId: selectedTemplate 
                                   })}
-                                  disabled={!selectedTemplate || approveEstimateWithDocuSignMutation.isPending}
-                                  className="bg-green-600 hover:bg-green-700"
+                                  disabled={!selectedTemplate || sendEstimateWithDocuSignMutation.isPending}
+                                  className="bg-blue-600 hover:bg-blue-700"
                                 >
-                                  Approve & Send
+                                  Send for Signature
                                 </Button>
                               </div>
                             </div>
@@ -955,17 +957,17 @@ export const EstimatesTab = () => {
                                 Deny
                               </Button>
 
-                              {/* Approve Button with DocuSign */}
+                              {/* Send Button with DocuSign */}
                               <Dialog>
                                 <DialogTrigger asChild>
-                                  <Button className="bg-green-600 hover:bg-green-700">
-                                    <Check className="h-4 w-4 mr-2" />
-                                    Approve
+                                  <Button className="bg-blue-600 hover:bg-blue-700">
+                                    <Send className="h-4 w-4 mr-2" />
+                                    Send for Signature
                                   </Button>
                                 </DialogTrigger>
                                 <DialogContent>
                                   <DialogHeader>
-                                    <DialogTitle>Approve & Send Estimate via DocuSign</DialogTitle>
+                                    <DialogTitle>Send Estimate via DocuSign</DialogTitle>
                                   </DialogHeader>
                                   <div className="space-y-4">
                                     <div>
@@ -986,14 +988,14 @@ export const EstimatesTab = () => {
                                     <div className="flex justify-end gap-2">
                                       <Button variant="outline">Cancel</Button>
                                       <Button 
-                                        onClick={() => approveEstimateWithDocuSignMutation.mutate({ 
+                                        onClick={() => sendEstimateWithDocuSignMutation.mutate({ 
                                           estimateId: estimate.id, 
                                           templateId: selectedTemplate 
                                         })}
-                                        disabled={!selectedTemplate || approveEstimateWithDocuSignMutation.isPending}
-                                        className="bg-green-600 hover:bg-green-700"
+                                        disabled={!selectedTemplate || sendEstimateWithDocuSignMutation.isPending}
+                                        className="bg-blue-600 hover:bg-blue-700"
                                       >
-                                        Approve & Send
+                                        Send for Signature
                                       </Button>
                                     </div>
                                   </div>

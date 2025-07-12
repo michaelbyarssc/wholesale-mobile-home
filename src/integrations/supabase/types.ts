@@ -1777,6 +1777,42 @@ export type Database = {
           },
         ]
       }
+      docusign_templates: {
+        Row: {
+          active: boolean
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          name: string
+          template_id: string
+          template_type: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          template_id: string
+          template_type?: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          template_id?: string
+          template_type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       driver_performance: {
         Row: {
           completion_rating: number | null

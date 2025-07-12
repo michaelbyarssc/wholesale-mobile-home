@@ -152,6 +152,21 @@ export const useShoppingCart = (user?: User | null) => {
           const newCart = [...prevItems, newItem];
           console.log('🔍 New cart length after adding:', newCart.length);
           
+          // Notify admin about cart addition for logged-in users
+          if (currentUser) {
+            supabase.functions.invoke('notify-admin-user-activity', {
+              body: {
+                user_id: currentUser.id,
+                activity_type: 'cart_add',
+                mobile_home_id: mobileHome.id,
+                mobile_home_model: mobileHome.model
+              }
+            }).catch(error => {
+              console.error('Error notifying admin about cart addition:', error);
+              // Don't throw error - notification failure shouldn't break the main functionality
+            });
+          }
+          
           return newCart;
         }
       });

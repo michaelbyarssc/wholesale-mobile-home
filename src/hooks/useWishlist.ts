@@ -107,6 +107,21 @@ export const useWishlist = (user?: User | null) => {
           if (prev.some(item => item.id === home.id)) return prev;
           return [...prev, home];
         });
+
+        // Notify admin about wishlist addition
+        try {
+          await supabase.functions.invoke('notify-admin-user-activity', {
+            body: {
+              user_id: user.id,
+              activity_type: 'wishlist_add',
+              mobile_home_id: home.id,
+              mobile_home_model: home.model
+            }
+          });
+        } catch (notifyError) {
+          console.error('Error notifying admin about wishlist addition:', notifyError);
+          // Don't throw error - notification failure shouldn't break the main functionality
+        }
       } catch (error) {
         console.error('Error adding to wishlist:', error);
       }

@@ -49,7 +49,27 @@ const DriverPortal = () => {
       }
       setUser(session.user);
 
-      // Get driver profile
+      // Check if user has super_admin role
+      const { data: userRoles } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', session.user.id);
+
+      const isSuperAdmin = userRoles?.some(role => role.role === 'super_admin');
+
+      if (isSuperAdmin) {
+        // Super admin can access without driver profile
+        setDriver({ 
+          id: 'super_admin', 
+          first_name: 'Super', 
+          last_name: 'Admin',
+          user_id: session.user.id,
+          is_super_admin: true 
+        });
+        return;
+      }
+
+      // Get driver profile for regular drivers
       const { data: driverData } = await supabase
         .from('drivers')
         .select('*')
@@ -104,21 +124,42 @@ const DriverPortal = () => {
     queryFn: async () => {
       if (!driver?.id) return [];
       
-      const { data, error } = await supabase
-        .from('delivery_assignments')
-        .select(`
-          *,
-          deliveries (
+      if (driver.is_super_admin) {
+        // Super admin sees all active deliveries
+        const { data, error } = await supabase
+          .from('deliveries')
+          .select(`
             *,
             mobile_homes (manufacturer, model)
-          )
-        `)
-        .eq('driver_id', driver.id)
-        .eq('active', true)
-        .in('deliveries.status', ['scheduled', 'factory_pickup_scheduled', 'factory_pickup_in_progress', 'factory_pickup_completed', 'in_transit', 'delivery_in_progress']);
-      
-      if (error) throw error;
-      return data || [];
+          `)
+          .in('status', ['scheduled', 'factory_pickup_scheduled', 'factory_pickup_in_progress', 'factory_pickup_completed', 'in_transit', 'delivery_in_progress']);
+        
+        if (error) throw error;
+        // Format to match the assignment structure expected by the UI
+        return (data || []).map(delivery => ({
+          id: `super_admin_${delivery.id}`,
+          deliveries: delivery,
+          driver_id: driver.id,
+          active: true
+        }));
+      } else {
+        // Regular drivers see only their assigned deliveries
+        const { data, error } = await supabase
+          .from('delivery_assignments')
+          .select(`
+            *,
+            deliveries (
+              *,
+              mobile_homes (manufacturer, model)
+            )
+          `)
+          .eq('driver_id', driver.id)
+          .eq('active', true)
+          .in('deliveries.status', ['scheduled', 'factory_pickup_scheduled', 'factory_pickup_in_progress', 'factory_pickup_completed', 'in_transit', 'delivery_in_progress']);
+        
+        if (error) throw error;
+        return data || [];
+      }
     },
     enabled: !!driver?.id,
   });
@@ -129,22 +170,46 @@ const DriverPortal = () => {
     queryFn: async () => {
       if (!driver?.id) return [];
       
-      const { data, error } = await supabase
-        .from('delivery_assignments')
-        .select(`
-          *,
-          deliveries (
+      if (driver.is_super_admin) {
+        // Super admin sees all completed deliveries
+        const { data, error } = await supabase
+          .from('deliveries')
+          .select(`
             *,
             mobile_homes (manufacturer, model)
-          )
-        `)
-        .eq('driver_id', driver.id)
-        .eq('deliveries.status', 'completed')
-        .order('completed_at', { ascending: false })
-        .limit(10);
-      
-      if (error) throw error;
-      return data || [];
+          `)
+          .eq('status', 'completed')
+          .order('completed_at', { ascending: false })
+          .limit(10);
+        
+        if (error) throw error;
+        // Format to match the assignment structure expected by the UI
+        return (data || []).map(delivery => ({
+          id: `super_admin_${delivery.id}`,
+          deliveries: delivery,
+          driver_id: driver.id,
+          completed_at: delivery.completed_at,
+          notes: 'Admin View'
+        }));
+      } else {
+        // Regular drivers see only their completed deliveries
+        const { data, error } = await supabase
+          .from('delivery_assignments')
+          .select(`
+            *,
+            deliveries (
+              *,
+              mobile_homes (manufacturer, model)
+            )
+          `)
+          .eq('driver_id', driver.id)
+          .eq('deliveries.status', 'completed')
+          .order('completed_at', { ascending: false })
+          .limit(10);
+        
+        if (error) throw error;
+        return data || [];
+      }
     },
     enabled: !!driver?.id,
   });

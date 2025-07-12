@@ -10,7 +10,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, FileText, Send, Eye, Clock, CheckCircle, XCircle, DollarSign, Settings } from 'lucide-react';
+import { Plus, FileText, Send, Eye, Clock, CheckCircle, XCircle, DollarSign, Settings, Check, X, Edit } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { Separator } from '@/components/ui/separator';
@@ -85,6 +85,8 @@ export const EstimatesTab = () => {
     name: '',
     template_id: ''
   });
+  const [editingEstimate, setEditingEstimate] = useState<Estimate | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
   // Fetch mobile homes data from database
   const [mobileHomes, setMobileHomes] = useState<any[]>([]);
@@ -259,6 +261,95 @@ export const EstimatesTab = () => {
       toast({
         title: "Error",
         description: "Failed to add template. Please try again.",
+        variant: "destructive",
+      });
+    }
+  });
+
+  // Approve estimate mutation
+  const approveEstimateMutation = useMutation({
+    mutationFn: async (estimateId: string) => {
+      const { data, error } = await supabase.functions.invoke('approve-estimate', {
+        body: { estimate_uuid: estimateId }
+      });
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-estimates'] });
+      toast({
+        title: "Estimate Approved",
+        description: "Estimate has been approved and invoice created.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to approve estimate. Please try again.",
+        variant: "destructive",
+      });
+    }
+  });
+
+  // Deny estimate mutation
+  const denyEstimateMutation = useMutation({
+    mutationFn: async (estimateId: string) => {
+      const { data, error } = await supabase
+        .from('estimates')
+        .update({ status: 'rejected' })
+        .eq('id', estimateId);
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-estimates'] });
+      toast({
+        title: "Estimate Denied",
+        description: "Estimate has been rejected.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to deny estimate. Please try again.",
+        variant: "destructive",
+      });
+    }
+  });
+
+  // Edit estimate mutation
+  const editEstimateMutation = useMutation({
+    mutationFn: async (estimate: Partial<Estimate>) => {
+      const { data, error } = await supabase
+        .from('estimates')
+        .update({
+          customer_name: estimate.customer_name,
+          customer_email: estimate.customer_email,
+          customer_phone: estimate.customer_phone,
+          delivery_address: estimate.delivery_address,
+          total_amount: estimate.total_amount,
+          mobile_home_id: estimate.mobile_home_id
+        })
+        .eq('id', estimate.id);
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-estimates'] });
+      setIsEditDialogOpen(false);
+      setEditingEstimate(null);
+      toast({
+        title: "Estimate Updated",
+        description: "Estimate has been updated successfully.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to update estimate. Please try again.",
         variant: "destructive",
       });
     }
@@ -610,6 +701,48 @@ export const EstimatesTab = () => {
                       </p>
                     </div>
                     <div className="flex gap-2">
+                      {/* Edit Button - available for draft and sent estimates */}
+                      {(estimate.status === 'draft' || estimate.status === 'sent') && (
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => {
+                            setEditingEstimate(estimate);
+                            setIsEditDialogOpen(true);
+                          }}
+                        >
+                          <Edit className="h-4 w-4 mr-1" />
+                          Edit
+                        </Button>
+                      )}
+
+                      {/* Approve Button - available for sent estimates */}
+                      {estimate.status === 'sent' && (
+                        <Button 
+                          size="sm"
+                          onClick={() => approveEstimateMutation.mutate(estimate.id)}
+                          disabled={approveEstimateMutation.isPending}
+                          className="bg-green-600 hover:bg-green-700"
+                        >
+                          <Check className="h-4 w-4 mr-1" />
+                          Approve
+                        </Button>
+                      )}
+
+                      {/* Deny Button - available for sent estimates */}
+                      {estimate.status === 'sent' && (
+                        <Button 
+                          variant="destructive" 
+                          size="sm"
+                          onClick={() => denyEstimateMutation.mutate(estimate.id)}
+                          disabled={denyEstimateMutation.isPending}
+                        >
+                          <X className="h-4 w-4 mr-1" />
+                          Deny
+                        </Button>
+                      )}
+
+                      {/* Send Button - available for draft estimates */}
                       {estimate.status === 'draft' && (
                         <Dialog>
                           <DialogTrigger asChild>
@@ -654,6 +787,8 @@ export const EstimatesTab = () => {
                           </DialogContent>
                         </Dialog>
                       )}
+
+                      {/* View Button - always available */}
                       <Dialog>
                         <DialogTrigger asChild>
                           <Button variant="outline" size="sm">
@@ -795,6 +930,114 @@ export const EstimatesTab = () => {
           </Tabs>
         </CardContent>
       </Card>
+
+      {/* Edit Estimate Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Edit Estimate</DialogTitle>
+          </DialogHeader>
+          {editingEstimate && (
+            <div className="space-y-6">
+              {/* Customer Information */}
+              <div className="space-y-4">
+                <h3 className="font-medium">Customer Information</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="edit-customer-name">Customer Name</Label>
+                    <Input
+                      id="edit-customer-name"
+                      value={editingEstimate.customer_name}
+                      onChange={(e) => setEditingEstimate(prev => prev ? { ...prev, customer_name: e.target.value } : null)}
+                      placeholder="Enter customer name"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="edit-customer-email">Email</Label>
+                    <Input
+                      id="edit-customer-email"
+                      type="email"
+                      value={editingEstimate.customer_email}
+                      onChange={(e) => setEditingEstimate(prev => prev ? { ...prev, customer_email: e.target.value } : null)}
+                      placeholder="customer@email.com"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="edit-customer-phone">Phone</Label>
+                    <Input
+                      id="edit-customer-phone"
+                      value={editingEstimate.customer_phone}
+                      onChange={(e) => setEditingEstimate(prev => prev ? { ...prev, customer_phone: e.target.value } : null)}
+                      placeholder="(555) 123-4567"
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <Label htmlFor="edit-delivery-address">Delivery Address</Label>
+                    <Input
+                      id="edit-delivery-address"
+                      value={editingEstimate.delivery_address}
+                      onChange={(e) => setEditingEstimate(prev => prev ? { ...prev, delivery_address: e.target.value } : null)}
+                      placeholder="Street address"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Mobile Home Selection */}
+              <div className="space-y-4">
+                <h3 className="font-medium">Mobile Home Selection</h3>
+                <Select 
+                  value={editingEstimate.mobile_home_id || ''} 
+                  onValueChange={(value) => {
+                    const selectedHome = mobileHomes.find(h => h.id === value);
+                    setEditingEstimate(prev => prev ? { 
+                      ...prev, 
+                      mobile_home_id: value,
+                      total_amount: selectedHome?.price || prev.total_amount
+                    } : null);
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a mobile home" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {mobileHomes.map((home) => (
+                      <SelectItem key={home.id} value={home.id}>
+                        {home.manufacturer} {home.series} {home.model} - ${home.price.toLocaleString()} 
+                        ({home.length_feet}' x {home.width_feet}')
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Total Amount */}
+              <div className="space-y-2">
+                <Label htmlFor="edit-total-amount">Total Amount</Label>
+                <Input
+                  id="edit-total-amount"
+                  type="number"
+                  value={editingEstimate.total_amount}
+                  onChange={(e) => setEditingEstimate(prev => prev ? { ...prev, total_amount: parseFloat(e.target.value) || 0 } : null)}
+                  placeholder="Total amount"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={() => editEstimateMutation.mutate(editingEstimate)}
+                  disabled={!editingEstimate.customer_name || !editingEstimate.customer_email || editEstimateMutation.isPending}
+                >
+                  Update Estimate
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

@@ -17,6 +17,7 @@ import { AuditLogTab } from '@/components/admin/AuditLogTab';
 import { SuperAdminMarkupTab } from '@/components/admin/SuperAdminMarkupTab';
 import { AdminCalendarDashboard } from '@/components/admin/calendar/AdminCalendarDashboard';
 import { InvoiceManagement } from '@/components/admin/InvoiceManagement';
+import { NotificationCenter } from '@/components/admin/NotificationCenter';
 
 import { Menu, X } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -275,6 +276,8 @@ const Admin = () => {
                 </span>
               )}
               <div className="flex gap-1 sm:gap-2">
+                {/* Notification Center */}
+                <NotificationCenter />
                 <Button 
                   variant="outline" 
                   size={isMobile ? "sm" : "sm"}

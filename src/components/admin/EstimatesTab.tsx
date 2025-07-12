@@ -270,11 +270,16 @@ export const EstimatesTab = () => {
   // Send estimate with DocuSign mutation (updates status to sent)
   const sendEstimateWithDocuSignMutation = useMutation({
     mutationFn: async ({ estimateId, templateId }: { estimateId: string; templateId: string }) => {
+      // Find the template name from the templates list
+      const selectedTemplateData = docusignTemplates?.find(t => t.template_id === templateId);
+      const templateName = selectedTemplateData?.name || 'Default Template';
+      
       // Send via DocuSign
       const { data: docusignData, error: docusignError } = await supabase.functions.invoke('docusign-send-estimate', {
         body: { 
           estimateId,
           templateId,
+          templateName,
           documentType: 'estimate'
         }
       });

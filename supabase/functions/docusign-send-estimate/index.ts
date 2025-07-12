@@ -315,9 +315,15 @@ serve(async (req) => {
         mobile_homes(manufacturer, series, model)
       `)
       .eq('id', estimateId)
-      .single();
+      .maybeSingle();
 
-    if (estimateError || !estimate) {
+    if (estimateError) {
+      console.error('Error fetching estimate:', estimateError);
+      throw new Error(`Database error: ${estimateError.message}`);
+    }
+
+    if (!estimate) {
+      console.error('Estimate not found for ID:', estimateId);
       throw new Error('Estimate not found');
     }
 

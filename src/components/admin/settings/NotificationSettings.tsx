@@ -16,6 +16,7 @@ interface NotificationPreferences {
   inventory_updates: boolean;
   price_updates: boolean;
   estimate_updates: boolean;
+  customer_activity_notifications: boolean;
 }
 
 export const NotificationSettings = () => {
@@ -26,7 +27,8 @@ export const NotificationSettings = () => {
     notification_frequency: 'immediate',
     inventory_updates: true,
     price_updates: true,
-    estimate_updates: true
+    estimate_updates: true,
+    customer_activity_notifications: true
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -69,7 +71,8 @@ export const NotificationSettings = () => {
           notification_frequency: data.notification_frequency,
           inventory_updates: data.inventory_updates || true,
           price_updates: data.price_updates || true,
-          estimate_updates: data.estimate_updates || true
+          estimate_updates: data.estimate_updates || true,
+          customer_activity_notifications: data.customer_activity_notifications ?? true
         });
       }
     } catch (error) {
@@ -165,6 +168,7 @@ export const NotificationSettings = () => {
           inventory_updates: preferences.inventory_updates,
           price_updates: preferences.price_updates,
           estimate_updates: preferences.estimate_updates,
+          customer_activity_notifications: preferences.customer_activity_notifications,
           updated_at: new Date().toISOString()
         });
 
@@ -281,6 +285,18 @@ export const NotificationSettings = () => {
           <h3 className="text-lg font-medium">Notification Types</h3>
           
           <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <Label htmlFor="customer-activity">Customer Activity</Label>
+                <p className="text-sm text-muted-foreground">Wishlist and cart additions from your customers</p>
+              </div>
+              <Switch
+                id="customer-activity"
+                checked={preferences.customer_activity_notifications}
+                onCheckedChange={(checked) => handleToggle('customer_activity_notifications', checked)}
+              />
+            </div>
+
             <div className="flex items-center justify-between">
               <div>
                 <Label htmlFor="inventory-updates">Inventory Updates</Label>

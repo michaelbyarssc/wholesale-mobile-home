@@ -2742,6 +2742,7 @@ export type Database = {
       notification_preferences: {
         Row: {
           created_at: string
+          customer_activity_notifications: boolean | null
           email_notifications: boolean
           estimate_updates: boolean
           id: string
@@ -2755,6 +2756,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          customer_activity_notifications?: boolean | null
           email_notifications?: boolean
           estimate_updates?: boolean
           id?: string
@@ -2768,6 +2770,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          customer_activity_notifications?: boolean | null
           email_notifications?: boolean
           estimate_updates?: boolean
           id?: string

@@ -66,6 +66,35 @@ serve(async (req) => {
       });
     }
 
+    // Check admin's notification preferences
+    const { data: prefs, error: prefsError } = await supabase
+      .from('notification_preferences')
+      .select('system_notifications, customer_activity_notifications, email_notifications, push_notifications, notification_frequency')
+      .eq('user_id', profile.assigned_admin_id)
+      .single();
+
+    if (prefsError && prefsError.code !== 'PGRST116') {
+      console.log('❌ Error fetching notification preferences:', prefsError);
+    }
+
+    // Default to enabled if no preferences found
+    const preferences = prefs || {
+      system_notifications: true,
+      customer_activity_notifications: true,
+      email_notifications: true,
+      push_notifications: false,
+      notification_frequency: 'immediate'
+    };
+
+    // Skip if admin has disabled customer activity notifications
+    if (!preferences.customer_activity_notifications) {
+      console.log('ℹ️ Admin has disabled customer activity notifications');
+      return new Response(JSON.stringify({ message: 'Admin has disabled customer activity notifications' }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
     // Get mobile home details if not provided
     let homeModel = mobile_home_model;
     if (!homeModel) {
@@ -78,40 +107,83 @@ serve(async (req) => {
       homeModel = homeData?.model || 'Mobile Home';
     }
 
-    // Create notification for the admin
+    // Create notification content
     const activityText = activity_type === 'wishlist_add' ? 'added to wishlist' : 'added to cart';
     const title = `Customer Activity: ${activityText}`;
     const message = `${profile.first_name} ${profile.last_name} ${activityText}: ${homeModel}`;
 
-    const { error: notificationError } = await supabase.rpc('create_notification', {
-      p_user_id: profile.assigned_admin_id,
-      p_title: title,
-      p_message: message,
-      p_type: 'info',
-      p_category: 'customer_activity',
-      p_data: {
-        user_id,
-        activity_type,
-        mobile_home_id,
-        mobile_home_model: homeModel,
-        customer_name: `${profile.first_name} ${profile.last_name}`
-      }
-    });
-
-    if (notificationError) {
-      console.error('❌ Error creating notification:', notificationError);
-      return new Response(JSON.stringify({ error: 'Failed to create notification' }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    // Create notification for the admin (in-app notification)
+    if (preferences.system_notifications) {
+      const { error: notificationError } = await supabase.rpc('create_notification', {
+        p_user_id: profile.assigned_admin_id,
+        p_title: title,
+        p_message: message,
+        p_type: 'info',
+        p_category: 'customer_activity',
+        p_data: {
+          user_id,
+          activity_type,
+          mobile_home_id,
+          mobile_home_model: homeModel,
+          customer_name: `${profile.first_name} ${profile.last_name}`
+        }
       });
+
+      if (notificationError) {
+        console.error('❌ Error creating in-app notification:', notificationError);
+      } else {
+        console.log('✅ In-app notification created successfully');
+      }
     }
 
-    console.log('✅ Admin notification sent successfully');
+    // Send email notification if enabled
+    if (preferences.email_notifications) {
+      try {
+        await supabase.functions.invoke('send-email-notification', {
+          body: {
+            recipient_id: profile.assigned_admin_id,
+            subject: title,
+            message: message,
+            type: 'customer_activity'
+          }
+        });
+        console.log('✅ Email notification sent successfully');
+      } catch (emailError) {
+        console.error('❌ Error sending email notification:', emailError);
+      }
+    }
+
+    // Send push notification if enabled
+    if (preferences.push_notifications) {
+      try {
+        await supabase.functions.invoke('send-push-notification', {
+          body: {
+            user_id: profile.assigned_admin_id,
+            title: title,
+            message: message,
+            data: {
+              type: 'customer_activity',
+              user_id,
+              activity_type,
+              mobile_home_id
+            }
+          }
+        });
+        console.log('✅ Push notification sent successfully');
+      } catch (pushError) {
+        console.error('❌ Error sending push notification:', pushError);
+      }
+    }
 
     return new Response(JSON.stringify({ 
       success: true, 
-      message: 'Admin notification sent',
-      admin_id: profile.assigned_admin_id
+      message: 'Admin notifications processed',
+      admin_id: profile.assigned_admin_id,
+      notifications_sent: {
+        in_app: preferences.system_notifications,
+        email: preferences.email_notifications,
+        push: preferences.push_notifications
+      }
     }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }

@@ -1,14 +1,35 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { useToast } from "@/hooks/use-toast";
 import { Plus, Search, User, Phone, Mail } from "lucide-react";
 
 export const DriverManagement = () => {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+
+  // Form state
+  const [formData, setFormData] = useState({
+    first_name: '',
+    last_name: '',
+    email: '',
+    phone: '',
+    cdl_class: '',
+    license_number: '',
+    license_expiry: '',
+    hourly_rate: '',
+    employee_id: '',
+    status: 'available' as const
+  });
 
   const { data: drivers, isLoading } = useQuery({
     queryKey: ["drivers"],
@@ -30,6 +51,94 @@ export const DriverManagement = () => {
       return data;
     },
   });
+
+  // Create driver mutation
+  const createDriverMutation = useMutation({
+    mutationFn: async (driverData: typeof formData) => {
+      // First create auth user
+      const tempPassword = `Driver${Math.random().toString(36).slice(-8)}`;
+      
+      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+        email: driverData.email,
+        password: tempPassword,
+        email_confirm: true,
+        user_metadata: {
+          first_name: driverData.first_name,
+          last_name: driverData.last_name,
+          role: 'driver'
+        }
+      });
+
+      if (authError) throw authError;
+
+      // Create driver record
+      const { data, error } = await supabase
+        .from('drivers')
+        .insert({
+          user_id: authData.user.id,
+          first_name: driverData.first_name,
+          last_name: driverData.last_name,
+          email: driverData.email,
+          phone: driverData.phone,
+          cdl_class: driverData.cdl_class || null,
+          license_number: driverData.license_number || null,
+          license_expiry: driverData.license_expiry || null,
+          hourly_rate: driverData.hourly_rate ? parseFloat(driverData.hourly_rate) : null,
+          employee_id: driverData.employee_id || null,
+          status: driverData.status
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Add driver role
+      await supabase
+        .from('user_roles')
+        .insert({
+          user_id: authData.user.id,
+          role: 'driver'
+        });
+
+      return { driver: data, tempPassword };
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['drivers'] });
+      setIsCreateDialogOpen(false);
+      resetForm();
+      toast({
+        title: "Driver Created",
+        description: `Driver account created with temporary password: ${result.tempPassword}`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  });
+
+  const resetForm = () => {
+    setFormData({
+      first_name: '',
+      last_name: '',
+      email: '',
+      phone: '',
+      cdl_class: '',
+      license_number: '',
+      license_expiry: '',
+      hourly_rate: '',
+      employee_id: '',
+      status: 'available'
+    });
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    createDriverMutation.mutate(formData);
+  };
 
   const filteredDrivers = drivers?.filter(driver =>
     driver.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -66,10 +175,143 @@ export const DriverManagement = () => {
           <h2 className="text-2xl font-bold">Driver Management</h2>
           <p className="text-muted-foreground">Manage delivery drivers and their assignments</p>
         </div>
-        <Button>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Driver
-        </Button>
+        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+          <DialogTrigger asChild>
+            <Button>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Driver
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Create New Driver</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="first_name">First Name</Label>
+                  <Input
+                    id="first_name"
+                    value={formData.first_name}
+                    onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="last_name">Last Name</Label>
+                  <Input
+                    id="last_name"
+                    value={formData.last_name}
+                    onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Phone</Label>
+                  <Input
+                    id="phone"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="cdl_class">CDL Class</Label>
+                  <Select value={formData.cdl_class} onValueChange={(value) => setFormData({ ...formData, cdl_class: value })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select CDL Class" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="A">Class A</SelectItem>
+                      <SelectItem value="B">Class B</SelectItem>
+                      <SelectItem value="C">Class C</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="license_number">License Number</Label>
+                  <Input
+                    id="license_number"
+                    value={formData.license_number}
+                    onChange={(e) => setFormData({ ...formData, license_number: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="license_expiry">License Expiry</Label>
+                  <Input
+                    id="license_expiry"
+                    type="date"
+                    value={formData.license_expiry}
+                    onChange={(e) => setFormData({ ...formData, license_expiry: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="employee_id">Employee ID</Label>
+                  <Input
+                    id="employee_id"
+                    value={formData.employee_id}
+                    onChange={(e) => setFormData({ ...formData, employee_id: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="hourly_rate">Hourly Rate ($)</Label>
+                  <Input
+                    id="hourly_rate"
+                    type="number"
+                    step="0.01"
+                    value={formData.hourly_rate}
+                    onChange={(e) => setFormData({ ...formData, hourly_rate: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="status">Status</Label>
+                  <Select value={formData.status} onValueChange={(value: any) => setFormData({ ...formData, status: value })}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="available">Available</SelectItem>
+                      <SelectItem value="on_delivery">On Delivery</SelectItem>
+                      <SelectItem value="off_duty">Off Duty</SelectItem>
+                      <SelectItem value="inactive">Inactive</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="flex justify-end space-x-2">
+                <Button type="button" variant="outline" onClick={() => {
+                  setIsCreateDialogOpen(false);
+                  resetForm();
+                }}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={createDriverMutation.isPending}>
+                  Create Driver
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* Search */}

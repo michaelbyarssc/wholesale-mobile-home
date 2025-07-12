@@ -1,40 +1,88 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useQuery } from '@tanstack/react-query';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { EstimateGroup } from './estimates/EstimateGroup';
 import { useToast } from '@/hooks/use-toast';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Plus, FileText, Send, Eye, Clock, CheckCircle, XCircle, DollarSign, Settings } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { format } from 'date-fns';
+import { EstimateGroup } from './estimates/EstimateGroup';
+import { Separator } from '@/components/ui/separator';
 
 interface Estimate {
   id: string;
   customer_name: string;
   customer_phone: string;
   customer_email: string;
+  delivery_address: string;
   total_amount: number;
   status: string;
   created_at: string;
   approved_at?: string;
   user_id: string | null;
+  mobile_home_id: string | null;
   mobile_homes: {
     manufacturer: string;
     series: string;
     model: string;
+    price: number;
   };
 }
 
-interface GroupedEstimate {
-  user_id: string | null;
-  customer_name: string;
-  customer_email: string;
-  estimates: Estimate[];
+interface DocuSignTemplate {
+  id: string;
+  name: string;
+  template_id: string;
+  created_at: string;
+  active: boolean;
+}
+
+interface CustomerInfo {
+  name: string;
+  email: string;
+  phone: string;
+  address: string;
+}
+
+interface MobileHome {
+  id: string;
+  manufacturer: string;
+  series: string;
+  model: string;
+  price: number;
+  length_feet: number;
+  width_feet: number;
 }
 
 export const EstimatesTab = () => {
   const { toast } = useToast();
-  
-  const { data: estimates = [], isLoading, refetch } = useQuery({
-    queryKey: ['estimates'],
+  const queryClient = useQueryClient();
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState<CustomerInfo>({
+    name: '',
+    email: '',
+    phone: '',
+    address: ''
+  });
+  const [selectedMobileHome, setSelectedMobileHome] = useState<string>('');
+  const [selectedTemplate, setSelectedTemplate] = useState<string>('');
+  const [estimateNotes, setEstimateNotes] = useState('');
+  const [newTemplate, setNewTemplate] = useState({
+    name: '',
+    template_id: ''
+  });
+
+  // Fetch estimates
+  const { data: estimates = [], isLoading: estimatesLoading, refetch: refetchEstimates } = useQuery({
+    queryKey: ['admin-estimates'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('estimates')
@@ -43,7 +91,8 @@ export const EstimatesTab = () => {
           mobile_homes (
             manufacturer,
             series,
-            model
+            model,
+            price
           )
         `)
         .order('created_at', { ascending: false });
@@ -53,123 +102,190 @@ export const EstimatesTab = () => {
     }
   });
 
-  const updateEstimateStatus = async (id: string, status: string) => {
-    const { error } = await supabase
-      .from('estimates')
-      .update({ status })
-      .eq('id', id);
-
-    if (error) {
-      console.error('Error updating estimate:', error);
-    } else {
-      refetch();
+  // Fetch mobile homes for estimate creation
+  const { data: mobileHomes = [] } = useQuery({
+    queryKey: ['mobile-homes-for-estimates'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('mobile_homes')
+        .select('id, manufacturer, series, model, price, length_feet, width_feet')
+        .eq('available', true)
+        .order('manufacturer', { ascending: true });
+      
+      if (error) throw error;
+      return data as MobileHome[];
     }
-  };
+  });
 
-  const deleteEstimate = async (id: string) => {
-    const { error } = await supabase
-      .from('estimates')
-      .delete()
-      .eq('id', id);
-
-    if (error) {
-      console.error('Error deleting estimate:', error);
-    } else {
-      refetch();
+  // Fetch DocuSign templates
+  const { data: docusignTemplates = [], refetch: refetchTemplates } = useQuery({
+    queryKey: ['docusign-templates'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('docusign_templates')
+        .select('*')
+        .eq('active', true)
+        .order('name', { ascending: true });
+      
+      if (error) throw error;
+      return data as DocuSignTemplate[];
     }
-  };
+  });
 
-  const resendEstimate = async (id: string) => {
-    try {
-      const { error } = await supabase.functions.invoke('send-estimate-notifications', {
-        body: { estimateId: id }
-      });
+  // Create estimate mutation
+  const createEstimateMutation = useMutation({
+    mutationFn: async () => {
+      const selectedHome = mobileHomes.find(h => h.id === selectedMobileHome);
+      if (!selectedHome) throw new Error('Mobile home not found');
 
-      if (error) {
-        throw error;
-      }
+      const { data, error } = await supabase
+        .from('estimates')
+        .insert({
+          customer_name: selectedCustomer.name,
+          customer_email: selectedCustomer.email,
+          customer_phone: selectedCustomer.phone,
+          delivery_address: selectedCustomer.address,
+          mobile_home_id: selectedMobileHome,
+          total_amount: selectedHome.price,
+          status: 'draft',
+          notes: estimateNotes
+        })
+        .select()
+        .single();
 
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-estimates'] });
+      setIsCreateDialogOpen(false);
+      resetForm();
       toast({
-        title: "Estimate Resent",
-        description: "The estimate has been sent to the customer and admins again.",
+        title: "Estimate Created",
+        description: "Estimate has been created successfully.",
       });
-    } catch (error) {
-      console.error('Error resending estimate:', error);
+    },
+    onError: (error) => {
       toast({
         title: "Error",
-        description: "Failed to resend the estimate. Please try again.",
+        description: "Failed to create estimate. Please try again.",
         variant: "destructive",
       });
     }
+  });
+
+  // Send estimate with DocuSign mutation
+  const sendEstimateMutation = useMutation({
+    mutationFn: async ({ estimateId, templateId }: { estimateId: string; templateId: string }) => {
+      const { data, error } = await supabase.functions.invoke('docusign-send-estimate', {
+        body: { 
+          estimateId,
+          templateId,
+          documentType: 'estimate'
+        }
+      });
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-estimates'] });
+      toast({
+        title: "Estimate Sent",
+        description: "Estimate has been sent to customer via DocuSign.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to send estimate. Please try again.",
+        variant: "destructive",
+      });
+    }
+  });
+
+  // Add DocuSign template mutation
+  const addTemplateMutation = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase
+        .from('docusign_templates')
+        .insert({
+          name: newTemplate.name,
+          template_id: newTemplate.template_id,
+          active: true
+        });
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['docusign-templates'] });
+      setIsTemplateDialogOpen(false);
+      setNewTemplate({ name: '', template_id: '' });
+      toast({
+        title: "Template Added",
+        description: "DocuSign template has been added successfully.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to add template. Please try again.",
+        variant: "destructive",
+      });
+    }
+  });
+
+  const resetForm = () => {
+    setSelectedCustomer({ name: '', email: '', phone: '', address: '' });
+    setSelectedMobileHome('');
+    setSelectedTemplate('');
+    setEstimateNotes('');
   };
 
-  // Group estimates by user
-  const groupedEstimates = React.useMemo(() => {
-    const groups = new Map<string, GroupedEstimate>();
-    
-    estimates.forEach((estimate) => {
-      const key = estimate.user_id || 'anonymous';
-      
-      if (!groups.has(key)) {
-        groups.set(key, {
-          user_id: estimate.user_id,
-          customer_name: estimate.customer_name,
-          customer_email: estimate.customer_email,
-          estimates: []
-        });
-      }
-      
-      groups.get(key)!.estimates.push(estimate);
-    });
-    
-    return Array.from(groups.values()).sort((a, b) => {
-      // Sort by most recent estimate
-      const aLatest = Math.max(...a.estimates.map(e => new Date(e.created_at).getTime()));
-      const bLatest = Math.max(...b.estimates.map(e => new Date(e.created_at).getTime()));
-      return bLatest - aLatest;
-    });
-  }, [estimates]);
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'draft':
+        return <Clock className="h-4 w-4" />;
+      case 'sent':
+        return <Send className="h-4 w-4" />;
+      case 'approved':
+        return <CheckCircle className="h-4 w-4" />;
+      case 'rejected':
+        return <XCircle className="h-4 w-4" />;
+      default:
+        return <FileText className="h-4 w-4" />;
+    }
+  };
 
-  // Filter open estimates (pending and contacted)
-  const openEstimates = React.useMemo(() => {
-    return estimates.filter(estimate => 
-      estimate.status === 'pending' || estimate.status === 'contacted'
-    );
-  }, [estimates]);
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'draft':
+        return 'bg-gray-100 text-gray-800';
+      case 'sent':
+        return 'bg-blue-100 text-blue-800';
+      case 'approved':
+        return 'bg-green-100 text-green-800';
+      case 'rejected':
+        return 'bg-red-100 text-red-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
 
-  const groupedOpenEstimates = React.useMemo(() => {
-    const groups = new Map<string, GroupedEstimate>();
-    
-    openEstimates.forEach((estimate) => {
-      const key = estimate.user_id || 'anonymous';
-      
-      if (!groups.has(key)) {
-        groups.set(key, {
-          user_id: estimate.user_id,
-          customer_name: estimate.customer_name,
-          customer_email: estimate.customer_email,
-          estimates: []
-        });
-      }
-      
-      groups.get(key)!.estimates.push(estimate);
-    });
-    
-    return Array.from(groups.values()).sort((a, b) => {
-      // Sort by most recent estimate
-      const aLatest = Math.max(...a.estimates.map(e => new Date(e.created_at).getTime()));
-      const bLatest = Math.max(...b.estimates.map(e => new Date(e.created_at).getTime()));
-      return bLatest - aLatest;
-    });
-  }, [openEstimates]);
+  // Group estimates by status
+  const draftEstimates = estimates.filter(est => est.status === 'draft');
+  const sentEstimates = estimates.filter(est => est.status === 'sent');
+  const approvedEstimates = estimates.filter(est => est.status === 'approved');
+  const rejectedEstimates = estimates.filter(est => est.status === 'rejected');
 
-  if (isLoading) {
+  if (estimatesLoading) {
     return (
       <Card>
-        <CardContent className="p-4 md:p-6">
+        <CardContent className="p-6">
           <div className="flex items-center justify-center">
-            <div className="animate-spin rounded-full h-6 w-6 md:h-8 md:w-8 border-b-2 border-blue-600"></div>
-            <span className="ml-2 text-sm md:text-base">Loading estimates...</span>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            <span className="ml-2">Loading estimates...</span>
           </div>
         </CardContent>
       </Card>
@@ -177,58 +293,385 @@ export const EstimatesTab = () => {
   }
 
   return (
-    <Card>
-      <CardHeader className="p-4 md:p-6">
-        <CardTitle className="text-lg md:text-xl">Customer Estimates</CardTitle>
-      </CardHeader>
-      <CardContent className="p-4 md:p-6">
-        <Tabs defaultValue="all" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="all">All Estimates ({estimates.length})</TabsTrigger>
-            <TabsTrigger value="open">Open Estimates ({openEstimates.length})</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="all">
-            <div className="space-y-4">
-              {groupedEstimates.map((group) => (
-                <EstimateGroup
-                  key={group.user_id || 'anonymous'}
-                  group={group}
-                  onStatusUpdate={updateEstimateStatus}
-                  onDelete={deleteEstimate}
-                  onResend={resendEstimate}
-                />
-              ))}
-              
-              {groupedEstimates.length === 0 && (
-                <div className="text-center py-8 text-gray-500">
-                  No estimates found.
-                </div>
-              )}
+    <div className="space-y-6">
+      {/* Header with Actions */}
+      <Card>
+        <CardHeader>
+          <div className="flex justify-between items-center">
+            <div>
+              <CardTitle className="text-2xl">Estimates Management</CardTitle>
+              <p className="text-muted-foreground">Create, manage and send estimates with DocuSign integration</p>
             </div>
-          </TabsContent>
-          
-          <TabsContent value="open">
-            <div className="space-y-4">
-              {groupedOpenEstimates.map((group) => (
-                <EstimateGroup
-                  key={group.user_id || 'anonymous'}
-                  group={group}
-                  onStatusUpdate={updateEstimateStatus}
-                  onDelete={deleteEstimate}
-                  onResend={resendEstimate}
-                />
-              ))}
+            <div className="flex gap-2">
+              <Dialog open={isTemplateDialogOpen} onOpenChange={setIsTemplateDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <Settings className="h-4 w-4 mr-2" />
+                    Manage Templates
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Manage DocuSign Templates</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="template-name">Template Name</Label>
+                        <Input
+                          id="template-name"
+                          value={newTemplate.name}
+                          onChange={(e) => setNewTemplate(prev => ({ ...prev, name: e.target.value }))}
+                          placeholder="e.g., Standard Estimate"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="template-id">DocuSign Template ID</Label>
+                        <Input
+                          id="template-id"
+                          value={newTemplate.template_id}
+                          onChange={(e) => setNewTemplate(prev => ({ ...prev, template_id: e.target.value }))}
+                          placeholder="Template ID from DocuSign"
+                        />
+                      </div>
+                    </div>
+                    <Button 
+                      onClick={() => addTemplateMutation.mutate()} 
+                      disabled={!newTemplate.name || !newTemplate.template_id || addTemplateMutation.isPending}
+                      className="w-full"
+                    >
+                      Add Template
+                    </Button>
+                    <Separator />
+                    <div className="space-y-2">
+                      <h4 className="font-medium">Existing Templates</h4>
+                      {docusignTemplates.map((template) => (
+                        <div key={template.id} className="flex justify-between items-center p-2 border rounded">
+                          <span>{template.name}</span>
+                          <Badge variant="outline">{template.template_id}</Badge>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
               
-              {groupedOpenEstimates.length === 0 && (
-                <div className="text-center py-8 text-gray-500">
-                  No open estimates found.
-                </div>
-              )}
+              <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Estimate
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl">
+                  <DialogHeader>
+                    <DialogTitle>Create New Estimate</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-6">
+                    {/* Customer Information */}
+                    <div className="space-y-4">
+                      <h3 className="font-medium">Customer Information</h3>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="customer-name">Customer Name</Label>
+                          <Input
+                            id="customer-name"
+                            value={selectedCustomer.name}
+                            onChange={(e) => setSelectedCustomer(prev => ({ ...prev, name: e.target.value }))}
+                            placeholder="Enter customer name"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="customer-email">Email</Label>
+                          <Input
+                            id="customer-email"
+                            type="email"
+                            value={selectedCustomer.email}
+                            onChange={(e) => setSelectedCustomer(prev => ({ ...prev, email: e.target.value }))}
+                            placeholder="customer@email.com"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="customer-phone">Phone</Label>
+                          <Input
+                            id="customer-phone"
+                            value={selectedCustomer.phone}
+                            onChange={(e) => setSelectedCustomer(prev => ({ ...prev, phone: e.target.value }))}
+                            placeholder="(555) 123-4567"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="delivery-address">Delivery Address</Label>
+                          <Input
+                            id="delivery-address"
+                            value={selectedCustomer.address}
+                            onChange={(e) => setSelectedCustomer(prev => ({ ...prev, address: e.target.value }))}
+                            placeholder="Full delivery address"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Mobile Home Selection */}
+                    <div className="space-y-4">
+                      <h3 className="font-medium">Mobile Home Selection</h3>
+                      <Select value={selectedMobileHome} onValueChange={setSelectedMobileHome}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a mobile home" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {mobileHomes.map((home) => (
+                            <SelectItem key={home.id} value={home.id}>
+                              {home.manufacturer} {home.series} {home.model} - ${home.price.toLocaleString()} 
+                              ({home.length_feet}' x {home.width_feet}')
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Notes */}
+                    <div className="space-y-2">
+                      <Label htmlFor="estimate-notes">Notes (Optional)</Label>
+                      <Textarea
+                        id="estimate-notes"
+                        value={estimateNotes}
+                        onChange={(e) => setEstimateNotes(e.target.value)}
+                        placeholder="Additional notes for this estimate..."
+                        rows={3}
+                      />
+                    </div>
+
+                    <div className="flex justify-end gap-2">
+                      <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+                        Cancel
+                      </Button>
+                      <Button 
+                        onClick={() => createEstimateMutation.mutate()}
+                        disabled={!selectedCustomer.name || !selectedCustomer.email || !selectedMobileHome || createEstimateMutation.isPending}
+                      >
+                        Create Estimate
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
             </div>
-          </TabsContent>
-        </Tabs>
-      </CardContent>
-    </Card>
+          </div>
+        </CardHeader>
+      </Card>
+
+      {/* Estimates Overview */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Draft</p>
+                <p className="text-2xl font-bold">{draftEstimates.length}</p>
+              </div>
+              <Clock className="h-8 w-8 text-gray-500" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Sent</p>
+                <p className="text-2xl font-bold">{sentEstimates.length}</p>
+              </div>
+              <Send className="h-8 w-8 text-blue-500" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Approved</p>
+                <p className="text-2xl font-bold">{approvedEstimates.length}</p>
+              </div>
+              <CheckCircle className="h-8 w-8 text-green-500" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Total Value</p>
+                <p className="text-2xl font-bold">
+                  ${estimates.reduce((sum, est) => sum + est.total_amount, 0).toLocaleString()}
+                </p>
+              </div>
+              <DollarSign className="h-8 w-8 text-green-600" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Estimates List */}
+      <Card>
+        <CardHeader>
+          <CardTitle>All Estimates</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Tabs defaultValue="all" className="space-y-4">
+            <TabsList>
+              <TabsTrigger value="all">All ({estimates.length})</TabsTrigger>
+              <TabsTrigger value="draft">Draft ({draftEstimates.length})</TabsTrigger>
+              <TabsTrigger value="sent">Sent ({sentEstimates.length})</TabsTrigger>
+              <TabsTrigger value="approved">Approved ({approvedEstimates.length})</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="all" className="space-y-4">
+              {estimates.map((estimate) => (
+                <div key={estimate.id} className="border rounded-lg p-4">
+                  <div className="flex justify-between items-start">
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-medium">{estimate.customer_name}</h3>
+                        <Badge className={getStatusColor(estimate.status)}>
+                          {getStatusIcon(estimate.status)}
+                          <span className="ml-1 capitalize">{estimate.status}</span>
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground">{estimate.customer_email}</p>
+                      <p className="text-sm">
+                        {estimate.mobile_homes?.manufacturer} {estimate.mobile_homes?.series} {estimate.mobile_homes?.model}
+                      </p>
+                      <p className="font-medium">${estimate.total_amount.toLocaleString()}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Created: {format(new Date(estimate.created_at), 'MMM dd, yyyy')}
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      {estimate.status === 'draft' && (
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button size="sm">
+                              <Send className="h-4 w-4 mr-1" />
+                              Send
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent>
+                            <DialogHeader>
+                              <DialogTitle>Send Estimate via DocuSign</DialogTitle>
+                            </DialogHeader>
+                            <div className="space-y-4">
+                              <div>
+                                <Label>Select DocuSign Template</Label>
+                                <Select value={selectedTemplate} onValueChange={setSelectedTemplate}>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Choose a template" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {docusignTemplates.map((template) => (
+                                      <SelectItem key={template.id} value={template.template_id}>
+                                        {template.name}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div className="flex justify-end gap-2">
+                                <Button variant="outline">Cancel</Button>
+                                <Button 
+                                  onClick={() => sendEstimateMutation.mutate({ 
+                                    estimateId: estimate.id, 
+                                    templateId: selectedTemplate 
+                                  })}
+                                  disabled={!selectedTemplate || sendEstimateMutation.isPending}
+                                >
+                                  Send Estimate
+                                </Button>
+                              </div>
+                            </div>
+                          </DialogContent>
+                        </Dialog>
+                      )}
+                      <Button variant="outline" size="sm">
+                        <Eye className="h-4 w-4 mr-1" />
+                        View
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </TabsContent>
+
+            <TabsContent value="draft" className="space-y-4">
+              {draftEstimates.map((estimate) => (
+                <div key={estimate.id} className="border rounded-lg p-4">
+                  {/* Same content as above but filtered */}
+                  <div className="flex justify-between items-start">
+                    <div className="space-y-2">
+                      <h3 className="font-medium">{estimate.customer_name}</h3>
+                      <p className="text-sm text-muted-foreground">{estimate.customer_email}</p>
+                      <p className="text-sm">
+                        {estimate.mobile_homes?.manufacturer} {estimate.mobile_homes?.series} {estimate.mobile_homes?.model}
+                      </p>
+                      <p className="font-medium">${estimate.total_amount.toLocaleString()}</p>
+                    </div>
+                    <Button size="sm">
+                      <Send className="h-4 w-4 mr-1" />
+                      Send
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </TabsContent>
+
+            <TabsContent value="sent" className="space-y-4">
+              {sentEstimates.map((estimate) => (
+                <div key={estimate.id} className="border rounded-lg p-4">
+                  <div className="flex justify-between items-start">
+                    <div className="space-y-2">
+                      <h3 className="font-medium">{estimate.customer_name}</h3>
+                      <p className="text-sm text-muted-foreground">{estimate.customer_email}</p>
+                      <p className="text-sm">
+                        {estimate.mobile_homes?.manufacturer} {estimate.mobile_homes?.series} {estimate.mobile_homes?.model}
+                      </p>
+                      <p className="font-medium">${estimate.total_amount.toLocaleString()}</p>
+                    </div>
+                    <Badge className="bg-blue-100 text-blue-800">
+                      <Send className="h-4 w-4 mr-1" />
+                      Sent
+                    </Badge>
+                  </div>
+                </div>
+              ))}
+            </TabsContent>
+
+            <TabsContent value="approved" className="space-y-4">
+              {approvedEstimates.map((estimate) => (
+                <div key={estimate.id} className="border rounded-lg p-4">
+                  <div className="flex justify-between items-start">
+                    <div className="space-y-2">
+                      <h3 className="font-medium">{estimate.customer_name}</h3>
+                      <p className="text-sm text-muted-foreground">{estimate.customer_email}</p>
+                      <p className="text-sm">
+                        {estimate.mobile_homes?.manufacturer} {estimate.mobile_homes?.series} {estimate.mobile_homes?.model}
+                      </p>
+                      <p className="font-medium">${estimate.total_amount.toLocaleString()}</p>
+                      {estimate.approved_at && (
+                        <p className="text-xs text-muted-foreground">
+                          Approved: {format(new Date(estimate.approved_at), 'MMM dd, yyyy')}
+                        </p>
+                      )}
+                    </div>
+                    <Badge className="bg-green-100 text-green-800">
+                      <CheckCircle className="h-4 w-4 mr-1" />
+                      Approved
+                    </Badge>
+                  </div>
+                </div>
+              ))}
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
+    </div>
   );
 };

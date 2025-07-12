@@ -22,6 +22,7 @@ import { NotificationCenter } from '@/components/admin/NotificationCenter';
 import { Menu, X } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { HomeOptionsTab } from '@/components/admin/HomeOptionsTab';
+import { EstimatesTab } from '@/components/admin/EstimatesTab';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 const Admin = () => {
@@ -127,6 +128,7 @@ const Admin = () => {
       'mobile-homes': 'Homes',
       'services': 'Services',
       'home-options': 'Options',
+      'estimates': 'Estimates',
       'users': 'Users',
       'reviews': 'Reviews',
       'analytics': 'Analytics',
@@ -168,6 +170,13 @@ const Admin = () => {
           </Button>
         </>
       ) : null}
+      <Button
+        variant={activeTab === 'estimates' ? 'default' : 'ghost'}
+        className={`${mobile ? 'justify-start w-full h-12 text-base' : ''} text-xs sm:text-sm`}
+        onClick={() => handleTabChange('estimates')}
+      >
+        Estimates
+      </Button>
       <Button
         variant={activeTab === 'users' ? 'default' : 'ghost'}
         className={`${mobile ? 'justify-start w-full h-12 text-base' : ''} text-xs sm:text-sm`}
@@ -305,10 +314,11 @@ const Admin = () => {
         <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-3 sm:space-y-4 md:space-y-6">
           {/* Desktop Tab List - Hidden on mobile since we use sheet menu */}
           {!isMobile && isSuperAdmin && (
-            <TabsList className="grid w-full grid-cols-11 h-auto p-1">
+            <TabsList className="grid w-full grid-cols-12 h-auto p-1">
               <TabsTrigger value="mobile-homes" className="text-xs lg:text-sm">Homes</TabsTrigger>
               <TabsTrigger value="services" className="text-xs lg:text-sm">Services</TabsTrigger>
               <TabsTrigger value="home-options" className="text-xs lg:text-sm">Options</TabsTrigger>
+              <TabsTrigger value="estimates" className="text-xs lg:text-sm">Estimates</TabsTrigger>
               <TabsTrigger value="users" className="text-xs lg:text-sm">Users</TabsTrigger>
               <TabsTrigger value="calendar" className="text-xs lg:text-sm">Calendar</TabsTrigger>
               <TabsTrigger value="invoices" className="text-xs lg:text-sm">Invoices</TabsTrigger>
@@ -321,7 +331,8 @@ const Admin = () => {
             </TabsList>
           )}
           {!isMobile && !isSuperAdmin && (
-            <TabsList className="grid w-full grid-cols-4 h-auto p-1">
+            <TabsList className="grid w-full grid-cols-5 h-auto p-1">
+              <TabsTrigger value="estimates" className="text-sm">Estimates</TabsTrigger>
               <TabsTrigger value="users" className="text-sm">Users</TabsTrigger>
               <TabsTrigger value="calendar" className="text-sm">Calendar</TabsTrigger>
               <TabsTrigger value="invoices" className="text-sm">Invoices</TabsTrigger>
@@ -345,6 +356,10 @@ const Admin = () => {
               </TabsContent>
             </>
           )}
+
+          <TabsContent value="estimates" className="mt-2 sm:mt-4">
+            <EstimatesTab />
+          </TabsContent>
 
           <TabsContent value="users" className="mt-2 sm:mt-4">
             <UserManagementTab />

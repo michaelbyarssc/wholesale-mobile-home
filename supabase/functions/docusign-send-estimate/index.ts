@@ -308,6 +308,7 @@ serve(async (req) => {
     const { estimateId, templateId, templateName, documentType = 'estimate' }: DocuSignEstimateRequest = await req.json();
 
     // Fetch estimate details
+    console.log('Fetching estimate with ID:', estimateId);
     const { data: estimate, error: estimateError } = await supabaseClient
       .from('estimates')
       .select(`
@@ -317,6 +318,8 @@ serve(async (req) => {
       .eq('id', estimateId)
       .maybeSingle();
 
+    console.log('Estimate query result:', { estimate, estimateError });
+
     if (estimateError) {
       console.error('Error fetching estimate:', estimateError);
       throw new Error(`Database error: ${estimateError.message}`);
@@ -324,6 +327,15 @@ serve(async (req) => {
 
     if (!estimate) {
       console.error('Estimate not found for ID:', estimateId);
+      
+      // Try without the join to see if it's a join issue
+      const { data: simpleEstimate, error: simpleError } = await supabaseClient
+        .from('estimates')
+        .select('*')
+        .eq('id', estimateId)
+        .maybeSingle();
+      
+      console.log('Simple estimate query result:', { simpleEstimate, simpleError });
       throw new Error('Estimate not found');
     }
 

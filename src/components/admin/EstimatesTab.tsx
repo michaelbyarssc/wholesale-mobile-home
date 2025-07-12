@@ -85,45 +85,28 @@ export const EstimatesTab = () => {
     template_id: ''
   });
 
-  // Debug mobile homes loading issue
+  // Fetch mobile homes data from database
   const [mobileHomes, setMobileHomes] = useState<any[]>([]);
   const [mobileHomesLoading, setMobileHomesLoading] = useState(true);
   
   React.useEffect(() => {
-    console.log('Fetching mobile homes...');
-    
     const fetchMobileHomes = async () => {
       try {
-        // Use direct approach without complex typing
-        const response = await fetch('/api/mobile-homes'); // This won't work but shows the concept
-        console.log('Direct fetch would be here');
+        const { data, error } = await supabase
+          .from('mobile_homes')
+          .select('id, manufacturer, series, model, price, length_feet, width_feet')
+          .order('manufacturer', { ascending: true });
         
-        // For now, add some test data to see if the component works
-        const testData = [
-          { 
-            id: '1', 
-            manufacturer: 'Test Manufacturer', 
-            series: 'Test Series', 
-            model: 'Test Model', 
-            price: 50000, 
-            length_feet: 60, 
-            width_feet: 14 
-          },
-          { 
-            id: '2', 
-            manufacturer: 'Another Manufacturer', 
-            series: 'Premium Series', 
-            model: 'Deluxe Model', 
-            price: 75000, 
-            length_feet: 70, 
-            width_feet: 16 
-          }
-        ];
-        
-        console.log('Setting test mobile homes data:', testData);
-        setMobileHomes(testData);
+        if (error) {
+          console.error('Error fetching mobile homes:', error);
+          setMobileHomes([]);
+        } else {
+          console.log('Fetched mobile homes:', data);
+          setMobileHomes(data || []);
+        }
       } catch (error) {
         console.error('Error in fetchMobileHomes:', error);
+        setMobileHomes([]);
       } finally {
         setMobileHomesLoading(false);
       }

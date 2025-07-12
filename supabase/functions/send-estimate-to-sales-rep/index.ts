@@ -453,6 +453,175 @@ serve(async (req) => {
 
     console.log('🔍 send-estimate-to-sales-rep: Estimate created successfully:', estimate.id)
 
+    // Create detailed line items for the estimate
+    const lineItems = []
+    let displayOrder = 1
+
+    // Process each cart item to create line items
+    cart_items.forEach((item: any) => {
+      const home = item.mobileHome
+      const displayHomePrice = calculateMobileHomePrice(home)
+
+      // Add mobile home as line item
+      lineItems.push({
+        estimate_id: estimate.id,
+        item_type: 'mobile_home',
+        item_id: home.id,
+        name: home.display_name || `${home.manufacturer} ${home.series} ${home.model}`,
+        description: `${home.width_feet}'x${home.length_feet}' mobile home, ${home.bedrooms} bed/${home.bathrooms} bath, ${home.square_footage} sq ft`,
+        quantity: 1,
+        unit_price: displayHomePrice,
+        total_price: displayHomePrice,
+        category: 'Mobile Home',
+        display_order: displayOrder++,
+        metadata: {
+          internal_price: home.price,
+          width: home.width_feet,
+          length: home.length_feet,
+          bedrooms: home.bedrooms,
+          bathrooms: home.bathrooms,
+          square_footage: home.square_footage,
+          year: home.year,
+          manufacturer: home.manufacturer,
+          series: home.series,
+          model: home.model
+        }
+      })
+
+      // Add selected services as line items
+      if (item.selectedServices && item.selectedServices.length > 0) {
+        item.selectedServices.forEach((serviceId: string) => {
+          const service = servicesData.find(s => s.id === serviceId)
+          if (service) {
+            const homeWidth = home.width_feet || 0
+            const isDoubleWide = homeWidth >= 16
+            let baseServicePrice = service.price || 0
+            
+            if (isDoubleWide && service.double_wide_price) {
+              baseServicePrice = service.double_wide_price
+            } else if (!isDoubleWide && service.single_wide_price) {
+              baseServicePrice = service.single_wide_price
+            }
+            
+            const finalServicePrice = Math.floor(baseServicePrice * (1 + customerMarkup / 100))
+            
+            lineItems.push({
+              estimate_id: estimate.id,
+              item_type: 'service',
+              item_id: service.id,
+              name: service.name,
+              description: service.description || '',
+              quantity: 1,
+              unit_price: finalServicePrice,
+              total_price: finalServicePrice,
+              category: 'Services',
+              display_order: displayOrder++,
+              metadata: {
+                internal_price: baseServicePrice,
+                service_type: service.service_type,
+                delivery_required: service.delivery_required,
+                customer_markup: customerMarkup,
+                is_double_wide: isDoubleWide
+              }
+            })
+          }
+        })
+      }
+
+      // Add selected home options as line items
+      if (item.selectedHomeOptions && item.selectedHomeOptions.length > 0) {
+        item.selectedHomeOptions.forEach((selectedOption: any) => {
+          const option = selectedOption.option
+          const quantity = selectedOption.quantity || 1
+          
+          let baseOptionPrice = 0
+          if (option.pricing_type === 'per_sqft' && home.square_footage) {
+            baseOptionPrice = (option.price_per_sqft || 0) * home.square_footage
+          } else {
+            baseOptionPrice = option.cost_price || 0
+          }
+          
+          const finalOptionPrice = Math.floor(baseOptionPrice * (1 + customerMarkup / 100))
+          const totalOptionPrice = finalOptionPrice * quantity
+          
+          lineItems.push({
+            estimate_id: estimate.id,
+            item_type: 'option',
+            item_id: option.id,
+            name: option.name,
+            description: option.description || '',
+            quantity: quantity,
+            unit_price: finalOptionPrice,
+            total_price: totalOptionPrice,
+            category: option.category || 'Options',
+            display_order: displayOrder++,
+            metadata: {
+              internal_price: option.cost_price,
+              pricing_type: option.pricing_type,
+              price_per_sqft: option.price_per_sqft,
+              option_type: option.option_type,
+              installation_required: option.installation_required,
+              customer_markup: customerMarkup
+            }
+          })
+        })
+      }
+    })
+
+    // Add shipping as line item if applicable
+    if (shippingCost > 0) {
+      lineItems.push({
+        estimate_id: estimate.id,
+        item_type: 'shipping',
+        item_id: null,
+        name: 'Shipping & Delivery',
+        description: deliveryAddress ? `Delivery to ${deliveryAddress.city}, ${deliveryAddress.state}` : 'Shipping & Delivery',
+        quantity: 1,
+        unit_price: shippingCost,
+        total_price: shippingCost,
+        category: 'Shipping',
+        display_order: displayOrder++,
+        metadata: {
+          delivery_address: deliveryAddress
+        }
+      })
+    }
+
+    // Add sales tax as line item if applicable
+    if (salesTax > 0) {
+      lineItems.push({
+        estimate_id: estimate.id,
+        item_type: 'tax',
+        item_id: null,
+        name: `${deliveryAddress?.state?.toUpperCase()} Sales Tax`,
+        description: `Sales tax for ${deliveryAddress?.state?.toUpperCase()}`,
+        quantity: 1,
+        unit_price: salesTax,
+        total_price: salesTax,
+        category: 'Tax',
+        display_order: displayOrder++,
+        metadata: {
+          tax_rate: deliveryAddress?.state,
+          subtotal: subtotal,
+          shipping: shippingCost
+        }
+      })
+    }
+
+    // Insert all line items
+    if (lineItems.length > 0) {
+      const { error: lineItemsError } = await supabase
+        .from('estimate_line_items')
+        .insert(lineItems)
+
+      if (lineItemsError) {
+        console.error('🔍 send-estimate-to-sales-rep: Error creating estimate line items:', lineItemsError)
+        // Continue execution - line items are supplementary but log the error
+      } else {
+        console.log('🔍 send-estimate-to-sales-rep: Created', lineItems.length, 'line items for estimate')
+      }
+    }
+
     // Send notifications to the account owner (assigned admin)
     if (assignedAdminId) {
       try {

@@ -2048,6 +2048,68 @@ export type Database = {
           },
         ]
       }
+      estimate_line_items: {
+        Row: {
+          category: string | null
+          created_at: string
+          description: string | null
+          display_order: number | null
+          estimate_id: string
+          id: string
+          item_id: string | null
+          item_type: string
+          metadata: Json | null
+          name: string
+          quantity: number
+          sku: string | null
+          total_price: number
+          unit_price: number
+          updated_at: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          display_order?: number | null
+          estimate_id: string
+          id?: string
+          item_id?: string | null
+          item_type: string
+          metadata?: Json | null
+          name: string
+          quantity?: number
+          sku?: string | null
+          total_price?: number
+          unit_price?: number
+          updated_at?: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          display_order?: number | null
+          estimate_id?: string
+          id?: string
+          item_id?: string | null
+          item_type?: string
+          metadata?: Json | null
+          name?: string
+          quantity?: number
+          sku?: string | null
+          total_price?: number
+          unit_price?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "estimate_line_items_estimate_id_fkey"
+            columns: ["estimate_id"]
+            isOneToOne: false
+            referencedRelation: "estimates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       estimates: {
         Row: {
           additional_requirements: string | null

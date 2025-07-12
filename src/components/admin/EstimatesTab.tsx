@@ -14,6 +14,7 @@ import { Plus, FileText, Send, Eye, Clock, CheckCircle, XCircle, DollarSign, Set
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { Separator } from '@/components/ui/separator';
+import { EstimateLineItems } from './EstimateLineItems';
 
 interface Estimate {
   id: string;
@@ -664,7 +665,7 @@ export const EstimatesTab = () => {
                           <DialogHeader>
                             <DialogTitle>Estimate Details</DialogTitle>
                           </DialogHeader>
-                          <div className="space-y-4">
+                          <div className="space-y-6">
                             <div className="grid grid-cols-2 gap-4">
                               <div>
                                 <Label>Customer</Label>
@@ -713,6 +714,8 @@ export const EstimatesTab = () => {
                                 </div>
                               )}
                             </div>
+
+                            <EstimateLineItems estimateId={estimate.id} />
                           </div>
                         </DialogContent>
                       </Dialog>

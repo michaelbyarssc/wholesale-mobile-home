@@ -115,10 +115,42 @@ export const EstimatesTab = () => {
     fetchMobileHomes();
   }, []);
 
-  // Temporarily remove complex queries to avoid recursion
-  const estimates: any[] = [];
-  const estimatesLoading = false;
-  const docusignTemplates: any[] = [];
+  // Fetch estimates from database
+  const { data: estimates = [], isLoading: estimatesLoading } = useQuery({
+    queryKey: ['admin-estimates'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('estimates')
+        .select(`
+          *,
+          mobile_homes (
+            manufacturer,
+            series,
+            model,
+            price
+          )
+        `)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      return data || [];
+    }
+  });
+
+  // Fetch DocuSign templates from database
+  const { data: docusignTemplates = [] } = useQuery({
+    queryKey: ['docusign-templates'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('docusign_templates')
+        .select('*')
+        .eq('active', true)
+        .order('name', { ascending: true });
+      
+      if (error) throw error;
+      return data || [];
+    }
+  });
 
   // Create estimate mutation
   const createEstimateMutation = useMutation({

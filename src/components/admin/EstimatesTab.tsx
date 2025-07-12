@@ -331,7 +331,8 @@ export const EstimatesTab = () => {
           customer_phone: estimate.customer_phone,
           delivery_address: estimate.delivery_address,
           total_amount: estimate.total_amount,
-          mobile_home_id: estimate.mobile_home_id
+          mobile_home_id: estimate.mobile_home_id,
+          status: estimate.status
         })
         .eq('id', estimate.id);
 
@@ -1068,97 +1069,119 @@ export const EstimatesTab = () => {
 
       {/* Edit Estimate Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Estimate</DialogTitle>
           </DialogHeader>
           {editingEstimate && (
             <div className="space-y-6">
-              {/* Customer Information */}
-              <div className="space-y-4">
-                <h3 className="font-medium">Customer Information</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="edit-customer-name">Customer Name</Label>
-                    <Input
-                      id="edit-customer-name"
-                      value={editingEstimate.customer_name}
-                      onChange={(e) => setEditingEstimate(prev => prev ? { ...prev, customer_name: e.target.value } : null)}
-                      placeholder="Enter customer name"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="edit-customer-email">Email</Label>
-                    <Input
-                      id="edit-customer-email"
-                      type="email"
-                      value={editingEstimate.customer_email}
-                      onChange={(e) => setEditingEstimate(prev => prev ? { ...prev, customer_email: e.target.value } : null)}
-                      placeholder="customer@email.com"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="edit-customer-phone">Phone</Label>
-                    <Input
-                      id="edit-customer-phone"
-                      value={editingEstimate.customer_phone}
-                      onChange={(e) => setEditingEstimate(prev => prev ? { ...prev, customer_phone: e.target.value } : null)}
-                      placeholder="(555) 123-4567"
-                    />
-                  </div>
-                  <div className="col-span-2">
-                    <Label htmlFor="edit-delivery-address">Delivery Address</Label>
-                    <Input
-                      id="edit-delivery-address"
-                      value={editingEstimate.delivery_address}
-                      onChange={(e) => setEditingEstimate(prev => prev ? { ...prev, delivery_address: e.target.value } : null)}
-                      placeholder="Street address"
-                    />
-                  </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="edit-customer-name">Customer Name</Label>
+                  <Input
+                    id="edit-customer-name"
+                    value={editingEstimate.customer_name}
+                    onChange={(e) => setEditingEstimate(prev => prev ? { ...prev, customer_name: e.target.value } : null)}
+                    placeholder="Enter customer name"
+                  />
                 </div>
+                <div>
+                  <Label>Status</Label>
+                  <Select 
+                    value={editingEstimate.status} 
+                    onValueChange={(value) => setEditingEstimate(prev => prev ? { ...prev, status: value } : null)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="draft">Draft</SelectItem>
+                      <SelectItem value="sent">Sent</SelectItem>
+                      <SelectItem value="approved">Approved</SelectItem>
+                      <SelectItem value="rejected">Rejected</SelectItem>
+                      <SelectItem value="pending_review">Pending Review</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="edit-customer-email">Email</Label>
+                  <Input
+                    id="edit-customer-email"
+                    type="email"
+                    value={editingEstimate.customer_email}
+                    onChange={(e) => setEditingEstimate(prev => prev ? { ...prev, customer_email: e.target.value } : null)}
+                    placeholder="customer@email.com"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit-customer-phone">Phone</Label>
+                  <Input
+                    id="edit-customer-phone"
+                    value={editingEstimate.customer_phone}
+                    onChange={(e) => setEditingEstimate(prev => prev ? { ...prev, customer_phone: e.target.value } : null)}
+                    placeholder="(555) 123-4567"
+                  />
+                </div>
+                <div className="col-span-2">
+                  <Label htmlFor="edit-delivery-address">Delivery Address</Label>
+                  <Input
+                    id="edit-delivery-address"
+                    value={editingEstimate.delivery_address}
+                    onChange={(e) => setEditingEstimate(prev => prev ? { ...prev, delivery_address: e.target.value } : null)}
+                    placeholder="Complete delivery address"
+                  />
+                </div>
+                <div className="col-span-2">
+                  <Label>Mobile Home</Label>
+                  <Select 
+                    value={editingEstimate.mobile_home_id || ''} 
+                    onValueChange={(value) => {
+                      const selectedHome = mobileHomes.find(h => h.id === value);
+                      setEditingEstimate(prev => prev ? { 
+                        ...prev, 
+                        mobile_home_id: value,
+                        total_amount: selectedHome?.price || prev.total_amount
+                      } : null);
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a mobile home" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {mobileHomes.map((home) => (
+                        <SelectItem key={home.id} value={home.id}>
+                          {home.manufacturer} {home.series} {home.model} - ${home.price.toLocaleString()} 
+                          ({home.length_feet}' x {home.width_feet}')
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="edit-total-amount">Total Amount</Label>
+                  <Input
+                    id="edit-total-amount"
+                    type="number"
+                    value={editingEstimate.total_amount}
+                    onChange={(e) => setEditingEstimate(prev => prev ? { ...prev, total_amount: parseFloat(e.target.value) || 0 } : null)}
+                    placeholder="Total amount"
+                  />
+                </div>
+                <div>
+                  <Label>Created</Label>
+                  <p className="text-sm text-muted-foreground pt-2">{format(new Date(editingEstimate.created_at), 'MMM dd, yyyy HH:mm')}</p>
+                </div>
+                {editingEstimate.approved_at && (
+                  <div className="col-span-2">
+                    <Label>Approved</Label>
+                    <p className="text-sm text-muted-foreground pt-2">{format(new Date(editingEstimate.approved_at), 'MMM dd, yyyy HH:mm')}</p>
+                  </div>
+                )}
               </div>
 
-              {/* Mobile Home Selection */}
-              <div className="space-y-4">
-                <h3 className="font-medium">Mobile Home Selection</h3>
-                <Select 
-                  value={editingEstimate.mobile_home_id || ''} 
-                  onValueChange={(value) => {
-                    const selectedHome = mobileHomes.find(h => h.id === value);
-                    setEditingEstimate(prev => prev ? { 
-                      ...prev, 
-                      mobile_home_id: value,
-                      total_amount: selectedHome?.price || prev.total_amount
-                    } : null);
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a mobile home" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {mobileHomes.map((home) => (
-                      <SelectItem key={home.id} value={home.id}>
-                        {home.manufacturer} {home.series} {home.model} - ${home.price.toLocaleString()} 
-                        ({home.length_feet}' x {home.width_feet}')
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              <EstimateLineItems estimateId={editingEstimate.id} />
 
-              {/* Total Amount */}
-              <div className="space-y-2">
-                <Label htmlFor="edit-total-amount">Total Amount</Label>
-                <Input
-                  id="edit-total-amount"
-                  type="number"
-                  value={editingEstimate.total_amount}
-                  onChange={(e) => setEditingEstimate(prev => prev ? { ...prev, total_amount: parseFloat(e.target.value) || 0 } : null)}
-                  placeholder="Total amount"
-                />
-              </div>
-
-              <div className="flex justify-end gap-2">
+              <div className="flex justify-end gap-2 pt-4 border-t">
                 <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
                   Cancel
                 </Button>

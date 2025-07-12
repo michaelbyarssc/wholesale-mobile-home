@@ -19,6 +19,7 @@ import Blog from "./pages/Blog";
 import Support from "./pages/Support";
 import Appointments from "./pages/Appointments";
 import CalendarAuthCallback from "./pages/CalendarAuthCallback";
+import Delivery from "./pages/Delivery";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
@@ -43,6 +44,7 @@ function AppContent() {
       <Route path="/support" element={<Support />} />
       <Route path="/appointments" element={<Appointments />} />
       <Route path="/calendar-auth-callback" element={<CalendarAuthCallback />} />
+      <Route path="/delivery" element={<Delivery />} />
       <Route path="/admin" element={
         <ProtectedRoute adminOnly>
           <Admin />

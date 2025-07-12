@@ -22,27 +22,51 @@ serve(async (req) => {
 
     const url = new URL(req.url)
     const token = url.searchParams.get('token')
+    
+    let estimate;
+    
+    // Check if this is a customer approval (with token) or admin approval (with estimate_uuid in body)
+    if (token) {
+      // Customer approval via email link
+      const { data: estimateData, error: estimateError } = await supabase
+        .from('estimates')
+        .select('*')
+        .eq('approval_token', token)
+        .is('approved_at', null)
+        .single()
 
-    if (!token) {
-      return new Response('Missing approval token', { 
-        status: 400, 
-        headers: corsHeaders 
-      })
-    }
+      if (estimateError || !estimateData) {
+        return new Response('Invalid or expired approval token', { 
+          status: 404, 
+          headers: corsHeaders 
+        })
+      }
+      estimate = estimateData;
+    } else {
+      // Admin approval via API call
+      const { estimate_uuid } = await req.json()
+      
+      if (!estimate_uuid) {
+        return new Response('Missing estimate_uuid', { 
+          status: 400, 
+          headers: corsHeaders 
+        })
+      }
 
-    // Find estimate by approval token
-    const { data: estimate, error: estimateError } = await supabase
-      .from('estimates')
-      .select('*')
-      .eq('approval_token', token)
-      .is('approved_at', null)
-      .single()
+      const { data: estimateData, error: estimateError } = await supabase
+        .from('estimates')
+        .select('*')
+        .eq('id', estimate_uuid)
+        .is('approved_at', null)
+        .single()
 
-    if (estimateError || !estimate) {
-      return new Response('Invalid or expired approval token', { 
-        status: 404, 
-        headers: corsHeaders 
-      })
+      if (estimateError || !estimateData) {
+        return new Response('Estimate not found or already approved', { 
+          status: 404, 
+          headers: corsHeaders 
+        })
+      }
+      estimate = estimateData;
     }
 
     // Call the approve_estimate function

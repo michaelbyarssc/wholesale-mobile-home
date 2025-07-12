@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Truck, MapPin, Calendar, User, Search, Filter } from "lucide-react";
+import { DocuSignButton } from "./DocuSignButton";
 
 export const ActiveDeliveries = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -188,6 +189,12 @@ export const ActiveDeliveries = () => {
                 <Button variant="outline" size="sm">
                   Track Location
                 </Button>
+                <DocuSignButton
+                  deliveryId={delivery.id}
+                  customerEmail={delivery.customer_email}
+                  customerName={delivery.customer_name}
+                  deliveryNumber={delivery.delivery_number}
+                />
                 <Button size="sm">
                   Update Status
                 </Button>

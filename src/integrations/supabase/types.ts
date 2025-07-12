@@ -1574,6 +1574,53 @@ export type Database = {
           },
         ]
       }
+      delivery_documents: {
+        Row: {
+          created_at: string
+          delivery_id: string
+          document_type: string
+          document_url: string | null
+          docusign_envelope_id: string | null
+          id: string
+          recipient_email: string
+          signed_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          delivery_id: string
+          document_type: string
+          document_url?: string | null
+          docusign_envelope_id?: string | null
+          id?: string
+          recipient_email: string
+          signed_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          delivery_id?: string
+          document_type?: string
+          document_url?: string | null
+          docusign_envelope_id?: string | null
+          id?: string
+          recipient_email?: string
+          signed_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delivery_documents_delivery_id_fkey"
+            columns: ["delivery_id"]
+            isOneToOne: false
+            referencedRelation: "deliveries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       delivery_gps_tracking: {
         Row: {
           accuracy_meters: number | null

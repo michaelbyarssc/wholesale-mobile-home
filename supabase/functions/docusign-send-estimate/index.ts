@@ -19,8 +19,11 @@ const getAccessToken = async () => {
   const privateKey = Deno.env.get('DOCUSIGN_PRIVATE_KEY');
   
   if (!integrationKey || !userId || !privateKey) {
+    console.error('Missing DocuSign credentials:', { integrationKey: !!integrationKey, userId: !!userId, privateKey: !!privateKey });
     throw new Error('Missing DocuSign credentials');
   }
+
+  console.log('Creating DocuSign JWT token...');
 
   // Clean up the private key
   const cleanPrivateKey = privateKey
@@ -28,41 +31,78 @@ const getAccessToken = async () => {
     .replace(/-----BEGIN RSA PRIVATE KEY-----/, '-----BEGIN RSA PRIVATE KEY-----\n')
     .replace(/-----END RSA PRIVATE KEY-----/, '\n-----END RSA PRIVATE KEY-----');
 
-  // Create JWT assertion
-  const header = {
-    alg: 'RS256',
-    typ: 'JWT'
-  };
-
   const now = Math.floor(Date.now() / 1000);
-  const payload = {
-    iss: integrationKey,
-    sub: userId,
-    aud: 'account-d.docusign.com',
-    iat: now,
-    exp: now + 3600,
-    scope: 'signature impersonation'
-  };
-
-  // For demo purposes, we'll use a simplified approach
-  // In production, you'd want to use a proper JWT library
-  const jwtToken = btoa(JSON.stringify(header)) + '.' + btoa(JSON.stringify(payload));
   
-  const response = await fetch('https://account-d.docusign.com/oauth/token', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${jwtToken}`,
-  });
+  try {
+    // Import the private key for signing
+    const keyData = await crypto.subtle.importKey(
+      'pkcs8',
+      new TextEncoder().encode(cleanPrivateKey),
+      {
+        name: 'RSASSA-PKCS1-v1_5',
+        hash: 'SHA-256',
+      },
+      false,
+      ['sign']
+    );
 
-  if (!response.ok) {
-    console.error('DocuSign auth failed:', await response.text());
-    throw new Error('Failed to authenticate with DocuSign');
+    // Create JWT header and payload
+    const header = {
+      alg: 'RS256',
+      typ: 'JWT'
+    };
+
+    const payload = {
+      iss: integrationKey,
+      sub: userId,
+      aud: 'account-d.docusign.com',
+      iat: now,
+      exp: now + 3600,
+      scope: 'signature impersonation'
+    };
+
+    // Encode header and payload
+    const encodedHeader = btoa(JSON.stringify(header)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+    const encodedPayload = btoa(JSON.stringify(payload)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+    
+    const dataToSign = `${encodedHeader}.${encodedPayload}`;
+    
+    // Sign the data
+    const signature = await crypto.subtle.sign(
+      'RSASSA-PKCS1-v1_5',
+      keyData,
+      new TextEncoder().encode(dataToSign)
+    );
+
+    // Encode signature
+    const encodedSignature = btoa(String.fromCharCode(...new Uint8Array(signature)))
+      .replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+
+    const jwtToken = `${dataToSign}.${encodedSignature}`;
+
+    console.log('JWT token created, making auth request...');
+    
+    const response = await fetch('https://account-d.docusign.com/oauth/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${jwtToken}`,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('DocuSign auth failed:', errorText);
+      throw new Error(`Failed to authenticate with DocuSign: ${errorText}`);
+    }
+
+    const authData = await response.json();
+    console.log('DocuSign authentication successful');
+    return authData.access_token;
+  } catch (error) {
+    console.error('Error in DocuSign authentication:', error);
+    throw new Error(`Failed to authenticate with DocuSign: ${error.message}`);
   }
-
-  const authData = await response.json();
-  return authData.access_token;
 };
 
 const generateEstimateHtml = (estimate: any) => {

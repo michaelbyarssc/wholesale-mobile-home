@@ -64,9 +64,14 @@ export function DocuSignTemplatesTab() {
   // Create template mutation
   const createTemplateMutation = useMutation({
     mutationFn: async (templateData: TemplateFormData) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      
       const { error } = await supabase
         .from('docusign_templates')
-        .insert([templateData]);
+        .insert([{
+          ...templateData,
+          created_by: user?.id
+        }]);
 
       if (error) throw error;
     },

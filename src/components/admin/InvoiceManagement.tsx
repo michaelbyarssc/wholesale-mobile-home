@@ -14,7 +14,7 @@ import {
   Filter,
   CreditCard,
   AlertCircle,
-  Sync,
+  RotateCw,
   Settings
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -353,7 +353,7 @@ export const InvoiceManagement = () => {
                           onClick={() => syncToQuickBooksMutation.mutate(invoice.id)}
                           disabled={syncToQuickBooksMutation.isPending}
                         >
-                          <Sync className="h-3 w-3 mr-1" />
+                          <RotateCw className="h-3 w-3 mr-1" />
                           {syncToQuickBooksMutation.isPending ? 'Syncing...' : 'Sync to QB'}
                         </Button>
                       )}

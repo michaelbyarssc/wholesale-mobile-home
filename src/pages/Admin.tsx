@@ -16,6 +16,7 @@ import { UserManagementTab } from '@/components/admin/UserManagementTab';
 import { AuditLogTab } from '@/components/admin/AuditLogTab';
 import { SuperAdminMarkupTab } from '@/components/admin/SuperAdminMarkupTab';
 import { AdminCalendarDashboard } from '@/components/admin/calendar/AdminCalendarDashboard';
+import { InvoiceManagement } from '@/components/admin/InvoiceManagement';
 
 import { Menu, X } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -130,6 +131,7 @@ const Admin = () => {
       'analytics': 'Analytics',
       'crm': 'CRM',
       'calendar': 'Calendar',
+      'invoices': 'Invoices',
       'super-admin': 'Admin',
       'settings': 'Settings',
       'audit': 'Audit'
@@ -178,6 +180,13 @@ const Admin = () => {
           onClick={() => handleTabChange('calendar')}
         >
           Calendar
+        </Button>
+        <Button
+          variant={activeTab === 'invoices' ? 'default' : 'ghost'}
+          className={`${mobile ? 'justify-start w-full h-12 text-base' : ''} text-xs sm:text-sm`}
+          onClick={() => handleTabChange('invoices')}
+        >
+          Invoices
         </Button>
         <Button
           variant={activeTab === 'crm' ? 'default' : 'ghost'}
@@ -293,12 +302,13 @@ const Admin = () => {
         <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-3 sm:space-y-4 md:space-y-6">
           {/* Desktop Tab List - Hidden on mobile since we use sheet menu */}
           {!isMobile && isSuperAdmin && (
-            <TabsList className="grid w-full grid-cols-10 h-auto p-1">
+            <TabsList className="grid w-full grid-cols-11 h-auto p-1">
               <TabsTrigger value="mobile-homes" className="text-xs lg:text-sm">Homes</TabsTrigger>
               <TabsTrigger value="services" className="text-xs lg:text-sm">Services</TabsTrigger>
               <TabsTrigger value="home-options" className="text-xs lg:text-sm">Options</TabsTrigger>
               <TabsTrigger value="users" className="text-xs lg:text-sm">Users</TabsTrigger>
               <TabsTrigger value="calendar" className="text-xs lg:text-sm">Calendar</TabsTrigger>
+              <TabsTrigger value="invoices" className="text-xs lg:text-sm">Invoices</TabsTrigger>
               <TabsTrigger value="crm" className="text-xs lg:text-sm">CRM</TabsTrigger>
               <TabsTrigger value="reviews" className="text-xs lg:text-sm">Reviews</TabsTrigger>
               <TabsTrigger value="analytics" className="text-xs lg:text-sm">Analytics</TabsTrigger>
@@ -308,9 +318,10 @@ const Admin = () => {
             </TabsList>
           )}
           {!isMobile && !isSuperAdmin && (
-            <TabsList className="grid w-full grid-cols-3 h-auto p-1">
+            <TabsList className="grid w-full grid-cols-4 h-auto p-1">
               <TabsTrigger value="users" className="text-sm">Users</TabsTrigger>
               <TabsTrigger value="calendar" className="text-sm">Calendar</TabsTrigger>
+              <TabsTrigger value="invoices" className="text-sm">Invoices</TabsTrigger>
               <TabsTrigger value="crm" className="text-sm">CRM</TabsTrigger>
             </TabsList>
           )}
@@ -341,6 +352,10 @@ const Admin = () => {
               userRole={isSuperAdmin ? 'super_admin' : 'admin'} 
               currentUserId={user?.id} 
             />
+          </TabsContent>
+
+          <TabsContent value="invoices" className="mt-2 sm:mt-4">
+            <InvoiceManagement />
           </TabsContent>
 
           <TabsContent value="crm" className="mt-2 sm:mt-4">

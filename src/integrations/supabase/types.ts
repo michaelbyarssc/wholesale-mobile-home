@@ -2222,6 +2222,8 @@ export type Database = {
           id: string
           invoice_number: string
           paid_at: string | null
+          quickbooks_id: string | null
+          quickbooks_synced_at: string | null
           status: string
           total_amount: number
           updated_at: string
@@ -2238,6 +2240,8 @@ export type Database = {
           id?: string
           invoice_number: string
           paid_at?: string | null
+          quickbooks_id?: string | null
+          quickbooks_synced_at?: string | null
           status?: string
           total_amount: number
           updated_at?: string
@@ -2254,6 +2258,8 @@ export type Database = {
           id?: string
           invoice_number?: string
           paid_at?: string | null
+          quickbooks_id?: string | null
+          quickbooks_synced_at?: string | null
           status?: string
           total_amount?: number
           updated_at?: string

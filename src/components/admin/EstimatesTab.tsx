@@ -653,10 +653,69 @@ export const EstimatesTab = () => {
                           </DialogContent>
                         </Dialog>
                       )}
-                      <Button variant="outline" size="sm">
-                        <Eye className="h-4 w-4 mr-1" />
-                        View
-                      </Button>
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button variant="outline" size="sm">
+                            <Eye className="h-4 w-4 mr-1" />
+                            View
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-2xl">
+                          <DialogHeader>
+                            <DialogTitle>Estimate Details</DialogTitle>
+                          </DialogHeader>
+                          <div className="space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <Label>Customer</Label>
+                                <p className="font-medium">{estimate.customer_name}</p>
+                              </div>
+                              <div>
+                                <Label>Status</Label>
+                                <Badge variant={
+                                  estimate.status === 'draft' ? 'secondary' :
+                                  estimate.status === 'sent' ? 'default' :
+                                  estimate.status === 'approved' ? 'default' :
+                                  estimate.status === 'pending_review' ? 'secondary' :
+                                  'secondary'
+                                }>
+                                  {estimate.status.charAt(0).toUpperCase() + estimate.status.slice(1).replace('_', ' ')}
+                                </Badge>
+                              </div>
+                              <div>
+                                <Label>Email</Label>
+                                <p>{estimate.customer_email}</p>
+                              </div>
+                              <div>
+                                <Label>Phone</Label>
+                                <p>{estimate.customer_phone}</p>
+                              </div>
+                              <div className="col-span-2">
+                                <Label>Delivery Address</Label>
+                                <p>{estimate.delivery_address}</p>
+                              </div>
+                              <div>
+                                <Label>Mobile Home</Label>
+                                <p>{estimate.mobile_homes?.manufacturer} {estimate.mobile_homes?.series} {estimate.mobile_homes?.model}</p>
+                              </div>
+                              <div>
+                                <Label>Total Amount</Label>
+                                <p className="font-medium text-lg">${estimate.total_amount.toLocaleString()}</p>
+                              </div>
+                              <div>
+                                <Label>Created</Label>
+                                <p>{format(new Date(estimate.created_at), 'MMM dd, yyyy HH:mm')}</p>
+                              </div>
+                              {estimate.approved_at && (
+                                <div>
+                                  <Label>Approved</Label>
+                                  <p>{format(new Date(estimate.approved_at), 'MMM dd, yyyy HH:mm')}</p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
                     </div>
                   </div>
                 </div>

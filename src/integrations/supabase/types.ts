@@ -2883,6 +2883,36 @@ export type Database = {
         }
         Relationships: []
       }
+      push_subscriptions: {
+        Row: {
+          active: boolean
+          created_at: string
+          endpoint: string
+          id: string
+          subscription_data: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          endpoint: string
+          id?: string
+          subscription_data: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          endpoint?: string
+          id?: string
+          subscription_data?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       recent_purchases: {
         Row: {
           active: boolean

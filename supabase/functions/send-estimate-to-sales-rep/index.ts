@@ -402,10 +402,140 @@ serve(async (req) => {
 
     console.log('🔍 send-estimate-to-sales-rep: Email sent successfully:', data)
 
+    // Get the user's assigned admin (account owner)
+    let assignedAdminId = null
+    if (user_id) {
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('assigned_admin_id')
+        .eq('user_id', user_id)
+        .maybeSingle()
+
+      if (profileData && !profileError) {
+        assignedAdminId = profileData.assigned_admin_id
+        console.log('🔍 send-estimate-to-sales-rep: Found assigned admin:', assignedAdminId)
+      } else {
+        console.log('🔍 send-estimate-to-sales-rep: No assigned admin found for user')
+      }
+    }
+
+    // Create estimate record in database
+    const estimateData = {
+      customer_name: customerInfo.name,
+      customer_email: customerInfo.email,
+      customer_phone: customerInfo.phone,
+      delivery_address: deliveryAddress ? 
+        `${deliveryAddress.street}, ${deliveryAddress.city}, ${deliveryAddress.state} ${deliveryAddress.zipCode}` : 
+        null,
+      mobile_home_id: cart_items[0]?.mobileHome?.id || null,
+      selected_services: allServiceIds,
+      selected_home_options: cart_items.reduce((acc: any[], item: any) => {
+        return [...acc, ...(item.selectedHomeOptions || []).map((ho: any) => ({
+          option_id: ho.option.id,
+          quantity: ho.quantity || 1
+        }))]
+      }, []),
+      subtotal_amount: subtotal,
+      shipping_cost: shippingCost,
+      sales_tax: salesTax,
+      total_amount: Math.floor(calculatedTotal),
+      status: 'pending_review',
+      user_id: user_id,
+      created_by: assignedAdminId,
+      cart_data: {
+        items: cart_items,
+        delivery_address: deliveryAddress,
+        pricing_details: {
+          customer_markup: customerMarkup,
+          calculation_breakdown: {
+            subtotal,
+            shipping: shippingCost,
+            tax: salesTax,
+            total: calculatedTotal
+          }
+        }
+      }
+    }
+
+    const { data: estimate, error: estimateError } = await supabase
+      .from('estimates')
+      .insert(estimateData)
+      .select()
+      .single()
+
+    if (estimateError) {
+      console.error('🔍 send-estimate-to-sales-rep: Error creating estimate:', estimateError)
+      throw new Error(`Failed to create estimate: ${estimateError.message}`)
+    }
+
+    console.log('🔍 send-estimate-to-sales-rep: Estimate created successfully:', estimate.id)
+
+    // Send notifications to the account owner (assigned admin)
+    if (assignedAdminId) {
+      try {
+        // Send in-app notification
+        await supabase.rpc('create_notification', {
+          p_user_id: assignedAdminId,
+          p_title: 'New Estimate Request',
+          p_message: `${customerInfo.name} has submitted a new estimate request for review. Total: $${Math.floor(calculatedTotal).toLocaleString()}`,
+          p_type: 'estimate_request',
+          p_category: 'sales',
+          p_data: {
+            estimate_id: estimate.id,
+            customer_name: customerInfo.name,
+            total_amount: Math.floor(calculatedTotal)
+          }
+        })
+
+        // Send email notification to admin
+        const { error: emailNotifyError } = await supabase.functions.invoke('send-email-notification', {
+          body: {
+            to: assignedAdminId,
+            subject: `New Estimate Request - ${customerInfo.name}`,
+            template: 'estimate_request',
+            data: {
+              customer_name: customerInfo.name,
+              estimate_id: estimate.id,
+              total_amount: Math.floor(calculatedTotal),
+              cart_items: cart_items,
+              delivery_address: deliveryAddress
+            }
+          }
+        })
+
+        if (emailNotifyError) {
+          console.error('🔍 send-estimate-to-sales-rep: Error sending email notification:', emailNotifyError)
+        }
+
+        // Send push notification
+        const { error: pushNotifyError } = await supabase.functions.invoke('send-push-notification', {
+          body: {
+            user_id: assignedAdminId,
+            title: 'New Estimate Request',
+            body: `${customerInfo.name} submitted an estimate request for $${Math.floor(calculatedTotal).toLocaleString()}`,
+            data: {
+              type: 'estimate_request',
+              estimate_id: estimate.id
+            }
+          }
+        })
+
+        if (pushNotifyError) {
+          console.error('🔍 send-estimate-to-sales-rep: Error sending push notification:', pushNotifyError)
+        }
+
+        console.log('🔍 send-estimate-to-sales-rep: Notifications sent to admin:', assignedAdminId)
+      } catch (notificationError) {
+        console.error('🔍 send-estimate-to-sales-rep: Error sending notifications:', notificationError)
+        // Don't fail the entire request if notifications fail
+      }
+    }
+
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: 'Estimate sent to sales representative successfully',
+        message: 'Estimate created and sent for review successfully',
+        estimate_id: estimate.id,
         email_id: data?.id
       }),
       { 

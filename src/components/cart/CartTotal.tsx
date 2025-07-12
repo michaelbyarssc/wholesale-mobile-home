@@ -161,8 +161,8 @@ export const CartTotal = ({
       
       // Show success message
       toast({
-        title: "Estimate Sent!",
-        description: "Your estimate has been sent to your sales representative. They will be in contact with you as soon as possible to discuss the details.",
+        title: "Estimate Submitted!",
+        description: "Your estimate has been created and sent to your account manager for review. You will be contacted shortly to finalize the details.",
       });
 
       console.log('🔍 CartTotal: Estimate sent to sales rep successfully');
@@ -258,7 +258,7 @@ export const CartTotal = ({
             disabled={!deliveryAddress}
           >
             <Receipt className="h-4 w-4 mr-2" />
-            Send Estimate to Sales Rep
+            Submit Estimate for Review
           </Button>
           <Button onClick={handleCloseCart} variant="outline">
             Close Cart

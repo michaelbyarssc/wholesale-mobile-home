@@ -10,7 +10,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, FileText, Send, Eye, Clock, CheckCircle, XCircle, DollarSign, Settings, Check, X, Edit } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Plus, FileText, Send, Eye, Clock, CheckCircle, XCircle, DollarSign, Settings, Check, X, Edit, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { Separator } from '@/components/ui/separator';
@@ -350,6 +351,33 @@ export const EstimatesTab = () => {
       toast({
         title: "Error",
         description: "Failed to update estimate. Please try again.",
+        variant: "destructive",
+      });
+    }
+  });
+
+  // Delete estimate mutation
+  const deleteEstimateMutation = useMutation({
+    mutationFn: async (estimateId: string) => {
+      const { data, error } = await supabase
+        .from('estimates')
+        .delete()
+        .eq('id', estimateId);
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-estimates'] });
+      toast({
+        title: "Estimate Deleted",
+        description: "Estimate has been deleted successfully.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to delete estimate. Please try again.",
         variant: "destructive",
       });
     }
@@ -926,7 +954,7 @@ export const EstimatesTab = () => {
                                 </Button>
                               )}
 
-                              {/* Approve Button - available for sent estimates */}
+                               {/* Approve Button - available for sent estimates */}
                               {estimate.status === 'sent' && (
                                 <Button 
                                   onClick={() => approveEstimateMutation.mutate(estimate.id)}
@@ -937,6 +965,34 @@ export const EstimatesTab = () => {
                                   Approve
                                 </Button>
                               )}
+
+                              {/* Delete Button with confirmation */}
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button variant="destructive" size="sm">
+                                    <Trash2 className="h-4 w-4 mr-2" />
+                                    Delete
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      This action cannot be undone. This will permanently delete the estimate for {estimate.customer_name}.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction 
+                                      onClick={() => deleteEstimateMutation.mutate(estimate.id)}
+                                      disabled={deleteEstimateMutation.isPending}
+                                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                    >
+                                      Delete Estimate
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
                             </div>
                           </div>
                         </DialogContent>

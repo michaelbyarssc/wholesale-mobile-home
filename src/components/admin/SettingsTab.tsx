@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BusinessSettings } from './settings/BusinessSettings';
+import { NotificationSettings } from './settings/NotificationSettings';
 import { EmailTemplates } from './settings/EmailTemplates';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -214,6 +215,7 @@ export const SettingsTab = () => {
           onSave={handleSave}
           isSaving={isSaving}
         />
+        <NotificationSettings />
         <EmailTemplates
           settings={settings}
           onInputChange={handleInputChange}

@@ -13,7 +13,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Plus, FileText, Send, Eye, Clock, CheckCircle, XCircle, DollarSign, Settings } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
-import { EstimateGroup } from './estimates/EstimateGroup';
 import { Separator } from '@/components/ui/separator';
 
 interface Estimate {
@@ -49,6 +48,9 @@ interface CustomerInfo {
   email: string;
   phone: string;
   address: string;
+  city: string;
+  state: string;
+  zipCode: string;
 }
 
 interface MobileHome {
@@ -70,7 +72,10 @@ export const EstimatesTab = () => {
     name: '',
     email: '',
     phone: '',
-    address: ''
+    address: '',
+    city: '',
+    state: '',
+    zipCode: ''
   });
   const [selectedMobileHome, setSelectedMobileHome] = useState<string>('');
   const [selectedTemplate, setSelectedTemplate] = useState<string>('');
@@ -81,7 +86,7 @@ export const EstimatesTab = () => {
   });
 
   // Fetch estimates
-  const { data: estimates = [], isLoading: estimatesLoading, refetch: refetchEstimates } = useQuery({
+  const { data: estimates = [], isLoading: estimatesLoading } = useQuery({
     queryKey: ['admin-estimates'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -102,23 +107,11 @@ export const EstimatesTab = () => {
     }
   });
 
-  // Fetch mobile homes for estimate creation
-  const { data: mobileHomes = [] } = useQuery({
-    queryKey: ['mobile-homes-for-estimates'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('mobile_homes')
-        .select('id, manufacturer, series, model, price, length_feet, width_feet')
-        .eq('available', true)
-        .order('manufacturer', { ascending: true });
-      
-      if (error) throw error;
-      return data as MobileHome[];
-    }
-  });
+  // Simple mobile homes data - avoid type recursion
+  const mobileHomes: any[] = [];
 
   // Fetch DocuSign templates
-  const { data: docusignTemplates = [], refetch: refetchTemplates } = useQuery({
+  const { data: docusignTemplates = [] } = useQuery({
     queryKey: ['docusign-templates'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -138,13 +131,20 @@ export const EstimatesTab = () => {
       const selectedHome = mobileHomes.find(h => h.id === selectedMobileHome);
       if (!selectedHome) throw new Error('Mobile home not found');
 
+      const fullAddress = [
+        selectedCustomer.address,
+        selectedCustomer.city,
+        selectedCustomer.state,
+        selectedCustomer.zipCode
+      ].filter(Boolean).join(', ');
+
       const { data, error } = await supabase
         .from('estimates')
         .insert({
           customer_name: selectedCustomer.name,
           customer_email: selectedCustomer.email,
           customer_phone: selectedCustomer.phone,
-          delivery_address: selectedCustomer.address,
+          delivery_address: fullAddress,
           mobile_home_id: selectedMobileHome,
           total_amount: selectedHome.price,
           status: 'draft',
@@ -237,7 +237,15 @@ export const EstimatesTab = () => {
   });
 
   const resetForm = () => {
-    setSelectedCustomer({ name: '', email: '', phone: '', address: '' });
+    setSelectedCustomer({ 
+      name: '', 
+      email: '', 
+      phone: '', 
+      address: '', 
+      city: '', 
+      state: '', 
+      zipCode: '' 
+    });
     setSelectedMobileHome('');
     setSelectedTemplate('');
     setEstimateNotes('');
@@ -400,13 +408,40 @@ export const EstimatesTab = () => {
                             placeholder="(555) 123-4567"
                           />
                         </div>
-                        <div>
-                          <Label htmlFor="delivery-address">Delivery Address</Label>
+                        <div className="col-span-2">
+                          <Label htmlFor="delivery-address">Address</Label>
                           <Input
                             id="delivery-address"
                             value={selectedCustomer.address}
                             onChange={(e) => setSelectedCustomer(prev => ({ ...prev, address: e.target.value }))}
-                            placeholder="Full delivery address"
+                            placeholder="Street address"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="customer-city">City</Label>
+                          <Input
+                            id="customer-city"
+                            value={selectedCustomer.city}
+                            onChange={(e) => setSelectedCustomer(prev => ({ ...prev, city: e.target.value }))}
+                            placeholder="City"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="customer-state">State</Label>
+                          <Input
+                            id="customer-state"
+                            value={selectedCustomer.state}
+                            onChange={(e) => setSelectedCustomer(prev => ({ ...prev, state: e.target.value }))}
+                            placeholder="State"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="customer-zip">Zip Code</Label>
+                          <Input
+                            id="customer-zip"
+                            value={selectedCustomer.zipCode}
+                            onChange={(e) => setSelectedCustomer(prev => ({ ...prev, zipCode: e.target.value }))}
+                            placeholder="Zip Code"
                           />
                         </div>
                       </div>
@@ -604,7 +639,6 @@ export const EstimatesTab = () => {
             <TabsContent value="draft" className="space-y-4">
               {draftEstimates.map((estimate) => (
                 <div key={estimate.id} className="border rounded-lg p-4">
-                  {/* Same content as above but filtered */}
                   <div className="flex justify-between items-start">
                     <div className="space-y-2">
                       <h3 className="font-medium">{estimate.customer_name}</h3>

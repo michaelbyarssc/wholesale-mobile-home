@@ -13,11 +13,14 @@ import {
   Search,
   Filter,
   CreditCard,
-  AlertCircle
+  AlertCircle,
+  Sync,
+  Settings
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from "@/hooks/use-toast";
+import { QuickBooksSettings } from './QuickBooksSettings';
 import {
   Select,
   SelectContent,
@@ -101,6 +104,32 @@ export const InvoiceManagement = () => {
       toast({
         title: "Creation Failed",
         description: "Failed to create invoice. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // QuickBooks sync mutation
+  const syncToQuickBooksMutation = useMutation({
+    mutationFn: async (invoiceId: string) => {
+      const { data, error } = await supabase.functions.invoke('quickbooks-sync', {
+        body: { invoiceId, action: 'sync' }
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data, invoiceId) => {
+      queryClient.invalidateQueries({ queryKey: ['invoices-basic'] });
+      toast({
+        title: "QuickBooks Sync",
+        description: "Invoice synced to QuickBooks successfully.",
+      });
+    },
+    onError: (error: any) => {
+      console.error('QuickBooks sync error:', error);
+      toast({
+        title: "Sync Failed",
+        description: error.message || "Failed to sync invoice to QuickBooks.",
         variant: "destructive",
       });
     },
@@ -211,6 +240,9 @@ export const InvoiceManagement = () => {
         </Card>
       </div>
 
+      {/* QuickBooks Settings */}
+      <QuickBooksSettings />
+
       {/* Approved Estimates Ready for Invoice */}
       {approvedEstimates.length > 0 && (
         <Card>
@@ -312,6 +344,24 @@ export const InvoiceManagement = () => {
                           <CreditCard className="h-3 w-3 mr-1" />
                           Payment
                         </Button>
+                      )}
+
+                      {!invoice.quickbooks_id && (
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => syncToQuickBooksMutation.mutate(invoice.id)}
+                          disabled={syncToQuickBooksMutation.isPending}
+                        >
+                          <Sync className="h-3 w-3 mr-1" />
+                          {syncToQuickBooksMutation.isPending ? 'Syncing...' : 'Sync to QB'}
+                        </Button>
+                      )}
+
+                      {invoice.quickbooks_id && (
+                        <div className="text-xs text-muted-foreground">
+                          QB: {invoice.quickbooks_id}
+                        </div>
                       )}
                     </div>
                   </div>

@@ -435,26 +435,9 @@ serve(async (req) => {
           quantity: ho.quantity || 1
         }))]
       }, []),
-      subtotal_amount: subtotal,
-      shipping_cost: shippingCost,
-      sales_tax: salesTax,
       total_amount: Math.floor(calculatedTotal),
       status: 'pending_review',
-      user_id: user_id,
-      created_by: assignedAdminId,
-      cart_data: {
-        items: cart_items,
-        delivery_address: deliveryAddress,
-        pricing_details: {
-          customer_markup: customerMarkup,
-          calculation_breakdown: {
-            subtotal,
-            shipping: shippingCost,
-            tax: salesTax,
-            total: calculatedTotal
-          }
-        }
-      }
+      user_id: user_id
     }
 
     const { data: estimate, error: estimateError } = await supabase

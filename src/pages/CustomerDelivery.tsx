@@ -24,13 +24,12 @@ import {
 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from '@/integrations/supabase/client';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { StarRating } from '@/components/reviews/StarRating';
 
 const CustomerDelivery = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const [user, setUser] = useState<any>(null);
   const [activeTab, setActiveTab] = useState('tracking');
 
@@ -79,7 +78,7 @@ const CustomerDelivery = () => {
           )
         `)
         .eq('customer_email', user.email)
-        .in('status', ['scheduled', 'in_transit', 'at_pickup', 'at_delivery'])
+        .in('status', ['scheduled', 'in_transit', 'factory_pickup_in_progress', 'delivery_in_progress'])
         .order('created_at', { ascending: false });
       
       if (error) throw error;
@@ -111,77 +110,12 @@ const CustomerDelivery = () => {
     enabled: !!user?.email,
   });
 
-  // Fetch customer preferences
-  const { data: preferences } = useQuery({
-    queryKey: ['customer-preferences', user?.id],
-    queryFn: async () => {
-      if (!user?.id) return null;
-      
-      const { data, error } = await supabase
-        .from('customer_delivery_preferences')
-        .select('*')
-        .eq('user_id', user.id)
-        .single();
-      
-      if (error && error.code !== 'PGRST116') throw error;
-      return data;
-    },
-    enabled: !!user?.id,
-  });
-
-  // Update preferences mutation
-  const updatePreferencesMutation = useMutation({
-    mutationFn: async (prefs: any) => {
-      const { data, error } = await supabase
-        .from('customer_delivery_preferences')
-        .upsert({
-          user_id: user.id,
-          ...prefs,
-        })
-        .select()
-        .single();
-      
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['customer-preferences'] });
-      toast({
-        title: "Preferences Updated",
-        description: "Your delivery preferences have been saved.",
-      });
-    },
-  });
-
-  // Submit delivery rating
-  const submitRatingMutation = useMutation({
-    mutationFn: async ({ deliveryId, rating, comment }: { deliveryId: string, rating: number, comment: string }) => {
-      const { data, error } = await supabase
-        .from('delivery_ratings')
-        .insert({
-          delivery_id: deliveryId,
-          customer_id: user.id,
-          rating,
-          comment,
-        });
-      
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      toast({
-        title: "Rating Submitted",
-        description: "Thank you for your feedback!",
-      });
-    },
-  });
-
   const formatStatus = (status: string) => {
     const statusMap = {
       'scheduled': { label: 'Scheduled', variant: 'outline' as const, icon: Calendar },
       'in_transit': { label: 'In Transit', variant: 'default' as const, icon: Truck },
-      'at_pickup': { label: 'At Pickup', variant: 'secondary' as const, icon: MapPin },
-      'at_delivery': { label: 'At Delivery', variant: 'secondary' as const, icon: MapPin },
+      'factory_pickup_in_progress': { label: 'At Pickup', variant: 'secondary' as const, icon: MapPin },
+      'delivery_in_progress': { label: 'At Delivery', variant: 'secondary' as const, icon: MapPin },
       'completed': { label: 'Completed', variant: 'default' as const, icon: CheckCircle },
     };
     
@@ -473,7 +407,6 @@ const CustomerDelivery = () => {
                       <Input 
                         id="emergency-name" 
                         placeholder="Contact name"
-                        defaultValue={preferences?.emergency_contact_name || ''}
                       />
                     </div>
                     <div className="space-y-2">
@@ -481,7 +414,6 @@ const CustomerDelivery = () => {
                       <Input 
                         id="emergency-phone" 
                         placeholder="Phone number"
-                        defaultValue={preferences?.emergency_contact_phone || ''}
                       />
                     </div>
                   </div>
@@ -492,12 +424,11 @@ const CustomerDelivery = () => {
                   <h3 className="font-medium">Special Delivery Instructions</h3>
                   <Textarea 
                     placeholder="Add any special instructions for drivers (gate codes, delivery location preferences, etc.)"
-                    defaultValue={preferences?.delivery_instructions || ''}
                     rows={3}
                   />
                 </div>
 
-                <Button onClick={() => updatePreferencesMutation.mutate({})}>
+                <Button>
                   Save Preferences
                 </Button>
               </CardContent>

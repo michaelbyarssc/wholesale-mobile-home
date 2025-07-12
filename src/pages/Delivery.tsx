@@ -10,6 +10,7 @@ import { ActiveDeliveries } from "@/components/delivery/ActiveDeliveries";
 import { DeliveryScheduling } from "@/components/delivery/DeliveryScheduling";
 import { GPSTracking } from "@/components/delivery/GPSTracking";
 import { DriverPortal } from "@/components/delivery/DriverPortal";
+import { DriverMobileApp } from "@/components/delivery/DriverMobileApp";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { LoadingSpinner } from "@/components/layout/LoadingSpinner";
@@ -76,19 +77,9 @@ const Delivery = () => {
     );
   }
 
-  // If user is a driver, show driver portal
+  // If user is a driver, show mobile driver app
   if (isDriver && !isAdmin) {
-    return (
-      <div className="min-h-screen bg-background">
-        <Header user={user} userProfile={null} cartItems={cartItems} isLoading={false} onLogout={() => {}} onToggleCart={() => {}} />
-        <main className="flex-1 py-8">
-          <div className="container mx-auto px-4">
-            <DriverPortal driverProfile={driverProfile} />
-          </div>
-        </main>
-        <Footer />
-      </div>
-    );
+    return <DriverMobileApp driverProfile={driverProfile} />;
   }
 
   // If user is not admin or driver, show access denied

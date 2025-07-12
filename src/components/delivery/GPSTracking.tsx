@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MapPin, Navigation, Clock, Truck, AlertTriangle } from "lucide-react";
+import { GPSMap } from "./GPSMap";
 
 export const GPSTracking = () => {
   const [selectedDelivery, setSelectedDelivery] = useState<string>("all");
@@ -99,11 +100,14 @@ export const GPSTracking = () => {
 
   return (
     <div className="space-y-6">
+      {/* GPS Map */}
+      <GPSMap height="500px" />
+
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-bold">GPS Tracking</h2>
-          <p className="text-muted-foreground">Real-time location tracking for active deliveries</p>
+          <h2 className="text-2xl font-bold">GPS Tracking Details</h2>
+          <p className="text-muted-foreground">Detailed location data and delivery information</p>
         </div>
         <div className="flex items-center gap-2">
           <Clock className="h-4 w-4 text-muted-foreground" />

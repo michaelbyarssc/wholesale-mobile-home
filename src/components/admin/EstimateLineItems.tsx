@@ -1,11 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Home, Settings, Package, Truck, Receipt } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { Home, Settings, Package, Truck, Receipt, Save, X } from 'lucide-react';
 
 interface EstimateLineItem {
   id: string;
@@ -21,9 +25,15 @@ interface EstimateLineItem {
 
 interface EstimateLineItemsProps {
   estimateId: string;
+  isEditable?: boolean;
 }
 
-export const EstimateLineItems = ({ estimateId }: EstimateLineItemsProps) => {
+export const EstimateLineItems = ({ estimateId, isEditable = false }: EstimateLineItemsProps) => {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [editingItem, setEditingItem] = useState<EstimateLineItem | null>(null);
+
   const { data: lineItems = [], isLoading } = useQuery({
     queryKey: ['estimate-line-items', estimateId],
     queryFn: async () => {
@@ -37,6 +47,57 @@ export const EstimateLineItems = ({ estimateId }: EstimateLineItemsProps) => {
       return data || [];
     }
   });
+
+  // Update line item mutation
+  const updateLineItemMutation = useMutation({
+    mutationFn: async (item: EstimateLineItem) => {
+      const { data, error } = await supabase
+        .from('estimate_line_items')
+        .update({
+          name: item.name,
+          description: item.description,
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+          total_price: item.quantity * item.unit_price
+        })
+        .eq('id', item.id);
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['estimate-line-items', estimateId] });
+      setEditingItemId(null);
+      setEditingItem(null);
+      toast({
+        title: "Item Updated",
+        description: "Line item has been updated successfully.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to update line item. Please try again.",
+        variant: "destructive",
+      });
+    }
+  });
+
+  const handleEditClick = (item: EstimateLineItem) => {
+    setEditingItemId(item.id);
+    setEditingItem({ ...item });
+  };
+
+  const handleSaveClick = () => {
+    if (editingItem) {
+      updateLineItemMutation.mutate(editingItem);
+    }
+  };
+
+  const handleCancelClick = () => {
+    setEditingItemId(null);
+    setEditingItem(null);
+  };
 
   const getItemIcon = (itemType: string) => {
     switch (itemType) {
@@ -142,31 +203,93 @@ export const EstimateLineItems = ({ estimateId }: EstimateLineItemsProps) => {
                       </Badge>
                     </div>
                     <div className="flex-1">
-                      <p className="font-medium">{item.name}</p>
-                      {item.description && (
-                        <p className="text-sm text-muted-foreground">{item.description}</p>
-                      )}
-                      {item.quantity > 1 && (
-                        <p className="text-xs text-muted-foreground">Quantity: {item.quantity}</p>
-                      )}
-                      {/* Show internal price if available in metadata */}
-                      {item.metadata?.internal_price && item.metadata.internal_price !== item.unit_price && (
-                        <p className="text-xs text-muted-foreground">
-                          Internal Price: ${item.metadata.internal_price.toLocaleString()}
-                        </p>
+                      {editingItemId === item.id && editingItem ? (
+                        <div className="space-y-2">
+                          <Input
+                            value={editingItem.name}
+                            onChange={(e) => setEditingItem(prev => prev ? { ...prev, name: e.target.value } : null)}
+                            placeholder="Item name"
+                            className="font-medium"
+                          />
+                          <Textarea
+                            value={editingItem.description}
+                            onChange={(e) => setEditingItem(prev => prev ? { ...prev, description: e.target.value } : null)}
+                            placeholder="Item description"
+                            className="text-sm resize-none"
+                            rows={2}
+                          />
+                          <div className="flex gap-2">
+                            <div className="flex-1">
+                              <Label className="text-xs">Quantity</Label>
+                              <Input
+                                type="number"
+                                value={editingItem.quantity}
+                                onChange={(e) => setEditingItem(prev => prev ? { ...prev, quantity: parseFloat(e.target.value) || 1 } : null)}
+                                min="1"
+                                step="1"
+                                className="text-xs"
+                              />
+                            </div>
+                            <div className="flex-1">
+                              <Label className="text-xs">Unit Price</Label>
+                              <Input
+                                type="number"
+                                value={editingItem.unit_price}
+                                onChange={(e) => setEditingItem(prev => prev ? { ...prev, unit_price: parseFloat(e.target.value) || 0 } : null)}
+                                min="0"
+                                step="0.01"
+                                className="text-xs"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div>
+                          <p className="font-medium">{item.name}</p>
+                          {item.description && (
+                            <p className="text-sm text-muted-foreground">{item.description}</p>
+                          )}
+                          {item.quantity > 1 && (
+                            <p className="text-xs text-muted-foreground">Quantity: {item.quantity}</p>
+                          )}
+                          {/* Show internal price if available in metadata */}
+                          {item.metadata?.internal_price && item.metadata.internal_price !== item.unit_price && (
+                            <p className="text-xs text-muted-foreground">
+                              Internal Price: ${item.metadata.internal_price.toLocaleString()}
+                            </p>
+                          )}
+                        </div>
                       )}
                     </div>
                   </div>
-                  <div className="text-right">
-                    {item.quantity > 1 ? (
-                      <div>
-                        <p className="text-sm text-muted-foreground">
-                          ${item.unit_price.toLocaleString()} × {item.quantity}
-                        </p>
-                        <p className="font-medium">${item.total_price.toLocaleString()}</p>
+                  <div className="text-right flex items-center gap-2">
+                    {editingItemId === item.id && editingItem ? (
+                      <div className="flex gap-1">
+                        <Button size="sm" variant="outline" onClick={handleSaveClick} disabled={updateLineItemMutation.isPending}>
+                          <Save className="h-3 w-3" />
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={handleCancelClick}>
+                          <X className="h-3 w-3" />
+                        </Button>
                       </div>
                     ) : (
-                      <p className="font-medium">${item.total_price.toLocaleString()}</p>
+                      <>
+                        {item.quantity > 1 ? (
+                          <div>
+                            <p className="text-sm text-muted-foreground">
+                              ${item.unit_price.toLocaleString()} × {item.quantity}
+                            </p>
+                            <p className="font-medium">${item.total_price.toLocaleString()}</p>
+                          </div>
+                        ) : (
+                          <p className="font-medium">${item.total_price.toLocaleString()}</p>
+                        )}
+                        {isEditable && (
+                          <Button size="sm" variant="outline" onClick={() => handleEditClick(item)}>
+                            Edit
+                          </Button>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>

@@ -693,7 +693,7 @@ const DriverPortal = () => {
                           {photo.deliveries?.mobile_homes?.manufacturer} {photo.deliveries?.mobile_homes?.model}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          Delivery #{photo.deliveries?.delivery_number}
+                          Pickup #{photo.deliveries?.delivery_number}
                         </p>
                         <p className="text-xs text-muted-foreground">
                           {photo.deliveries?.customer_name}
@@ -795,7 +795,7 @@ const DriverPortal = () => {
                           {photo.deliveries?.mobile_homes?.manufacturer} {photo.deliveries?.mobile_homes?.model}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          Delivery #{photo.deliveries?.delivery_number}
+                          Repair #{photo.deliveries?.delivery_number}
                         </p>
                         <p className="text-xs text-muted-foreground">
                           {photo.deliveries?.customer_name}

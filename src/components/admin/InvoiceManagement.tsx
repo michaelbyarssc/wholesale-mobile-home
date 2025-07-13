@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   FileText, 
   DollarSign, 
@@ -22,6 +23,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from "@/hooks/use-toast";
 import { QuickBooksSettings } from './QuickBooksSettings';
+import { InvoiceCreationForm } from './InvoiceCreationForm';
 import {
   Select,
   SelectContent,
@@ -35,6 +37,7 @@ export const InvoiceManagement = () => {
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [activeTab, setActiveTab] = useState('overview');
 
   // Fetch approved estimates that can become invoices
   const { data: approvedEstimates = [], isLoading } = useQuery({
@@ -178,6 +181,16 @@ export const InvoiceManagement = () => {
         </div>
       </div>
 
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="create">Create Invoice</TabsTrigger>
+          <TabsTrigger value="settings">Settings</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview" className="space-y-6">
+
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
@@ -241,8 +254,6 @@ export const InvoiceManagement = () => {
         </Card>
       </div>
 
-      {/* QuickBooks Settings */}
-      <QuickBooksSettings />
 
       {/* Approved Estimates Ready for Invoice */}
       {approvedEstimates.length > 0 && (
@@ -381,6 +392,16 @@ export const InvoiceManagement = () => {
           )}
         </CardContent>
       </Card>
+        </TabsContent>
+
+        <TabsContent value="create" className="space-y-6">
+          <InvoiceCreationForm />
+        </TabsContent>
+
+        <TabsContent value="settings" className="space-y-6">
+          <QuickBooksSettings />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

@@ -12,6 +12,7 @@ import { AdminAnalytics } from '@/components/admin/AdminAnalytics';
 import { CombinedCRMTab } from '@/components/admin/CombinedCRMTab';
 import { CombinedSettingsTab } from '@/components/admin/CombinedSettingsTab';
 import { UserManagementTab } from '@/components/admin/UserManagementTab';
+import { SocialProofManager } from '@/components/admin/SocialProofManager';
 import { NotificationCenter } from '@/components/admin/NotificationCenter';
 
 import { Menu, X } from 'lucide-react';
@@ -125,6 +126,7 @@ const Admin = () => {
       'sales': 'Sales',
       'users': 'Users',
       'reviews': 'Reviews',
+      'social-proof': 'Social Proof',
       'analytics': 'Analytics',
       'crm': 'CRM',
       'settings': 'Settings'
@@ -166,7 +168,7 @@ const Admin = () => {
       >
         📊 CRM
       </Button>
-      {isSuperAdmin && (
+       {isSuperAdmin && (
         <>
            <Button
              variant={activeTab === 'analytics' ? 'default' : 'ghost'}
@@ -175,6 +177,13 @@ const Admin = () => {
            >
             📈 Analytics
              </Button>
+           <Button
+             variant={activeTab === 'social-proof' ? 'default' : 'ghost'}
+             className={`${mobile ? 'justify-start w-full h-11 text-base font-medium' : ''} text-xs sm:text-sm`}
+             onClick={() => handleTabChange('social-proof')}
+           >
+             ⭐ Social Proof
+           </Button>
            <Button
              variant={activeTab === 'settings' ? 'default' : 'ghost'}
              className={`${mobile ? 'justify-start w-full h-11 text-base font-medium' : ''} text-xs sm:text-sm`}
@@ -271,7 +280,7 @@ const Admin = () => {
           {/* Desktop Tab Navigation */}
           {!isMobile && isSuperAdmin && (
             <div className="border rounded-lg p-1 bg-muted/30">
-              <TabsList className="grid w-full grid-cols-6 h-12 bg-transparent">
+              <TabsList className="grid w-full grid-cols-7 h-12 bg-transparent">
                 <TabsTrigger 
                   value="mobile-homes" 
                   className="text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm"
@@ -301,6 +310,12 @@ const Admin = () => {
                   className="text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm"
                 >
                   Analytics
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="social-proof" 
+                  className="text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm"
+                >
+                  Social Proof
                 </TabsTrigger>
                 <TabsTrigger 
                   value="settings" 
@@ -370,6 +385,10 @@ const Admin = () => {
 
                 <TabsContent value="settings" className="p-6 m-0">
                   <CombinedSettingsTab isSuperAdmin={isSuperAdmin} />
+                </TabsContent>
+
+                <TabsContent value="social-proof" className="p-6 m-0">
+                  <SocialProofManager />
                 </TabsContent>
 
                 <TabsContent value="reviews" className="p-6 m-0">

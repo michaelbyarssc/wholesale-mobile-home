@@ -263,6 +263,20 @@ const DriverPortal = () => {
         };
       }, [driver?.id, queryClient]);
 
+      // Force clear photos from completed deliveries on component mount
+      useEffect(() => {
+        if (driver?.id) {
+          // Aggressively clear all photo-related cache
+          queryClient.removeQueries({ queryKey: ['driver-delivery-photos'] });
+          queryClient.invalidateQueries({ queryKey: ['driver-delivery-photos'] });
+          
+          // Force refetch after a small delay to ensure cache is cleared
+          setTimeout(() => {
+            queryClient.refetchQueries({ queryKey: ['driver-delivery-photos'] });
+          }, 100);
+        }
+      }, [driver?.id, queryClient]);
+
       // Fetch completed deliveries
       const { data: completedDeliveries = [] } = useQuery({
     queryKey: ['driver-completed-deliveries', driver?.id],

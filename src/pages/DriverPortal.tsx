@@ -495,12 +495,18 @@ const DriverPortal = () => {
 
       <div className="container mx-auto px-4 py-4">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="active">
               Active ({activeDeliveries.length})
             </TabsTrigger>
-            <TabsTrigger value="photos">
-              Photos ({deliveryPhotos.length})
+            <TabsTrigger value="pickup-photos">
+              Pickup Photos ({deliveryPhotos.filter(p => p.photo_type === 'pickup').length})
+            </TabsTrigger>
+            <TabsTrigger value="delivery-photos">
+              Delivery Photos ({deliveryPhotos.filter(p => p.photo_type === 'delivery').length})
+            </TabsTrigger>
+            <TabsTrigger value="repair-photos">
+              Repairs Needed ({deliveryPhotos.filter(p => p.photo_type === 'issue').length})
             </TabsTrigger>
             <TabsTrigger value="completed">
               Completed ({completedDeliveries.length})
@@ -615,7 +621,7 @@ const DriverPortal = () => {
                         </div>
 
                         {/* Photo Buttons */}
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="grid grid-cols-3 gap-2">
                           <Button
                             variant="outline"
                             onClick={() => handlePhotoUpload(delivery.id, 'pickup')}
@@ -631,6 +637,14 @@ const DriverPortal = () => {
                           >
                             <Camera className="h-4 w-4 mr-2" />
                             Delivery Photo
+                          </Button>
+                          <Button
+                            variant="outline"
+                            onClick={() => handlePhotoUpload(delivery.id, 'issue')}
+                            size="sm"
+                          >
+                            <Camera className="h-4 w-4 mr-2" />
+                            Repairs Needed
                           </Button>
                         </div>
 
@@ -649,71 +663,155 @@ const DriverPortal = () => {
             )}
           </TabsContent>
 
-          {/* Photos Tab */}
-          <TabsContent value="photos" className="space-y-4 mt-4">
-            {deliveryPhotos.length === 0 ? (
+          {/* Pickup Photos Tab */}
+          <TabsContent value="pickup-photos" className="space-y-4 mt-4">
+            {deliveryPhotos.filter(p => p.photo_type === 'pickup').length === 0 ? (
               <Card>
                 <CardContent className="flex flex-col items-center justify-center py-12">
                   <Camera className="h-12 w-12 text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-medium mb-2">No Photos Yet</h3>
+                  <h3 className="text-lg font-medium mb-2">No Pickup Photos Yet</h3>
                   <p className="text-muted-foreground text-center">
-                    Photos you take during deliveries will appear here.
+                    Pickup photos you take during deliveries will appear here.
                   </p>
                 </CardContent>
               </Card>
             ) : (
-              <div className="space-y-4">
-                {/* Group photos by photo_type */}
-                {['pickup', 'delivery', 'issue'].map((photoType) => {
-                  const photosOfType = deliveryPhotos.filter(photo => photo.photo_type === photoType);
-                  if (photosOfType.length === 0) return null;
-                  
-                  return (
-                    <Card key={photoType}>
-                      <CardHeader>
-                        <CardTitle className="text-lg capitalize flex items-center">
-                          <Camera className="h-5 w-5 mr-2" />
-                          {photoType} Photos ({photosOfType.length})
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="grid grid-cols-2 gap-4">
-                          {photosOfType.map((photo) => (
-                            <div key={photo.id} className="space-y-2">
-                              <div className="relative aspect-square rounded-lg overflow-hidden bg-muted">
-                                <img
-                                  src={photo.photo_url}
-                                  alt={photo.caption || `${photoType} photo`}
-                                  className="w-full h-full object-cover"
-                                  loading="lazy"
-                                />
-                              </div>
-                              <div className="space-y-1">
-                                <p className="text-sm font-medium">
-                                  {photo.deliveries?.mobile_homes?.manufacturer} {photo.deliveries?.mobile_homes?.model}
-                                </p>
-                                <p className="text-xs text-muted-foreground">
-                                  Delivery #{photo.deliveries?.delivery_number}
-                                </p>
-                                <p className="text-xs text-muted-foreground">
-                                  {photo.deliveries?.customer_name}
-                                </p>
-                                {photo.caption && (
-                                  <p className="text-xs text-muted-foreground italic">
-                                    "{photo.caption}"
-                                  </p>
-                                )}
-                                <p className="text-xs text-muted-foreground">
-                                  {new Date(photo.taken_at).toLocaleString()}
-                                </p>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
+              <div className="grid grid-cols-2 gap-4">
+                {deliveryPhotos.filter(p => p.photo_type === 'pickup').map((photo) => (
+                  <Card key={photo.id}>
+                    <CardContent className="p-4 space-y-2">
+                      <div className="relative aspect-square rounded-lg overflow-hidden bg-muted">
+                        <img
+                          src={photo.photo_url}
+                          alt={photo.caption || 'Pickup photo'}
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium">
+                          {photo.deliveries?.mobile_homes?.manufacturer} {photo.deliveries?.mobile_homes?.model}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Delivery #{photo.deliveries?.delivery_number}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {photo.deliveries?.customer_name}
+                        </p>
+                        {photo.caption && (
+                          <p className="text-xs text-muted-foreground italic">
+                            "{photo.caption}"
+                          </p>
+                        )}
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(photo.taken_at).toLocaleString()}
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          {/* Delivery Photos Tab */}
+          <TabsContent value="delivery-photos" className="space-y-4 mt-4">
+            {deliveryPhotos.filter(p => p.photo_type === 'delivery').length === 0 ? (
+              <Card>
+                <CardContent className="flex flex-col items-center justify-center py-12">
+                  <Camera className="h-12 w-12 text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-medium mb-2">No Delivery Photos Yet</h3>
+                  <p className="text-muted-foreground text-center">
+                    Delivery photos you take during deliveries will appear here.
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-2 gap-4">
+                {deliveryPhotos.filter(p => p.photo_type === 'delivery').map((photo) => (
+                  <Card key={photo.id}>
+                    <CardContent className="p-4 space-y-2">
+                      <div className="relative aspect-square rounded-lg overflow-hidden bg-muted">
+                        <img
+                          src={photo.photo_url}
+                          alt={photo.caption || 'Delivery photo'}
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium">
+                          {photo.deliveries?.mobile_homes?.manufacturer} {photo.deliveries?.mobile_homes?.model}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Delivery #{photo.deliveries?.delivery_number}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {photo.deliveries?.customer_name}
+                        </p>
+                        {photo.caption && (
+                          <p className="text-xs text-muted-foreground italic">
+                            "{photo.caption}"
+                          </p>
+                        )}
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(photo.taken_at).toLocaleString()}
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          {/* Repairs Needed Photos Tab */}
+          <TabsContent value="repair-photos" className="space-y-4 mt-4">
+            {deliveryPhotos.filter(p => p.photo_type === 'issue').length === 0 ? (
+              <Card>
+                <CardContent className="flex flex-col items-center justify-center py-12">
+                  <Camera className="h-12 w-12 text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-medium mb-2">No Repair Photos Yet</h3>
+                  <p className="text-muted-foreground text-center">
+                    Photos documenting repairs or issues will appear here.
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-2 gap-4">
+                {deliveryPhotos.filter(p => p.photo_type === 'issue').map((photo) => (
+                  <Card key={photo.id}>
+                    <CardContent className="p-4 space-y-2">
+                      <div className="relative aspect-square rounded-lg overflow-hidden bg-muted">
+                        <img
+                          src={photo.photo_url}
+                          alt={photo.caption || 'Repair photo'}
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium">
+                          {photo.deliveries?.mobile_homes?.manufacturer} {photo.deliveries?.mobile_homes?.model}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Delivery #{photo.deliveries?.delivery_number}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {photo.deliveries?.customer_name}
+                        </p>
+                        {photo.caption && (
+                          <p className="text-xs text-muted-foreground italic">
+                            "{photo.caption}"
+                          </p>
+                        )}
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(photo.taken_at).toLocaleString()}
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
               </div>
             )}
           </TabsContent>

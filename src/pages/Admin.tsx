@@ -13,7 +13,6 @@ import { AdminAnalytics } from '@/components/admin/AdminAnalytics';
 import { CRMDashboard } from '@/components/admin/CRMDashboard';
 import { SettingsTab } from '@/components/admin/SettingsTab';
 import { UserManagementTab } from '@/components/admin/UserManagementTab';
-import { AuditLogTab } from '@/components/admin/AuditLogTab';
 import { SuperAdminMarkupTab } from '@/components/admin/SuperAdminMarkupTab';
 import { AdminCalendarDashboard } from '@/components/admin/calendar/AdminCalendarDashboard';
 import { InvoiceManagement } from '@/components/admin/InvoiceManagement';
@@ -136,8 +135,7 @@ const Admin = () => {
       'invoices': 'Invoices',
       'docusign': 'DocuSign',
       'super-admin': 'Admin',
-      'settings': 'Settings',
-      'audit': 'Audit'
+      'settings': 'Settings'
     };
     return tabNames[tab] || tab;
   };
@@ -228,13 +226,6 @@ const Admin = () => {
            >
              Settings
            </Button>
-           <Button
-             variant={activeTab === 'audit' ? 'default' : 'ghost'}
-             className={`${mobile ? 'justify-start w-full h-12 text-base' : ''} text-xs sm:text-sm`}
-             onClick={() => handleTabChange('audit')}
-           >
-             Audit Log
-          </Button>
         </>
       )}
     </div>
@@ -314,7 +305,7 @@ const Admin = () => {
         <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-3 sm:space-y-4 md:space-y-6">
           {/* Desktop Tab List - Hidden on mobile since we use sheet menu */}
           {!isMobile && isSuperAdmin && (
-            <TabsList className="grid w-full grid-cols-11 h-auto p-1">
+            <TabsList className="grid w-full grid-cols-10 h-auto p-1">
               <TabsTrigger value="mobile-homes" className="text-xs lg:text-sm">Homes</TabsTrigger>
               <TabsTrigger value="add-ons" className="text-xs lg:text-sm">Add-ons</TabsTrigger>
               <TabsTrigger value="estimates" className="text-xs lg:text-sm">Estimates</TabsTrigger>
@@ -326,7 +317,6 @@ const Admin = () => {
               <TabsTrigger value="analytics" className="text-xs lg:text-sm">Analytics</TabsTrigger>
               <TabsTrigger value="super-admin" className="text-xs lg:text-sm">Admin</TabsTrigger>
               <TabsTrigger value="settings" className="text-xs lg:text-sm">Settings</TabsTrigger>
-              <TabsTrigger value="audit" className="text-xs lg:text-sm">Audit</TabsTrigger>
             </TabsList>
           )}
           {!isMobile && !isSuperAdmin && (
@@ -392,10 +382,6 @@ const Admin = () => {
 
               <TabsContent value="settings" className="mt-2 sm:mt-4">
                 <SettingsTab />
-              </TabsContent>
-
-              <TabsContent value="audit" className="mt-2 sm:mt-4">
-                <AuditLogTab />
               </TabsContent>
 
               <TabsContent value="reviews" className="mt-2 sm:mt-4">

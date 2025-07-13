@@ -268,9 +268,13 @@ serve(async (req) => {
 
   } catch (error: any) {
     console.error('Error in send-invoice-email function:', error);
+    console.error('Error stack:', error.stack);
+    console.error('Error details:', JSON.stringify(error, null, 2));
+    
     return new Response(
       JSON.stringify({ 
-        error: error.message,
+        error: error.message || 'Unknown error occurred',
+        details: error.toString(),
         success: false 
       }),
       { 

@@ -11,9 +11,8 @@ import { SalesTab } from '@/components/admin/SalesTab';
 import { ReviewsTab } from '@/components/admin/ReviewsTab';
 import { AdminAnalytics } from '@/components/admin/AdminAnalytics';
 import { CombinedCRMTab } from '@/components/admin/CombinedCRMTab';
-import { SettingsTab } from '@/components/admin/SettingsTab';
+import { CombinedSettingsTab } from '@/components/admin/CombinedSettingsTab';
 import { UserManagementTab } from '@/components/admin/UserManagementTab';
-import { SuperAdminMarkupTab } from '@/components/admin/SuperAdminMarkupTab';
 import { NotificationCenter } from '@/components/admin/NotificationCenter';
 
 import { Menu, X } from 'lucide-react';
@@ -126,7 +125,6 @@ const Admin = () => {
       'reviews': 'Reviews',
       'analytics': 'Analytics',
       'crm': 'CRM',
-      'super-admin': 'Admin',
       'settings': 'Settings'
     };
     return tabNames[tab] || tab;
@@ -169,20 +167,13 @@ const Admin = () => {
         </Button>
       {isSuperAdmin && (
         <>
-          <Button
-            variant={activeTab === 'super-admin' ? 'default' : 'ghost'}
-            className={`${mobile ? 'justify-start w-full h-12 text-base' : ''} text-xs sm:text-sm`}
-            onClick={() => handleTabChange('super-admin')}
-          >
-            Super Admin
-          </Button>
            <Button
              variant={activeTab === 'analytics' ? 'default' : 'ghost'}
              className={`${mobile ? 'justify-start w-full h-12 text-base' : ''} text-xs sm:text-sm`}
              onClick={() => handleTabChange('analytics')}
            >
               Analytics
-            </Button>
+             </Button>
            <Button
              variant={activeTab === 'settings' ? 'default' : 'ghost'}
              className={`${mobile ? 'justify-start w-full h-12 text-base' : ''} text-xs sm:text-sm`}
@@ -269,13 +260,12 @@ const Admin = () => {
         <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-3 sm:space-y-4 md:space-y-6">
           {/* Desktop Tab List - Hidden on mobile since we use sheet menu */}
           {!isMobile && isSuperAdmin && (
-            <TabsList className="grid w-full grid-cols-6 h-auto p-1">
+            <TabsList className="grid w-full grid-cols-5 h-auto p-1">
               <TabsTrigger value="mobile-homes" className="text-xs lg:text-sm">Homes</TabsTrigger>
               <TabsTrigger value="sales" className="text-xs lg:text-sm">Sales</TabsTrigger>
               <TabsTrigger value="users" className="text-xs lg:text-sm">Users</TabsTrigger>
               <TabsTrigger value="crm" className="text-xs lg:text-sm">CRM</TabsTrigger>
               <TabsTrigger value="analytics" className="text-xs lg:text-sm">Analytics</TabsTrigger>
-              <TabsTrigger value="super-admin" className="text-xs lg:text-sm">Admin</TabsTrigger>
               <TabsTrigger value="settings" className="text-xs lg:text-sm">Settings</TabsTrigger>
             </TabsList>
           )}
@@ -314,12 +304,8 @@ const Admin = () => {
 
           {isSuperAdmin && (
             <>
-              <TabsContent value="super-admin" className="mt-2 sm:mt-4">
-                <SuperAdminMarkupTab />
-              </TabsContent>
-
               <TabsContent value="settings" className="mt-2 sm:mt-4">
-                <SettingsTab />
+                <CombinedSettingsTab isSuperAdmin={isSuperAdmin} />
               </TabsContent>
 
               <TabsContent value="reviews" className="mt-2 sm:mt-4">

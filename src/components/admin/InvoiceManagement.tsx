@@ -83,16 +83,7 @@ export const InvoiceManagement = () => {
 
       const { data, error } = await supabase
         .from('invoices')
-        .select(`
-          *,
-          estimates!invoices_estimate_id_fkey (
-            mobile_home_id,
-            mobile_homes (
-              manufacturer,
-              model
-            )
-          )
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
       
       if (error) {

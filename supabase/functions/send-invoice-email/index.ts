@@ -183,7 +183,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'onboarding@resend.dev', // Use Resend's verified domain
+        from: 'Mobile Home Sales <onboarding@resend.dev>', // Use Resend's verified domain
         to: [customerEmail],
         subject: `Invoice ${invoice.invoice_number} from Mobile Home Sales`,
         html: htmlContent,

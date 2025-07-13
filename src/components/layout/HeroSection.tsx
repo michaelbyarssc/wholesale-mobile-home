@@ -3,7 +3,6 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { User } from '@supabase/supabase-js';
-import { SocialProofBanner } from '@/components/SocialProofBanner';
 
 interface HeroSectionProps {
   user: User | null;
@@ -30,11 +29,6 @@ export const HeroSection = ({ user }: HeroSectionProps) => {
         <p className="text-sm sm:text-base md:text-lg lg:text-xl text-gray-100 mb-6 sm:mb-8 lg:mb-10 max-w-3xl mx-auto leading-relaxed drop-shadow-md px-2 sm:px-4">
           Browse our selection of mobile and modular homes. Add items to your cart and get detailed pricing for your investment projects.
         </p>
-        
-        {/* Trust indicators for mobile */}
-        <div className="mb-6 sm:mb-8 lg:hidden">
-          <SocialProofBanner variant="embedded" className="grid-cols-3 gap-3 text-center" />
-        </div>
         
         <div className="flex flex-col  gap-3 sm:gap-4 lg:flex-row lg:gap-6 justify-center items-center px-2 sm:px-4">
           {!user ? (

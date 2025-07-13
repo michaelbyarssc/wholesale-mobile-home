@@ -43,6 +43,13 @@ export const InvoiceManagement = () => {
   const { data: approvedEstimates = [], isLoading } = useQuery({
     queryKey: ['approved-estimates'],
     queryFn: async () => {
+      // First check if we have a session
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.user) {
+        throw new Error('Not authenticated');
+      }
+
       const { data, error } = await supabase
         .from('estimates')
         .select(`
@@ -64,9 +71,16 @@ export const InvoiceManagement = () => {
   });
 
   // Fetch existing invoices
-  const { data: invoices = [] } = useQuery({
+  const { data: invoices = [], error: invoicesError } = useQuery({
     queryKey: ['invoices-basic'],
     queryFn: async () => {
+      // First check if we have a session
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.user) {
+        throw new Error('Not authenticated');
+      }
+
       const { data, error } = await supabase
         .from('invoices')
         .select(`
@@ -81,10 +95,27 @@ export const InvoiceManagement = () => {
         `)
         .order('created_at', { ascending: false });
       
-      if (error) throw error;
+      if (error) {
+        console.error('Invoice query error:', error);
+        throw error;
+      }
+      
+      console.log('Invoices fetched successfully:', data?.length || 0, 'invoices');
       return data || [];
     },
   });
+
+  // Handle invoice loading error
+  React.useEffect(() => {
+    if (invoicesError) {
+      console.error('Failed to fetch invoices:', invoicesError);
+      toast({
+        title: "Error",
+        description: "Failed to load invoices. Please try refreshing.",
+        variant: "destructive",
+      });
+    }
+  }, [invoicesError, toast]);
 
   // Create invoice from estimate using the improved approve_estimate function
   const createInvoiceMutation = useMutation({

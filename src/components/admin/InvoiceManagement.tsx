@@ -83,7 +83,7 @@ export const InvoiceManagement = () => {
     },
   });
 
-  // Fetch existing invoices
+  // Fetch existing invoices with related data
   const { data: invoices = [], error: invoicesError } = useQuery({
     queryKey: ['invoices-basic'],
     queryFn: async () => {
@@ -98,7 +98,29 @@ export const InvoiceManagement = () => {
 
       const { data, error } = await supabase
         .from('invoices')
-        .select('*')
+        .select(`
+          *,
+          estimates (
+            *,
+            mobile_homes (
+              manufacturer,
+              model,
+              series,
+              bedrooms,
+              bathrooms,
+              square_footage,
+              width_feet,
+              length_feet,
+              price
+            )
+          ),
+          estimate_line_items (
+            *
+          ),
+          payments (
+            *
+          )
+        `)
         .order('created_at', { ascending: false });
       
       if (error) {
@@ -554,102 +576,182 @@ export const InvoiceManagement = () => {
 
       {/* Invoice Details Dialog */}
       <Dialog open={showInvoiceDialog} onOpenChange={setShowInvoiceDialog}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Invoice Details - {selectedInvoice?.invoice_number}</DialogTitle>
+            <DialogTitle className="text-2xl font-bold">Invoice Details - {selectedInvoice?.invoice_number}</DialogTitle>
           </DialogHeader>
           
           {selectedInvoice && (
             <div className="space-y-6">
               {/* Invoice Header */}
-              <div className="grid grid-cols-2 gap-6">
-                <div>
-                  <h3 className="font-semibold text-lg mb-2">Invoice Information</h3>
-                  <div className="space-y-2 text-sm">
-                    <div><span className="font-medium">Invoice Number:</span> {selectedInvoice.invoice_number}</div>
-                    <div><span className="font-medium">Status:</span> {getStatusBadge(selectedInvoice.status)}</div>
-                    <div><span className="font-medium">Created:</span> {new Date(selectedInvoice.created_at).toLocaleDateString()}</div>
-                    {selectedInvoice.due_date && (
-                      <div><span className="font-medium">Due Date:</span> {new Date(selectedInvoice.due_date).toLocaleDateString()}</div>
-                    )}
-                    {selectedInvoice.paid_at && (
-                      <div><span className="font-medium">Paid Date:</span> {new Date(selectedInvoice.paid_at).toLocaleDateString()}</div>
-                    )}
+              <div className="bg-gradient-to-r from-blue-50 to-green-50 rounded-lg p-6 border">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div>
+                    <h3 className="font-semibold text-lg mb-3 text-blue-900">Invoice Information</h3>
+                    <div className="space-y-2 text-sm">
+                      <div><span className="font-medium text-gray-600">Invoice Number:</span> <span className="font-bold">{selectedInvoice.invoice_number}</span></div>
+                      <div><span className="font-medium text-gray-600">Status:</span> {getStatusBadge(selectedInvoice.status)}</div>
+                      <div><span className="font-medium text-gray-600">Created:</span> {new Date(selectedInvoice.created_at).toLocaleDateString()}</div>
+                      {selectedInvoice.due_date && (
+                        <div><span className="font-medium text-gray-600">Due Date:</span> {new Date(selectedInvoice.due_date).toLocaleDateString()}</div>
+                      )}
+                      {selectedInvoice.paid_at && (
+                        <div><span className="font-medium text-gray-600">Paid Date:</span> {new Date(selectedInvoice.paid_at).toLocaleDateString()}</div>
+                      )}
+                    </div>
                   </div>
-                </div>
-                
-                <div>
-                  <h3 className="font-semibold text-lg mb-2">Customer Information</h3>
-                  <div className="space-y-2 text-sm">
-                    <div><span className="font-medium">Name:</span> {selectedInvoice.customer_name}</div>
-                    <div><span className="font-medium">Email:</span> {selectedInvoice.customer_email}</div>
-                    <div><span className="font-medium">Phone:</span> {selectedInvoice.customer_phone}</div>
-                    {selectedInvoice.delivery_address && (
-                      <div><span className="font-medium">Delivery Address:</span> {selectedInvoice.delivery_address}</div>
-                    )}
+                  
+                  <div>
+                    <h3 className="font-semibold text-lg mb-3 text-green-900">Customer Information</h3>
+                    <div className="space-y-2 text-sm">
+                      <div><span className="font-medium text-gray-600">Name:</span> {selectedInvoice.customer_name}</div>
+                      <div><span className="font-medium text-gray-600">Email:</span> {selectedInvoice.customer_email}</div>
+                      <div><span className="font-medium text-gray-600">Phone:</span> {selectedInvoice.customer_phone}</div>
+                      {selectedInvoice.delivery_address && (
+                        <div><span className="font-medium text-gray-600">Delivery Address:</span> {selectedInvoice.delivery_address}</div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 className="font-semibold text-lg mb-3 text-purple-900">Financial Summary</h3>
+                    <div className="space-y-2 text-sm">
+                      <div><span className="font-medium text-gray-600">Total Amount:</span> <span className="font-bold text-lg">{formatCurrency(selectedInvoice.total_amount)}</span></div>
+                      {selectedInvoice.balance_due !== undefined && (
+                        <div><span className="font-medium text-gray-600">Balance Due:</span> <span className="font-bold text-lg text-red-600">{formatCurrency(selectedInvoice.balance_due)}</span></div>
+                      )}
+                      {selectedInvoice.payments && selectedInvoice.payments.length > 0 && (
+                        <div><span className="font-medium text-gray-600">Payments Made:</span> <span className="font-bold text-green-600">{formatCurrency(selectedInvoice.payments.reduce((sum: number, p: any) => sum + p.amount, 0))}</span></div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* Financial Information */}
-              <div className="border-t pt-4">
-                <h3 className="font-semibold text-lg mb-4">Financial Details</h3>
-                <div className="bg-muted p-4 rounded-lg">
-                  <div className="flex justify-between items-center text-lg font-semibold">
-                    <span>Total Amount:</span>
-                    <span className="text-primary">{formatCurrency(selectedInvoice.total_amount)}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* QuickBooks Integration */}
-              {selectedInvoice.quickbooks_id && (
-                <div className="border-t pt-4">
-                  <h3 className="font-semibold text-lg mb-2">QuickBooks Integration</h3>
-                  <div className="space-y-2 text-sm">
-                    <div><span className="font-medium">QuickBooks ID:</span> {selectedInvoice.quickbooks_id}</div>
-                    {selectedInvoice.quickbooks_synced_at && (
-                      <div><span className="font-medium">Last Synced:</span> {new Date(selectedInvoice.quickbooks_synced_at).toLocaleDateString()}</div>
-                    )}
+              {/* Mobile Home Details */}
+              {selectedInvoice.estimates?.mobile_homes && (
+                <div className="bg-green-50 rounded-lg p-6 border">
+                  <h3 className="font-semibold text-lg mb-4 text-green-900">Mobile Home Specifications</h3>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div>
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                          <span className="font-medium text-gray-600">Manufacturer:</span>
+                          <span className="text-gray-900">{selectedInvoice.estimates.mobile_homes.manufacturer}</span>
+                        </div>
+                        <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                          <span className="font-medium text-gray-600">Series:</span>
+                          <span className="text-gray-900">{selectedInvoice.estimates.mobile_homes.series}</span>
+                        </div>
+                        <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                          <span className="font-medium text-gray-600">Model:</span>
+                          <span className="text-gray-900">{selectedInvoice.estimates.mobile_homes.model}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div>
+                      <div className="space-y-3">
+                        {selectedInvoice.estimates.mobile_homes.bedrooms && (
+                          <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                            <span className="font-medium text-gray-600">Bedrooms:</span>
+                            <span className="text-gray-900">{selectedInvoice.estimates.mobile_homes.bedrooms}</span>
+                          </div>
+                        )}
+                        {selectedInvoice.estimates.mobile_homes.bathrooms && (
+                          <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                            <span className="font-medium text-gray-600">Bathrooms:</span>
+                            <span className="text-gray-900">{selectedInvoice.estimates.mobile_homes.bathrooms}</span>
+                          </div>
+                        )}
+                        {selectedInvoice.estimates.mobile_homes.square_footage && (
+                          <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                            <span className="font-medium text-gray-600">Square Footage:</span>
+                            <span className="text-gray-900">{selectedInvoice.estimates.mobile_homes.square_footage} sq ft</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                          <span className="font-medium text-gray-600">Base Price:</span>
+                          <span className="text-lg font-bold text-green-600">
+                            {formatCurrency(selectedInvoice.estimates.mobile_homes.price)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
 
-              {/* Action Buttons */}
-              <div className="border-t pt-4 flex space-x-2">
-                {selectedInvoice.status === 'draft' && (
-                  <Button>
-                    <Send className="h-4 w-4 mr-2" />
-                    Send Invoice
-                  </Button>
-                )}
-                
-                {selectedInvoice.status !== 'paid' && (
-                  <Button variant="outline">
-                    <CreditCard className="h-4 w-4 mr-2" />
-                    Mark as Paid
-                  </Button>
-                )}
+              {/* Line Items */}
+              {selectedInvoice.estimate_line_items && selectedInvoice.estimate_line_items.length > 0 && (
+                <div className="bg-yellow-50 rounded-lg p-6 border">
+                  <h3 className="font-semibold text-lg mb-4 text-yellow-900">Line Items</h3>
+                  <div className="space-y-3">
+                    {selectedInvoice.estimate_line_items.map((item: any, index: number) => (
+                      <div key={index} className="flex justify-between items-center py-3 px-4 bg-white rounded border">
+                        <div>
+                          <div className="font-medium">{item.name}</div>
+                          {item.description && <div className="text-sm text-gray-600">{item.description}</div>}
+                          <div className="text-sm text-gray-500">Qty: {item.quantity} × {formatCurrency(item.unit_price)}</div>
+                        </div>
+                        <div className="text-lg font-semibold">{formatCurrency(item.total_price)}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
-                {!selectedInvoice.quickbooks_id && (
-                  <Button 
-                    variant="outline"
-                    onClick={() => syncToQuickBooksMutation.mutate(selectedInvoice.id)}
-                    disabled={syncToQuickBooksMutation.isPending}
-                  >
-                    <RotateCw className="h-4 w-4 mr-2" />
-                    {syncToQuickBooksMutation.isPending ? 'Syncing...' : 'Sync to QuickBooks'}
-                  </Button>
-                )}
+              {/* Payment History */}
+              {selectedInvoice.payments && selectedInvoice.payments.length > 0 && (
+                <div className="bg-purple-50 rounded-lg p-6 border">
+                  <h3 className="font-semibold text-lg mb-4 text-purple-900">Payment History</h3>
+                  <div className="space-y-3">
+                    {selectedInvoice.payments.map((payment: any, index: number) => (
+                      <div key={index} className="flex justify-between items-center py-3 px-4 bg-white rounded border">
+                        <div>
+                          <div className="font-medium">{formatCurrency(payment.amount)}</div>
+                          <div className="text-sm text-gray-600">
+                            {new Date(payment.payment_date).toLocaleDateString()} • {payment.payment_method.replace('_', ' ').toUpperCase()}
+                          </div>
+                          {payment.notes && <div className="text-sm text-gray-500">{payment.notes}</div>}
+                        </div>
+                        <div className="text-green-600 font-semibold">Paid</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
-                <EstimateDocuSignButton
-                  estimateId={selectedInvoice.estimate_id || ''}
-                  customerEmail={selectedInvoice.customer_email}
-                  customerName={selectedInvoice.customer_name}
-                  estimateNumber={selectedInvoice.invoice_number}
-                  documentType="invoice"
-                  hasInvoice={true}
-                />
+              {/* Additional Information */}
+              {(selectedInvoice.estimates?.additional_requirements || selectedInvoice.notes) && (
+                <div className="bg-gray-50 rounded-lg p-6 border">
+                  <h3 className="font-semibold text-lg mb-4 text-gray-900">Additional Information</h3>
+                  {selectedInvoice.estimates?.additional_requirements && (
+                    <div className="mb-4">
+                      <div className="font-medium text-gray-600 mb-2">Additional Requirements:</div>
+                      <div className="text-gray-900 bg-white p-3 rounded border">{selectedInvoice.estimates.additional_requirements}</div>
+                    </div>
+                  )}
+                  {selectedInvoice.notes && (
+                    <div>
+                      <div className="font-medium text-gray-600 mb-2">Invoice Notes:</div>
+                      <div className="text-gray-900 bg-white p-3 rounded border">{selectedInvoice.notes}</div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Total Summary */}
+              <div className="bg-gradient-to-r from-gray-50 to-blue-50 rounded-lg p-6 border-2">
+                <div className="flex justify-between items-center text-xl font-bold">
+                  <span>Total Invoice Amount:</span>
+                  <span className="text-primary text-2xl">{formatCurrency(selectedInvoice.total_amount)}</span>
+                </div>
+                {selectedInvoice.balance_due !== undefined && selectedInvoice.balance_due > 0 && (
+                  <div className="flex justify-between items-center text-lg font-semibold mt-2 text-red-600">
+                    <span>Outstanding Balance:</span>
+                    <span>{formatCurrency(selectedInvoice.balance_due)}</span>
+                  </div>
+                )}
               </div>
             </div>
           )}

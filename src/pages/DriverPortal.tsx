@@ -218,6 +218,9 @@ const DriverPortal = () => {
         },
         enabled: !!driver?.id,
         refetchInterval: 10000, // Refetch every 10 seconds to catch status changes
+        // Force immediate refetch on mount to clear any stale photos from completed deliveries
+        refetchOnMount: 'always',
+        staleTime: 0, // Always consider data stale to force fresh fetches
       });
 
       // Real-time subscription to clear photos when deliveries are completed

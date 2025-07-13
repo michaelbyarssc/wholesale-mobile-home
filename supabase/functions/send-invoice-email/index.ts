@@ -12,9 +12,16 @@ interface SendInvoiceEmailRequest {
   customerName: string;
 }
 
-const generateInvoiceEmailHtml = (invoice: any, estimate: any) => {
+const generateInvoiceEmailHtml = (invoice: any, estimate: any, services: any[], homeOptions: any[], shippingCost: number = 0) => {
   const businessName = "Mobile Home Sales"; // This could come from settings
   const currentDate = new Date().toLocaleDateString();
+  
+  // Calculate subtotals
+  const mobileHomePrice = estimate?.mobile_homes?.final_customer_price || 0;
+  const servicesTotal = services.reduce((sum, service) => sum + (service.final_customer_price || 0), 0);
+  const optionsTotal = homeOptions.reduce((sum, option) => sum + (option.final_customer_price || 0), 0);
+  const subtotal = mobileHomePrice + servicesTotal + optionsTotal;
+  const grandTotal = subtotal + shippingCost;
   
   return `
     <!DOCTYPE html>
@@ -39,6 +46,17 @@ const generateInvoiceEmailHtml = (invoice: any, estimate: any) => {
             .spec-item { padding: 8px 0; border-bottom: 1px solid #e0e0e0; }
             .spec-label { font-weight: bold; color: #555; }
             .spec-value { color: #333; }
+            .itemized-section { margin: 30px 0; }
+            .itemized-title { font-weight: bold; color: #333; margin-bottom: 15px; font-size: 18px; border-bottom: 2px solid #e0e0e0; padding-bottom: 10px; }
+            .line-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #f0f0f0; }
+            .line-item:last-child { border-bottom: none; }
+            .item-name { font-weight: 500; color: #333; }
+            .item-description { font-size: 14px; color: #666; margin-top: 4px; }
+            .item-price { font-weight: bold; color: #333; font-size: 16px; }
+            .subtotal-section { background: #f8f9fa; padding: 15px; border-radius: 6px; margin: 20px 0; }
+            .subtotal-line { display: flex; justify-content: space-between; margin: 8px 0; }
+            .subtotal-label { color: #666; }
+            .subtotal-value { font-weight: bold; color: #333; }
             .total-section { background: #e8f4fd; padding: 20px; border-radius: 6px; text-align: center; margin: 30px 0; }
             .total-amount { font-size: 32px; font-weight: bold; color: #1976d2; margin: 0; }
             .status-badge { display: inline-block; padding: 6px 12px; border-radius: 20px; font-size: 14px; font-weight: bold; text-transform: uppercase; }
@@ -51,6 +69,8 @@ const generateInvoiceEmailHtml = (invoice: any, estimate: any) => {
                 .info-section { flex-direction: column; }
                 .info-box { margin-right: 0; margin-bottom: 20px; }
                 .specs-grid { grid-template-columns: 1fr; }
+                .line-item { flex-direction: column; align-items: flex-start; }
+                .item-price { margin-top: 8px; }
             }
         </style>
     </head>
@@ -107,10 +127,76 @@ const generateInvoiceEmailHtml = (invoice: any, estimate: any) => {
             </div>
             ` : ''}
             
+            <div class="itemized-section">
+                <div class="itemized-title">Itemized Charges</div>
+                
+                ${estimate?.mobile_homes ? `
+                <div class="line-item">
+                    <div>
+                        <div class="item-name">${estimate.mobile_homes.manufacturer} ${estimate.mobile_homes.model}</div>
+                        <div class="item-description">${estimate.mobile_homes.series ? `${estimate.mobile_homes.series} Series - ` : ''}${estimate.mobile_homes.width_feet}' x ${estimate.mobile_homes.length_feet}' Mobile Home</div>
+                    </div>
+                    <div class="item-price">$${mobileHomePrice.toLocaleString()}</div>
+                </div>
+                ` : ''}
+                
+                ${services.length > 0 ? services.map(service => `
+                <div class="line-item">
+                    <div>
+                        <div class="item-name">${service.name}</div>
+                        ${service.description ? `<div class="item-description">${service.description}</div>` : ''}
+                    </div>
+                    <div class="item-price">$${(service.final_customer_price || 0).toLocaleString()}</div>
+                </div>
+                `).join('') : ''}
+                
+                ${homeOptions.length > 0 ? homeOptions.map(option => `
+                <div class="line-item">
+                    <div>
+                        <div class="item-name">${option.name}</div>
+                        ${option.description ? `<div class="item-description">${option.description}</div>` : ''}
+                    </div>
+                    <div class="item-price">$${(option.final_customer_price || 0).toLocaleString()}</div>
+                </div>
+                `).join('') : ''}
+                
+                ${shippingCost > 0 ? `
+                <div class="line-item">
+                    <div>
+                        <div class="item-name">Shipping & Delivery</div>
+                        <div class="item-description">Transportation and setup costs</div>
+                    </div>
+                    <div class="item-price">$${shippingCost.toLocaleString()}</div>
+                </div>
+                ` : ''}
+            </div>
+            
+            <div class="subtotal-section">
+                <div class="subtotal-line">
+                    <span class="subtotal-label">Subtotal:</span>
+                    <span class="subtotal-value">$${subtotal.toLocaleString()}</span>
+                </div>
+                ${shippingCost > 0 ? `
+                <div class="subtotal-line">
+                    <span class="subtotal-label">Shipping & Delivery:</span>
+                    <span class="subtotal-value">$${shippingCost.toLocaleString()}</span>
+                </div>
+                ` : ''}
+                <div class="subtotal-line" style="border-top: 2px solid #ddd; padding-top: 8px; margin-top: 8px;">
+                    <span class="subtotal-label" style="font-weight: bold; color: #333;">Total:</span>
+                    <span class="subtotal-value" style="font-size: 18px; color: #1976d2;">$${invoice.total_amount.toLocaleString()}</span>
+                </div>
+                ${invoice.balance_due > 0 ? `
+                <div class="subtotal-line">
+                    <span class="subtotal-label" style="color: #d32f2f;">Balance Due:</span>
+                    <span class="subtotal-value" style="color: #d32f2f;">$${invoice.balance_due.toLocaleString()}</span>
+                </div>
+                ` : ''}
+            </div>
+            
             <div class="total-section">
                 <h3 style="margin: 0 0 10px 0; color: #333;">Total Amount</h3>
                 <div class="total-amount">$${invoice.total_amount.toLocaleString()}</div>
-                ${invoice.balance_due > 0 ? `<p style="margin: 10px 0 0 0; color: #666;">Balance Due: $${invoice.balance_due.toLocaleString()}</p>` : ''}
             </div>
             
             <div class="footer">
@@ -152,7 +238,8 @@ serve(async (req) => {
             model,
             series,
             width_feet,
-            length_feet
+            length_feet,
+            final_customer_price
           )
         )
       `)
@@ -168,7 +255,41 @@ serve(async (req) => {
       throw new Error('Invoice not found');
     }
 
-    const htmlContent = generateInvoiceEmailHtml(invoice, invoice.estimates);
+    // Fetch detailed services and home options
+    let services: any[] = [];
+    let homeOptions: any[] = [];
+    let shippingCost = 0;
+
+    if (invoice.selected_services && invoice.selected_services.length > 0) {
+      const { data: servicesData } = await supabaseClient
+        .from('services')
+        .select('*')
+        .in('id', invoice.selected_services);
+      services = servicesData || [];
+    }
+
+    if (invoice.selected_home_options && Array.isArray(invoice.selected_home_options) && invoice.selected_home_options.length > 0) {
+      const optionIds = invoice.selected_home_options.map((opt: any) => opt.id).filter(Boolean);
+      if (optionIds.length > 0) {
+        const { data: optionsData } = await supabaseClient
+          .from('home_options')
+          .select('*')
+          .in('id', optionIds);
+        homeOptions = optionsData || [];
+      }
+    }
+
+    // Calculate shipping cost from the estimate if available
+    if (invoice.estimates?.mobile_homes && invoice.delivery_address) {
+      // For now, we'll extract shipping from the total - (home + services + options)
+      const mobileHomePrice = invoice.estimates.mobile_homes.final_customer_price || 0;
+      const servicesTotal = services.reduce((sum, service) => sum + (service.final_customer_price || 0), 0);
+      const optionsTotal = homeOptions.reduce((sum, option) => sum + (option.final_customer_price || 0), 0);
+      const itemsTotal = mobileHomePrice + servicesTotal + optionsTotal;
+      shippingCost = Math.max(0, invoice.total_amount - itemsTotal);
+    }
+
+    const htmlContent = generateInvoiceEmailHtml(invoice, invoice.estimates, services, homeOptions, shippingCost);
 
     // Send email using Resend
     const resendApiKey = Deno.env.get('RESEND_API_KEY');

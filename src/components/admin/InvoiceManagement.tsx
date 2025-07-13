@@ -549,61 +549,67 @@ export const InvoiceManagement = () => {
                         </div>
                     </div>
 
-                    <div className="flex items-center space-x-2">
-                      <Button size="sm" variant="outline" onClick={() => handleViewInvoice(invoice)}>
-                        <Eye className="h-3 w-3 mr-1" />
-                        View
-                      </Button>
-                      
-                      <Button size="sm" variant="outline" onClick={() => handleEditInvoice(invoice)}>
-                        <Edit className="h-3 w-3 mr-1" />
-                        Edit
-                      </Button>
-                      
-                      {invoice.status === 'draft' && (
-                        <Button size="sm">
-                          <Send className="h-3 w-3 mr-1" />
-                          Send
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-2 sm:space-x-0">
+                      <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
+                        <Button size="sm" variant="outline" onClick={() => handleViewInvoice(invoice)} className="text-xs">
+                          <Eye className="h-3 w-3 sm:mr-1" />
+                          <span className="hidden sm:inline">View</span>
                         </Button>
-                      )}
-
-                      {invoice.status !== 'paid' && invoice.balance_due > 0 && (
-                        <Button size="sm" variant="outline" onClick={() => handlePaymentClick(invoice)}>
-                          <CreditCard className="h-3 w-3 mr-1" />
-                          Payment
+                        
+                        <Button size="sm" variant="outline" onClick={() => handleEditInvoice(invoice)} className="text-xs">
+                          <Edit className="h-3 w-3 sm:mr-1" />
+                          <span className="hidden sm:inline">Edit</span>
                         </Button>
-                      )}
+                        
+                        {invoice.status === 'draft' && (
+                          <Button size="sm" className="text-xs">
+                            <Send className="h-3 w-3 sm:mr-1" />
+                            <span className="hidden sm:inline">Send</span>
+                          </Button>
+                        )}
 
-                      {!invoice.quickbooks_id && (
-                        <Button 
-                          size="sm" 
-                          variant="outline"
-                          onClick={() => syncToQuickBooksMutation.mutate(invoice.id)}
-                          disabled={syncToQuickBooksMutation.isPending}
-                        >
-                          <RotateCw className="h-3 w-3 mr-1" />
-                          {syncToQuickBooksMutation.isPending ? 'Syncing...' : 'Sync to QB'}
-                        </Button>
-                       )}
+                        {invoice.status !== 'paid' && invoice.balance_due > 0 && (
+                          <Button size="sm" variant="outline" onClick={() => handlePaymentClick(invoice)} className="text-xs">
+                            <CreditCard className="h-3 w-3 sm:mr-1" />
+                            <span className="hidden sm:inline">Payment</span>
+                          </Button>
+                        )}
+                      </div>
 
-                       <EstimateDocuSignButton
-                         estimateId={invoice.estimate_id || ''}
-                         customerEmail={invoice.customer_email}
-                         customerName={invoice.customer_name}
-                         estimateNumber={invoice.invoice_number}
-                         documentType="invoice"
-                         hasInvoice={true}
-                       />
+                      <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
+                        {!invoice.quickbooks_id && (
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => syncToQuickBooksMutation.mutate(invoice.id)}
+                            disabled={syncToQuickBooksMutation.isPending}
+                            className="text-xs"
+                          >
+                            <RotateCw className="h-3 w-3 sm:mr-1" />
+                            <span className="hidden sm:inline">{syncToQuickBooksMutation.isPending ? 'Syncing...' : 'Sync to QB'}</span>
+                            <span className="sm:hidden">{syncToQuickBooksMutation.isPending ? '...' : 'QB'}</span>
+                          </Button>
+                         )}
 
-                       <EmailInvoiceButton
-                         invoiceId={invoice.id}
-                         customerEmail={invoice.customer_email}
-                         customerName={invoice.customer_name}
-                         invoiceNumber={invoice.invoice_number}
-                       />
+                         <EstimateDocuSignButton
+                           estimateId={invoice.estimate_id || ''}
+                           customerEmail={invoice.customer_email}
+                           customerName={invoice.customer_name}
+                           estimateNumber={invoice.invoice_number}
+                           documentType="invoice"
+                           hasInvoice={true}
+                         />
+
+                         <EmailInvoiceButton
+                           invoiceId={invoice.id}
+                           customerEmail={invoice.customer_email}
+                           customerName={invoice.customer_name}
+                           invoiceNumber={invoice.invoice_number}
+                         />
+                       </div>
 
                        {invoice.quickbooks_id && (
-                         <div className="text-xs text-muted-foreground">
+                         <div className="text-xs text-muted-foreground sm:mt-0 mt-1">
                            QB: {invoice.quickbooks_id}
                          </div>
                        )}

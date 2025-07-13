@@ -418,8 +418,15 @@ serve(async (req) => {
       created_at: new Date().toISOString()
     };
 
+    console.log('Attempting to log document sending:', logEntry);
+    
     // Insert into a generic documents table or create a specific one for estimates/invoices
-    await supabaseClient.from('estimate_documents').insert(logEntry);
+    const { error: logError } = await supabaseClient.from('estimate_documents').insert(logEntry);
+    
+    if (logError) {
+      console.error('Failed to log document:', logError);
+      // Continue anyway - don't fail the whole operation for logging
+    }
 
     console.log(`DocuSign ${documentType} sent successfully:`, envelopeResult.envelopeId);
 

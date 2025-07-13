@@ -194,7 +194,7 @@ export const InvoiceCreationForm = () => {
                   <SelectValue placeholder="Select mobile home" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">No mobile home</SelectItem>
+                  <SelectItem value="none">No mobile home</SelectItem>
                   {mobileHomes.map((home) => (
                     <SelectItem key={home.id} value={home.id}>
                       {home.manufacturer} {home.series} {home.model} - ${home.price?.toLocaleString()}

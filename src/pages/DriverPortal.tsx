@@ -847,7 +847,7 @@ const DriverPortal = () => {
                               {delivery.mobile_homes?.manufacturer} {delivery.mobile_homes?.model}
                             </CardTitle>
                             <p className="text-sm text-muted-foreground">
-                              Completed on {new Date(delivery.completed_at).toLocaleDateString()}
+                              Completed on {new Date(delivery.completed_at).toLocaleString()}
                             </p>
                           </div>
                           <Badge variant="default">

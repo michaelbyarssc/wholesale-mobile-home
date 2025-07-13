@@ -4,7 +4,8 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, Navigation, RefreshCw, Car, Home } from 'lucide-react';
+import { Input } from "@/components/ui/input";
+import { MapPin, Navigation, RefreshCw, Car, Home, Key } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -192,12 +193,51 @@ export const GPSMap = ({ deliveryId, height = "400px", showControls = true }: GP
     }
   }, [deliveries]);
 
-  // Fetch Mapbox token from environment
+  // Fetch Mapbox token from environment or storage
   useEffect(() => {
-    // For now, using a direct token - in production this would come from an edge function
-    const token = import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN || 'pk.eyJ1IjoibG92YWJsZSIsImEiOiJjbTR5aG84dmsxZWk2MnJzaDd5dzB6ZnR6In0.your-actual-token';
-    setMapboxToken(token);
+    const storedToken = localStorage.getItem('mapbox_token');
+    const envToken = import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN;
+    
+    if (storedToken) {
+      setMapboxToken(storedToken);
+    } else if (envToken && envToken !== 'your-token-here') {
+      setMapboxToken(envToken);
+    }
   }, []);
+
+  const handleTokenSubmit = (token: string) => {
+    localStorage.setItem('mapbox_token', token);
+    setMapboxToken(token);
+  };
+
+  // Component for Mapbox token input
+  const MapboxTokenInput = ({ onTokenSubmit }: { onTokenSubmit: (token: string) => void }) => {
+    const [token, setToken] = useState('');
+    
+    const handleSubmit = (e: React.FormEvent) => {
+      e.preventDefault();
+      if (token.trim()) {
+        onTokenSubmit(token.trim());
+      }
+    };
+
+    return (
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <Input
+            type="text"
+            placeholder="Enter your Mapbox public token (pk.eyJ1...)"
+            value={token}
+            onChange={(e) => setToken(e.target.value)}
+            className="font-mono text-sm"
+          />
+        </div>
+        <Button type="submit" className="w-full" disabled={!token.trim()}>
+          Set Token & Load Map
+        </Button>
+      </form>
+    );
+  };
 
   if (!mapboxToken) {
     return (
@@ -209,13 +249,17 @@ export const GPSMap = ({ deliveryId, height = "400px", showControls = true }: GP
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-center py-8">
-            <p className="text-muted-foreground mb-4">
-              Mapbox API token required for GPS tracking
-            </p>
-            <p className="text-sm text-muted-foreground">
-              Please configure your Mapbox token in the settings
-            </p>
+          <div className="space-y-4">
+            <div className="text-center py-4">
+              <Key className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground mb-4">
+                Mapbox API token required for GPS tracking
+              </p>
+              <p className="text-sm text-muted-foreground mb-4">
+                Get your free token at <a href="https://mapbox.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">mapbox.com</a>
+              </p>
+            </div>
+            <MapboxTokenInput onTokenSubmit={handleTokenSubmit} />
           </div>
         </CardContent>
       </Card>

@@ -2410,6 +2410,7 @@ export type Database = {
       }
       invoices: {
         Row: {
+          balance_due: number | null
           created_at: string
           customer_email: string
           customer_name: string
@@ -2428,6 +2429,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          balance_due?: number | null
           created_at?: string
           customer_email: string
           customer_name: string
@@ -2446,6 +2448,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          balance_due?: number | null
           created_at?: string
           customer_email?: string
           customer_name?: string
@@ -2923,6 +2926,50 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      payments: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          id: string
+          invoice_id: string
+          notes: string | null
+          payment_date: string
+          payment_method: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          invoice_id: string
+          notes?: string | null
+          payment_date?: string
+          payment_method?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          invoice_id?: string
+          notes?: string | null
+          payment_date?: string
+          payment_method?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {

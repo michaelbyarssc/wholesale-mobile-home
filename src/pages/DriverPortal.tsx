@@ -183,14 +183,14 @@ const DriverPortal = () => {
               .from('delivery_photos')
               .select(`
                 *,
-                deliveries (
+                deliveries!inner (
                   delivery_number,
                   customer_name,
                   status,
                   mobile_homes (manufacturer, model)
                 )
               `)
-              .not('deliveries.status', 'eq', 'completed')
+              .in('deliveries.status', ['pending_payment', 'scheduled', 'in_transit'])
               .order('taken_at', { ascending: false })
               .limit(50);
             
@@ -214,7 +214,7 @@ const DriverPortal = () => {
               .from('delivery_photos')
               .select(`
                 *,
-                deliveries (
+                deliveries!inner (
                   delivery_number,
                   customer_name,
                   status,
@@ -222,7 +222,7 @@ const DriverPortal = () => {
                 )
               `)
               .eq('driver_id', driver.id)
-              .not('deliveries.status', 'eq', 'completed')
+              .in('deliveries.status', ['pending_payment', 'scheduled', 'in_transit'])
               .order('taken_at', { ascending: false })
               .limit(50);
             

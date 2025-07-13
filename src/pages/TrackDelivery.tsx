@@ -135,7 +135,7 @@ export default function TrackDelivery() {
                 and we'll help you track your delivery.
               </p>
               <div className="text-sm">
-                <p><strong>Phone:</strong> (555) 123-4567</p>
+                <p><strong>Phone:</strong> 864-680-4030</p>
                 <p><strong>Email:</strong> support@yourcompany.com</p>
               </div>
             </div>

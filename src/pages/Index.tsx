@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MobileHomesShowcase } from '@/components/MobileHomesShowcase';
 import { TestimonialsSection } from '@/components/reviews/TestimonialsSection';
@@ -6,6 +6,8 @@ import { FinancingCalculator } from '@/components/financing/FinancingCalculator'
 import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
 import { useShoppingCart } from '@/hooks/useShoppingCart';
+import { usePerformanceMonitor } from '@/hooks/usePerformanceMonitor';
+import { useViewportSize } from '@/hooks/useViewportSize';
 import { Header } from '@/components/layout/Header';
 import { ChatWidget } from '@/components/chat/ChatWidget';
 import { HeroSection } from '@/components/layout/HeroSection';
@@ -27,6 +29,10 @@ const Index = () => {
   console.log('Index component: Starting to render');
   
   const navigate = useNavigate();
+  
+  // Performance and viewport hooks
+  const { markFeature, measureFeature } = usePerformanceMonitor();
+  const { isMobile, isTablet } = useViewportSize();
   
   // State hooks first
   const [user, setUser] = useState<User | null>(null);
@@ -200,16 +206,8 @@ const Index = () => {
 
   console.log('Index component: About to render, isLoading:', isLoading, 'cartLoading:', cartLoading);
 
-  // Now we can safely do conditional rendering since all hooks have been called
-  if (isLoading || cartLoading) {
-    console.log('Index component: Rendering loading spinner');
-    return <LoadingSpinner />;
-  }
-
-  console.log('Index component: Rendering main content');
-
-  // Generate homepage structured data
-  const homepageStructuredData = {
+  // Memoize structured data to prevent recreation on every render
+  const homepageStructuredData = useMemo(() => ({
     "@context": "https://schema.org",
     "@type": "WebSite",
     "name": "WholesaleMobileHome.com",
@@ -231,7 +229,29 @@ const Index = () => {
       "highPrice": "150000",
       "offerCount": "50+"
     }
-  };
+  }), []);
+
+  // Memoize cart props to prevent unnecessary re-renders
+  const cartProps = useMemo(() => ({
+    cartItems,
+    deliveryAddress,
+    isCartOpen,
+    addToCart,
+    removeFromCart,
+    updateServices,
+    updateHomeOptions,
+    updateDeliveryAddress,
+    clearCart,
+    setIsCartOpen,
+  }), [cartItems, deliveryAddress, isCartOpen, addToCart, removeFromCart, updateServices, updateHomeOptions, updateDeliveryAddress, clearCart, setIsCartOpen]);
+
+  // Now we can safely do conditional rendering since all hooks have been called
+  if (isLoading || cartLoading) {
+    console.log('Index component: Rendering loading spinner');
+    return <LoadingSpinner />;
+  }
+
+  console.log('Index component: Rendering main content');
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-green-50 to-yellow-50">
@@ -272,16 +292,7 @@ const Index = () => {
       <div id="mobile-homes">
         <MobileHomesShowcase 
           user={user} 
-          cartItems={cartItems}
-          deliveryAddress={deliveryAddress}
-          isCartOpen={isCartOpen}
-          addToCart={addToCart}
-          removeFromCart={removeFromCart}
-          updateServices={updateServices}
-          updateHomeOptions={updateHomeOptions}
-          updateDeliveryAddress={updateDeliveryAddress}
-          clearCart={clearCart}
-          setIsCartOpen={setIsCartOpen}
+          {...cartProps}
         />
       </div>
 

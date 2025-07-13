@@ -195,7 +195,7 @@ export const GPSMap = ({ deliveryId, height = "400px", showControls = true }: GP
   // Fetch Mapbox token from environment
   useEffect(() => {
     // For now, using a direct token - in production this would come from an edge function
-    const token = process.env.MAPBOX_PUBLIC_TOKEN || 'pk.eyJ1IjoibG92YWJsZSIsImEiOiJjbTR5aG84dmsxZWk2MnJzaDd5dzB6ZnR6In0.your-actual-token';
+    const token = import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN || 'pk.eyJ1IjoibG92YWJsZSIsImEiOiJjbTR5aG84dmsxZWk2MnJzaDd5dzB6ZnR6In0.your-actual-token';
     setMapboxToken(token);
   }, []);
 

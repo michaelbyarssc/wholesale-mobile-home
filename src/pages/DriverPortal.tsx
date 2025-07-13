@@ -340,7 +340,7 @@ const DriverPortal = () => {
         .from('delivery_photos')
         .insert({
           delivery_id: deliveryId,
-          driver_id: driver.id,
+          driver_id: driver.is_super_admin ? driver.user_id : driver.id,
           photo_url: publicUrl,
           photo_type: photoType,
           caption,

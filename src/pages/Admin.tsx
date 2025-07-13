@@ -275,51 +275,51 @@ const Admin = () => {
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-6 lg:py-8">
-        <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
+      <main className="container mx-auto px-2 sm:px-4 py-4 sm:py-6 lg:py-8">
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4 sm:space-y-6">
           {/* Desktop Tab Navigation */}
           {!isMobile && isSuperAdmin && (
-            <div className="border rounded-lg p-1 bg-muted/30">
-              <TabsList className="grid w-full grid-cols-7 h-12 bg-transparent">
+            <div className="border rounded-lg p-1 bg-muted/30 overflow-x-auto">
+              <TabsList className="grid w-full grid-cols-7 h-12 bg-transparent min-w-[600px]">
                 <TabsTrigger 
                   value="mobile-homes" 
-                  className="text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm"
+                  className="text-xs sm:text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm px-2"
                 >
                   Homes
                 </TabsTrigger>
                 <TabsTrigger 
                   value="sales" 
-                  className="text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm"
+                  className="text-xs sm:text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm px-2"
                 >
                   Sales
                 </TabsTrigger>
                 <TabsTrigger 
                   value="users" 
-                  className="text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm"
+                  className="text-xs sm:text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm px-2"
                 >
                   Users
                 </TabsTrigger>
                 <TabsTrigger 
                   value="crm" 
-                  className="text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm"
+                  className="text-xs sm:text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm px-2"
                 >
                   CRM
                 </TabsTrigger>
                 <TabsTrigger 
                   value="analytics" 
-                  className="text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm"
+                  className="text-xs sm:text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm px-2"
                 >
                   Analytics
                 </TabsTrigger>
                 <TabsTrigger 
                   value="social-proof" 
-                  className="text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm"
+                  className="text-xs sm:text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm px-1"
                 >
-                  Social Proof
+                  Social
                 </TabsTrigger>
                 <TabsTrigger 
                   value="settings" 
-                  className="text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm"
+                  className="text-xs sm:text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm px-2"
                 >
                   Settings
                 </TabsTrigger>
@@ -352,25 +352,25 @@ const Admin = () => {
             </div>
           )}
 
-          {/* Tab Content with better spacing */}
+          {/* Tab Content with responsive spacing */}
           <div className="bg-card rounded-lg border shadow-sm">
             {isSuperAdmin && (
               <>
-                <TabsContent value="mobile-homes" className="p-6 m-0">
+                <TabsContent value="mobile-homes" className="p-3 sm:p-6 m-0">
                   <MobileHomesTab />
                 </TabsContent>
               </>
             )}
 
-            <TabsContent value="sales" className="p-6 m-0">
+            <TabsContent value="sales" className="p-3 sm:p-6 m-0">
               <SalesTab />
             </TabsContent>
 
-            <TabsContent value="users" className="p-6 m-0">
+            <TabsContent value="users" className="p-3 sm:p-6 m-0">
               <UserManagementTab />
             </TabsContent>
 
-            <TabsContent value="crm" className="p-6 m-0">
+            <TabsContent value="crm" className="p-3 sm:p-6 m-0">
               <CombinedCRMTab 
                 userRole={isSuperAdmin ? 'super_admin' : 'admin'} 
                 currentUserId={user?.id} 
@@ -379,19 +379,19 @@ const Admin = () => {
 
             {isSuperAdmin && (
               <>
-                <TabsContent value="analytics" className="p-6 m-0">
+                <TabsContent value="analytics" className="p-3 sm:p-6 m-0">
                   <AdminAnalytics />
                 </TabsContent>
 
-                <TabsContent value="settings" className="p-6 m-0">
+                <TabsContent value="settings" className="p-3 sm:p-6 m-0">
                   <CombinedSettingsTab isSuperAdmin={isSuperAdmin} />
                 </TabsContent>
 
-                <TabsContent value="social-proof" className="p-6 m-0">
+                <TabsContent value="social-proof" className="p-3 sm:p-6 m-0">
                   <SocialProofManager />
                 </TabsContent>
 
-                <TabsContent value="reviews" className="p-6 m-0">
+                <TabsContent value="reviews" className="p-3 sm:p-6 m-0">
                   <ReviewsTab />
                 </TabsContent>
               </>

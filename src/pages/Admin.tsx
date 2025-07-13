@@ -7,7 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { MobileHomesTab } from '@/components/admin/MobileHomesTab';
-import { ServicesTab } from '@/components/admin/ServicesTab';
+import { AddOnsTab } from '@/components/admin/AddOnsTab';
 import { ReviewsTab } from '@/components/admin/ReviewsTab';
 import { AdminAnalytics } from '@/components/admin/AdminAnalytics';
 import { CRMDashboard } from '@/components/admin/CRMDashboard';
@@ -22,7 +22,6 @@ import { DocuSignTemplatesTab } from '@/components/admin/DocuSignTemplatesTab';
 
 import { Menu, X } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { HomeOptionsTab } from '@/components/admin/HomeOptionsTab';
 import { EstimatesTab } from '@/components/admin/EstimatesTab';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -127,8 +126,7 @@ const Admin = () => {
   const getTabDisplayName = (tab: string) => {
     const tabNames: Record<string, string> = {
       'mobile-homes': 'Homes',
-      'services': 'Services',
-      'home-options': 'Options',
+      'add-ons': 'Add-ons', 
       'estimates': 'Estimates',
       'users': 'Users',
       'reviews': 'Reviews',
@@ -157,18 +155,11 @@ const Admin = () => {
             Mobile Homes
           </Button>
           <Button
-            variant={activeTab === 'services' ? 'default' : 'ghost'}
+            variant={activeTab === 'add-ons' ? 'default' : 'ghost'}
             className={`${mobile ? 'justify-start w-full h-12 text-base' : ''} text-xs sm:text-sm`}
-            onClick={() => handleTabChange('services')}
+            onClick={() => handleTabChange('add-ons')}
           >
-            Services
-          </Button>
-          <Button
-            variant={activeTab === 'home-options' ? 'default' : 'ghost'}
-            className={`${mobile ? 'justify-start w-full h-12 text-base' : ''} text-xs sm:text-sm`}
-            onClick={() => handleTabChange('home-options')}
-          >
-            Home Options
+            Add-ons
           </Button>
         </>
       ) : null}
@@ -323,10 +314,9 @@ const Admin = () => {
         <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-3 sm:space-y-4 md:space-y-6">
           {/* Desktop Tab List - Hidden on mobile since we use sheet menu */}
           {!isMobile && isSuperAdmin && (
-            <TabsList className="grid w-full grid-cols-12 h-auto p-1">
+            <TabsList className="grid w-full grid-cols-11 h-auto p-1">
               <TabsTrigger value="mobile-homes" className="text-xs lg:text-sm">Homes</TabsTrigger>
-              <TabsTrigger value="services" className="text-xs lg:text-sm">Services</TabsTrigger>
-              <TabsTrigger value="home-options" className="text-xs lg:text-sm">Options</TabsTrigger>
+              <TabsTrigger value="add-ons" className="text-xs lg:text-sm">Add-ons</TabsTrigger>
               <TabsTrigger value="estimates" className="text-xs lg:text-sm">Estimates</TabsTrigger>
               <TabsTrigger value="users" className="text-xs lg:text-sm">Users</TabsTrigger>
               <TabsTrigger value="calendar" className="text-xs lg:text-sm">Calendar</TabsTrigger>
@@ -357,12 +347,8 @@ const Admin = () => {
                 <MobileHomesTab />
               </TabsContent>
 
-              <TabsContent value="services" className="mt-2 sm:mt-4">
-                <ServicesTab />
-              </TabsContent>
-
-              <TabsContent value="home-options" className="mt-2 sm:mt-4">
-                <HomeOptionsTab />
+              <TabsContent value="add-ons" className="mt-2 sm:mt-4">
+                <AddOnsTab />
               </TabsContent>
             </>
           )}

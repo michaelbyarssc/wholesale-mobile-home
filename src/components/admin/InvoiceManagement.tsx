@@ -24,6 +24,7 @@ import {
   Save
  } from 'lucide-react';
 import { EstimateDocuSignButton } from '@/components/estimate-approval/EstimateDocuSignButton';
+import { EmailInvoiceButton } from '@/components/estimate-approval/EmailInvoiceButton';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from "@/hooks/use-toast";
@@ -548,6 +549,13 @@ export const InvoiceManagement = () => {
                          estimateNumber={invoice.invoice_number}
                          documentType="invoice"
                          hasInvoice={true}
+                       />
+
+                       <EmailInvoiceButton
+                         invoiceId={invoice.id}
+                         customerEmail={invoice.customer_email}
+                         customerName={invoice.customer_name}
+                         invoiceNumber={invoice.invoice_number}
                        />
 
                        {invoice.quickbooks_id && (

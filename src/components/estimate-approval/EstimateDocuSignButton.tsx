@@ -32,6 +32,27 @@ export const EstimateDocuSignButton = ({
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  // Check if DocuSign is enabled
+  const { data: docuSignEnabledData } = useQuery({
+    queryKey: ["admin-settings", "docusign_enabled"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('admin_settings')
+        .select('setting_value')
+        .eq('setting_key', 'docusign_enabled')
+        .maybeSingle();
+      
+      if (error) {
+        console.error('Error fetching DocuSign setting:', error);
+        return { setting_value: 'false' };
+      }
+      
+      return data || { setting_value: 'false' };
+    }
+  });
+
+  const isDocuSignEnabled = docuSignEnabledData?.setting_value === 'true';
+
   // Fetch DocuSign templates
   const { data: templatesData, isLoading: templatesLoading, refetch: refetchTemplates } = useQuery({
     queryKey: ["docusign-templates"],
@@ -144,6 +165,11 @@ export const EstimateDocuSignButton = ({
 
   const isLoading = sendTemplateMutation.isPending || sendDocumentMutation.isPending;
   const buttonText = documentType === 'invoice' ? 'Send Invoice' : 'Send Estimate';
+
+  // Don't render the button if DocuSign is disabled
+  if (!isDocuSignEnabled) {
+    return null;
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>

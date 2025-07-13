@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BusinessSettings } from './settings/BusinessSettings';
 import { NotificationSettings } from './settings/NotificationSettings';
 import { EmailTemplates } from './settings/EmailTemplates';
+import { DocuSignSettings } from './settings/DocuSignSettings';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -216,6 +217,11 @@ export const SettingsTab = () => {
           isSaving={isSaving}
         />
         <NotificationSettings />
+        <DocuSignSettings
+          settings={settings}
+          onInputChange={handleInputChange}
+          onUpdateSetting={updateSetting}
+        />
         <EmailTemplates
           settings={settings}
           onInputChange={handleInputChange}

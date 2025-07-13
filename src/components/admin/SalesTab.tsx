@@ -3,36 +3,39 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { EstimatesTab } from './EstimatesTab';
 import { InvoiceManagement } from './InvoiceManagement';
 import { Receipt, FileText } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 export const SalesTab = () => {
+  const isMobile = useIsMobile();
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Sales Management</h2>
-          <p className="text-muted-foreground">
+          <h2 className="text-xl sm:text-2xl font-bold tracking-tight">Sales Management</h2>
+          <p className="text-sm text-muted-foreground">
             Manage customer estimates and invoices
           </p>
         </div>
       </div>
 
       <Tabs defaultValue="estimates" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="estimates" className="flex items-center gap-2">
-            <FileText className="h-4 w-4" />
-            Estimates
+        <TabsList className="grid w-full grid-cols-2 h-10 sm:h-11">
+          <TabsTrigger value="estimates" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm px-2">
+            <FileText className="h-3 w-3 sm:h-4 sm:w-4" />
+            {isMobile ? 'Estimates' : 'Estimates'}
           </TabsTrigger>
-          <TabsTrigger value="invoices" className="flex items-center gap-2">
-            <Receipt className="h-4 w-4" />
-            Invoices
+          <TabsTrigger value="invoices" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm px-2">
+            <Receipt className="h-3 w-3 sm:h-4 sm:w-4" />
+            {isMobile ? 'Invoices' : 'Invoices'}
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="estimates" className="space-y-4">
+        <TabsContent value="estimates" className="space-y-4 mt-4">
           <EstimatesTab />
         </TabsContent>
 
-        <TabsContent value="invoices" className="space-y-4">
+        <TabsContent value="invoices" className="space-y-4 mt-4">
           <InvoiceManagement />
         </TabsContent>
       </Tabs>

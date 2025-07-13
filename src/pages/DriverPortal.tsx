@@ -175,6 +175,8 @@ const DriverPortal = () => {
         queryFn: async () => {
           if (!driver?.id) return [];
           
+          console.log('Fetching delivery photos for driver:', driver.id);
+          
           if (driver.is_super_admin) {
             // Super admin sees photos only for active deliveries
             const { data, error } = await supabase
@@ -192,7 +194,19 @@ const DriverPortal = () => {
               .order('taken_at', { ascending: false })
               .limit(50);
             
-            if (error) throw error;
+            if (error) {
+              console.error('Error fetching photos:', error);
+              throw error;
+            }
+            
+            console.log('Super admin photos fetched:', data?.length || 0);
+            console.log('Photo delivery statuses:', data?.map(p => ({
+              id: p.id,
+              type: p.photo_type,
+              delivery_status: p.deliveries?.status,
+              delivery_number: p.deliveries?.delivery_number
+            })));
+            
             return data || [];
           } else {
             // Regular drivers see only their photos for active deliveries
@@ -212,7 +226,19 @@ const DriverPortal = () => {
               .order('taken_at', { ascending: false })
               .limit(50);
             
-            if (error) throw error;
+            if (error) {
+              console.error('Error fetching photos:', error);
+              throw error;
+            }
+            
+            console.log('Driver photos fetched:', data?.length || 0);
+            console.log('Photo delivery statuses:', data?.map(p => ({
+              id: p.id,
+              type: p.photo_type,
+              delivery_status: p.deliveries?.status,
+              delivery_number: p.deliveries?.delivery_number
+            })));
+            
             return data || [];
           }
         },

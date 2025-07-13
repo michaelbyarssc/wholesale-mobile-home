@@ -12,16 +12,9 @@ interface SendInvoiceEmailRequest {
   customerName: string;
 }
 
-const generateInvoiceEmailHtml = (invoice: any, estimate: any, services: any[], homeOptions: any[], shippingCost: number = 0) => {
+const generateInvoiceEmailHtml = (invoice: any, estimate: any, lineItems: any[]) => {
   const businessName = "Mobile Home Sales"; // This could come from settings
   const currentDate = new Date().toLocaleDateString();
-  
-  // Calculate subtotals
-  const mobileHomePrice = estimate?.mobile_homes?.final_customer_price || 0;
-  const servicesTotal = services.reduce((sum, service) => sum + (service.final_customer_price || 0), 0);
-  const optionsTotal = homeOptions.reduce((sum, option) => sum + (option.final_customer_price || 0), 0);
-  const subtotal = mobileHomePrice + servicesTotal + optionsTotal;
-  const grandTotal = subtotal + shippingCost;
   
   return `
     <!DOCTYPE html>
@@ -130,58 +123,18 @@ const generateInvoiceEmailHtml = (invoice: any, estimate: any, services: any[], 
             <div class="itemized-section">
                 <div class="itemized-title">Itemized Charges</div>
                 
-                ${estimate?.mobile_homes ? `
+                ${lineItems.sort((a, b) => a.display_order - b.display_order).map(item => `
                 <div class="line-item">
                     <div>
-                        <div class="item-name">${estimate.mobile_homes.manufacturer} ${estimate.mobile_homes.model}</div>
-                        <div class="item-description">${estimate.mobile_homes.series ? `${estimate.mobile_homes.series} Series - ` : ''}${estimate.mobile_homes.width_feet}' x ${estimate.mobile_homes.length_feet}' Mobile Home</div>
+                        <div class="item-name">${item.name}</div>
+                        ${item.description ? `<div class="item-description">${item.description}</div>` : ''}
                     </div>
-                    <div class="item-price">$${mobileHomePrice.toLocaleString()}</div>
+                    <div class="item-price">$${(item.total_price || 0).toLocaleString()}</div>
                 </div>
-                ` : ''}
-                
-                ${services.length > 0 ? services.map(service => `
-                <div class="line-item">
-                    <div>
-                        <div class="item-name">${service.name}</div>
-                        ${service.description ? `<div class="item-description">${service.description}</div>` : ''}
-                    </div>
-                    <div class="item-price">$${(service.final_customer_price || 0).toLocaleString()}</div>
-                </div>
-                `).join('') : ''}
-                
-                ${homeOptions.length > 0 ? homeOptions.map(option => `
-                <div class="line-item">
-                    <div>
-                        <div class="item-name">${option.name}</div>
-                        ${option.description ? `<div class="item-description">${option.description}</div>` : ''}
-                    </div>
-                    <div class="item-price">$${(option.final_customer_price || 0).toLocaleString()}</div>
-                </div>
-                `).join('') : ''}
-                
-                ${shippingCost > 0 ? `
-                <div class="line-item">
-                    <div>
-                        <div class="item-name">Shipping & Delivery</div>
-                        <div class="item-description">Transportation and setup costs</div>
-                    </div>
-                    <div class="item-price">$${shippingCost.toLocaleString()}</div>
-                </div>
-                ` : ''}
+                `).join('')}
             </div>
             
             <div class="subtotal-section">
-                <div class="subtotal-line">
-                    <span class="subtotal-label">Subtotal:</span>
-                    <span class="subtotal-value">$${subtotal.toLocaleString()}</span>
-                </div>
-                ${shippingCost > 0 ? `
-                <div class="subtotal-line">
-                    <span class="subtotal-label">Shipping & Delivery:</span>
-                    <span class="subtotal-value">$${shippingCost.toLocaleString()}</span>
-                </div>
-                ` : ''}
                 <div class="subtotal-line" style="border-top: 2px solid #ddd; padding-top: 8px; margin-top: 8px;">
                     <span class="subtotal-label" style="font-weight: bold; color: #333;">Total:</span>
                     <span class="subtotal-value" style="font-size: 18px; color: #1976d2;">$${invoice.total_amount.toLocaleString()}</span>
@@ -239,8 +192,9 @@ serve(async (req) => {
             series,
             width_feet,
             length_feet,
-            final_customer_price
-          )
+            price
+          ),
+          estimate_line_items (*)
         )
       `)
       .eq('id', invoiceId)
@@ -255,41 +209,10 @@ serve(async (req) => {
       throw new Error('Invoice not found');
     }
 
-    // Fetch detailed services and home options
-    let services: any[] = [];
-    let homeOptions: any[] = [];
-    let shippingCost = 0;
-
-    if (invoice.selected_services && invoice.selected_services.length > 0) {
-      const { data: servicesData } = await supabaseClient
-        .from('services')
-        .select('*')
-        .in('id', invoice.selected_services);
-      services = servicesData || [];
-    }
-
-    if (invoice.selected_home_options && Array.isArray(invoice.selected_home_options) && invoice.selected_home_options.length > 0) {
-      const optionIds = invoice.selected_home_options.map((opt: any) => opt.id).filter(Boolean);
-      if (optionIds.length > 0) {
-        const { data: optionsData } = await supabaseClient
-          .from('home_options')
-          .select('*')
-          .in('id', optionIds);
-        homeOptions = optionsData || [];
-      }
-    }
-
-    // Calculate shipping cost from the estimate if available
-    if (invoice.estimates?.mobile_homes && invoice.delivery_address) {
-      // For now, we'll extract shipping from the total - (home + services + options)
-      const mobileHomePrice = invoice.estimates.mobile_homes.final_customer_price || 0;
-      const servicesTotal = services.reduce((sum, service) => sum + (service.final_customer_price || 0), 0);
-      const optionsTotal = homeOptions.reduce((sum, option) => sum + (option.final_customer_price || 0), 0);
-      const itemsTotal = mobileHomePrice + servicesTotal + optionsTotal;
-      shippingCost = Math.max(0, invoice.total_amount - itemsTotal);
-    }
-
-    const htmlContent = generateInvoiceEmailHtml(invoice, invoice.estimates, services, homeOptions, shippingCost);
+    // Use estimate line items instead of fetching services and options separately
+    const lineItems = invoice.estimates?.estimate_line_items || [];
+    
+    const htmlContent = generateInvoiceEmailHtml(invoice, invoice.estimates, lineItems);
 
     // Send email using Resend
     const resendApiKey = Deno.env.get('RESEND_API_KEY');

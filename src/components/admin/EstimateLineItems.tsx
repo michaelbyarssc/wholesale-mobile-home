@@ -34,6 +34,21 @@ export const EstimateLineItems = ({ estimateId, isEditable = false }: EstimateLi
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [editingItem, setEditingItem] = useState<EstimateLineItem | null>(null);
 
+  // Fetch estimate data to get delivery address
+  const { data: estimate } = useQuery({
+    queryKey: ['estimate', estimateId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('estimates')
+        .select('delivery_address')
+        .eq('id', estimateId)
+        .single();
+      
+      if (error) throw error;
+      return data;
+    }
+  });
+
   const { data: lineItems = [], isLoading } = useQuery({
     queryKey: ['estimate-line-items', estimateId],
     queryFn: async () => {
@@ -248,6 +263,11 @@ export const EstimateLineItems = ({ estimateId, isEditable = false }: EstimateLi
                           <p className="font-medium">{item.name}</p>
                           {item.description && (
                             <p className="text-sm text-muted-foreground">{item.description}</p>
+                          )}
+                          {estimate?.delivery_address && (
+                            <p className="text-sm text-muted-foreground">
+                              <strong>Delivery Address:</strong> {estimate.delivery_address}
+                            </p>
                           )}
                           {item.quantity > 1 && (
                             <p className="text-xs text-muted-foreground">Quantity: {item.quantity}</p>

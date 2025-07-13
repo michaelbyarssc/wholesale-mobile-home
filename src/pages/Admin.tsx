@@ -7,7 +7,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { MobileHomesTab } from '@/components/admin/MobileHomesTab';
-import { AddOnsTab } from '@/components/admin/AddOnsTab';
 import { ReviewsTab } from '@/components/admin/ReviewsTab';
 import { AdminAnalytics } from '@/components/admin/AdminAnalytics';
 import { CRMDashboard } from '@/components/admin/CRMDashboard';
@@ -125,7 +124,6 @@ const Admin = () => {
   const getTabDisplayName = (tab: string) => {
     const tabNames: Record<string, string> = {
       'mobile-homes': 'Homes',
-      'add-ons': 'Add-ons', 
       'estimates': 'Estimates',
       'users': 'Users',
       'reviews': 'Reviews',
@@ -151,13 +149,6 @@ const Admin = () => {
             onClick={() => handleTabChange('mobile-homes')}
           >
             Mobile Homes
-          </Button>
-          <Button
-            variant={activeTab === 'add-ons' ? 'default' : 'ghost'}
-            className={`${mobile ? 'justify-start w-full h-12 text-base' : ''} text-xs sm:text-sm`}
-            onClick={() => handleTabChange('add-ons')}
-          >
-            Add-ons
           </Button>
         </>
       ) : null}
@@ -305,9 +296,8 @@ const Admin = () => {
         <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-3 sm:space-y-4 md:space-y-6">
           {/* Desktop Tab List - Hidden on mobile since we use sheet menu */}
           {!isMobile && isSuperAdmin && (
-            <TabsList className="grid w-full grid-cols-10 h-auto p-1">
+            <TabsList className="grid w-full grid-cols-9 h-auto p-1">
               <TabsTrigger value="mobile-homes" className="text-xs lg:text-sm">Homes</TabsTrigger>
-              <TabsTrigger value="add-ons" className="text-xs lg:text-sm">Add-ons</TabsTrigger>
               <TabsTrigger value="estimates" className="text-xs lg:text-sm">Estimates</TabsTrigger>
               <TabsTrigger value="users" className="text-xs lg:text-sm">Users</TabsTrigger>
               <TabsTrigger value="calendar" className="text-xs lg:text-sm">Calendar</TabsTrigger>
@@ -335,10 +325,6 @@ const Admin = () => {
             <>
               <TabsContent value="mobile-homes" className="mt-2 sm:mt-4">
                 <MobileHomesTab />
-              </TabsContent>
-
-              <TabsContent value="add-ons" className="mt-2 sm:mt-4">
-                <AddOnsTab />
               </TabsContent>
             </>
           )}

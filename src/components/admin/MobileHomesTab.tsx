@@ -10,11 +10,12 @@ import { useToast } from '@/hooks/use-toast';
 import { MobileHomeEditDialog } from './MobileHomeEditDialog';
 import { MobileHomesDragDrop } from './MobileHomesDragDrop';
 import { FactoriesTab } from './FactoriesTab';
+import { AddOnsTab } from './AddOnsTab';
 import { formatPrice } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerTrigger } from '@/components/ui/drawer';
-import { Plus, Home, Factory } from 'lucide-react';
+import { Plus, Home, Factory, Package } from 'lucide-react';
 import type { Database } from '@/integrations/supabase/types';
 
 type MobileHome = Database['public']['Tables']['mobile_homes']['Row'];
@@ -462,10 +463,14 @@ export const MobileHomesTab = () => {
   return (
     <div className="space-y-4">
       <Tabs defaultValue="homes" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="homes" className="flex items-center gap-2">
             <Home className="h-4 w-4" />
             Mobile Homes
+          </TabsTrigger>
+          <TabsTrigger value="add-ons" className="flex items-center gap-2">
+            <Package className="h-4 w-4" />
+            Add-ons
           </TabsTrigger>
           <TabsTrigger value="factories" className="flex items-center gap-2">
             <Factory className="h-4 w-4" />
@@ -540,6 +545,10 @@ export const MobileHomesTab = () => {
               onSave={refetch}
             />
           </div>
+        </TabsContent>
+
+        <TabsContent value="add-ons" className="space-y-4">
+          <AddOnsTab />
         </TabsContent>
 
         <TabsContent value="factories">

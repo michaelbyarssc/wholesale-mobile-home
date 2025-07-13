@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MapPin, Clock, Truck, Home, Phone, Mail, RefreshCw } from 'lucide-react';
 import { useRealTimeTracking } from '@/hooks/useRealTimeTracking';
+import { supabase } from '@/integrations/supabase/client';
 
 interface CustomerTrackingMapProps {
   trackingToken: string;
@@ -24,16 +25,43 @@ export const CustomerTrackingMap = ({ trackingToken, height = "500px" }: Custome
     enabled: true
   });
 
-  // Fetch Mapbox token
+  // Fetch Mapbox token from Supabase secrets, environment, or storage
   useEffect(() => {
-    const storedToken = localStorage.getItem('mapbox_token');
-    const envToken = import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN;
-    
-    if (storedToken) {
-      setMapboxToken(storedToken);
-    } else if (envToken && envToken !== 'your-token-here') {
-      setMapboxToken(envToken);
-    }
+    const fetchMapboxToken = async () => {
+      // First try localStorage
+      const storedToken = localStorage.getItem('mapbox_token');
+      if (storedToken) {
+        console.log('CustomerTrackingMap: Using stored token from localStorage');
+        setMapboxToken(storedToken);
+        return;
+      }
+
+      // Then try to get from Supabase secrets via edge function
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: secretData, error } = await supabase.functions.invoke('get-mapbox-token');
+          if (secretData?.token && !error) {
+            console.log('CustomerTrackingMap: Using token from Supabase secrets');
+            setMapboxToken(secretData.token);
+            return;
+          }
+        }
+      } catch (error) {
+        console.log('CustomerTrackingMap: Could not fetch token from Supabase secrets:', error);
+      }
+
+      // Finally try environment variable
+      const envToken = import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN;
+      if (envToken && envToken !== 'your-token-here') {
+        console.log('CustomerTrackingMap: Using env token');
+        setMapboxToken(envToken);
+      } else {
+        console.log('CustomerTrackingMap: No valid token found');
+      }
+    };
+
+    fetchMapboxToken();
   }, []);
 
   // Initialize map

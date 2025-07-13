@@ -100,7 +100,7 @@ export const InvoiceManagement = () => {
         .from('invoices')
         .select(`
           *,
-          estimates (
+          estimates!invoices_estimate_id_fkey (
             *,
             mobile_homes (
               manufacturer,
@@ -112,10 +112,10 @@ export const InvoiceManagement = () => {
               width_feet,
               length_feet,
               price
+            ),
+            estimate_line_items (
+              *
             )
-          ),
-          estimate_line_items (
-            *
           ),
           payments (
             *

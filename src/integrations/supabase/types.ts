@@ -4742,6 +4742,14 @@ export type Database = {
         Args: { estimate_uuid: string }
         Returns: string
       }
+      calculate_delivery_eta: {
+        Args: {
+          delivery_id_param: string
+          current_lat: number
+          current_lng: number
+        }
+        Returns: string
+      }
       check_password_strength: {
         Args: { password: string }
         Returns: Json
@@ -4778,6 +4786,10 @@ export type Database = {
         }
         Returns: string
       }
+      create_order_from_estimate: {
+        Args: { estimate_uuid: string }
+        Returns: string
+      }
       generate_appointment_confirmation_token: {
         Args: Record<PropertyKey, never>
         Returns: string
@@ -4791,6 +4803,14 @@ export type Database = {
         Returns: string
       }
       generate_invoice_number: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      generate_order_number: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      generate_tracking_token: {
         Args: Record<PropertyKey, never>
         Returns: string
       }
@@ -4828,6 +4848,19 @@ export type Database = {
           mobile_home_data?: Json
         }
         Returns: string
+      }
+      process_factory_email: {
+        Args: {
+          factory_id_param: string
+          email_subject: string
+          email_content: string
+          sender_email: string
+        }
+        Returns: string
+      }
+      sync_offline_gps_data: {
+        Args: Record<PropertyKey, never>
+        Returns: number
       }
       validate_email: {
         Args: { email: string }

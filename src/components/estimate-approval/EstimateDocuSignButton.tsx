@@ -96,11 +96,14 @@ export const EstimateDocuSignButton = ({
       queryClient.invalidateQueries({ queryKey: ["estimate-documents"] });
     },
     onError: (error: any) => {
+      console.error('Document sending error:', error);
       toast({
         title: "Failed to Send Document",
         description: error.message || "There was an error sending the document for signing.",
         variant: "destructive",
       });
+      // Reset state on error
+      setUseCustomDocuments(false);
     },
   });
 

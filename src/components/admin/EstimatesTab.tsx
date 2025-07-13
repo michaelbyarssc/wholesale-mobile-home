@@ -339,6 +339,36 @@ export const EstimatesTab = () => {
     }
   });
 
+  // Approve estimate mutation
+  const approveEstimateMutation = useMutation({
+    mutationFn: async (estimateId: string) => {
+      const { data, error } = await supabase
+        .from('estimates')
+        .update({ 
+          status: 'approved',
+          approved_at: new Date().toISOString()
+        })
+        .eq('id', estimateId);
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-estimates'] });
+      toast({
+        title: "Estimate Approved",
+        description: "Estimate has been approved successfully.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to approve estimate. Please try again.",
+        variant: "destructive",
+      });
+    }
+  });
+
   // Edit estimate mutation
   const editEstimateMutation = useMutation({
     mutationFn: async (estimate: Partial<Estimate>) => {
@@ -951,6 +981,16 @@ export const EstimatesTab = () => {
                                 Edit
                               </Button>
 
+                              {/* Approve Button */}
+                              <Button 
+                                variant="default" 
+                                className="bg-green-600 hover:bg-green-700"
+                                onClick={() => approveEstimateMutation.mutate(estimate.id)}
+                                disabled={approveEstimateMutation.isPending}
+                              >
+                                <CheckCircle className="h-4 w-4 mr-2" />
+                                Approve
+                              </Button>
 
                               {/* Deny Button */}
                               <Button 

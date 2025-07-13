@@ -83,6 +83,8 @@ function AppRoutes() {
 }
 
 const App = () => {
+  console.log('App component: Starting to render');
+  
   return (
     <React.StrictMode>
       <ErrorBoundary>

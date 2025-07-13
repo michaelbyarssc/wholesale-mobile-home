@@ -264,19 +264,13 @@ export const EstimateLineItems = ({ estimateId, isEditable = false }: EstimateLi
                           {item.description && (
                             <p className="text-sm text-muted-foreground">{item.description}</p>
                           )}
-                          {estimate?.delivery_address && (
+                          {estimate?.delivery_address && item.item_type === 'shipping' && (
                             <p className="text-sm text-muted-foreground">
                               <strong>Delivery Address:</strong> {estimate.delivery_address}
                             </p>
                           )}
                           {item.quantity > 1 && (
                             <p className="text-xs text-muted-foreground">Quantity: {item.quantity}</p>
-                          )}
-                          {/* Show internal price if available in metadata */}
-                          {item.metadata?.internal_price && item.metadata.internal_price !== item.unit_price && (
-                            <p className="text-xs text-muted-foreground">
-                              Internal Price: ${item.metadata.internal_price.toLocaleString()}
-                            </p>
                           )}
                         </div>
                       )}

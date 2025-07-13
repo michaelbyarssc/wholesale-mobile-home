@@ -79,6 +79,13 @@ export const Header = ({
               
               {/* Simplified Contact - Desktop only */}
               <div className="hidden lg:flex items-center gap-6 mt-3">
+                <Link 
+                  to="/track-delivery"
+                  className="flex items-center gap-2 text-sm text-gray-600 hover:text-blue-600 transition-colors"
+                >
+                  <Home className="h-4 w-4" />
+                  <span className="font-medium">Track Delivery</span>
+                </Link>
                 <a 
                   href="tel:864-680-4030"
                   className="flex items-center gap-2 text-sm text-gray-600 hover:text-blue-600 transition-colors"

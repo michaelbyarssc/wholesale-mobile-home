@@ -4885,6 +4885,10 @@ export type Database = {
         }
         Returns: string
       }
+      send_delivery_notifications: {
+        Args: { delivery_id_param: string }
+        Returns: Json
+      }
       sync_offline_gps_data: {
         Args: Record<PropertyKey, never>
         Returns: number

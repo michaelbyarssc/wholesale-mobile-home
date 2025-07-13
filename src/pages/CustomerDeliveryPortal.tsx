@@ -16,10 +16,13 @@ import { Truck, MapPin, Calendar, Phone, Mail, Package, Clock, CheckCircle, Aler
 import { format } from 'date-fns';
 
 const CustomerDeliveryPortal = () => {
-  const { trackingToken } = useParams();
+  const { trackingToken, token } = useParams();
   const [searchParams] = useSearchParams();
   const [inputToken, setInputToken] = useState('');
-  const [currentToken, setCurrentToken] = useState(trackingToken || searchParams.get('token') || '');
+  
+  // Get token from various possible sources
+  const initialToken = trackingToken || token || searchParams.get('token') || '';
+  const [currentToken, setCurrentToken] = useState(initialToken);
 
   // Fetch delivery information using tracking token
   const { data: trackingSession, isLoading, error } = useQuery({

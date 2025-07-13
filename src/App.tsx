@@ -31,6 +31,7 @@ const Delivery = React.lazy(() => import("./pages/Delivery"));
 const DriverPortal = React.lazy(() => import("./pages/DriverPortal"));
 const DriverLogin = React.lazy(() => import("./pages/DriverLogin"));
 const CustomerDeliveryPortal = React.lazy(() => import("./pages/CustomerDeliveryPortal"));
+const TrackDelivery = React.lazy(() => import("./pages/TrackDelivery"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -63,6 +64,9 @@ function AppRoutes() {
         <Route path="/appointments" element={<Appointments />} />
         <Route path="/calendar-auth-callback" element={<CalendarAuthCallback />} />
         <Route path="/delivery" element={<Delivery />} />
+        <Route path="/track-delivery" element={<TrackDelivery />} />
+        <Route path="/delivery-portal/:token" element={<CustomerDeliveryPortal />} />
+        <Route path="/delivery-portal" element={<CustomerDeliveryPortal />} />
         <Route path="/track/:trackingToken" element={<CustomerDeliveryPortal />} />
         <Route path="/track" element={<CustomerDeliveryPortal />} />
         <Route path="/driver-login" element={<DriverLogin />} />

@@ -102,7 +102,49 @@ export const SocialProofBanner = ({ variant = "floating", className = "" }: Soci
   }
 
   if (variant === "embedded") {
-    return null;
+    return (
+      <div className={`grid grid-cols-1 md:grid-cols-3 gap-6 ${className}`}>
+        {settings.show_customer_count && (
+          <Card className="text-center">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-center w-12 h-12 bg-primary/10 rounded-full mx-auto mb-4">
+                <Users className="w-6 h-6 text-primary" />
+              </div>
+              <div className="text-3xl font-bold text-primary mb-2">
+                {settings.customer_count.toLocaleString()}+
+              </div>
+              <p className="text-muted-foreground">Satisfied Customers</p>
+            </CardContent>
+          </Card>
+        )}
+
+        {settings.show_homes_sold && (
+          <Card className="text-center">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-center w-12 h-12 bg-primary/10 rounded-full mx-auto mb-4">
+                <Home className="w-6 h-6 text-primary" />
+              </div>
+              <div className="text-3xl font-bold text-primary mb-2">
+                {settings.homes_sold_count.toLocaleString()}+
+              </div>
+              <p className="text-muted-foreground">Homes Delivered</p>
+            </CardContent>
+          </Card>
+        )}
+
+        <Card className="text-center">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-center w-12 h-12 bg-primary/10 rounded-full mx-auto mb-4">
+              <Calendar className="w-6 h-6 text-primary" />
+            </div>
+            <div className="text-3xl font-bold text-primary mb-2">
+              {settings.years_in_business}+
+            </div>
+            <p className="text-muted-foreground">Years in Business</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   // Floating variant

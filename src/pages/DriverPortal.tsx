@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -24,11 +25,14 @@ import {
   User,
   Package,
   Route,
-  Timer
+  Timer,
+  FileText,
+  Eye
 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import DeliveryDetailsView from '@/components/delivery/DeliveryDetailsView';
 
 const DriverPortal = () => {
   const { toast } = useToast();
@@ -39,6 +43,7 @@ const DriverPortal = () => {
   const [activeTab, setActiveTab] = useState('active');
   const [isTrackingLocation, setIsTrackingLocation] = useState(false);
   const [currentLocation, setCurrentLocation] = useState<{lat: number, lng: number} | null>(null);
+  const [selectedCompletedDelivery, setSelectedCompletedDelivery] = useState<any>(null);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -869,6 +874,14 @@ const DriverPortal = () => {
                               <span className="font-medium">Notes:</span> {assignment.notes}
                             </p>
                           )}
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => setSelectedCompletedDelivery(delivery)}
+                            className="mt-2"
+                          >
+                            View Full Details
+                          </Button>
                         </div>
                       </CardContent>
                     </Card>
@@ -879,6 +892,20 @@ const DriverPortal = () => {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Detailed Delivery View Modal */}
+      <Dialog open={!!selectedCompletedDelivery} onOpenChange={() => setSelectedCompletedDelivery(null)}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Delivery Details - {selectedCompletedDelivery?.delivery_number}
+            </DialogTitle>
+          </DialogHeader>
+          
+          {selectedCompletedDelivery && <DeliveryDetailsView delivery={selectedCompletedDelivery} />}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

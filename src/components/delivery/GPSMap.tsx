@@ -107,27 +107,56 @@ export const GPSMap = ({ deliveryId, height = "400px", showControls = true }: GP
 
   // Initialize map
   useEffect(() => {
-    if (!mapContainer.current || !mapboxToken) return;
-
-    mapboxgl.accessToken = mapboxToken;
+    console.log('GPSMap: Map initialization effect triggered', { mapContainer: !!mapContainer.current, mapboxToken });
     
-    map.current = new mapboxgl.Map({
-      container: mapContainer.current,
-      style: 'mapbox://styles/mapbox/streets-v12',
-      center: [-98.5795, 39.8283], // Center of US
-      zoom: 4,
-    });
+    if (!mapContainer.current || !mapboxToken) {
+      console.log('GPSMap: Skipping initialization - container or token missing', { 
+        hasContainer: !!mapContainer.current, 
+        hasToken: !!mapboxToken 
+      });
+      return;
+    }
 
-    map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
-    map.current.addControl(new mapboxgl.GeolocateControl({
-      positionOptions: {
-        enableHighAccuracy: true
-      },
-      trackUserLocation: true,
-      showUserHeading: true
-    }), 'top-right');
+    console.log('GPSMap: Starting map initialization with token:', mapboxToken.substring(0, 10) + '...');
+    
+    try {
+      mapboxgl.accessToken = mapboxToken;
+      
+      console.log('GPSMap: Creating map instance');
+      map.current = new mapboxgl.Map({
+        container: mapContainer.current,
+        style: 'mapbox://styles/mapbox/streets-v12',
+        center: [-98.5795, 39.8283], // Center of US
+        zoom: 4,
+      });
+
+      console.log('GPSMap: Map created successfully');
+
+      map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
+      map.current.addControl(new mapboxgl.GeolocateControl({
+        positionOptions: {
+          enableHighAccuracy: true
+        },
+        trackUserLocation: true,
+        showUserHeading: true
+      }), 'top-right');
+
+      console.log('GPSMap: Map controls added');
+
+      map.current.on('load', () => {
+        console.log('GPSMap: Map fully loaded');
+      });
+
+      map.current.on('error', (e) => {
+        console.error('GPSMap: Map error:', e);
+      });
+
+    } catch (error) {
+      console.error('GPSMap: Error during map initialization:', error);
+    }
 
     return () => {
+      console.log('GPSMap: Cleaning up map');
       map.current?.remove();
     };
   }, [mapboxToken]);

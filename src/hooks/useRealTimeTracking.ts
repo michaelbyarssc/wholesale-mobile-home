@@ -56,48 +56,54 @@ export const useRealTimeTracking = ({ trackingToken, enabled = true }: UseRealTi
     queryFn: async (): Promise<TrackingData | null> => {
       if (!trackingToken) return null;
 
-      // Get tracking session
+      // Get tracking session and order info
       const { data: session, error: sessionError } = await supabase
         .from('customer_tracking_sessions')
         .select(`
           *,
-          orders!inner (
+          order:orders!inner (
+            id,
             order_number,
             customer_name,
             customer_phone,
-            customer_email,
-            deliveries!inner (
-              *,
-              delivery_pieces (
-                piece_number,
-                piece_type,
-                status,
-                vin_number,
-                mso_number
-              ),
-              mobile_homes (
-                manufacturer,
-                model
-              ),
-              delivery_assignments!inner (
-                driver_id,
-                drivers!inner (
-                  id
-                )
-              )
-            )
+            customer_email
           )
         `)
         .eq('session_token', trackingToken)
         .eq('active', true)
+        .gt('expires_at', new Date().toISOString())
         .single();
 
       if (sessionError || !session) {
         throw new Error('Invalid tracking token or session expired');
       }
 
-      const delivery = session.orders.deliveries[0];
-      const driver = delivery.delivery_assignments[0]?.drivers;
+      // Get delivery info using customer email
+      const { data: deliveries, error: deliveryError } = await supabase
+        .from('deliveries')
+        .select(`
+          *,
+          mobile_homes (
+            manufacturer,
+            model
+          ),
+          delivery_pieces (
+            piece_number,
+            piece_type,
+            status,
+            vin_number,
+            mso_number
+          )
+        `)
+        .eq('customer_email', session.order.customer_email)
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (deliveryError || !deliveries || deliveries.length === 0) {
+        throw new Error('No delivery found for this tracking session');
+      }
+
+      const delivery = deliveries[0];
 
       // Get latest GPS location for the delivery
       const { data: gpsData, error: gpsError } = await supabase
@@ -106,7 +112,7 @@ export const useRealTimeTracking = ({ trackingToken, enabled = true }: UseRealTi
         .eq('delivery_id', delivery.id)
         .order('timestamp', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
 
       // Calculate ETA if we have GPS data
       let estimated_arrival = null;
@@ -125,7 +131,7 @@ export const useRealTimeTracking = ({ trackingToken, enabled = true }: UseRealTi
 
       return {
         delivery_id: delivery.id,
-        driver_name: driver?.id || 'Unknown Driver',
+        driver_name: 'Driver', // We'll get this from assignments later
         current_location: gpsData ? {
           latitude: gpsData.latitude,
           longitude: gpsData.longitude,
@@ -141,12 +147,12 @@ export const useRealTimeTracking = ({ trackingToken, enabled = true }: UseRealTi
           manufacturer: delivery.mobile_homes?.manufacturer || 'Unknown',
           model: delivery.mobile_homes?.model || 'Unknown'
         },
-        order_number: session.orders.order_number,
+        order_number: session.order.order_number,
         delivery_pieces: delivery.delivery_pieces || [],
         customer_info: {
-          name: session.orders.customer_name,
-          phone: session.orders.customer_phone,
-          email: session.orders.customer_email
+          name: session.order.customer_name,
+          phone: session.order.customer_phone,
+          email: session.order.customer_email
         }
       };
     },

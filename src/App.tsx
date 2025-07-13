@@ -17,7 +17,11 @@ const EstimateForm = React.lazy(() => import("./pages/EstimateForm"));
 const MyEstimates = React.lazy(() => import("./pages/MyEstimates"));
 const ApproveEstimate = React.lazy(() => import("./pages/ApproveEstimate"));
 const NotFound = React.lazy(() => import("./pages/NotFound"));
-const MobileHomeDetail = React.lazy(() => import("./pages/MobileHomeDetail").then(m => ({ default: m.MobileHomeDetail })));
+const MobileHomeDetail = React.lazy(() => 
+  import("./pages/MobileHomeDetail").then(module => ({ 
+    default: module.MobileHomeDetail 
+  }))
+);
 const FAQ = React.lazy(() => import("./pages/FAQ"));
 const Blog = React.lazy(() => import("./pages/Blog"));
 const Support = React.lazy(() => import("./pages/Support"));

@@ -69,7 +69,7 @@ export const GPSMap = ({ deliveryId, height = "400px", showControls = true }: GP
           )
         `)
         .in('status', ['scheduled', 'in_transit'])
-        .order('delivery_gps_tracking.timestamp', { ascending: false });
+        .order('scheduled_pickup_date', { ascending: false });
 
       if (selectedDelivery) {
         query.eq('id', selectedDelivery);

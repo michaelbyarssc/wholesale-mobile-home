@@ -217,7 +217,48 @@ const DriverPortal = () => {
           }
         },
         enabled: !!driver?.id,
+        refetchInterval: 10000, // Refetch every 10 seconds to catch status changes
       });
+
+      // Real-time subscription to clear photos when deliveries are completed
+      useEffect(() => {
+        if (!driver?.id) return;
+
+        const channel = supabase
+          .channel('driver-portal-updates')
+          .on(
+            'postgres_changes',
+            {
+              event: 'UPDATE',
+              schema: 'public',
+              table: 'deliveries',
+              filter: `status=eq.completed`
+            },
+            (payload) => {
+              console.log('Delivery completed, clearing photo cache:', payload);
+              // Force refetch of all photo-related queries
+              queryClient.invalidateQueries({ queryKey: ['driver-delivery-photos'] });
+              queryClient.refetchQueries({ queryKey: ['driver-delivery-photos'] });
+            }
+          )
+          .on(
+            'postgres_changes',
+            {
+              event: 'INSERT',
+              schema: 'public',
+              table: 'delivery_photos'
+            },
+            (payload) => {
+              console.log('New photo added:', payload);
+              queryClient.invalidateQueries({ queryKey: ['driver-delivery-photos'] });
+            }
+          )
+          .subscribe();
+
+        return () => {
+          supabase.removeChannel(channel);
+        };
+      }, [driver?.id, queryClient]);
 
       // Fetch completed deliveries
       const { data: completedDeliveries = [] } = useQuery({

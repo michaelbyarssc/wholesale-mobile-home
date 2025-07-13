@@ -102,21 +102,7 @@ export const SocialProofBanner = ({ variant = "floating", className = "" }: Soci
   }
 
   if (variant === "embedded") {
-    return (
-      <div className={`grid grid-cols-1 gap-6 ${className}`}>
-        <Card className="text-center">
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-center w-12 h-12 bg-primary/10 rounded-full mx-auto mb-4">
-              <Calendar className="w-6 h-6 text-primary" />
-            </div>
-            <div className="text-3xl font-bold text-primary mb-2">
-              {settings.years_in_business}+
-            </div>
-            <p className="text-muted-foreground">Years in Business</p>
-          </CardContent>
-        </Card>
-      </div>
-    );
+    return null;
   }
 
   // Floating variant

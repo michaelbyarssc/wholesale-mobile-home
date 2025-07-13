@@ -10,13 +10,11 @@ import { MobileHomesTab } from '@/components/admin/MobileHomesTab';
 import { SalesTab } from '@/components/admin/SalesTab';
 import { ReviewsTab } from '@/components/admin/ReviewsTab';
 import { AdminAnalytics } from '@/components/admin/AdminAnalytics';
-import { CRMDashboard } from '@/components/admin/CRMDashboard';
+import { CombinedCRMTab } from '@/components/admin/CombinedCRMTab';
 import { SettingsTab } from '@/components/admin/SettingsTab';
 import { UserManagementTab } from '@/components/admin/UserManagementTab';
 import { SuperAdminMarkupTab } from '@/components/admin/SuperAdminMarkupTab';
-import { AdminCalendarDashboard } from '@/components/admin/calendar/AdminCalendarDashboard';
 import { NotificationCenter } from '@/components/admin/NotificationCenter';
-import { DocuSignTemplatesTab } from '@/components/admin/DocuSignTemplatesTab';
 
 import { Menu, X } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -128,8 +126,6 @@ const Admin = () => {
       'reviews': 'Reviews',
       'analytics': 'Analytics',
       'crm': 'CRM',
-      'calendar': 'Calendar',
-      'docusign': 'DocuSign',
       'super-admin': 'Admin',
       'settings': 'Settings'
     };
@@ -165,25 +161,11 @@ const Admin = () => {
         Users
       </Button>
         <Button
-          variant={activeTab === 'calendar' ? 'default' : 'ghost'}
-          className={`${mobile ? 'justify-start w-full h-12 text-base' : ''} text-xs sm:text-sm`}
-          onClick={() => handleTabChange('calendar')}
-        >
-          Calendar
-        </Button>
-        <Button
           variant={activeTab === 'crm' ? 'default' : 'ghost'}
           className={`${mobile ? 'justify-start w-full h-12 text-base' : ''} text-xs sm:text-sm`}
           onClick={() => handleTabChange('crm')}
         >
           CRM
-        </Button>
-        <Button
-          variant={activeTab === 'docusign' ? 'default' : 'ghost'}
-          className={`${mobile ? 'justify-start w-full h-12 text-base' : ''} text-xs sm:text-sm`}
-          onClick={() => handleTabChange('docusign')}
-        >
-          DocuSign
         </Button>
       {isSuperAdmin && (
         <>
@@ -287,25 +269,21 @@ const Admin = () => {
         <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-3 sm:space-y-4 md:space-y-6">
           {/* Desktop Tab List - Hidden on mobile since we use sheet menu */}
           {!isMobile && isSuperAdmin && (
-            <TabsList className="grid w-full grid-cols-8 h-auto p-1">
+            <TabsList className="grid w-full grid-cols-6 h-auto p-1">
               <TabsTrigger value="mobile-homes" className="text-xs lg:text-sm">Homes</TabsTrigger>
               <TabsTrigger value="sales" className="text-xs lg:text-sm">Sales</TabsTrigger>
               <TabsTrigger value="users" className="text-xs lg:text-sm">Users</TabsTrigger>
-              <TabsTrigger value="calendar" className="text-xs lg:text-sm">Calendar</TabsTrigger>
               <TabsTrigger value="crm" className="text-xs lg:text-sm">CRM</TabsTrigger>
-              <TabsTrigger value="docusign" className="text-xs lg:text-sm">DocuSign</TabsTrigger>
               <TabsTrigger value="analytics" className="text-xs lg:text-sm">Analytics</TabsTrigger>
               <TabsTrigger value="super-admin" className="text-xs lg:text-sm">Admin</TabsTrigger>
               <TabsTrigger value="settings" className="text-xs lg:text-sm">Settings</TabsTrigger>
             </TabsList>
           )}
           {!isMobile && !isSuperAdmin && (
-            <TabsList className="grid w-full grid-cols-5 h-auto p-1">
+            <TabsList className="grid w-full grid-cols-3 h-auto p-1">
               <TabsTrigger value="sales" className="text-sm">Sales</TabsTrigger>
               <TabsTrigger value="users" className="text-sm">Users</TabsTrigger>
-              <TabsTrigger value="calendar" className="text-sm">Calendar</TabsTrigger>
               <TabsTrigger value="crm" className="text-sm">CRM</TabsTrigger>
-              <TabsTrigger value="docusign" className="text-sm">DocuSign</TabsTrigger>
             </TabsList>
           )}
 
@@ -326,22 +304,11 @@ const Admin = () => {
             <UserManagementTab />
           </TabsContent>
 
-          <TabsContent value="calendar" className="mt-2 sm:mt-4">
-            <AdminCalendarDashboard 
-              userRole={isSuperAdmin ? 'super_admin' : 'admin'} 
-              currentUserId={user?.id} 
-            />
-          </TabsContent>
-
           <TabsContent value="crm" className="mt-2 sm:mt-4">
-            <CRMDashboard 
+            <CombinedCRMTab 
               userRole={isSuperAdmin ? 'super_admin' : 'admin'} 
               currentUserId={user?.id} 
             />
-          </TabsContent>
-
-          <TabsContent value="docusign" className="mt-2 sm:mt-4">
-            <DocuSignTemplatesTab />
           </TabsContent>
 
 

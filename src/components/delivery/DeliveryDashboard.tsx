@@ -1,10 +1,13 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Truck, Package, Clock, CheckCircle, AlertTriangle, Users } from "lucide-react";
 
 export const DeliveryDashboard = () => {
+  const queryClient = useQueryClient();
+
   // Fetch delivery statistics
   const { data: deliveryStats, isLoading } = useQuery({
     queryKey: ["delivery-stats"],
@@ -68,6 +71,58 @@ export const DeliveryDashboard = () => {
       return stats;
     },
   });
+
+  // Real-time subscriptions for automatic updates
+  useEffect(() => {
+    const deliveryChannel = supabase
+      .channel('delivery-dashboard-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'deliveries'
+        },
+        (payload) => {
+          console.log('Delivery change detected:', payload);
+          // Invalidate and refetch all delivery-related queries
+          queryClient.invalidateQueries({ queryKey: ["delivery-stats"] });
+          queryClient.invalidateQueries({ queryKey: ["recent-deliveries"] });
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'drivers'
+        },
+        (payload) => {
+          console.log('Driver change detected:', payload);
+          // Invalidate and refetch driver stats
+          queryClient.invalidateQueries({ queryKey: ["driver-stats"] });
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'delivery_assignments'
+        },
+        (payload) => {
+          console.log('Assignment change detected:', payload);
+          // Invalidate recent deliveries since they include assignment data
+          queryClient.invalidateQueries({ queryKey: ["recent-deliveries"] });
+          queryClient.invalidateQueries({ queryKey: ["driver-stats"] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(deliveryChannel);
+    };
+  }, [queryClient]);
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {

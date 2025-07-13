@@ -66,20 +66,40 @@ export const CustomerTrackingMap = ({ trackingToken, height = "500px" }: Custome
 
   // Initialize map
   useEffect(() => {
-    if (!mapContainer.current || !mapboxToken) return;
+    if (!mapContainer.current || !mapboxToken) {
+      console.log('CustomerTrackingMap: Map initialization blocked - container:', !!mapContainer.current, 'token:', !!mapboxToken);
+      return;
+    }
 
-    mapboxgl.accessToken = mapboxToken;
+    console.log('CustomerTrackingMap: Initializing map with token:', mapboxToken.substring(0, 20) + '...');
     
-    map.current = new mapboxgl.Map({
-      container: mapContainer.current,
-      style: 'mapbox://styles/mapbox/streets-v12',
-      center: [-98.5795, 39.8283], // Center of US
-      zoom: 4,
-    });
+    try {
+      mapboxgl.accessToken = mapboxToken;
+      
+      map.current = new mapboxgl.Map({
+        container: mapContainer.current,
+        style: 'mapbox://styles/mapbox/streets-v12',
+        center: [-98.5795, 39.8283], // Center of US
+        zoom: 4,
+      });
 
-    map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
+      map.current.on('load', () => {
+        console.log('CustomerTrackingMap: Map loaded successfully');
+      });
+
+      map.current.on('error', (e) => {
+        console.error('CustomerTrackingMap: Map error:', e);
+      });
+
+      map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
+      
+      console.log('CustomerTrackingMap: Map created successfully');
+    } catch (error) {
+      console.error('CustomerTrackingMap: Error creating map:', error);
+    }
 
     return () => {
+      console.log('CustomerTrackingMap: Cleaning up map');
       map.current?.remove();
     };
   }, [mapboxToken]);
@@ -346,8 +366,12 @@ export const CustomerTrackingMap = ({ trackingToken, height = "500px" }: Custome
         <CardContent>
           <div 
             ref={mapContainer} 
-            className="w-full rounded-lg border"
-            style={{ height }}
+            className="w-full rounded-lg border bg-gray-100"
+            style={{ 
+              height,
+              minHeight: height,
+              position: 'relative'
+            }}
           />
         </CardContent>
       </Card>

@@ -136,7 +136,7 @@ export default function TrackDelivery() {
               </p>
               <div className="text-sm">
                 <p><strong>Phone:</strong> 864-680-4030</p>
-                <p><strong>Email:</strong> support@yourcompany.com</p>
+                <p><strong>Email:</strong> Support@WholesaleMobileHome.com</p>
               </div>
             </div>
           </CardContent>

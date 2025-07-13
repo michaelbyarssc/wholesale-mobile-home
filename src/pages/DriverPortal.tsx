@@ -164,14 +164,14 @@ const DriverPortal = () => {
     enabled: !!driver?.id,
   });
 
-      // Fetch delivery photos
+      // Fetch delivery photos (only for active deliveries)
       const { data: deliveryPhotos = [] } = useQuery({
         queryKey: ['driver-delivery-photos', driver?.id],
         queryFn: async () => {
           if (!driver?.id) return [];
           
           if (driver.is_super_admin) {
-            // Super admin sees all photos
+            // Super admin sees photos only for active deliveries
             const { data, error } = await supabase
               .from('delivery_photos')
               .select(`
@@ -179,16 +179,18 @@ const DriverPortal = () => {
                 deliveries (
                   delivery_number,
                   customer_name,
+                  status,
                   mobile_homes (manufacturer, model)
                 )
               `)
+              .not('deliveries.status', 'eq', 'completed')
               .order('taken_at', { ascending: false })
               .limit(50);
             
             if (error) throw error;
             return data || [];
           } else {
-            // Regular drivers see only their photos
+            // Regular drivers see only their photos for active deliveries
             const { data, error } = await supabase
               .from('delivery_photos')
               .select(`
@@ -196,10 +198,12 @@ const DriverPortal = () => {
                 deliveries (
                   delivery_number,
                   customer_name,
+                  status,
                   mobile_homes (manufacturer, model)
                 )
               `)
               .eq('driver_id', driver.id)
+              .not('deliveries.status', 'eq', 'completed')
               .order('taken_at', { ascending: false })
               .limit(50);
             
@@ -288,6 +292,7 @@ const DriverPortal = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['driver-active-deliveries'] });
       queryClient.invalidateQueries({ queryKey: ['driver-completed-deliveries'] });
+      queryClient.invalidateQueries({ queryKey: ['driver-delivery-photos'] });
       toast({
         title: "Status Updated",
         description: "Delivery status has been updated successfully.",

@@ -17,6 +17,7 @@ export const CustomerTrackingMap = ({ trackingToken, height = "500px" }: Custome
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const [mapboxToken, setMapboxToken] = useState<string>('');
+  const [mapLoaded, setMapLoaded] = useState<boolean>(false);
   const markersRef = useRef<{ [key: string]: mapboxgl.Marker }>({});
   const routeLayerRef = useRef<string | null>(null);
 
@@ -92,6 +93,7 @@ export const CustomerTrackingMap = ({ trackingToken, height = "500px" }: Custome
 
         map.current.on('load', () => {
           console.log('CustomerTrackingMap: Map loaded successfully');
+          setMapLoaded(true);
         });
 
         map.current.on('error', (e) => {
@@ -110,6 +112,7 @@ export const CustomerTrackingMap = ({ trackingToken, height = "500px" }: Custome
 
     return () => {
       console.log('CustomerTrackingMap: Cleaning up map');
+      setMapLoaded(false);
       map.current?.remove();
     };
   }, [mapboxToken]);
@@ -147,8 +150,8 @@ export const CustomerTrackingMap = ({ trackingToken, height = "500px" }: Custome
 
   // Update map with tracking data
   useEffect(() => {
-    if (!map.current || !mapboxToken || !trackingData) {
-      console.log('CustomerTrackingMap: Route update blocked - map:', !!map.current, 'token:', !!mapboxToken, 'data:', !!trackingData);
+    if (!map.current || !mapboxToken || !trackingData || !mapLoaded) {
+      console.log('CustomerTrackingMap: Route update blocked - map:', !!map.current, 'token:', !!mapboxToken, 'data:', !!trackingData, 'loaded:', mapLoaded);
       return;
     }
 
@@ -307,7 +310,7 @@ export const CustomerTrackingMap = ({ trackingToken, height = "500px" }: Custome
     };
 
     updateMap();
-  }, [trackingData, mapboxToken]);
+  }, [trackingData, mapboxToken, mapLoaded]);
 
   const getStatusColor = (status: string) => {
     switch (status) {

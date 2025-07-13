@@ -81,6 +81,8 @@ export const InvoiceManagement = () => {
         throw new Error('Not authenticated');
       }
 
+      console.log('Fetching invoices for user:', session.user.id);
+
       const { data, error } = await supabase
         .from('invoices')
         .select('*')
@@ -94,6 +96,8 @@ export const InvoiceManagement = () => {
       console.log('Invoices fetched successfully:', data?.length || 0, 'invoices');
       return data || [];
     },
+    retry: false, // Don't retry failed queries
+    enabled: true, // Always try to fetch
   });
 
   // Handle invoice loading error

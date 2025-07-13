@@ -148,14 +148,58 @@ export const InvoiceManagement = () => {
     }
   }, [invoicesError, toast]);
 
-  // Create invoice from estimate using the improved approve_estimate function
+  // Create invoice from approved estimate
   const createInvoiceMutation = useMutation({
     mutationFn: async (estimateId: string) => {
-      const { data, error } = await supabase.rpc('approve_estimate', {
-        estimate_uuid: estimateId
-      });
-      if (error) throw error;
-      return data;
+      // Get the estimate details first
+      const { data: estimate, error: estimateError } = await supabase
+        .from('estimates')
+        .select('*')
+        .eq('id', estimateId)
+        .single();
+      
+      if (estimateError) throw estimateError;
+      
+      // Generate invoice number
+      const { data: invoiceNumber, error: invoiceNumberError } = await supabase.rpc('generate_invoice_number');
+      if (invoiceNumberError) throw invoiceNumberError;
+      
+      // Create invoice from the approved estimate
+      const { data: invoice, error: invoiceError } = await supabase
+        .from('invoices')
+        .insert({
+          estimate_id: estimate.id,
+          invoice_number: invoiceNumber,
+          customer_name: estimate.customer_name,
+          customer_email: estimate.customer_email,
+          customer_phone: estimate.customer_phone,
+          delivery_address: estimate.delivery_address,
+          total_amount: estimate.total_amount,
+          balance_due: estimate.total_amount,
+          user_id: estimate.user_id,
+          mobile_home_id: estimate.mobile_home_id,
+          selected_services: estimate.selected_services,
+          selected_home_options: estimate.selected_home_options,
+          preferred_contact: estimate.preferred_contact,
+          timeline: estimate.timeline,
+          additional_requirements: estimate.additional_requirements,
+          status: 'sent',
+          due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] // 30 days from now
+        })
+        .select()
+        .single();
+      
+      if (invoiceError) throw invoiceError;
+      
+      // Update estimate to link to the invoice
+      const { error: updateError } = await supabase
+        .from('estimates')
+        .update({ invoice_id: invoice.id })
+        .eq('id', estimateId);
+      
+      if (updateError) throw updateError;
+      
+      return invoice;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['approved-estimates'] });

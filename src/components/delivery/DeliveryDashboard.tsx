@@ -18,8 +18,13 @@ export const DeliveryDashboard = () => {
       
       if (error) throw error;
 
+      // Filter out completed/inactive statuses for active delivery count
+      const activeDeliveries = deliveries.filter(d => 
+        !['completed', 'delivered', 'cancelled'].includes(d.status)
+      );
+
       const stats = {
-        total: deliveries.length,
+        total: activeDeliveries.length,
         scheduled: deliveries.filter(d => d.status === 'scheduled').length,
         inTransit: deliveries.filter(d => d.status === 'in_transit').length,
         delivered: deliveries.filter(d => d.status === 'delivered').length,

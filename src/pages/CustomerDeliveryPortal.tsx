@@ -11,6 +11,7 @@ import { LoadingSpinner } from '@/components/loading/LoadingSpinner';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { useRealTimeTracking } from '@/hooks/useRealTimeTracking';
+import { CustomerTrackingMap } from '@/components/delivery/CustomerTrackingMap';
 import { Truck, MapPin, Calendar, Phone, Mail, Package, Clock, CheckCircle, AlertCircle } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -323,23 +324,48 @@ const CustomerDeliveryPortal = () => {
             </Card>
           </div>
 
-          {/* Current Location (if in transit) */}
+          {/* Interactive Map */}
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <MapPin className="h-5 w-5" />
+                Live Tracking Map
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <CustomerTrackingMap 
+                trackingToken={currentToken}
+                height="500px"
+              />
+            </CardContent>
+          </Card>
+
+          {/* Current Location Details (if in transit) */}
           {delivery?.status === 'in_transit' && currentLocation && (
             <Card className="mt-6">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <MapPin className="h-5 w-5" />
-                  Current Location
+                  Driver Location Details
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="bg-green-50 p-4 rounded-lg">
-                  <p className="text-green-800">
-                    Your delivery is currently in transit and will arrive soon!
+                  <p className="text-green-800 font-medium mb-2">
+                    Your delivery is currently in transit!
                   </p>
-                  <p className="text-sm text-green-600 mt-1">
-                    GPS coordinates: {currentLocation.latitude.toFixed(4)}, {currentLocation.longitude.toFixed(4)}
-                  </p>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-green-600">GPS Coordinates:</span>
+                      <p className="font-mono">{currentLocation.latitude.toFixed(4)}, {currentLocation.longitude.toFixed(4)}</p>
+                    </div>
+                    {currentLocation.speed && (
+                      <div>
+                        <span className="text-green-600">Current Speed:</span>
+                        <p>{Math.round(currentLocation.speed)} mph</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </CardContent>
             </Card>

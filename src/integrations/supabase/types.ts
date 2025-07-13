@@ -2410,6 +2410,7 @@ export type Database = {
       }
       invoices: {
         Row: {
+          additional_requirements: string | null
           balance_due: number | null
           created_at: string
           customer_email: string
@@ -2420,15 +2421,21 @@ export type Database = {
           estimate_id: string | null
           id: string
           invoice_number: string
+          mobile_home_id: string | null
           paid_at: string | null
+          preferred_contact: string | null
           quickbooks_id: string | null
           quickbooks_synced_at: string | null
+          selected_home_options: Json | null
+          selected_services: string[] | null
           status: string
+          timeline: string | null
           total_amount: number
           updated_at: string
           user_id: string | null
         }
         Insert: {
+          additional_requirements?: string | null
           balance_due?: number | null
           created_at?: string
           customer_email: string
@@ -2439,15 +2446,21 @@ export type Database = {
           estimate_id?: string | null
           id?: string
           invoice_number: string
+          mobile_home_id?: string | null
           paid_at?: string | null
+          preferred_contact?: string | null
           quickbooks_id?: string | null
           quickbooks_synced_at?: string | null
+          selected_home_options?: Json | null
+          selected_services?: string[] | null
           status?: string
+          timeline?: string | null
           total_amount: number
           updated_at?: string
           user_id?: string | null
         }
         Update: {
+          additional_requirements?: string | null
           balance_due?: number | null
           created_at?: string
           customer_email?: string
@@ -2458,10 +2471,15 @@ export type Database = {
           estimate_id?: string | null
           id?: string
           invoice_number?: string
+          mobile_home_id?: string | null
           paid_at?: string | null
+          preferred_contact?: string | null
           quickbooks_id?: string | null
           quickbooks_synced_at?: string | null
+          selected_home_options?: Json | null
+          selected_services?: string[] | null
           status?: string
+          timeline?: string | null
           total_amount?: number
           updated_at?: string
           user_id?: string | null
@@ -2472,6 +2490,13 @@ export type Database = {
             columns: ["estimate_id"]
             isOneToOne: false
             referencedRelation: "estimates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_mobile_home_id_fkey"
+            columns: ["mobile_home_id"]
+            isOneToOne: false
+            referencedRelation: "mobile_homes"
             referencedColumns: ["id"]
           },
         ]

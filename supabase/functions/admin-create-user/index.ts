@@ -8,13 +8,14 @@ const corsHeaders = {
 
 interface CreateUserRequest {
   email: string;
-  password: string;
+  password?: string;
   first_name?: string;
   last_name?: string;
   phone_number?: string;
-  role?: 'admin' | 'user';
+  role?: 'admin' | 'user' | 'driver';
   markup_percentage?: number;
   created_by?: string;
+  userData?: any; // For driver-specific data
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -98,14 +99,17 @@ const handler = async (req: Request): Promise<Response> => {
     const isSuperAdmin = userRoles.some(role => role === 'super_admin');
     console.log('User is super admin:', isSuperAdmin);
 
-    const { email, password, first_name, last_name, phone_number, role, markup_percentage, created_by }: CreateUserRequest = await req.json();
+    const { email, password, first_name, last_name, phone_number, role, markup_percentage, created_by, userData }: CreateUserRequest = await req.json();
 
-    if (!email || !password) {
+    if (!email) {
       return new Response(
-        JSON.stringify({ error: 'Email and password are required' }),
+        JSON.stringify({ error: 'Email is required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    // Generate password if not provided (for driver creation)
+    const userPassword = password || `Temp${Math.random().toString(36).slice(-8)}${Math.random().toString(36).slice(-3).toUpperCase()}!`;
 
     // Prevent regular admins from creating other admins
     if (role === 'admin' && !isSuperAdmin) {
@@ -140,12 +144,13 @@ const handler = async (req: Request): Promise<Response> => {
     // Create user using admin API
     const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
       email,
-      password,
+      password: userPassword,
       email_confirm: true, // Skip email confirmation
       user_metadata: {
-        first_name: first_name || '',
-        last_name: last_name || '',
-        phone_number: phone_number || ''
+        first_name: first_name || userData?.first_name || '',
+        last_name: last_name || userData?.last_name || '',
+        phone_number: phone_number || userData?.phone || '',
+        role: role || 'user'
       }
     });
 
@@ -208,6 +213,33 @@ const handler = async (req: Request): Promise<Response> => {
       console.log('Role assignment error occurred but continuing');
     } else {
       console.log('Role assigned successfully:', role || 'user');
+    }
+
+    // If this is a driver, create driver record
+    if (role === 'driver' && userData) {
+      console.log('Creating driver record:', userData);
+      const { error: driverError } = await supabaseAdmin
+        .from('drivers')
+        .insert({
+          user_id: newUser.user.id,
+          first_name: userData.first_name || '',
+          last_name: userData.last_name || '',
+          email: email,
+          phone: userData.phone || '',
+          cdl_class: userData.cdl_class,
+          license_number: userData.license_number,
+          license_expiry: userData.license_expiry,
+          hourly_rate: userData.hourly_rate,
+          employee_id: userData.employee_id,
+          status: userData.status || 'available',
+          created_by: createdByUserId
+        });
+
+      if (driverError) {
+        console.error('Error creating driver record:', driverError);
+      } else {
+        console.log('Driver record created successfully');
+      }
     }
 
     // Create tiered customer markup based on creating admin's pricing
@@ -275,14 +307,15 @@ const handler = async (req: Request): Promise<Response> => {
       user: {
         id: newUser.user.id,
         email: newUser.user.email,
-        first_name: first_name || '',
-        last_name: last_name || '',
-        phone_number: phone_number || '',
+        first_name: first_name || userData?.first_name || '',
+        last_name: last_name || userData?.last_name || '',
+        phone_number: phone_number || userData?.phone || '',
         role: role || 'user',
         markup_percentage: markup_percentage || 30,
         created_by: createdByUserId,
         approved: true
-      }
+      },
+      tempPassword: role === 'driver' ? userPassword : undefined
     };
 
     console.log('Returning success response:', successResponse);

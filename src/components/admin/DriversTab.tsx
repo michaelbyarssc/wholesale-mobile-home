@@ -60,52 +60,26 @@ const DriversTab = () => {
   // Create driver mutation
   const createDriverMutation = useMutation({
     mutationFn: async (driverData: typeof formData) => {
-      // First create auth user
-      const tempPassword = `Driver${Math.random().toString(36).slice(-8)}`;
-      
-      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-        email: driverData.email,
-        password: tempPassword,
-        email_confirm: true,
-        user_metadata: {
-          first_name: driverData.first_name,
-          last_name: driverData.last_name,
-          role: 'driver'
+      const { data, error } = await supabase.functions.invoke('admin-create-user', {
+        body: {
+          email: driverData.email,
+          role: 'driver',
+          userData: {
+            first_name: driverData.first_name,
+            last_name: driverData.last_name,
+            phone: driverData.phone,
+            cdl_class: driverData.cdl_class || null,
+            license_number: driverData.license_number || null,
+            license_expiry: driverData.license_expiry || null,
+            hourly_rate: driverData.hourly_rate ? parseFloat(driverData.hourly_rate) : null,
+            employee_id: driverData.employee_id || null,
+            status: driverData.status
+          }
         }
       });
 
-      if (authError) throw authError;
-
-      // Create driver record
-      const { data, error } = await supabase
-        .from('drivers')
-        .insert({
-          user_id: authData.user.id,
-          first_name: driverData.first_name,
-          last_name: driverData.last_name,
-          email: driverData.email,
-          phone: driverData.phone,
-          cdl_class: driverData.cdl_class || null,
-          license_number: driverData.license_number || null,
-          license_expiry: driverData.license_expiry || null,
-          hourly_rate: driverData.hourly_rate ? parseFloat(driverData.hourly_rate) : null,
-          employee_id: driverData.employee_id || null,
-          status: driverData.status
-        })
-        .select()
-        .single();
-
       if (error) throw error;
-
-      // Add driver role
-      await supabase
-        .from('user_roles')
-        .insert({
-          user_id: authData.user.id,
-          role: 'driver'
-        });
-
-      return { driver: data, tempPassword };
+      return data;
     },
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['drivers'] });

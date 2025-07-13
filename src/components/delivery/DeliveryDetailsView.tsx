@@ -114,6 +114,30 @@ const DeliveryDetailsView: React.FC<DeliveryDetailsViewProps> = ({ delivery }) =
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
+            {delivery.scheduled_pickup_date && (
+              <div className="flex items-center gap-3">
+                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                <div>
+                  <p className="text-sm font-medium">Scheduled Pickup</p>
+                  <p className="text-xs text-muted-foreground">
+                    {new Date(delivery.scheduled_pickup_date).toLocaleDateString()}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {delivery.actual_pickup_date && (
+              <div className="flex items-center gap-3">
+                <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                <div>
+                  <p className="text-sm font-medium">Actual Pickup</p>
+                  <p className="text-xs text-muted-foreground">
+                    {new Date(delivery.actual_pickup_date).toLocaleString()}
+                  </p>
+                </div>
+              </div>
+            )}
+
             {startTime && (
               <div className="flex items-center gap-3">
                 <div className="w-2 h-2 bg-green-500 rounded-full"></div>
@@ -128,7 +152,7 @@ const DeliveryDetailsView: React.FC<DeliveryDetailsViewProps> = ({ delivery }) =
             
             {completionTime && (
               <div className="flex items-center gap-3">
-                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
                 <div>
                   <p className="text-sm font-medium">Delivery Completed</p>
                   <p className="text-xs text-muted-foreground">

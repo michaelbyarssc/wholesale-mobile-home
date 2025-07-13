@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { DeliveryDashboard } from "@/components/delivery/DeliveryDashboard";
 import { DriverManagement } from "@/components/delivery/DriverManagement";
 import { ActiveDeliveries } from "@/components/delivery/ActiveDeliveries";
+import { CompletedDeliveries } from "@/components/delivery/CompletedDeliveries";
 import { DeliveryScheduling } from "@/components/delivery/DeliveryScheduling";
 import { GPSTracking } from "@/components/delivery/GPSTracking";
 import { DriverPortal } from "@/components/delivery/DriverPortal";
@@ -15,7 +16,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { LoadingSpinner } from "@/components/layout/LoadingSpinner";
 import { useShoppingCart } from "@/hooks/useShoppingCart";
-import { Truck, Users, Calendar, MapPin, BarChart3 } from "lucide-react";
+import { Truck, Users, Calendar, MapPin, BarChart3, CheckCircle } from "lucide-react";
 
 const Delivery = () => {
   const { user } = useAuthUser();
@@ -117,7 +118,7 @@ const Delivery = () => {
           </div>
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-5">
+            <TabsList className="grid w-full grid-cols-6">
               <TabsTrigger value="dashboard" className="flex items-center gap-2">
                 <BarChart3 className="h-4 w-4" />
                 Dashboard
@@ -125,6 +126,10 @@ const Delivery = () => {
               <TabsTrigger value="deliveries" className="flex items-center gap-2">
                 <Truck className="h-4 w-4" />
                 Active Deliveries
+              </TabsTrigger>
+              <TabsTrigger value="completed" className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4" />
+                Completed
               </TabsTrigger>
               <TabsTrigger value="scheduling" className="flex items-center gap-2">
                 <Calendar className="h-4 w-4" />
@@ -146,6 +151,10 @@ const Delivery = () => {
 
             <TabsContent value="deliveries" className="mt-6">
               <ActiveDeliveries />
+            </TabsContent>
+
+            <TabsContent value="completed" className="mt-6">
+              <CompletedDeliveries />
             </TabsContent>
 
             <TabsContent value="scheduling" className="mt-6">

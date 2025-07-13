@@ -164,8 +164,54 @@ const DriverPortal = () => {
     enabled: !!driver?.id,
   });
 
-  // Fetch completed deliveries
-  const { data: completedDeliveries = [] } = useQuery({
+      // Fetch delivery photos
+      const { data: deliveryPhotos = [] } = useQuery({
+        queryKey: ['driver-delivery-photos', driver?.id],
+        queryFn: async () => {
+          if (!driver?.id) return [];
+          
+          if (driver.is_super_admin) {
+            // Super admin sees all photos
+            const { data, error } = await supabase
+              .from('delivery_photos')
+              .select(`
+                *,
+                deliveries (
+                  delivery_number,
+                  customer_name,
+                  mobile_homes (manufacturer, model)
+                )
+              `)
+              .order('taken_at', { ascending: false })
+              .limit(50);
+            
+            if (error) throw error;
+            return data || [];
+          } else {
+            // Regular drivers see only their photos
+            const { data, error } = await supabase
+              .from('delivery_photos')
+              .select(`
+                *,
+                deliveries (
+                  delivery_number,
+                  customer_name,
+                  mobile_homes (manufacturer, model)
+                )
+              `)
+              .eq('driver_id', driver.id)
+              .order('taken_at', { ascending: false })
+              .limit(50);
+            
+            if (error) throw error;
+            return data || [];
+          }
+        },
+        enabled: !!driver?.id,
+      });
+
+      // Fetch completed deliveries
+      const { data: completedDeliveries = [] } = useQuery({
     queryKey: ['driver-completed-deliveries', driver?.id],
     queryFn: async () => {
       if (!driver?.id) return [];
@@ -304,6 +350,7 @@ const DriverPortal = () => {
       if (error) throw error;
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['driver-delivery-photos'] });
       toast({
         title: "Photo Uploaded",
         description: "Photo has been uploaded successfully.",
@@ -448,9 +495,12 @@ const DriverPortal = () => {
 
       <div className="container mx-auto px-4 py-4">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="active">
-              Active Deliveries ({activeDeliveries.length})
+              Active ({activeDeliveries.length})
+            </TabsTrigger>
+            <TabsTrigger value="photos">
+              Photos ({deliveryPhotos.length})
             </TabsTrigger>
             <TabsTrigger value="completed">
               Completed ({completedDeliveries.length})
@@ -591,6 +641,75 @@ const DriverPortal = () => {
                             <p className="text-sm text-yellow-700">{delivery.special_instructions}</p>
                           </div>
                         )}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
+          </TabsContent>
+
+          {/* Photos Tab */}
+          <TabsContent value="photos" className="space-y-4 mt-4">
+            {deliveryPhotos.length === 0 ? (
+              <Card>
+                <CardContent className="flex flex-col items-center justify-center py-12">
+                  <Camera className="h-12 w-12 text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-medium mb-2">No Photos Yet</h3>
+                  <p className="text-muted-foreground text-center">
+                    Photos you take during deliveries will appear here.
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="space-y-4">
+                {/* Group photos by photo_type */}
+                {['pickup', 'delivery', 'issue'].map((photoType) => {
+                  const photosOfType = deliveryPhotos.filter(photo => photo.photo_type === photoType);
+                  if (photosOfType.length === 0) return null;
+                  
+                  return (
+                    <Card key={photoType}>
+                      <CardHeader>
+                        <CardTitle className="text-lg capitalize flex items-center">
+                          <Camera className="h-5 w-5 mr-2" />
+                          {photoType} Photos ({photosOfType.length})
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid grid-cols-2 gap-4">
+                          {photosOfType.map((photo) => (
+                            <div key={photo.id} className="space-y-2">
+                              <div className="relative aspect-square rounded-lg overflow-hidden bg-muted">
+                                <img
+                                  src={photo.photo_url}
+                                  alt={photo.caption || `${photoType} photo`}
+                                  className="w-full h-full object-cover"
+                                  loading="lazy"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <p className="text-sm font-medium">
+                                  {photo.deliveries?.mobile_homes?.manufacturer} {photo.deliveries?.mobile_homes?.model}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  Delivery #{photo.deliveries?.delivery_number}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {photo.deliveries?.customer_name}
+                                </p>
+                                {photo.caption && (
+                                  <p className="text-xs text-muted-foreground italic">
+                                    "{photo.caption}"
+                                  </p>
+                                )}
+                                <p className="text-xs text-muted-foreground">
+                                  {new Date(photo.taken_at).toLocaleString()}
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       </CardContent>
                     </Card>
                   );

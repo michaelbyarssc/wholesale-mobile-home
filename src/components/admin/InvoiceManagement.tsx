@@ -17,7 +17,9 @@ import {
   CreditCard,
   AlertCircle,
   RotateCw,
-  Settings
+  Settings,
+  Edit,
+  Save
  } from 'lucide-react';
 import { EstimateDocuSignButton } from '@/components/estimate-approval/EstimateDocuSignButton';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -41,6 +43,8 @@ export const InvoiceManagement = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
   const [showInvoiceDialog, setShowInvoiceDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [editingInvoice, setEditingInvoice] = useState<any>(null);
 
   // Fetch approved estimates that can become invoices
   const { data: approvedEstimates = [], isLoading } = useQuery({
@@ -173,6 +177,51 @@ export const InvoiceManagement = () => {
     setSelectedInvoice(invoice);
     setShowInvoiceDialog(true);
   };
+
+  const handleEditInvoice = (invoice: any) => {
+    setEditingInvoice(invoice);
+    setShowEditDialog(true);
+  };
+
+  const handlePayInvoice = (invoice: any) => {
+    // Simple payment processing - mark as paid
+    updateInvoiceMutation.mutate({
+      id: invoice.id,
+      status: 'paid',
+      paid_at: new Date().toISOString()
+    });
+  };
+
+  // Update invoice mutation
+  const updateInvoiceMutation = useMutation({
+    mutationFn: async ({ id, ...updates }: any) => {
+      const { data, error } = await supabase
+        .from('invoices')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['invoices-basic'] });
+      toast({
+        title: "Invoice Updated",
+        description: "Invoice has been updated successfully.",
+      });
+      setShowEditDialog(false);
+      setEditingInvoice(null);
+    },
+    onError: (error) => {
+      console.error('Invoice update error:', error);
+      toast({
+        title: "Update Failed",
+        description: "Failed to update invoice. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -379,6 +428,11 @@ export const InvoiceManagement = () => {
                         View
                       </Button>
                       
+                      <Button size="sm" variant="outline" onClick={() => handleEditInvoice(invoice)}>
+                        <Edit className="h-3 w-3 mr-1" />
+                        Edit
+                      </Button>
+                      
                       {invoice.status === 'draft' && (
                         <Button size="sm">
                           <Send className="h-3 w-3 mr-1" />
@@ -387,9 +441,9 @@ export const InvoiceManagement = () => {
                       )}
 
                       {invoice.status !== 'paid' && (
-                        <Button size="sm" variant="outline">
+                        <Button size="sm" variant="default" onClick={() => handlePayInvoice(invoice)}>
                           <CreditCard className="h-3 w-3 mr-1" />
-                          Payment
+                          Pay
                         </Button>
                       )}
 
@@ -437,6 +491,104 @@ export const InvoiceManagement = () => {
           <QuickBooksSettings />
         </TabsContent>
       </Tabs>
+
+      {/* Edit Invoice Dialog */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Edit Invoice - {editingInvoice?.invoice_number}</DialogTitle>
+          </DialogHeader>
+          
+          {editingInvoice && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium">Customer Name</label>
+                  <Input
+                    value={editingInvoice.customer_name}
+                    onChange={(e) => setEditingInvoice(prev => ({ ...prev, customer_name: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Customer Email</label>
+                  <Input
+                    value={editingInvoice.customer_email}
+                    onChange={(e) => setEditingInvoice(prev => ({ ...prev, customer_email: e.target.value }))}
+                  />
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium">Customer Phone</label>
+                  <Input
+                    value={editingInvoice.customer_phone}
+                    onChange={(e) => setEditingInvoice(prev => ({ ...prev, customer_phone: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Status</label>
+                  <Select
+                    value={editingInvoice.status}
+                    onValueChange={(value) => setEditingInvoice(prev => ({ ...prev, status: value }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="draft">Draft</SelectItem>
+                      <SelectItem value="sent">Sent</SelectItem>
+                      <SelectItem value="paid">Paid</SelectItem>
+                      <SelectItem value="overdue">Overdue</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium">Total Amount</label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={editingInvoice.total_amount}
+                    onChange={(e) => setEditingInvoice(prev => ({ ...prev, total_amount: parseFloat(e.target.value) }))}
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Due Date</label>
+                  <Input
+                    type="date"
+                    value={editingInvoice.due_date ? new Date(editingInvoice.due_date).toISOString().split('T')[0] : ''}
+                    onChange={(e) => setEditingInvoice(prev => ({ ...prev, due_date: e.target.value }))}
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <label className="text-sm font-medium">Delivery Address</label>
+                <Input
+                  value={editingInvoice.delivery_address || ''}
+                  onChange={(e) => setEditingInvoice(prev => ({ ...prev, delivery_address: e.target.value }))}
+                />
+              </div>
+              
+              <div className="flex justify-end space-x-2 pt-4">
+                <Button variant="outline" onClick={() => setShowEditDialog(false)}>
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={() => updateInvoiceMutation.mutate(editingInvoice)}
+                  disabled={updateInvoiceMutation.isPending}
+                >
+                  <Save className="h-4 w-4 mr-2" />
+                  {updateInvoiceMutation.isPending ? 'Saving...' : 'Save Changes'}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Invoice Details Dialog */}
       <Dialog open={showInvoiceDialog} onOpenChange={setShowInvoiceDialog}>

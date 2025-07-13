@@ -25,26 +25,63 @@ const getAccessToken = async () => {
 
   console.log('Creating DocuSign JWT token...');
 
-  // Clean up the private key
-  const cleanPrivateKey = privateKey
-    .replace(/\\n/g, '\n')
-    .replace(/-----BEGIN RSA PRIVATE KEY-----/, '-----BEGIN RSA PRIVATE KEY-----\n')
-    .replace(/-----END RSA PRIVATE KEY-----/, '\n-----END RSA PRIVATE KEY-----');
+  // Clean up the private key and convert PEM to DER format
+  let cleanPrivateKey = privateKey.replace(/\\n/g, '\n');
+  
+  // Remove PEM headers/footers and whitespace
+  const pemHeader = '-----BEGIN RSA PRIVATE KEY-----';
+  const pemFooter = '-----END RSA PRIVATE KEY-----';
+  const pkcs8Header = '-----BEGIN PRIVATE KEY-----';
+  const pkcs8Footer = '-----END PRIVATE KEY-----';
+  
+  let keyFormat = 'pkcs8';
+  let keyData;
+  
+  if (cleanPrivateKey.includes(pemHeader)) {
+    // RSA PRIVATE KEY format - need to convert to PKCS#8
+    keyFormat = 'pkcs1';
+    cleanPrivateKey = cleanPrivateKey
+      .replace(pemHeader, '')
+      .replace(pemFooter, '')
+      .replace(/\s/g, '');
+  } else if (cleanPrivateKey.includes(pkcs8Header)) {
+    // PRIVATE KEY format (PKCS#8)
+    cleanPrivateKey = cleanPrivateKey
+      .replace(pkcs8Header, '')
+      .replace(pkcs8Footer, '')
+      .replace(/\s/g, '');
+  } else {
+    // Assume it's already base64 encoded without headers
+    cleanPrivateKey = cleanPrivateKey.replace(/\s/g, '');
+  }
 
   const now = Math.floor(Date.now() / 1000);
   
   try {
+    // Convert base64 to binary
+    const binaryDer = atob(cleanPrivateKey);
+    const bytes = new Uint8Array(binaryDer.length);
+    for (let i = 0; i < binaryDer.length; i++) {
+      bytes[i] = binaryDer.charCodeAt(i);
+    }
+
     // Import the private key for signing
-    const keyData = await crypto.subtle.importKey(
-      'pkcs8',
-      new TextEncoder().encode(cleanPrivateKey),
-      {
-        name: 'RSASSA-PKCS1-v1_5',
-        hash: 'SHA-256',
-      },
-      false,
-      ['sign']
-    );
+    try {
+      keyData = await crypto.subtle.importKey(
+        'pkcs8',
+        bytes.buffer,
+        {
+          name: 'RSASSA-PKCS1-v1_5',
+          hash: 'SHA-256',
+        },
+        false,
+        ['sign']
+      );
+    } catch (pkcs8Error) {
+      console.log('PKCS8 import failed, trying raw format...');
+      // If PKCS8 fails, the key might be in raw format, try different approach
+      throw new Error('Private key format not supported. Please ensure you have a valid PKCS#8 formatted private key.');
+    }
 
     // Create JWT header and payload
     const header = {

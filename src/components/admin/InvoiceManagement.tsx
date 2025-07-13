@@ -47,6 +47,10 @@ export const InvoiceManagement = () => {
   const [showInvoiceDialog, setShowInvoiceDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState<any>(null);
+  const [showPaymentDialog, setShowPaymentDialog] = useState(false);
+  const [paymentAmount, setPaymentAmount] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('cash');
+  const [paymentNotes, setPaymentNotes] = useState('');
 
   // Fetch approved estimates that can become invoices
   const { data: approvedEstimates = [], isLoading } = useQuery({
@@ -185,6 +189,14 @@ export const InvoiceManagement = () => {
     setShowEditDialog(true);
   };
 
+  const handlePaymentClick = (invoice: any) => {
+    setSelectedInvoice(invoice);
+    setPaymentAmount('');
+    setPaymentMethod('cash');
+    setPaymentNotes('');
+    setShowPaymentDialog(true);
+  };
+
   // Update invoice mutation
   const updateInvoiceMutation = useMutation({
     mutationFn: async (updatedInvoice: any) => {
@@ -221,6 +233,48 @@ export const InvoiceManagement = () => {
       toast({
         title: "Update Failed",
         description: "Failed to update invoice. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Process payment mutation
+  const processPaymentMutation = useMutation({
+    mutationFn: async (paymentData: { 
+      invoice_id: string; 
+      amount: number; 
+      payment_method: string; 
+      notes?: string; 
+    }) => {
+      const { data, error } = await supabase
+        .from('payments')
+        .insert({
+          invoice_id: paymentData.invoice_id,
+          amount: paymentData.amount,
+          payment_method: paymentData.payment_method,
+          notes: paymentData.notes,
+          created_by: (await supabase.auth.getUser()).data.user?.id
+        })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['invoices-basic'] });
+      setShowPaymentDialog(false);
+      setSelectedInvoice(null);
+      toast({
+        title: "Payment Recorded",
+        description: "Payment has been successfully recorded and invoice balance updated.",
+      });
+    },
+    onError: (error) => {
+      console.error('Payment processing error:', error);
+      toast({
+        title: "Payment Failed",
+        description: "Failed to record payment. Please try again.",
         variant: "destructive",
       });
     },
@@ -417,12 +471,15 @@ export const InvoiceManagement = () => {
                       <p className="text-sm text-muted-foreground">
                         {invoice.customer_name} • {invoice.customer_email}
                       </p>
-                      <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-                        <span>Total: {formatCurrency(invoice.total_amount)}</span>
-                        {invoice.due_date && (
-                          <span>Due: {new Date(invoice.due_date).toLocaleDateString()}</span>
-                        )}
-                      </div>
+                        <div className="flex items-center space-x-4 text-sm text-muted-foreground">
+                          <span>Total: {formatCurrency(invoice.total_amount)}</span>
+                          {invoice.balance_due !== undefined && (
+                            <span>Balance Due: {formatCurrency(invoice.balance_due)}</span>
+                          )}
+                          {invoice.due_date && (
+                            <span>Due: {new Date(invoice.due_date).toLocaleDateString()}</span>
+                          )}
+                        </div>
                     </div>
 
                     <div className="flex items-center space-x-2">
@@ -443,8 +500,8 @@ export const InvoiceManagement = () => {
                         </Button>
                       )}
 
-                      {invoice.status !== 'paid' && (
-                        <Button size="sm" variant="outline">
+                      {invoice.status !== 'paid' && invoice.balance_due > 0 && (
+                        <Button size="sm" variant="outline" onClick={() => handlePaymentClick(invoice)}>
                           <CreditCard className="h-3 w-3 mr-1" />
                           Payment
                         </Button>
@@ -691,6 +748,94 @@ export const InvoiceManagement = () => {
                 >
                   <Save className="h-4 w-4 mr-2" />
                   {updateInvoiceMutation.isPending ? 'Saving...' : 'Save Changes'}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Payment Dialog */}
+      <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Record Payment - {selectedInvoice?.invoice_number}</DialogTitle>
+          </DialogHeader>
+          
+          {selectedInvoice && (
+            <div className="space-y-4">
+              <div className="bg-muted p-3 rounded-lg">
+                <div className="text-sm">
+                  <div><span className="font-medium">Customer:</span> {selectedInvoice.customer_name}</div>
+                  <div><span className="font-medium">Total Amount:</span> {formatCurrency(selectedInvoice.total_amount)}</div>
+                  <div><span className="font-medium">Balance Due:</span> {formatCurrency(selectedInvoice.balance_due || selectedInvoice.total_amount)}</div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="payment_amount">Payment Amount</Label>
+                <Input
+                  id="payment_amount"
+                  type="number"
+                  step="0.01"
+                  placeholder="Enter payment amount"
+                  value={paymentAmount}
+                  onChange={(e) => setPaymentAmount(e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="payment_method">Payment Method</Label>
+                <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="cash">Cash</SelectItem>
+                    <SelectItem value="check">Check</SelectItem>
+                    <SelectItem value="credit_card">Credit Card</SelectItem>
+                    <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="payment_notes">Notes (Optional)</Label>
+                <Textarea
+                  id="payment_notes"
+                  placeholder="Payment notes..."
+                  value={paymentNotes}
+                  onChange={(e) => setPaymentNotes(e.target.value)}
+                  rows={2}
+                />
+              </div>
+
+              <div className="flex justify-end space-x-2 pt-4">
+                <Button variant="outline" onClick={() => setShowPaymentDialog(false)}>
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={() => {
+                    if (!paymentAmount || parseFloat(paymentAmount) <= 0) {
+                      toast({
+                        title: "Invalid Amount",
+                        description: "Please enter a valid payment amount.",
+                        variant: "destructive",
+                      });
+                      return;
+                    }
+                    processPaymentMutation.mutate({
+                      invoice_id: selectedInvoice.id,
+                      amount: parseFloat(paymentAmount),
+                      payment_method: paymentMethod,
+                      notes: paymentNotes || undefined,
+                    });
+                  }}
+                  disabled={processPaymentMutation.isPending || !paymentAmount}
+                >
+                  <Save className="h-4 w-4 mr-2" />
+                  {processPaymentMutation.isPending ? 'Recording...' : 'Record Payment'}
                 </Button>
               </div>
             </div>

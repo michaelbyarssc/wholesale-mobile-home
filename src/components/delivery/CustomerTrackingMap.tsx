@@ -147,7 +147,16 @@ export const CustomerTrackingMap = ({ trackingToken, height = "500px" }: Custome
 
   // Update map with tracking data
   useEffect(() => {
-    if (!map.current || !mapboxToken || !trackingData) return;
+    if (!map.current || !mapboxToken || !trackingData) {
+      console.log('CustomerTrackingMap: Route update blocked - map:', !!map.current, 'token:', !!mapboxToken, 'data:', !!trackingData);
+      return;
+    }
+
+    console.log('CustomerTrackingMap: Updating map with tracking data:', {
+      pickup: trackingData.pickup_address,
+      delivery: trackingData.delivery_address,
+      hasCurrentLocation: !!trackingData.current_location
+    });
 
     const updateMap = async () => {
       // Clear existing markers and routes
@@ -163,16 +172,25 @@ export const CustomerTrackingMap = ({ trackingToken, height = "500px" }: Custome
       const bounds = new mapboxgl.LngLatBounds();
 
       // Geocode addresses
+      console.log('CustomerTrackingMap: Geocoding pickup address:', trackingData.pickup_address);
       const pickupCoords = await geocodeAddress(trackingData.pickup_address);
+      console.log('CustomerTrackingMap: Pickup coordinates:', pickupCoords);
+      
+      console.log('CustomerTrackingMap: Geocoding delivery address:', trackingData.delivery_address);
       const deliveryCoords = await geocodeAddress(trackingData.delivery_address);
+      console.log('CustomerTrackingMap: Delivery coordinates:', deliveryCoords);
 
       if (pickupCoords && deliveryCoords) {
         // Get and display route
+        console.log('CustomerTrackingMap: Getting route between coordinates');
         const route = await getRoute(pickupCoords, deliveryCoords);
+        console.log('CustomerTrackingMap: Route result:', route ? 'success' : 'failed');
+        
         if (route) {
           const routeLayerId = 'delivery-route';
           routeLayerRef.current = routeLayerId;
 
+          console.log('CustomerTrackingMap: Adding route layer to map');
           map.current!.addSource(routeLayerId, {
             type: 'geojson',
             data: {
@@ -199,6 +217,9 @@ export const CustomerTrackingMap = ({ trackingToken, height = "500px" }: Custome
 
           bounds.extend(pickupCoords);
           bounds.extend(deliveryCoords);
+          console.log('CustomerTrackingMap: Route layer added successfully');
+        } else {
+          console.error('CustomerTrackingMap: Failed to get route');
         }
 
         // Add pickup marker

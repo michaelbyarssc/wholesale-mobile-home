@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { 
   FileText, 
   DollarSign, 
@@ -38,6 +39,8 @@ export const InvoiceManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [activeTab, setActiveTab] = useState('overview');
+  const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
+  const [showInvoiceDialog, setShowInvoiceDialog] = useState(false);
 
   // Fetch approved estimates that can become invoices
   const { data: approvedEstimates = [], isLoading } = useQuery({
@@ -164,6 +167,12 @@ export const InvoiceManagement = () => {
       });
     },
   });
+
+  
+  const handleViewInvoice = (invoice: any) => {
+    setSelectedInvoice(invoice);
+    setShowInvoiceDialog(true);
+  };
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -365,7 +374,7 @@ export const InvoiceManagement = () => {
                     </div>
 
                     <div className="flex items-center space-x-2">
-                      <Button size="sm" variant="outline">
+                      <Button size="sm" variant="outline" onClick={() => handleViewInvoice(invoice)}>
                         <Eye className="h-3 w-3 mr-1" />
                         View
                       </Button>
@@ -428,6 +437,110 @@ export const InvoiceManagement = () => {
           <QuickBooksSettings />
         </TabsContent>
       </Tabs>
+
+      {/* Invoice Details Dialog */}
+      <Dialog open={showInvoiceDialog} onOpenChange={setShowInvoiceDialog}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Invoice Details - {selectedInvoice?.invoice_number}</DialogTitle>
+          </DialogHeader>
+          
+          {selectedInvoice && (
+            <div className="space-y-6">
+              {/* Invoice Header */}
+              <div className="grid grid-cols-2 gap-6">
+                <div>
+                  <h3 className="font-semibold text-lg mb-2">Invoice Information</h3>
+                  <div className="space-y-2 text-sm">
+                    <div><span className="font-medium">Invoice Number:</span> {selectedInvoice.invoice_number}</div>
+                    <div><span className="font-medium">Status:</span> {getStatusBadge(selectedInvoice.status)}</div>
+                    <div><span className="font-medium">Created:</span> {new Date(selectedInvoice.created_at).toLocaleDateString()}</div>
+                    {selectedInvoice.due_date && (
+                      <div><span className="font-medium">Due Date:</span> {new Date(selectedInvoice.due_date).toLocaleDateString()}</div>
+                    )}
+                    {selectedInvoice.paid_at && (
+                      <div><span className="font-medium">Paid Date:</span> {new Date(selectedInvoice.paid_at).toLocaleDateString()}</div>
+                    )}
+                  </div>
+                </div>
+                
+                <div>
+                  <h3 className="font-semibold text-lg mb-2">Customer Information</h3>
+                  <div className="space-y-2 text-sm">
+                    <div><span className="font-medium">Name:</span> {selectedInvoice.customer_name}</div>
+                    <div><span className="font-medium">Email:</span> {selectedInvoice.customer_email}</div>
+                    <div><span className="font-medium">Phone:</span> {selectedInvoice.customer_phone}</div>
+                    {selectedInvoice.delivery_address && (
+                      <div><span className="font-medium">Delivery Address:</span> {selectedInvoice.delivery_address}</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Financial Information */}
+              <div className="border-t pt-4">
+                <h3 className="font-semibold text-lg mb-4">Financial Details</h3>
+                <div className="bg-muted p-4 rounded-lg">
+                  <div className="flex justify-between items-center text-lg font-semibold">
+                    <span>Total Amount:</span>
+                    <span className="text-primary">{formatCurrency(selectedInvoice.total_amount)}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* QuickBooks Integration */}
+              {selectedInvoice.quickbooks_id && (
+                <div className="border-t pt-4">
+                  <h3 className="font-semibold text-lg mb-2">QuickBooks Integration</h3>
+                  <div className="space-y-2 text-sm">
+                    <div><span className="font-medium">QuickBooks ID:</span> {selectedInvoice.quickbooks_id}</div>
+                    {selectedInvoice.quickbooks_synced_at && (
+                      <div><span className="font-medium">Last Synced:</span> {new Date(selectedInvoice.quickbooks_synced_at).toLocaleDateString()}</div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="border-t pt-4 flex space-x-2">
+                {selectedInvoice.status === 'draft' && (
+                  <Button>
+                    <Send className="h-4 w-4 mr-2" />
+                    Send Invoice
+                  </Button>
+                )}
+                
+                {selectedInvoice.status !== 'paid' && (
+                  <Button variant="outline">
+                    <CreditCard className="h-4 w-4 mr-2" />
+                    Mark as Paid
+                  </Button>
+                )}
+
+                {!selectedInvoice.quickbooks_id && (
+                  <Button 
+                    variant="outline"
+                    onClick={() => syncToQuickBooksMutation.mutate(selectedInvoice.id)}
+                    disabled={syncToQuickBooksMutation.isPending}
+                  >
+                    <RotateCw className="h-4 w-4 mr-2" />
+                    {syncToQuickBooksMutation.isPending ? 'Syncing...' : 'Sync to QuickBooks'}
+                  </Button>
+                )}
+
+                <EstimateDocuSignButton
+                  estimateId={selectedInvoice.estimate_id || ''}
+                  customerEmail={selectedInvoice.customer_email}
+                  customerName={selectedInvoice.customer_name}
+                  estimateNumber={selectedInvoice.invoice_number}
+                  documentType="invoice"
+                  hasInvoice={true}
+                />
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

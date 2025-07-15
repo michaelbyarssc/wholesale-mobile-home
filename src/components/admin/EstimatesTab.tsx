@@ -916,12 +916,12 @@ export const EstimatesTab = () => {
                             <DialogTitle>Estimate Details</DialogTitle>
                           </DialogHeader>
                           <div className="space-y-6">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                              <div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 min-w-0">
+                              <div className="min-w-0">
                                 <Label>Customer</Label>
-                                <p className="font-medium">{estimate.customer_name}</p>
+                                <p className="font-medium break-words">{estimate.customer_name}</p>
                               </div>
-                              <div>
+                              <div className="min-w-0">
                                 <Label>Status</Label>
                                 <Badge variant={
                                   estimate.status === 'draft' ? 'secondary' :
@@ -933,34 +933,34 @@ export const EstimatesTab = () => {
                                   {estimate.status.charAt(0).toUpperCase() + estimate.status.slice(1).replace('_', ' ')}
                                 </Badge>
                               </div>
-                              <div>
+                              <div className="min-w-0">
                                 <Label>Email</Label>
-                                <p>{estimate.customer_email}</p>
+                                <p className="break-words">{estimate.customer_email}</p>
                               </div>
-                              <div>
+                              <div className="min-w-0">
                                 <Label>Phone</Label>
-                                <p>{estimate.customer_phone}</p>
+                                <p className="break-words">{estimate.customer_phone}</p>
                               </div>
-                              <div className="col-span-1 sm:col-span-2">
+                              <div className="col-span-1 sm:col-span-2 min-w-0">
                                 <Label>Delivery Address</Label>
-                                <p>{estimate.delivery_address}</p>
+                                <p className="break-words">{estimate.delivery_address}</p>
                               </div>
-                              <div>
+                              <div className="min-w-0">
                                 <Label>Mobile Home</Label>
-                                <p>{estimate.mobile_homes?.manufacturer} {estimate.mobile_homes?.series} {estimate.mobile_homes?.model}</p>
+                                <p className="break-words">{estimate.mobile_homes?.manufacturer} {estimate.mobile_homes?.series} {estimate.mobile_homes?.model}</p>
                               </div>
-                              <div>
+                              <div className="min-w-0">
                                 <Label>Total Amount</Label>
-                                <p className="font-medium text-lg">${estimate.total_amount.toLocaleString()}</p>
+                                <p className="font-medium text-lg break-words">${estimate.total_amount.toLocaleString()}</p>
                               </div>
-                              <div>
+                              <div className="min-w-0">
                                 <Label>Created</Label>
-                                <p>{format(new Date(estimate.created_at), 'MMM dd, yyyy HH:mm')}</p>
+                                <p className="break-words">{format(new Date(estimate.created_at), 'MMM dd, yyyy HH:mm')}</p>
                               </div>
                               {estimate.approved_at && (
-                                <div>
+                                <div className="min-w-0">
                                   <Label>Approved</Label>
-                                  <p>{format(new Date(estimate.approved_at), 'MMM dd, yyyy HH:mm')}</p>
+                                  <p className="break-words">{format(new Date(estimate.approved_at), 'MMM dd, yyyy HH:mm')}</p>
                                 </div>
                               )}
                             </div>

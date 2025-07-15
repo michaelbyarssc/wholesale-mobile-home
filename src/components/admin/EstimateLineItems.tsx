@@ -316,30 +316,30 @@ export const EstimateLineItems = ({ estimateId, isEditable = false }: EstimateLi
 
         {/* Cost Summary */}
         <div className="space-y-2">
-          <div className="flex justify-between items-center">
-            <Label className="text-sm">Subtotal:</Label>
-            <span className="font-medium">${subtotal.toLocaleString()}</span>
+          <div className="flex justify-between items-center gap-4">
+            <Label className="text-sm flex-shrink-0">Subtotal:</Label>
+            <span className="font-medium break-words text-right">${subtotal.toLocaleString()}</span>
           </div>
           
           {shippingCost > 0 && (
-            <div className="flex justify-between items-center">
-              <Label className="text-sm">Shipping & Delivery:</Label>
-              <span className="font-medium">${shippingCost.toLocaleString()}</span>
+            <div className="flex justify-between items-center gap-4">
+              <Label className="text-sm flex-shrink-0">Shipping & Delivery:</Label>
+              <span className="font-medium break-words text-right">${shippingCost.toLocaleString()}</span>
             </div>
           )}
           
           {taxCost > 0 && (
-            <div className="flex justify-between items-center">
-              <Label className="text-sm">Sales Tax:</Label>
-              <span className="font-medium">${taxCost.toLocaleString()}</span>
+            <div className="flex justify-between items-center gap-4">
+              <Label className="text-sm flex-shrink-0">Sales Tax:</Label>
+              <span className="font-medium break-words text-right">${taxCost.toLocaleString()}</span>
             </div>
           )}
           
           <Separator />
           
-          <div className="flex justify-between items-center">
-            <Label className="font-medium">Total:</Label>
-            <span className="font-bold text-lg text-green-600">${total.toLocaleString()}</span>
+          <div className="flex justify-between items-center gap-4">
+            <Label className="font-medium flex-shrink-0">Total:</Label>
+            <span className="font-bold text-lg text-green-600 break-words text-right">${total.toLocaleString()}</span>
           </div>
         </div>
       </CardContent>

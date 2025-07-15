@@ -916,12 +916,12 @@ export const EstimatesTab = () => {
                             <DialogTitle>Estimate Details</DialogTitle>
                           </DialogHeader>
                           <div className="space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 min-w-0">
-                              <div className="min-w-0">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="min-w-0 overflow-hidden">
                                 <Label>Customer</Label>
-                                <p className="font-medium break-words">{estimate.customer_name}</p>
+                                <p className="font-medium break-words overflow-wrap-anywhere">{estimate.customer_name}</p>
                               </div>
-                              <div className="min-w-0">
+                              <div className="min-w-0 overflow-hidden">
                                 <Label>Status</Label>
                                 <Badge variant={
                                   estimate.status === 'draft' ? 'secondary' :
@@ -933,34 +933,34 @@ export const EstimatesTab = () => {
                                   {estimate.status.charAt(0).toUpperCase() + estimate.status.slice(1).replace('_', ' ')}
                                 </Badge>
                               </div>
-                              <div className="min-w-0">
+                              <div className="min-w-0 overflow-hidden">
                                 <Label>Email</Label>
-                                <p className="break-words">{estimate.customer_email}</p>
+                                <p className="break-words overflow-wrap-anywhere">{estimate.customer_email}</p>
                               </div>
-                              <div className="min-w-0">
+                              <div className="min-w-0 overflow-hidden">
                                 <Label>Phone</Label>
-                                <p className="break-words">{estimate.customer_phone}</p>
+                                <p className="break-words overflow-wrap-anywhere">{estimate.customer_phone}</p>
                               </div>
-                              <div className="col-span-1 sm:col-span-2 min-w-0">
+                              <div className="col-span-1 md:col-span-2 min-w-0 overflow-hidden">
                                 <Label>Delivery Address</Label>
-                                <p className="break-words">{estimate.delivery_address}</p>
+                                <p className="break-words overflow-wrap-anywhere">{estimate.delivery_address}</p>
                               </div>
-                              <div className="min-w-0">
+                              <div className="min-w-0 overflow-hidden">
                                 <Label>Mobile Home</Label>
-                                <p className="break-words">{estimate.mobile_homes?.manufacturer} {estimate.mobile_homes?.series} {estimate.mobile_homes?.model}</p>
+                                <p className="break-words overflow-wrap-anywhere">{estimate.mobile_homes?.manufacturer} {estimate.mobile_homes?.series} {estimate.mobile_homes?.model}</p>
                               </div>
-                              <div className="min-w-0">
+                              <div className="min-w-0 overflow-hidden">
                                 <Label>Total Amount</Label>
-                                <p className="font-medium text-lg break-words">${estimate.total_amount.toLocaleString()}</p>
+                                <p className="font-medium text-lg break-words overflow-wrap-anywhere">${estimate.total_amount.toLocaleString()}</p>
                               </div>
-                              <div className="min-w-0">
+                              <div className="min-w-0 overflow-hidden">
                                 <Label>Created</Label>
-                                <p className="break-words">{format(new Date(estimate.created_at), 'MMM dd, yyyy HH:mm')}</p>
+                                <p className="break-words overflow-wrap-anywhere">{format(new Date(estimate.created_at), 'MMM dd, yyyy HH:mm')}</p>
                               </div>
                               {estimate.approved_at && (
-                                <div className="min-w-0">
+                                <div className="min-w-0 overflow-hidden">
                                   <Label>Approved</Label>
-                                  <p className="break-words">{format(new Date(estimate.approved_at), 'MMM dd, yyyy HH:mm')}</p>
+                                  <p className="break-words overflow-wrap-anywhere">{format(new Date(estimate.approved_at), 'MMM dd, yyyy HH:mm')}</p>
                                 </div>
                               )}
                             </div>

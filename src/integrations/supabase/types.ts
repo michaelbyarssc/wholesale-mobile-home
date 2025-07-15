@@ -5125,7 +5125,7 @@ export type Database = {
       }
       approve_estimate: {
         Args: { estimate_uuid: string }
-        Returns: string
+        Returns: Json
       }
       approve_transaction: {
         Args: { p_transaction_id: string; p_approved_by?: string }

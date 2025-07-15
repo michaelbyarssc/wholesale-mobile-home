@@ -201,7 +201,7 @@ export const EstimateLineItems = ({ estimateId, isEditable = false }: EstimateLi
       <CardHeader>
         <CardTitle className="text-lg">Detailed Line Items</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4 overflow-hidden">
+      <CardContent className="space-y-4">
         {Object.entries(groupedItems).map(([category, items]) => (
           <div key={category} className="space-y-2">
             <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">
@@ -209,15 +209,15 @@ export const EstimateLineItems = ({ estimateId, isEditable = false }: EstimateLi
             </h4>
             <div className="space-y-2">
               {items.map((item) => (
-                <div key={item.id} className="flex flex-col sm:flex-row sm:items-start sm:justify-between p-3 border rounded-lg gap-4">
-                  <div className="flex items-start gap-3 flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-shrink-0">
+                <div key={item.id} className="flex items-center justify-between p-3 border rounded-lg">
+                  <div className="flex items-start gap-3 flex-1">
+                    <div className="flex items-center gap-2">
                       {getItemIcon(item.item_type)}
                       <Badge variant="outline" className={getItemTypeColor(item.item_type)}>
                         {item.item_type.replace('_', ' ')}
                       </Badge>
                     </div>
-                    <div className="flex-1 min-w-0">
+                    <div className="flex-1">
                       {editingItemId === item.id && editingItem ? (
                         <div className="space-y-2">
                           <Input
@@ -259,13 +259,13 @@ export const EstimateLineItems = ({ estimateId, isEditable = false }: EstimateLi
                           </div>
                         </div>
                       ) : (
-                        <div className="min-w-0">
-                          <p className="font-medium break-words">{item.name}</p>
+                        <div>
+                          <p className="font-medium">{item.name}</p>
                           {item.description && (
-                            <p className="text-sm text-muted-foreground break-words whitespace-normal">{item.description}</p>
+                            <p className="text-sm text-muted-foreground">{item.description}</p>
                           )}
                           {estimate?.delivery_address && item.item_type === 'shipping' && (
-                            <p className="text-sm text-muted-foreground break-words whitespace-normal">
+                            <p className="text-sm text-muted-foreground">
                               <strong>Delivery Address:</strong> {estimate.delivery_address}
                             </p>
                           )}
@@ -276,9 +276,9 @@ export const EstimateLineItems = ({ estimateId, isEditable = false }: EstimateLi
                       )}
                     </div>
                   </div>
-                  <div className="w-full sm:w-auto sm:text-right flex flex-col gap-2 sm:flex-shrink-0 sm:min-w-[120px]">
+                  <div className="text-right flex items-center gap-2">
                     {editingItemId === item.id && editingItem ? (
-                      <div className="flex gap-1 justify-end">
+                      <div className="flex gap-1">
                         <Button size="sm" variant="outline" onClick={handleSaveClick} disabled={updateLineItemMutation.isPending}>
                           <Save className="h-3 w-3" />
                         </Button>
@@ -287,23 +287,23 @@ export const EstimateLineItems = ({ estimateId, isEditable = false }: EstimateLi
                         </Button>
                       </div>
                     ) : (
-                      <div className="flex flex-col gap-1">
+                      <>
                         {item.quantity > 1 ? (
-                          <div className="text-right">
-                            <p className="text-sm text-muted-foreground break-words">
+                          <div>
+                            <p className="text-sm text-muted-foreground">
                               ${item.unit_price.toLocaleString()} × {item.quantity}
                             </p>
-                            <p className="font-medium break-words">${item.total_price.toLocaleString()}</p>
+                            <p className="font-medium">${item.total_price.toLocaleString()}</p>
                           </div>
                         ) : (
-                          <p className="font-medium break-words text-right">${item.total_price.toLocaleString()}</p>
+                          <p className="font-medium">${item.total_price.toLocaleString()}</p>
                         )}
                         {isEditable && (
-                          <Button size="sm" variant="outline" onClick={() => handleEditClick(item)} className="w-full sm:w-auto">
+                          <Button size="sm" variant="outline" onClick={() => handleEditClick(item)}>
                             Edit
                           </Button>
                         )}
-                      </div>
+                      </>
                     )}
                   </div>
                 </div>

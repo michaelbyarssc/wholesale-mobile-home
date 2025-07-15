@@ -916,7 +916,7 @@ export const EstimatesTab = () => {
                             <DialogTitle>Estimate Details</DialogTitle>
                           </DialogHeader>
                           <div className="space-y-6">
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                               <div>
                                 <Label>Customer</Label>
                                 <p className="font-medium">{estimate.customer_name}</p>
@@ -941,7 +941,7 @@ export const EstimatesTab = () => {
                                 <Label>Phone</Label>
                                 <p>{estimate.customer_phone}</p>
                               </div>
-                              <div className="col-span-2">
+                              <div className="col-span-1 sm:col-span-2">
                                 <Label>Delivery Address</Label>
                                 <p>{estimate.delivery_address}</p>
                               </div>
@@ -968,10 +968,11 @@ export const EstimatesTab = () => {
                             <EstimateLineItems estimateId={estimate.id} />
 
                             {/* Action Buttons */}
-                            <div className="flex justify-end gap-2 pt-4 border-t">
+                            <div className="flex flex-col sm:flex-row sm:justify-end gap-2 pt-4 border-t">
                               {/* Edit Button */}
                               <Button 
                                 variant="outline" 
+                                className="w-full sm:w-auto"
                                 onClick={() => {
                                   setEditingEstimate(estimate);
                                   setIsEditDialogOpen(true);
@@ -984,7 +985,7 @@ export const EstimatesTab = () => {
                               {/* Approve Button */}
                               <Button 
                                 variant="default" 
-                                className="bg-green-600 hover:bg-green-700"
+                                className="bg-green-600 hover:bg-green-700 w-full sm:w-auto"
                                 onClick={() => approveEstimateMutation.mutate(estimate.id)}
                                 disabled={approveEstimateMutation.isPending}
                               >
@@ -995,6 +996,7 @@ export const EstimatesTab = () => {
                               {/* Deny Button */}
                               <Button 
                                 variant="destructive" 
+                                className="w-full sm:w-auto"
                                 onClick={() => denyEstimateMutation.mutate(estimate.id)}
                                 disabled={denyEstimateMutation.isPending}
                               >

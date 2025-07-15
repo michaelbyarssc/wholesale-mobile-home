@@ -201,7 +201,7 @@ export const EstimateLineItems = ({ estimateId, isEditable = false }: EstimateLi
       <CardHeader>
         <CardTitle className="text-lg">Detailed Line Items</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-4 overflow-hidden">
         {Object.entries(groupedItems).map(([category, items]) => (
           <div key={category} className="space-y-2">
             <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">
@@ -209,7 +209,7 @@ export const EstimateLineItems = ({ estimateId, isEditable = false }: EstimateLi
             </h4>
             <div className="space-y-2">
               {items.map((item) => (
-                <div key={item.id} className="flex items-start justify-between p-3 border rounded-lg gap-4">
+                <div key={item.id} className="flex flex-col sm:flex-row sm:items-start sm:justify-between p-3 border rounded-lg gap-4">
                   <div className="flex items-start gap-3 flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-shrink-0">
                       {getItemIcon(item.item_type)}
@@ -276,7 +276,7 @@ export const EstimateLineItems = ({ estimateId, isEditable = false }: EstimateLi
                       )}
                     </div>
                   </div>
-                  <div className="text-right flex items-center gap-2">
+                  <div className="text-right flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full sm:w-auto">
                     {editingItemId === item.id && editingItem ? (
                       <div className="flex gap-1">
                         <Button size="sm" variant="outline" onClick={handleSaveClick} disabled={updateLineItemMutation.isPending}>

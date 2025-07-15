@@ -276,9 +276,9 @@ export const EstimateLineItems = ({ estimateId, isEditable = false }: EstimateLi
                       )}
                     </div>
                   </div>
-                  <div className="text-right flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full sm:w-auto">
+                  <div className="w-full sm:w-auto sm:text-right flex flex-col gap-2 sm:flex-shrink-0 sm:min-w-[120px]">
                     {editingItemId === item.id && editingItem ? (
-                      <div className="flex gap-1">
+                      <div className="flex gap-1 justify-end">
                         <Button size="sm" variant="outline" onClick={handleSaveClick} disabled={updateLineItemMutation.isPending}>
                           <Save className="h-3 w-3" />
                         </Button>
@@ -287,23 +287,23 @@ export const EstimateLineItems = ({ estimateId, isEditable = false }: EstimateLi
                         </Button>
                       </div>
                     ) : (
-                      <>
+                      <div className="flex flex-col gap-1">
                         {item.quantity > 1 ? (
-                          <div>
-                            <p className="text-sm text-muted-foreground">
+                          <div className="text-right">
+                            <p className="text-sm text-muted-foreground break-words">
                               ${item.unit_price.toLocaleString()} × {item.quantity}
                             </p>
-                            <p className="font-medium">${item.total_price.toLocaleString()}</p>
+                            <p className="font-medium break-words">${item.total_price.toLocaleString()}</p>
                           </div>
                         ) : (
-                          <p className="font-medium">${item.total_price.toLocaleString()}</p>
+                          <p className="font-medium break-words text-right">${item.total_price.toLocaleString()}</p>
                         )}
                         {isEditable && (
-                          <Button size="sm" variant="outline" onClick={() => handleEditClick(item)}>
+                          <Button size="sm" variant="outline" onClick={() => handleEditClick(item)} className="w-full sm:w-auto">
                             Edit
                           </Button>
                         )}
-                      </>
+                      </div>
                     )}
                   </div>
                 </div>

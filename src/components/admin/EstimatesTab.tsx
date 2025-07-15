@@ -911,7 +911,7 @@ export const EstimatesTab = () => {
                             View
                           </Button>
                         </DialogTrigger>
-                        <DialogContent className="w-[95vw] max-w-2xl h-[90vh] max-h-[80vh] overflow-y-auto sm:w-full sm:h-auto p-4 sm:p-6">
+                        <DialogContent className="w-[95vw] max-w-2xl h-[90vh] max-h-[80vh] overflow-y-auto sm:w-full sm:h-auto p-3 sm:p-6 overflow-x-hidden">
                           <DialogHeader>
                             <DialogTitle>Estimate Details</DialogTitle>
                           </DialogHeader>

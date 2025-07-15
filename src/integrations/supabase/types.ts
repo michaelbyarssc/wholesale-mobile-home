@@ -4617,6 +4617,354 @@ export type Database = {
         }
         Relationships: []
       }
+      transaction_notes: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          is_internal: boolean
+          transaction_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          is_internal?: boolean
+          transaction_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          is_internal?: boolean
+          transaction_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transaction_notes_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transaction_notifications: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          metadata: Json | null
+          notification_type: string
+          read_at: string | null
+          title: string
+          transaction_id: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          metadata?: Json | null
+          notification_type: string
+          read_at?: string | null
+          title: string
+          transaction_id: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          metadata?: Json | null
+          notification_type?: string
+          read_at?: string | null
+          title?: string
+          transaction_id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transaction_notifications_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transaction_payments: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          notes: string | null
+          payment_date: string
+          payment_method: string | null
+          payment_reference: string | null
+          recorded_by: string | null
+          transaction_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          notes?: string | null
+          payment_date?: string
+          payment_method?: string | null
+          payment_reference?: string | null
+          recorded_by?: string | null
+          transaction_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          notes?: string | null
+          payment_date?: string
+          payment_method?: string | null
+          payment_reference?: string | null
+          recorded_by?: string | null
+          transaction_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transaction_payments_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transaction_settings: {
+        Row: {
+          description: string | null
+          id: string
+          setting_key: string
+          setting_value: Json
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          description?: string | null
+          id?: string
+          setting_key: string
+          setting_value?: Json
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          description?: string | null
+          id?: string
+          setting_key?: string
+          setting_value?: Json
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      transaction_stage_history: {
+        Row: {
+          changed_at: string
+          changed_by: string | null
+          from_status: Database["public"]["Enums"]["transaction_status"] | null
+          id: string
+          metadata: Json | null
+          notes: string | null
+          to_status: Database["public"]["Enums"]["transaction_status"]
+          transaction_id: string
+        }
+        Insert: {
+          changed_at?: string
+          changed_by?: string | null
+          from_status?: Database["public"]["Enums"]["transaction_status"] | null
+          id?: string
+          metadata?: Json | null
+          notes?: string | null
+          to_status: Database["public"]["Enums"]["transaction_status"]
+          transaction_id: string
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string | null
+          from_status?: Database["public"]["Enums"]["transaction_status"] | null
+          id?: string
+          metadata?: Json | null
+          notes?: string | null
+          to_status?: Database["public"]["Enums"]["transaction_status"]
+          transaction_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transaction_stage_history_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transactions: {
+        Row: {
+          additional_requirements: string | null
+          assigned_admin_id: string | null
+          attachment_urls: Json | null
+          balance_due: number
+          base_amount: number
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          customer_email: string
+          customer_name: string
+          customer_phone: string | null
+          delivery_address: string | null
+          estimate_expires_at: string | null
+          estimate_id: string | null
+          id: string
+          internal_notes: string | null
+          invoice_expires_at: string | null
+          invoice_id: string | null
+          mobile_home_id: string | null
+          paid_amount: number
+          preferred_contact: string | null
+          priority: Database["public"]["Enums"]["transaction_priority"]
+          quickbooks_id: string | null
+          quickbooks_synced_at: string | null
+          repair_category: string | null
+          repair_completed_at: string | null
+          repair_description: string | null
+          repair_urgency: string | null
+          scheduled_delivery_date: string | null
+          selected_home_options: Json | null
+          selected_services: string[] | null
+          service_amount: number
+          status: Database["public"]["Enums"]["transaction_status"]
+          tax_amount: number
+          timeline: string | null
+          total_amount: number
+          transaction_number: string
+          transaction_type: Database["public"]["Enums"]["transaction_type"]
+          updated_at: string
+          user_id: string | null
+          user_notes: string | null
+        }
+        Insert: {
+          additional_requirements?: string | null
+          assigned_admin_id?: string | null
+          attachment_urls?: Json | null
+          balance_due?: number
+          base_amount?: number
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_email: string
+          customer_name: string
+          customer_phone?: string | null
+          delivery_address?: string | null
+          estimate_expires_at?: string | null
+          estimate_id?: string | null
+          id?: string
+          internal_notes?: string | null
+          invoice_expires_at?: string | null
+          invoice_id?: string | null
+          mobile_home_id?: string | null
+          paid_amount?: number
+          preferred_contact?: string | null
+          priority?: Database["public"]["Enums"]["transaction_priority"]
+          quickbooks_id?: string | null
+          quickbooks_synced_at?: string | null
+          repair_category?: string | null
+          repair_completed_at?: string | null
+          repair_description?: string | null
+          repair_urgency?: string | null
+          scheduled_delivery_date?: string | null
+          selected_home_options?: Json | null
+          selected_services?: string[] | null
+          service_amount?: number
+          status?: Database["public"]["Enums"]["transaction_status"]
+          tax_amount?: number
+          timeline?: string | null
+          total_amount?: number
+          transaction_number: string
+          transaction_type?: Database["public"]["Enums"]["transaction_type"]
+          updated_at?: string
+          user_id?: string | null
+          user_notes?: string | null
+        }
+        Update: {
+          additional_requirements?: string | null
+          assigned_admin_id?: string | null
+          attachment_urls?: Json | null
+          balance_due?: number
+          base_amount?: number
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_email?: string
+          customer_name?: string
+          customer_phone?: string | null
+          delivery_address?: string | null
+          estimate_expires_at?: string | null
+          estimate_id?: string | null
+          id?: string
+          internal_notes?: string | null
+          invoice_expires_at?: string | null
+          invoice_id?: string | null
+          mobile_home_id?: string | null
+          paid_amount?: number
+          preferred_contact?: string | null
+          priority?: Database["public"]["Enums"]["transaction_priority"]
+          quickbooks_id?: string | null
+          quickbooks_synced_at?: string | null
+          repair_category?: string | null
+          repair_completed_at?: string | null
+          repair_description?: string | null
+          repair_urgency?: string | null
+          scheduled_delivery_date?: string | null
+          selected_home_options?: Json | null
+          selected_services?: string[] | null
+          service_amount?: number
+          status?: Database["public"]["Enums"]["transaction_status"]
+          tax_amount?: number
+          timeline?: string | null
+          total_amount?: number
+          transaction_number?: string
+          transaction_type?: Database["public"]["Enums"]["transaction_type"]
+          updated_at?: string
+          user_id?: string | null
+          user_notes?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_estimate_id_fkey"
+            columns: ["estimate_id"]
+            isOneToOne: false
+            referencedRelation: "estimates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_mobile_home_id_fkey"
+            columns: ["mobile_home_id"]
+            isOneToOne: false
+            referencedRelation: "mobile_homes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_calendar_connections: {
         Row: {
           access_token: string
@@ -4841,6 +5189,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      generate_transaction_number: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       generate_unsubscribe_token: {
         Args: Record<PropertyKey, never>
         Returns: string
@@ -4926,6 +5278,21 @@ export type Database = {
         | "delayed"
       driver_status: "available" | "on_delivery" | "off_duty" | "inactive"
       mobile_home_type: "single_wide" | "double_wide" | "triple_wide"
+      transaction_priority: "low" | "medium" | "high" | "urgent"
+      transaction_status:
+        | "draft"
+        | "estimate_submitted"
+        | "estimate_approved"
+        | "invoice_generated"
+        | "payment_partial"
+        | "payment_complete"
+        | "delivery_scheduled"
+        | "delivery_in_progress"
+        | "delivery_complete"
+        | "completed"
+        | "cancelled"
+        | "expired"
+      transaction_type: "sale" | "repair" | "service" | "delivery_only"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -5074,6 +5441,22 @@ export const Constants = {
       ],
       driver_status: ["available", "on_delivery", "off_duty", "inactive"],
       mobile_home_type: ["single_wide", "double_wide", "triple_wide"],
+      transaction_priority: ["low", "medium", "high", "urgent"],
+      transaction_status: [
+        "draft",
+        "estimate_submitted",
+        "estimate_approved",
+        "invoice_generated",
+        "payment_partial",
+        "payment_complete",
+        "delivery_scheduled",
+        "delivery_in_progress",
+        "delivery_complete",
+        "completed",
+        "cancelled",
+        "expired",
+      ],
+      transaction_type: ["sale", "repair", "service", "delivery_only"],
     },
   },
 } as const

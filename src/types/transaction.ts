@@ -142,8 +142,8 @@ export interface TransactionFilters {
   type?: TransactionType[];
   priority?: TransactionPriority[];
   dateRange?: {
-    start: Date;
-    end: Date;
+    from?: Date;
+    to?: Date;
   };
   searchQuery?: string;
   assignedAdmin?: string;

@@ -37,10 +37,11 @@ export const useTransactions = (filters?: TransactionFilters) => {
       if (filters?.maxAmount) {
         query = query.lte('total_amount', filters.maxAmount);
       }
-      if (filters?.dateRange) {
-        query = query
-          .gte('created_at', filters.dateRange.start.toISOString())
-          .lte('created_at', filters.dateRange.end.toISOString());
+      if (filters?.dateRange?.from) {
+        query = query.gte('created_at', filters.dateRange.from.toISOString());
+      }
+      if (filters?.dateRange?.to) {
+        query = query.lte('created_at', filters.dateRange.to.toISOString());
       }
       if (filters?.searchQuery) {
         query = query.or(

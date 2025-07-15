@@ -42,7 +42,7 @@ export const EstimateLineItems = ({ estimateId, isEditable = false }: EstimateLi
         .from('estimates')
         .select('delivery_address')
         .eq('id', estimateId)
-        .single();
+        .maybeSingle();
       
       if (error) throw error;
       return data;

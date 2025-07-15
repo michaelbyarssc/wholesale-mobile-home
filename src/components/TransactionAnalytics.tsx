@@ -66,13 +66,17 @@ export function TransactionAnalytics({ data, dateRange, onDateRangeChange }: Tra
 
   const getStatusDistribution = () => {
     const statusCounts = data?.status_counts || {};
-    const total = Object.values(statusCounts).reduce((sum: number, count: any) => sum + (Number(count) || 0), 0);
+    const entries = Object.entries(statusCounts);
+    const total = entries.reduce((sum: number, [, count]) => sum + (Number(count) || 0), 0);
     
-    return Object.entries(statusCounts).map(([status, count]) => ({
-      status,
-      count: Number(count) || 0,
-      percentage: total > 0 ? ((Number(count) || 0) / total * 100) : 0
-    }));
+    return entries.map(([status, count]) => {
+      const numericCount = Number(count) || 0;
+      return {
+        status,
+        count: numericCount,
+        percentage: total > 0 ? (numericCount / total * 100) : 0
+      };
+    });
   };
 
   const getTopBottlenecks = () => [

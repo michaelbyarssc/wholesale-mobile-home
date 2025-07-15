@@ -5266,6 +5266,10 @@ export type Database = {
         Args: Record<PropertyKey, never> | { user_id: string }
         Returns: boolean
       }
+      migrate_existing_estimates_to_transactions: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
       process_automation_variables: {
         Args: {
           content: string

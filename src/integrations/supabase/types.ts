@@ -5113,9 +5113,27 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      add_transaction_payment: {
+        Args: {
+          p_transaction_id: string
+          p_amount: number
+          p_payment_method?: string
+          p_payment_reference?: string
+          p_notes?: string
+        }
+        Returns: Json
+      }
       approve_estimate: {
         Args: { estimate_uuid: string }
         Returns: string
+      }
+      approve_transaction: {
+        Args: { p_transaction_id: string; p_approved_by?: string }
+        Returns: Json
+      }
+      bulk_approve_transactions: {
+        Args: { p_transaction_ids: string[] }
+        Returns: Json
       }
       calculate_delivery_eta: {
         Args: {
@@ -5124,6 +5142,10 @@ export type Database = {
           current_lng: number
         }
         Returns: string
+      }
+      check_expired_transactions: {
+        Args: Record<PropertyKey, never>
+        Returns: number
       }
       check_password_strength: {
         Args: { password: string }
@@ -5163,6 +5185,27 @@ export type Database = {
       }
       create_order_from_estimate: {
         Args: { estimate_uuid: string }
+        Returns: string
+      }
+      create_transaction_from_estimate: {
+        Args: {
+          p_estimate_id: string
+          p_mobile_home_id: string
+          p_customer_name: string
+          p_customer_email: string
+          p_customer_phone?: string
+          p_delivery_address?: string
+          p_selected_services?: string[]
+          p_selected_home_options?: Json
+          p_base_amount?: number
+          p_service_amount?: number
+          p_tax_amount?: number
+          p_total_amount?: number
+          p_preferred_contact?: string
+          p_timeline?: string
+          p_additional_requirements?: string
+          p_transaction_type?: Database["public"]["Enums"]["transaction_type"]
+        }
         Returns: string
       }
       generate_appointment_confirmation_token: {
@@ -5211,6 +5254,10 @@ export type Database = {
           conversion_rate: number
         }[]
       }
+      get_transaction_dashboard_data: {
+        Args: { p_user_id?: string; p_date_range_days?: number }
+        Returns: Json
+      }
       increment_post_views: {
         Args: { post_id: string }
         Returns: undefined
@@ -5244,6 +5291,14 @@ export type Database = {
       sync_offline_gps_data: {
         Args: Record<PropertyKey, never>
         Returns: number
+      }
+      transition_transaction_stage: {
+        Args: {
+          p_transaction_id: string
+          p_new_status: Database["public"]["Enums"]["transaction_status"]
+          p_notes?: string
+        }
+        Returns: Json
       }
       validate_email: {
         Args: { email: string }

@@ -911,12 +911,12 @@ export const EstimatesTab = () => {
                             View
                           </Button>
                         </DialogTrigger>
-                        <DialogContent className="w-[98vw] max-w-2xl h-[90vh] max-h-[80vh] overflow-y-auto sm:w-full sm:h-auto p-2 sm:p-6">
+                        <DialogContent className="w-[95vw] max-w-2xl h-[90vh] max-h-[80vh] overflow-y-auto sm:w-full sm:h-auto p-3 sm:p-6">
                           <DialogHeader>
                             <DialogTitle>Estimate Details</DialogTitle>
                           </DialogHeader>
                           <div className="space-y-6">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 min-w-0">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 min-w-0">
                               <div className="min-w-0">
                                 <Label>Customer</Label>
                                 <p className="font-medium break-words">{estimate.customer_name}</p>

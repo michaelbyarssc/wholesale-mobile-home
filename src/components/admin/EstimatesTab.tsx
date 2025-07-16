@@ -911,7 +911,7 @@ export const EstimatesTab = () => {
                             View
                           </Button>
                         </DialogTrigger>
-                        <DialogContent className="w-[95vw] max-w-2xl h-[90vh] max-h-[80vh] overflow-y-auto sm:w-full sm:h-auto p-4 sm:p-6">
+                        <DialogContent className="w-[95vw] max-w-4xl h-[90vh] max-h-[80vh] overflow-y-auto sm:w-full sm:h-auto p-4 sm:p-6">
                           <DialogHeader>
                             <DialogTitle>Estimate Details</DialogTitle>
                           </DialogHeader>
@@ -1159,7 +1159,7 @@ export const EstimatesTab = () => {
 
       {/* Edit Estimate Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Estimate</DialogTitle>
           </DialogHeader>

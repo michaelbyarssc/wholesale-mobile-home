@@ -94,21 +94,21 @@ export const EmailInvoiceButton = ({
           Send Invoice
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md mx-auto p-6 fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-background border rounded-lg shadow-lg z-50">
         <DialogHeader>
           <DialogTitle>Send Invoice via Email</DialogTitle>
           <DialogDescription>
             Send invoice {invoiceNumber} to {customerName} ({customerEmail}) via email.
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-4">
+        <div className="space-y-4 mt-4">
           <div className="bg-blue-50 p-4 rounded-lg">
             <p className="text-sm text-blue-800">
               This will send a professional invoice email to the customer with all invoice details and mobile home specifications.
             </p>
           </div>
 
-          <div className="flex justify-end space-x-2">
+          <div className="flex justify-end space-x-2 pt-4">
             <Button variant="outline" onClick={() => setIsOpen(false)}>
               Cancel
             </Button>

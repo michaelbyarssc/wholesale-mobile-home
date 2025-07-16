@@ -74,11 +74,13 @@ export default function TransactionHistory() {
   const [selectedType, setSelectedType] = useState<string>('all');
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [activeTab, setActiveTab] = useState('all');
+  const [sortBy, setSortBy] = useState<string>('date');
+  const [userRoles, setUserRoles] = useState<string[]>([]);
   const { toast } = useToast();
 
   // Fetch all user transaction data
   const { data: allRecords = [], isLoading, error } = useQuery({
-    queryKey: ['transaction-history', searchQuery, selectedType, selectedStatus],
+    queryKey: ['transaction-history', searchQuery, selectedType, selectedStatus, sortBy],
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
@@ -91,6 +93,9 @@ export default function TransactionHistory() {
 
       const isAdmin = userRoles?.some(r => r.role === 'admin');
       const isSuperAdmin = userRoles?.some(r => r.role === 'super_admin');
+
+      // Set user roles state
+      setUserRoles(userRoles?.map(r => r.role) || []);
 
       const records: UnifiedRecord[] = [];
 
@@ -338,8 +343,13 @@ export default function TransactionHistory() {
         filteredRecords = filteredRecords.filter(record => record.status === selectedStatus);
       }
 
-      // Sort by created_at desc
-      filteredRecords.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      // Sort records based on sortBy selection
+      if (sortBy === 'user') {
+        filteredRecords.sort((a, b) => a.customer_name.localeCompare(b.customer_name));
+      } else {
+        // Default sort by created_at desc
+        filteredRecords.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      }
 
       return filteredRecords;
     },
@@ -452,6 +462,17 @@ export default function TransactionHistory() {
             <SelectItem value="cancelled">Cancelled</SelectItem>
           </SelectContent>
         </Select>
+        {(userRoles.includes('admin') || userRoles.includes('super_admin')) && (
+          <Select value={sortBy} onValueChange={setSortBy}>
+            <SelectTrigger className="w-full sm:w-48">
+              <SelectValue placeholder="Sort by" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="date">Sort by Date</SelectItem>
+              <SelectItem value="user">Sort by User</SelectItem>
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       {/* Tabs */}

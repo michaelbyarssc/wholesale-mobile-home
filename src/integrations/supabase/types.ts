@@ -1604,6 +1604,7 @@ export type Database = {
           special_instructions: string | null
           status: Database["public"]["Enums"]["delivery_status"]
           total_delivery_cost: number | null
+          transaction_number: string | null
           updated_at: string
         }
         Insert: {
@@ -1641,6 +1642,7 @@ export type Database = {
           special_instructions?: string | null
           status?: Database["public"]["Enums"]["delivery_status"]
           total_delivery_cost?: number | null
+          transaction_number?: string | null
           updated_at?: string
         }
         Update: {
@@ -1678,6 +1680,7 @@ export type Database = {
           special_instructions?: string | null
           status?: Database["public"]["Enums"]["delivery_status"]
           total_delivery_cost?: number | null
+          transaction_number?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -2582,6 +2585,7 @@ export type Database = {
           status: string
           timeline: string | null
           total_amount: number
+          transaction_number: string | null
           updated_at: string
           user_id: string | null
         }
@@ -2603,6 +2607,7 @@ export type Database = {
           status?: string
           timeline?: string | null
           total_amount: number
+          transaction_number?: string | null
           updated_at?: string
           user_id?: string | null
         }
@@ -2624,6 +2629,7 @@ export type Database = {
           status?: string
           timeline?: string | null
           total_amount?: number
+          transaction_number?: string | null
           updated_at?: string
           user_id?: string | null
         }
@@ -3110,6 +3116,7 @@ export type Database = {
           status: string
           timeline: string | null
           total_amount: number
+          transaction_number: string | null
           updated_at: string
           user_id: string | null
         }
@@ -3135,6 +3142,7 @@ export type Database = {
           status?: string
           timeline?: string | null
           total_amount: number
+          transaction_number?: string | null
           updated_at?: string
           user_id?: string | null
         }
@@ -3160,6 +3168,7 @@ export type Database = {
           status?: string
           timeline?: string | null
           total_amount?: number
+          transaction_number?: string | null
           updated_at?: string
           user_id?: string | null
         }
@@ -3914,6 +3923,7 @@ export type Database = {
           notes: string | null
           payment_date: string
           payment_method: string | null
+          transaction_number: string | null
           updated_at: string
         }
         Insert: {
@@ -3925,6 +3935,7 @@ export type Database = {
           notes?: string | null
           payment_date?: string
           payment_method?: string | null
+          transaction_number?: string | null
           updated_at?: string
         }
         Update: {
@@ -3936,6 +3947,7 @@ export type Database = {
           notes?: string | null
           payment_date?: string
           payment_method?: string | null
+          transaction_number?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -3954,8 +3966,10 @@ export type Database = {
           approved_at: string | null
           approved_by: string | null
           assigned_admin_id: string | null
+          avatar_url: string | null
           created_at: string
           created_by: string | null
+          customer_color: string | null
           denied: boolean
           denied_at: string | null
           denied_by: string | null
@@ -3972,8 +3986,10 @@ export type Database = {
           approved_at?: string | null
           approved_by?: string | null
           assigned_admin_id?: string | null
+          avatar_url?: string | null
           created_at?: string
           created_by?: string | null
+          customer_color?: string | null
           denied?: boolean
           denied_at?: string | null
           denied_by?: string | null
@@ -3990,8 +4006,10 @@ export type Database = {
           approved_at?: string | null
           approved_by?: string | null
           assigned_admin_id?: string | null
+          avatar_url?: string | null
           created_at?: string
           created_by?: string | null
+          customer_color?: string | null
           denied?: boolean
           denied_at?: string | null
           denied_by?: string | null
@@ -4825,6 +4843,7 @@ export type Database = {
           customer_name: string
           customer_phone: string | null
           delivery_address: string | null
+          display_number: string | null
           estimate_expires_at: string | null
           estimate_id: string | null
           id: string
@@ -4868,6 +4887,7 @@ export type Database = {
           customer_name: string
           customer_phone?: string | null
           delivery_address?: string | null
+          display_number?: string | null
           estimate_expires_at?: string | null
           estimate_id?: string | null
           id?: string
@@ -4911,6 +4931,7 @@ export type Database = {
           customer_name?: string
           customer_phone?: string | null
           delivery_address?: string | null
+          display_number?: string | null
           estimate_expires_at?: string | null
           estimate_id?: string | null
           id?: string
@@ -5208,7 +5229,15 @@ export type Database = {
         }
         Returns: string
       }
+      extract_base_transaction_number: {
+        Args: { formatted_number: string }
+        Returns: string
+      }
       generate_appointment_confirmation_token: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      generate_base_transaction_number: {
         Args: Record<PropertyKey, never>
         Returns: string
       }
@@ -5216,8 +5245,16 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      generate_customer_color: {
+        Args: { customer_name: string }
+        Returns: string
+      }
       generate_delivery_number: {
         Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      generate_formatted_transaction_number: {
+        Args: { record_type: string }
         Returns: string
       }
       generate_invoice_number: {

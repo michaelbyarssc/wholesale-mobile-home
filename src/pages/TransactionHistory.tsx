@@ -1,86 +1,84 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Button } from '@/components/ui/button';
+import { Search, Download, FileText, Receipt, Truck, DollarSign, Calendar, User, ChevronDown, ChevronUp } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Search, Filter, Download, Eye, FileText, Receipt, Truck, DollarSign } from 'lucide-react';
-import { formatCurrency } from '@/lib/utils';
-import { Link } from 'react-router-dom';
-import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
+import { CustomerAvatar } from '@/components/CustomerAvatar';
+import { TransactionGroup } from '@/components/TransactionGroup';
 
 interface UnifiedRecord {
   id: string;
-  type: 'estimate' | 'invoice' | 'delivery' | 'transaction' | 'payment';
+  type: 'estimate' | 'invoice' | 'delivery' | 'payment';
   number: string;
   customer_name: string;
-  customer_email: string;
   amount: number;
   status: string;
   created_at: string;
-  mobile_home?: {
-    manufacturer: string;
-    model: string;
-    series: string;
-  };
-  delivery_address?: string;
-  balance_due?: number;
-  paid_amount?: number;
+  transaction_number?: string;
+  customer_email?: string;
 }
 
+interface CustomerGroup {
+  customerName: string;
+  customerEmail: string;
+  records: UnifiedRecord[];
+  totalAmount: number;
+  recordCount: number;
+  avatarUrl?: string;
+  color: string;
+}
+
+// Type icons mapping
 const typeIcons = {
   estimate: FileText,
   invoice: Receipt,
   delivery: Truck,
-  transaction: DollarSign,
   payment: DollarSign,
 };
 
+// Type color classes
 const typeColors = {
   estimate: 'bg-blue-100 text-blue-800',
-  invoice: 'bg-purple-100 text-purple-800',
+  invoice: 'bg-purple-100 text-purple-800', 
   delivery: 'bg-orange-100 text-orange-800',
-  transaction: 'bg-green-100 text-green-800',
-  payment: 'bg-emerald-100 text-emerald-800',
+  payment: 'bg-green-100 text-green-800',
 };
 
+// Status color classes
 const statusColors = {
   pending: 'bg-yellow-100 text-yellow-800',
   approved: 'bg-green-100 text-green-800',
-  rejected: 'bg-red-100 text-red-800',
-  cancelled: 'bg-red-100 text-red-800',
   completed: 'bg-green-100 text-green-800',
+  cancelled: 'bg-red-100 text-red-800',
   scheduled: 'bg-blue-100 text-blue-800',
-  in_progress: 'bg-orange-100 text-orange-800',
   in_transit: 'bg-orange-100 text-orange-800',
   delivered: 'bg-green-100 text-green-800',
   paid: 'bg-green-100 text-green-800',
-  partial: 'bg-yellow-100 text-yellow-800',
-  overdue: 'bg-red-100 text-red-800',
-  draft: 'bg-gray-100 text-gray-800',
-  estimate_submitted: 'bg-blue-100 text-blue-800',
-  invoice_generated: 'bg-purple-100 text-purple-800',
-  payment_complete: 'bg-green-100 text-green-800',
-  delivery_scheduled: 'bg-orange-100 text-orange-800',
-  delivery_complete: 'bg-green-100 text-green-800',
 };
 
-export default function TransactionHistory() {
+export const TransactionHistory = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedType, setSelectedType] = useState<string>('all');
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [activeTab, setActiveTab] = useState('all');
-  const [sortBy, setSortBy] = useState<string>('date');
+  const [selectedCustomer, setSelectedCustomer] = useState<string>('all');
+  const [expandedCustomers, setExpandedCustomers] = useState<Set<string>>(new Set());
   const [userRoles, setUserRoles] = useState<string[]>([]);
   const { toast } = useToast();
 
   // Fetch all user transaction data
   const { data: allRecords = [], isLoading, error } = useQuery({
-    queryKey: ['transaction-history', searchQuery, selectedType, selectedStatus, sortBy],
+    queryKey: ['transaction-history', searchQuery, selectedType, selectedStatus, selectedCustomer],
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
@@ -100,338 +98,368 @@ export default function TransactionHistory() {
       const records: UnifiedRecord[] = [];
 
       // Fetch estimates
-      let estimatesQuery = supabase
-        .from('estimates')
-        .select(`
-          id,
-          customer_name,
-          customer_email,
-          total_amount,
-          status,
-          created_at,
-          delivery_address,
-          mobile_homes (
-            manufacturer,
-            model,
-            series
-          )
-        `);
-
-      if (!isSuperAdmin) {
-        if (isAdmin) {
-          // Admins see their own estimates and those of users they created
-          estimatesQuery = estimatesQuery.or(`user_id.eq.${user.id},created_by.eq.${user.id}`);
-        } else {
-          // Regular users see only their own estimates
-          estimatesQuery = estimatesQuery.eq('user_id', user.id);
-        }
-      }
-
-      const { data: estimates } = await estimatesQuery;
-
-      if (estimates) {
-        records.push(...estimates.map(est => ({
-          id: est.id,
-          type: 'estimate' as const,
-          number: `EST-${est.id.slice(-8)}`,
-          customer_name: est.customer_name,
-          customer_email: est.customer_email,
-          amount: est.total_amount,
-          status: est.status,
-          created_at: est.created_at,
-          mobile_home: est.mobile_homes,
-          delivery_address: est.delivery_address,
-        })));
+      if (isAdmin || isSuperAdmin) {
+        const { data: estimates } = await supabase
+          .from('estimates')
+          .select('*')
+          .order('created_at', { ascending: false });
+        
+        estimates?.forEach(estimate => {
+          records.push({
+            id: estimate.id,
+            type: 'estimate',
+            number: estimate.transaction_number || estimate.id.substring(0, 8),
+            customer_name: estimate.customer_name,
+            amount: estimate.total_amount,
+            status: estimate.status,
+            created_at: estimate.created_at,
+            transaction_number: estimate.transaction_number,
+            customer_email: estimate.customer_email
+          });
+        });
+      } else {
+        const { data: estimates } = await supabase
+          .from('estimates')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
+        
+        estimates?.forEach(estimate => {
+          records.push({
+            id: estimate.id,
+            type: 'estimate',
+            number: estimate.transaction_number || estimate.id.substring(0, 8),
+            customer_name: estimate.customer_name,
+            amount: estimate.total_amount,
+            status: estimate.status,
+            created_at: estimate.created_at,
+            transaction_number: estimate.transaction_number,
+            customer_email: estimate.customer_email
+          });
+        });
       }
 
       // Fetch invoices
-      let invoicesQuery = supabase
-        .from('invoices')
-        .select(`
-          id,
-          invoice_number,
-          customer_name,
-          customer_email,
-          total_amount,
-          status,
-          created_at,
-          delivery_address,
-          balance_due,
-          mobile_homes (
-            manufacturer,
-            model,
-            series
-          )
-        `);
-
-      if (!isSuperAdmin) {
-        if (isAdmin) {
-          // Admins see their own invoices and those of users they created
-          invoicesQuery = invoicesQuery.or(`user_id.eq.${user.id},created_by.eq.${user.id}`);
-        } else {
-          // Regular users see only their own invoices
-          invoicesQuery = invoicesQuery.eq('user_id', user.id);
-        }
-      }
-
-      const { data: invoices } = await invoicesQuery;
-
-      if (invoices) {
-        records.push(...invoices.map(inv => ({
-          id: inv.id,
-          type: 'invoice' as const,
-          number: inv.invoice_number,
-          customer_name: inv.customer_name,
-          customer_email: inv.customer_email,
-          amount: inv.total_amount,
-          status: inv.status,
-          created_at: inv.created_at,
-          mobile_home: inv.mobile_homes,
-          delivery_address: inv.delivery_address,
-          balance_due: inv.balance_due,
-        })));
+      if (isAdmin || isSuperAdmin) {
+        const { data: invoices } = await supabase
+          .from('invoices')
+          .select('*')
+          .order('created_at', { ascending: false });
+        
+        invoices?.forEach(invoice => {
+          records.push({
+            id: invoice.id,
+            type: 'invoice',
+            number: invoice.transaction_number || invoice.invoice_number,
+            customer_name: invoice.customer_name,
+            amount: invoice.total_amount,
+            status: invoice.status,
+            created_at: invoice.created_at,
+            transaction_number: invoice.transaction_number,
+            customer_email: invoice.customer_email
+          });
+        });
+      } else {
+        const { data: invoices } = await supabase
+          .from('invoices')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
+        
+        invoices?.forEach(invoice => {
+          records.push({
+            id: invoice.id,
+            type: 'invoice',
+            number: invoice.transaction_number || invoice.invoice_number,
+            customer_name: invoice.customer_name,
+            amount: invoice.total_amount,
+            status: invoice.status,
+            created_at: invoice.created_at,
+            transaction_number: invoice.transaction_number,
+            customer_email: invoice.customer_email
+          });
+        });
       }
 
       // Fetch deliveries
-      let deliveriesQuery = supabase
-        .from('deliveries')
-        .select(`
-          id,
-          delivery_number,
-          customer_name,
-          customer_email,
-          total_delivery_cost,
-          status,
-          created_at,
-          delivery_address,
-          mobile_homes (
-            manufacturer,
-            model,
-            series
-          )
-        `);
-
-      if (!isSuperAdmin) {
-        if (isAdmin) {
-          // Admins see deliveries they created or are assigned to
-          deliveriesQuery = deliveriesQuery.or(`created_by.eq.${user.id}`);
-        } else {
-          // Regular users see deliveries where they are the customer
-          deliveriesQuery = deliveriesQuery.eq('customer_email', user.email);
-        }
-      }
-
-      const { data: deliveries } = await deliveriesQuery;
-
-      if (deliveries) {
-        records.push(...deliveries.map(del => ({
-          id: del.id,
-          type: 'delivery' as const,
-          number: del.delivery_number,
-          customer_name: del.customer_name,
-          customer_email: del.customer_email,
-          amount: del.total_delivery_cost || 0,
-          status: del.status,
-          created_at: del.created_at,
-          mobile_home: del.mobile_homes,
-          delivery_address: del.delivery_address,
-        })));
-      }
-
-      // Fetch transactions
-      let transactionsQuery = supabase
-        .from('transactions')
-        .select(`
-          id,
-          transaction_number,
-          customer_name,
-          customer_email,
-          total_amount,
-          status,
-          created_at,
-          delivery_address,
-          balance_due,
-          paid_amount,
-          mobile_homes (
-            manufacturer,
-            model,
-            series
-          )
-        `);
-
-      if (!isSuperAdmin) {
-        if (isAdmin) {
-          // Admins see transactions they created or are assigned to
-          transactionsQuery = transactionsQuery.or(`user_id.eq.${user.id},assigned_admin_id.eq.${user.id},created_by.eq.${user.id}`);
-        } else {
-          // Regular users see only their own transactions
-          transactionsQuery = transactionsQuery.eq('user_id', user.id);
-        }
-      }
-
-      const { data: transactions } = await transactionsQuery;
-
-      if (transactions) {
-        records.push(...transactions.map(trans => ({
-          id: trans.id,
-          type: 'transaction' as const,
-          number: trans.transaction_number,
-          customer_name: trans.customer_name,
-          customer_email: trans.customer_email,
-          amount: trans.total_amount,
-          status: trans.status,
-          created_at: trans.created_at,
-          mobile_home: trans.mobile_homes,
-          delivery_address: trans.delivery_address,
-          balance_due: trans.balance_due,
-          paid_amount: trans.paid_amount,
-        })));
+      if (isAdmin || isSuperAdmin) {
+        const { data: deliveries } = await supabase
+          .from('deliveries')
+          .select('*')
+          .order('created_at', { ascending: false });
+        
+        deliveries?.forEach(delivery => {
+          records.push({
+            id: delivery.id,
+            type: 'delivery',
+            number: delivery.transaction_number || delivery.delivery_number,
+            customer_name: delivery.customer_name,
+            amount: delivery.total_delivery_cost || 0,
+            status: delivery.status,
+            created_at: delivery.created_at,
+            transaction_number: delivery.transaction_number,
+            customer_email: delivery.customer_email
+          });
+        });
       }
 
       // Fetch payments
-      let paymentsQuery = supabase
-        .from('payments')
-        .select(`
-          id,
-          amount,
-          payment_method,
-          payment_date,
-          created_at,
-          invoices (
-            customer_name,
-            customer_email,
-            invoice_number
-          )
-        `);
-
-      if (!isSuperAdmin && !isAdmin) {
-        // Regular users see payments for their invoices
-        paymentsQuery = paymentsQuery.eq('invoices.user_id', user.id);
+      if (isAdmin || isSuperAdmin) {
+        const { data: payments } = await supabase
+          .from('payments')
+          .select(`
+            *,
+            invoices!inner(customer_name, customer_email)
+          `)
+          .order('created_at', { ascending: false });
+        
+        payments?.forEach(payment => {
+          records.push({
+            id: payment.id,
+            type: 'payment',
+            number: payment.transaction_number || payment.id.substring(0, 8),
+            customer_name: payment.invoices.customer_name,
+            amount: payment.amount,
+            status: 'completed',
+            created_at: payment.created_at,
+            transaction_number: payment.transaction_number,
+            customer_email: payment.invoices.customer_email
+          });
+        });
+      } else {
+        const { data: payments } = await supabase
+          .from('payments')
+          .select(`
+            *,
+            invoices!inner(customer_name, customer_email, user_id)
+          `)
+          .eq('invoices.user_id', user.id)
+          .order('created_at', { ascending: false });
+        
+        payments?.forEach(payment => {
+          records.push({
+            id: payment.id,
+            type: 'payment',
+            number: payment.transaction_number || payment.id.substring(0, 8),
+            customer_name: payment.invoices.customer_name,
+            amount: payment.amount,
+            status: 'completed',
+            created_at: payment.created_at,
+            transaction_number: payment.transaction_number,
+            customer_email: payment.invoices.customer_email
+          });
+        });
       }
 
-      const { data: payments } = await paymentsQuery;
-
-      if (payments) {
-        records.push(...payments.map(pay => ({
-          id: pay.id,
-          type: 'payment' as const,
-          number: `PAY-${pay.id.slice(-8)}`,
-          customer_name: pay.invoices?.customer_name || 'Unknown',
-          customer_email: pay.invoices?.customer_email || 'Unknown',
-          amount: pay.amount,
-          status: 'paid',
-          created_at: pay.created_at,
-        })));
-      }
-
-      // Filter records based on search and filters
+      // Apply filters
       let filteredRecords = records;
 
-      if (searchQuery) {
-        filteredRecords = filteredRecords.filter(record =>
-          record.customer_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          record.customer_email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          record.number.toLowerCase().includes(searchQuery.toLowerCase())
-        );
-      }
-
+      // Apply type filter
       if (selectedType !== 'all') {
         filteredRecords = filteredRecords.filter(record => record.type === selectedType);
       }
 
+      // Apply search filter
+      if (searchQuery) {
+        filteredRecords = filteredRecords.filter(record =>
+          record.customer_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          record.number.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          record.status.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (record.transaction_number && record.transaction_number.toLowerCase().includes(searchQuery.toLowerCase()))
+        );
+      }
+
+      // Apply status filter
       if (selectedStatus !== 'all') {
         filteredRecords = filteredRecords.filter(record => record.status === selectedStatus);
       }
 
-      // Sort records based on sortBy selection
-      if (sortBy === 'user') {
-        filteredRecords.sort((a, b) => a.customer_name.localeCompare(b.customer_name));
-      } else {
-        // Default sort by created_at desc
-        filteredRecords.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      // Apply customer filter
+      if (selectedCustomer !== 'all') {
+        filteredRecords = filteredRecords.filter(record => record.customer_name === selectedCustomer);
       }
+
+      // Sort by date (we'll handle customer grouping separately)
+      filteredRecords.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
       return filteredRecords;
     },
   });
 
+  // Get filtered records based on active tab and search
   const filteredRecords = allRecords.filter(record => {
-    if (activeTab === 'all') return true;
-    return record.type === activeTab;
+    // Apply tab filter
+    if (activeTab !== 'all' && record.type !== activeTab) {
+      return false;
+    }
+    return true;
   });
 
-  const exportRecords = () => {
-    const csvData = filteredRecords.map(record => ({
-      'Type': record.type,
-      'Number': record.number,
-      'Customer': record.customer_name,
-      'Email': record.customer_email,
-      'Amount': record.amount,
-      'Status': record.status,
-      'Date': format(new Date(record.created_at), 'yyyy-MM-dd'),
-    }));
+  // Generate customer color helper
+  const generateCustomerColor = (customerName: string) => {
+    const colors = [
+      'hsl(210, 100%, 45%)',  // Blue
+      'hsl(168, 100%, 35%)',  // Teal
+      'hsl(142, 100%, 35%)',  // Green
+      'hsl(45, 100%, 45%)',   // Yellow
+      'hsl(25, 100%, 50%)',   // Orange
+      'hsl(0, 100%, 50%)',    // Red
+      'hsl(280, 100%, 45%)',  // Purple
+      'hsl(320, 100%, 45%)',  // Pink
+      'hsl(200, 100%, 35%)',  // Light Blue
+      'hsl(160, 100%, 40%)'   // Mint
+    ];
+    
+    let hash = 0;
+    for (let i = 0; i < customerName.length; i++) {
+      hash = customerName.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    
+    const colorIndex = Math.abs(hash) % colors.length;
+    return colors[colorIndex];
+  };
 
-    const csv = [
-      Object.keys(csvData[0] || {}).join(','),
-      ...csvData.map(row => Object.values(row).join(','))
+  // Group records by customer
+  const customerGroups = useMemo(() => {
+    const groups = new Map<string, CustomerGroup>();
+    
+    filteredRecords.forEach(record => {
+      const key = record.customer_name;
+      if (!groups.has(key)) {
+        groups.set(key, {
+          customerName: record.customer_name,
+          customerEmail: record.customer_email || '',
+          records: [],
+          totalAmount: 0,
+          recordCount: 0,
+          color: generateCustomerColor(record.customer_name)
+        });
+      }
+      
+      const group = groups.get(key)!;
+      group.records.push(record);
+      group.totalAmount += record.amount;
+      group.recordCount += 1;
+    });
+    
+    // Sort groups by customer name and limit records per group initially
+    return Array.from(groups.values())
+      .sort((a, b) => a.customerName.localeCompare(b.customerName))
+      .map(group => ({
+        ...group,
+        records: group.records.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      }));
+  }, [filteredRecords]);
+
+  // Get unique customers for dropdown
+  const uniqueCustomers = useMemo(() => {
+    const customers = new Set(allRecords.map(record => record.customer_name));
+    return Array.from(customers).sort();
+  }, [allRecords]);
+
+  // Group records by transaction number within each customer
+  const groupByTransactionNumber = (records: UnifiedRecord[]) => {
+    const groups = new Map<string, UnifiedRecord[]>();
+    
+    records.forEach(record => {
+      const baseNumber = record.transaction_number ? 
+        record.transaction_number.split('-')[2] : 
+        record.id;
+      
+      if (!groups.has(baseNumber)) {
+        groups.set(baseNumber, []);
+      }
+      groups.get(baseNumber)!.push(record);
+    });
+    
+    return Array.from(groups.entries()).map(([baseNumber, records]) => ({
+      baseTransactionNumber: baseNumber,
+      records: records.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+    }));
+  };
+
+  const toggleCustomerExpansion = (customerName: string) => {
+    const newExpanded = new Set(expandedCustomers);
+    if (newExpanded.has(customerName)) {
+      newExpanded.delete(customerName);
+    } else {
+      newExpanded.add(customerName);
+    }
+    setExpandedCustomers(newExpanded);
+  };
+
+  const exportRecords = () => {
+    if (filteredRecords.length === 0) {
+      toast({
+        title: "No data to export",
+        description: "There are no records to export.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const csvContent = [
+      ['Type', 'Transaction Number', 'Number', 'Customer', 'Amount', 'Status', 'Date'].join(','),
+      ...filteredRecords.map(record => [
+        record.type,
+        record.transaction_number || 'N/A',
+        record.number,
+        record.customer_name,
+        record.amount,
+        record.status,
+        new Date(record.created_at).toLocaleDateString()
+      ].join(','))
     ].join('\n');
 
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'transaction-history.csv';
+    const filename = selectedCustomer !== 'all' ? 
+      `transaction_history_${selectedCustomer.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.csv` :
+      `transaction_history_${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = filename;
     a.click();
-    URL.revokeObjectURL(url);
+    window.URL.revokeObjectURL(url);
+
+    toast({
+      title: "Export successful",
+      description: "Transaction history has been exported to CSV.",
+    });
   };
 
   if (error) {
-    toast({
-      title: "Error",
-      description: "Failed to load transaction history",
-      variant: "destructive",
-    });
-  }
-
-  if (isLoading) {
     return (
-      <div className="container mx-auto p-6">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-gray-200 rounded w-1/4"></div>
-          <div className="h-32 bg-gray-200 rounded"></div>
-          <div className="h-32 bg-gray-200 rounded"></div>
-          <div className="h-32 bg-gray-200 rounded"></div>
+      <div className="container mx-auto p-4">
+        <div className="text-center py-8">
+          <p className="text-destructive">Error loading transaction history. Please try again.</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="container mx-auto p-4 space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Transaction History</h1>
-          <p className="text-gray-600">View all your estimates, invoices, deliveries, transactions, and payments</p>
+          <h1 className="text-2xl sm:text-3xl font-bold">Transaction History</h1>
+          <p className="text-muted-foreground">
+            View and manage all your transaction records
+          </p>
         </div>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={exportRecords}
-            className="flex items-center gap-2"
-          >
-            <Download className="h-4 w-4" />
-            Export
-          </Button>
-        </div>
+        <Button onClick={exportRecords} className="flex items-center gap-2">
+          <Download className="h-4 w-4" />
+          Export
+        </Button>
       </div>
 
       {/* Search and Filters */}
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+          <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search by customer name, email, or number..."
+            placeholder="Search customers, numbers, or transaction numbers..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10"
@@ -439,20 +467,19 @@ export default function TransactionHistory() {
         </div>
         <Select value={selectedType} onValueChange={setSelectedType}>
           <SelectTrigger className="w-full sm:w-48">
-            <SelectValue placeholder="Filter by type" />
+            <SelectValue placeholder="All Types" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Types</SelectItem>
             <SelectItem value="estimate">Estimates</SelectItem>
             <SelectItem value="invoice">Invoices</SelectItem>
             <SelectItem value="delivery">Deliveries</SelectItem>
-            <SelectItem value="transaction">Transactions</SelectItem>
             <SelectItem value="payment">Payments</SelectItem>
           </SelectContent>
         </Select>
         <Select value={selectedStatus} onValueChange={setSelectedStatus}>
           <SelectTrigger className="w-full sm:w-48">
-            <SelectValue placeholder="Filter by status" />
+            <SelectValue placeholder="All Statuses" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Statuses</SelectItem>
@@ -462,104 +489,143 @@ export default function TransactionHistory() {
             <SelectItem value="cancelled">Cancelled</SelectItem>
           </SelectContent>
         </Select>
-        {(userRoles.includes('admin') || userRoles.includes('super_admin')) && (
-          <Select value={sortBy} onValueChange={setSortBy}>
-            <SelectTrigger className="w-full sm:w-48">
-              <SelectValue placeholder="Sort by" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="date">Sort by Date</SelectItem>
-              <SelectItem value="user">Sort by User</SelectItem>
-            </SelectContent>
-          </Select>
-        )}
+        <Select value={selectedCustomer} onValueChange={setSelectedCustomer}>
+          <SelectTrigger className="w-full sm:w-48">
+            <SelectValue placeholder="All Customers" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Customers</SelectItem>
+            {uniqueCustomers.map(customer => (
+              <SelectItem key={customer} value={customer}>{customer}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-6">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="all">All ({allRecords.length})</TabsTrigger>
           <TabsTrigger value="estimate">Estimates ({allRecords.filter(r => r.type === 'estimate').length})</TabsTrigger>
           <TabsTrigger value="invoice">Invoices ({allRecords.filter(r => r.type === 'invoice').length})</TabsTrigger>
           <TabsTrigger value="delivery">Deliveries ({allRecords.filter(r => r.type === 'delivery').length})</TabsTrigger>
-          <TabsTrigger value="transaction">Transactions ({allRecords.filter(r => r.type === 'transaction').length})</TabsTrigger>
           <TabsTrigger value="payment">Payments ({allRecords.filter(r => r.type === 'payment').length})</TabsTrigger>
         </TabsList>
 
-        <TabsContent value={activeTab} className="space-y-4">
-          {filteredRecords.length === 0 ? (
-            <Card>
-              <CardContent className="text-center py-8">
-                <p className="text-gray-500">No records found.</p>
-              </CardContent>
-            </Card>
-          ) : (
-            filteredRecords.map((record) => {
-              const Icon = typeIcons[record.type];
-              return (
-                <Card key={`${record.type}-${record.id}`} className="hover:shadow-md transition-shadow">
-                  <CardContent className="p-6">
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <Icon className="h-5 w-5 text-gray-500" />
-                          <h3 className="font-semibold text-lg">{record.number}</h3>
-                          <Badge className={typeColors[record.type]}>
-                            {record.type.charAt(0).toUpperCase() + record.type.slice(1)}
-                          </Badge>
-                          <Badge className={statusColors[record.status] || 'bg-gray-100 text-gray-800'}>
-                            {record.status.replace('_', ' ').charAt(0).toUpperCase() + record.status.slice(1).replace('_', ' ')}
-                          </Badge>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 text-sm text-gray-600">
-                          <div>
-                            <strong>Customer:</strong> {record.customer_name}
-                          </div>
-                          <div>
-                            <strong>Email:</strong> {record.customer_email}
-                          </div>
-                          <div>
-                            <strong>Amount:</strong> {formatCurrency(record.amount)}
-                          </div>
-                          {record.balance_due !== undefined && (
+        <TabsContent value={activeTab}>
+          <div className="space-y-6">
+            {isLoading ? (
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                <p className="mt-2 text-sm text-muted-foreground">Loading records...</p>
+              </div>
+            ) : error ? (
+              <div className="text-center py-8">
+                <p className="text-sm text-destructive">Error loading records. Please try again.</p>
+              </div>
+            ) : customerGroups.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-sm text-muted-foreground">No records found.</p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {customerGroups.map((group) => {
+                  const isExpanded = expandedCustomers.has(group.customerName);
+                  const visibleRecords = isExpanded ? group.records : group.records.slice(0, 20);
+                  const hasMore = group.records.length > 20;
+                  const transactionGroups = groupByTransactionNumber(visibleRecords);
+                  
+                  return (
+                    <div key={group.customerName} className="border rounded-lg overflow-hidden" style={{ borderColor: group.color + '40' }}>
+                      {/* Customer Header */}
+                      <div className="bg-muted/50 p-4 border-b" style={{ borderBottomColor: group.color + '40' }}>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <CustomerAvatar 
+                              customerName={group.customerName}
+                              avatarUrl={group.avatarUrl}
+                              color={group.color}
+                              size="md"
+                            />
                             <div>
-                              <strong>Balance Due:</strong> {formatCurrency(record.balance_due)}
+                              <h3 className="font-semibold text-lg">{group.customerName}</h3>
+                              <p className="text-sm text-muted-foreground">{group.customerEmail}</p>
                             </div>
-                          )}
-                          {record.paid_amount !== undefined && (
-                            <div>
-                              <strong>Paid Amount:</strong> {formatCurrency(record.paid_amount)}
-                            </div>
-                          )}
-                          <div>
-                            <strong>Date:</strong> {format(new Date(record.created_at), 'MMM dd, yyyy')}
                           </div>
-                          {record.mobile_home && (
-                            <div>
-                              <strong>Mobile Home:</strong> {record.mobile_home.manufacturer} {record.mobile_home.model}
-                            </div>
-                          )}
-                          {record.delivery_address && (
-                            <div>
-                              <strong>Delivery Address:</strong> {record.delivery_address}
-                            </div>
-                          )}
+                          <div className="text-right">
+                            <p className="text-lg font-semibold">${group.totalAmount.toFixed(2)}</p>
+                            <p className="text-sm text-muted-foreground">{group.recordCount} records</p>
+                            {hasMore && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => toggleCustomerExpansion(group.customerName)}
+                                className="mt-1"
+                              >
+                                {isExpanded ? (
+                                  <>
+                                    <ChevronUp className="h-4 w-4 mr-1" />
+                                    Show Less
+                                  </>
+                                ) : (
+                                  <>
+                                    <ChevronDown className="h-4 w-4 mr-1" />
+                                    Show More ({group.records.length - 20})
+                                  </>
+                                )}
+                              </Button>
+                            )}
+                          </div>
                         </div>
                       </div>
-                      <div className="flex gap-2">
-                        <Button variant="outline" size="sm">
-                          <Eye className="h-4 w-4 mr-2" />
-                          View Details
-                        </Button>
+                      
+                      {/* Customer Records */}
+                      <div className="p-4">
+                        <div className="space-y-6">
+                          {transactionGroups.map((transactionGroup) => (
+                            <div key={transactionGroup.baseTransactionNumber}>
+                              {transactionGroup.records.length > 1 ? (
+                                <TransactionGroup 
+                                  records={transactionGroup.records}
+                                  baseTransactionNumber={transactionGroup.baseTransactionNumber}
+                                />
+                              ) : (
+                                // Single record - display normally
+                                <div className="flex items-center justify-between p-3 border rounded-lg hover:shadow-sm transition-shadow">
+                                  <div className="flex items-center gap-3">
+                                    <div className={`p-2 rounded-lg ${typeColors[transactionGroup.records[0].type]}`}>
+                                      {React.createElement(typeIcons[transactionGroup.records[0].type], { className: "h-4 w-4" })}
+                                    </div>
+                                    <div>
+                                      <h4 className="font-medium">{transactionGroup.records[0].transaction_number || transactionGroup.records[0].number}</h4>
+                                      <p className="text-sm text-muted-foreground">{transactionGroup.records[0].type}</p>
+                                    </div>
+                                  </div>
+                                  <div className="text-right">
+                                    <p className="font-medium">${transactionGroup.records[0].amount.toFixed(2)}</p>
+                                    <p className={`text-xs px-2 py-1 rounded-full ${statusColors[transactionGroup.records[0].status] || 'bg-gray-100 text-gray-800'}`}>
+                                      {transactionGroup.records[0].status}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                      {new Date(transactionGroup.records[0].created_at).toLocaleDateString()}
+                                    </p>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
-              );
-            })
-          )}
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </TabsContent>
       </Tabs>
     </div>
   );
-}
+};
+
+export default TransactionHistory;

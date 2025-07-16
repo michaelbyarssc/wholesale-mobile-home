@@ -22,7 +22,8 @@ import {
   Settings,
   Edit,
   Save,
-  MoreHorizontal
+  MoreHorizontal,
+  X
  } from 'lucide-react';
 import { EstimateDocuSignButton } from '@/components/estimate-approval/EstimateDocuSignButton';
 import { EmailInvoiceButton } from '@/components/estimate-approval/EmailInvoiceButton';
@@ -254,7 +255,38 @@ export const InvoiceManagement = () => {
     },
   });
 
-  
+  // Cancel invoice mutation
+  const cancelInvoiceMutation = useMutation({
+    mutationFn: async (invoiceId: string) => {
+      const { data, error } = await supabase
+        .from('invoices')
+        .update({ 
+          status: 'cancelled',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', invoiceId)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['invoices-basic'] });
+      toast({
+        title: "Invoice Cancelled",
+        description: "Invoice has been cancelled successfully.",
+      });
+    },
+    onError: (error: any) => {
+      console.error('Invoice cancellation error:', error);
+      toast({
+        title: "Cancellation Failed",
+        description: error.message || "Failed to cancel invoice. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
   const handleViewInvoice = (invoice: any) => {
     setSelectedInvoice(invoice);
     setShowInvoiceDialog(true);
@@ -369,6 +401,7 @@ export const InvoiceManagement = () => {
       sent: { variant: 'outline' as const, label: 'Sent' },
       paid: { variant: 'default' as const, label: 'Paid' },
       overdue: { variant: 'destructive' as const, label: 'Overdue' },
+      cancelled: { variant: 'destructive' as const, label: 'Cancelled' },
     };
     
     const config = variants[status as keyof typeof variants] || variants.draft;
@@ -610,21 +643,31 @@ export const InvoiceManagement = () => {
                                 >
                                   <RotateCw className="h-4 w-4 mr-2" />
                                   {syncToQuickBooksMutation.isPending ? 'Syncing...' : 'Sync to QuickBooks'}
-                                </DropdownMenuItem>
-                              )}
-                              
-                              <DropdownMenuItem asChild>
-                                <div className="cursor-pointer">
-                                  <EstimateDocuSignButton
-                                    estimateId={invoice.estimate_id || ''}
-                                    customerEmail={invoice.customer_email}
-                                    customerName={invoice.customer_name}
-                                    estimateNumber={invoice.invoice_number}
-                                    documentType="invoice"
-                                    hasInvoice={true}
-                                  />
-                                </div>
-                              </DropdownMenuItem>
+                                 </DropdownMenuItem>
+                               )}
+                               
+                               {invoice.status !== 'cancelled' && (
+                                 <DropdownMenuItem 
+                                   onClick={() => cancelInvoiceMutation.mutate(invoice.id)}
+                                   disabled={cancelInvoiceMutation.isPending}
+                                 >
+                                   <X className="h-4 w-4 mr-2" />
+                                   {cancelInvoiceMutation.isPending ? 'Cancelling...' : 'Cancel Invoice'}
+                                 </DropdownMenuItem>
+                               )}
+                               
+                               <DropdownMenuItem asChild>
+                                 <div className="cursor-pointer">
+                                   <EstimateDocuSignButton
+                                     estimateId={invoice.estimate_id || ''}
+                                     customerEmail={invoice.customer_email}
+                                     customerName={invoice.customer_name}
+                                     estimateNumber={invoice.invoice_number}
+                                     documentType="invoice"
+                                     hasInvoice={true}
+                                   />
+                                 </div>
+                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         ) : (
@@ -653,6 +696,18 @@ export const InvoiceManagement = () => {
                               >
                                 <RotateCw className="h-3 w-3 mr-1" />
                                 {syncToQuickBooksMutation.isPending ? 'Syncing...' : 'Sync QB'}
+                              </Button>
+                            )}
+
+                            {invoice.status !== 'cancelled' && (
+                              <Button 
+                                size="sm" 
+                                variant="destructive"
+                                onClick={() => cancelInvoiceMutation.mutate(invoice.id)}
+                                disabled={cancelInvoiceMutation.isPending}
+                              >
+                                <X className="h-3 w-3 mr-1" />
+                                {cancelInvoiceMutation.isPending ? 'Cancelling...' : 'Cancel'}
                               </Button>
                             )}
 

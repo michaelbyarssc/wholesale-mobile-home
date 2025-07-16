@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Search, Download, FileText, Receipt, Truck, DollarSign, Calendar, User, ChevronDown, ChevronUp } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -75,6 +76,26 @@ export const TransactionHistory = () => {
   const [expandedCustomers, setExpandedCustomers] = useState<Set<string>>(new Set());
   const [userRoles, setUserRoles] = useState<string[]>([]);
   const { toast } = useToast();
+  const navigate = useNavigate();
+
+  const handleRecordClick = (record: UnifiedRecord) => {
+    switch (record.type) {
+      case 'estimate':
+        navigate(`/estimates/${record.id}`);
+        break;
+      case 'invoice':
+        navigate(`/invoices/${record.id}`);
+        break;
+      case 'delivery':
+        navigate(`/deliveries/${record.id}`);
+        break;
+      case 'payment':
+        navigate(`/payments/${record.id}`);
+        break;
+      default:
+        break;
+    }
+  };
 
   // Fetch all user transaction data
   const { data: allRecords = [], isLoading, error } = useQuery({
@@ -588,10 +609,14 @@ export const TransactionHistory = () => {
                                 <TransactionGroup 
                                   records={transactionGroup.records}
                                   baseTransactionNumber={transactionGroup.baseTransactionNumber}
+                                  onRecordClick={handleRecordClick}
                                 />
                               ) : (
                                 // Single record - display normally
-                                <div className="flex items-center justify-between p-3 border rounded-lg hover:shadow-sm transition-shadow">
+                                <div 
+                                  className="flex items-center justify-between p-3 border rounded-lg hover:shadow-sm transition-shadow cursor-pointer"
+                                  onClick={() => handleRecordClick(transactionGroup.records[0])}
+                                >
                                   <div className="flex items-center gap-3">
                                     <div className={`p-2 rounded-lg ${typeColors[transactionGroup.records[0].type]}`}>
                                       {React.createElement(typeIcons[transactionGroup.records[0].type], { className: "h-4 w-4" })}

@@ -12,9 +12,10 @@ interface UnifiedRecord {
 interface TransactionGroupProps {
   records: UnifiedRecord[];
   baseTransactionNumber: string;
+  onRecordClick: (record: UnifiedRecord) => void;
 }
 
-export function TransactionGroup({ records, baseTransactionNumber }: TransactionGroupProps) {
+export function TransactionGroup({ records, baseTransactionNumber, onRecordClick }: TransactionGroupProps) {
   const sortedRecords = records.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
   
   return (
@@ -27,7 +28,10 @@ export function TransactionGroup({ records, baseTransactionNumber }: Transaction
           )}
           
           {/* Record content */}
-          <div className="flex items-center gap-3 py-2">
+          <div 
+            className="flex items-center gap-3 py-2 cursor-pointer hover:bg-muted/50 rounded-md px-2 transition-colors"
+            onClick={() => onRecordClick(record)}
+          >
             <div className="w-2 h-2 rounded-full bg-primary flex-shrink-0" />
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between">

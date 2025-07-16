@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useAnalytics } from '@/hooks/useAnalytics';
 import { supabase } from '@/integrations/supabase/client';
@@ -72,6 +73,7 @@ export const MobileHomesShowcase = ({
   clearCart,
   setIsCartOpen
 }: MobileHomesShowcaseProps) => {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('');
   const [selectedHomeForServices, setSelectedHomeForServices] = useState<MobileHome | null>(null);
   const [isFiltersCollapsed, setIsFiltersCollapsed] = useState(true);
@@ -386,7 +388,7 @@ export const MobileHomesShowcase = ({
                 <p className="text-sm text-blue-600 mb-1">Starting at:</p>
                 <span className="text-2xl font-bold text-blue-600">{formatPrice(home.retail_price)}</span>
                 <p className="text-sm text-gray-500 mt-1">
-                  <span className="text-blue-600 font-medium cursor-pointer hover:underline" onClick={() => window.location.href = '/auth'}>Login to see your price</span>
+                  <span className="text-blue-600 font-medium cursor-pointer hover:underline" onClick={() => navigate('/auth')}>Login to see your price</span>
                 </p>
               </div>
             ) : (
@@ -545,7 +547,7 @@ export const MobileHomesShowcase = ({
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  window.location.href = '/auth';
+                  navigate('/auth');
                 }}
                 className="w-full"
                 variant="outline"

@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Phone, MessageCircle, Calendar, ShoppingCart } from 'lucide-react';
 import { User } from '@supabase/supabase-js';
@@ -10,6 +11,8 @@ interface StickyMobileNavProps {
 }
 
 export const StickyMobileNav = ({ user, cartCount, onCartToggle }: StickyMobileNavProps) => {
+  const navigate = useNavigate();
+  
   const handleCall = () => {
     window.location.href = 'tel:864-680-4030';
   };
@@ -21,9 +24,9 @@ export const StickyMobileNav = ({ user, cartCount, onCartToggle }: StickyMobileN
 
   const handleAppointment = () => {
     if (user) {
-      window.location.href = '/appointments';
+      navigate('/appointments');
     } else {
-      window.location.href = '/auth';
+      navigate('/auth');
     }
   };
 

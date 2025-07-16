@@ -1,5 +1,6 @@
 
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -12,6 +13,8 @@ interface EstimateHeaderProps {
 }
 
 export const EstimateHeader = ({ user, displayName, customerMarkup }: EstimateHeaderProps) => {
+  const navigate = useNavigate();
+  
   return (
     <div className="text-center mb-8">
       <h1 className="text-4xl font-bold text-blue-900 mb-2">
@@ -44,7 +47,7 @@ export const EstimateHeader = ({ user, displayName, customerMarkup }: EstimateHe
           </div>
         )}
         <Button 
-          onClick={() => window.location.href = '/admin'} 
+          onClick={() => navigate('/admin')} 
           variant="outline"
         >
           Admin Login

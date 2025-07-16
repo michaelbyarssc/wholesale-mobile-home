@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -48,6 +49,7 @@ export const WishlistModal: React.FC<WishlistModalProps> = ({
   onAddToComparison,
   isInComparison
 }) => {
+  const navigate = useNavigate();
   const { calculateMobileHomePrice, loading: pricingLoading } = useCustomerPricing(user);
 
   const getHomeImages = (homeId: string) => {
@@ -235,7 +237,7 @@ export const WishlistModal: React.FC<WishlistModalProps> = ({
                         </Button>
                       ) : !user ? (
                         <Button 
-                          onClick={() => window.location.href = '/auth'}
+                          onClick={() => navigate('/auth')}
                           className="w-full flex items-center gap-2"
                           variant="outline"
                         >

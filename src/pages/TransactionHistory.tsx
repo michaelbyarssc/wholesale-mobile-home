@@ -1,95 +1,387 @@
-import { useState } from 'react';
-import { useTransactions } from '@/hooks/useTransactions';
-import { useTransactionRealtime } from '@/hooks/useTransactionRealtime';
-import { TransactionFilters, TransactionStatus } from '@/types/transaction';
+import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CalendarDateRangePicker } from '@/components/ui/calendar-date-range-picker';
-import { Search, Filter, Plus, Download, Eye } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Search, Filter, Download, Eye, FileText, Receipt, Truck, DollarSign } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import { Link } from 'react-router-dom';
+import { format } from 'date-fns';
+import { useToast } from '@/hooks/use-toast';
 
-const statusColors: Record<TransactionStatus, string> = {
-  draft: 'bg-gray-100 text-gray-800',
-  estimate_submitted: 'bg-blue-100 text-blue-800',
-  estimate_approved: 'bg-green-100 text-green-800',
-  invoice_generated: 'bg-purple-100 text-purple-800',
-  payment_partial: 'bg-yellow-100 text-yellow-800',
-  payment_complete: 'bg-green-100 text-green-800',
-  delivery_scheduled: 'bg-orange-100 text-orange-800',
-  delivery_in_progress: 'bg-orange-100 text-orange-800',
-  delivery_complete: 'bg-green-100 text-green-800',
-  completed: 'bg-green-100 text-green-800',
-  cancelled: 'bg-red-100 text-red-800',
-  expired: 'bg-red-100 text-red-800',
+interface UnifiedRecord {
+  id: string;
+  type: 'estimate' | 'invoice' | 'delivery' | 'transaction' | 'payment';
+  number: string;
+  customer_name: string;
+  customer_email: string;
+  amount: number;
+  status: string;
+  created_at: string;
+  mobile_home?: {
+    manufacturer: string;
+    model: string;
+    series: string;
+  };
+  delivery_address?: string;
+  balance_due?: number;
+  paid_amount?: number;
+}
+
+const typeIcons = {
+  estimate: FileText,
+  invoice: Receipt,
+  delivery: Truck,
+  transaction: DollarSign,
+  payment: DollarSign,
 };
 
-const statusLabels: Record<TransactionStatus, string> = {
-  draft: 'Draft',
-  estimate_submitted: 'Estimate Submitted',
-  estimate_approved: 'Estimate Approved',
-  invoice_generated: 'Invoice Generated',
-  payment_partial: 'Partial Payment',
-  payment_complete: 'Payment Complete',
-  delivery_scheduled: 'Delivery Scheduled',
-  delivery_in_progress: 'Delivery In Progress',
-  delivery_complete: 'Delivery Complete',
-  completed: 'Completed',
-  cancelled: 'Cancelled',
-  expired: 'Expired',
+const typeColors = {
+  estimate: 'bg-blue-100 text-blue-800',
+  invoice: 'bg-purple-100 text-purple-800',
+  delivery: 'bg-orange-100 text-orange-800',
+  transaction: 'bg-green-100 text-green-800',
+  payment: 'bg-emerald-100 text-emerald-800',
+};
+
+const statusColors = {
+  pending: 'bg-yellow-100 text-yellow-800',
+  approved: 'bg-green-100 text-green-800',
+  rejected: 'bg-red-100 text-red-800',
+  cancelled: 'bg-red-100 text-red-800',
+  completed: 'bg-green-100 text-green-800',
+  scheduled: 'bg-blue-100 text-blue-800',
+  in_progress: 'bg-orange-100 text-orange-800',
+  in_transit: 'bg-orange-100 text-orange-800',
+  delivered: 'bg-green-100 text-green-800',
+  paid: 'bg-green-100 text-green-800',
+  partial: 'bg-yellow-100 text-yellow-800',
+  overdue: 'bg-red-100 text-red-800',
+  draft: 'bg-gray-100 text-gray-800',
+  estimate_submitted: 'bg-blue-100 text-blue-800',
+  invoice_generated: 'bg-purple-100 text-purple-800',
+  payment_complete: 'bg-green-100 text-green-800',
+  delivery_scheduled: 'bg-orange-100 text-orange-800',
+  delivery_complete: 'bg-green-100 text-green-800',
 };
 
 export default function TransactionHistory() {
-  const [filters, setFilters] = useState<TransactionFilters>({});
-  const [showFilters, setShowFilters] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  
-  const { transactions, isLoading, createTransaction } = useTransactions(filters);
-  
-  // Enable real-time updates for the transaction list
-  useTransactionRealtime();
+  const [selectedType, setSelectedType] = useState<string>('all');
+  const [selectedStatus, setSelectedStatus] = useState<string>('all');
+  const [activeTab, setActiveTab] = useState('all');
+  const { toast } = useToast();
 
-  const handleSearch = (query: string) => {
-    setSearchQuery(query);
-    setFilters(prev => ({ ...prev, searchQuery: query }));
-  };
+  // Fetch all user transaction data
+  const { data: allRecords = [], isLoading, error } = useQuery({
+    queryKey: ['transaction-history', searchQuery, selectedType, selectedStatus],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
 
-  const handleStatusFilter = (status: TransactionStatus | 'all') => {
-    if (status === 'all') {
-      setFilters(prev => ({ ...prev, status: undefined }));
-    } else {
-      setFilters(prev => ({ ...prev, status: [status] }));
-    }
-  };
+      // Check if user is admin or super admin
+      const { data: userRoles } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id);
 
-  const exportTransactions = () => {
-    // Create CSV export
-    const csvData = transactions.map(t => ({
-      'Transaction #': t.transaction_number,
-      'Customer': t.customer_name,
-      'Email': t.customer_email,
-      'Status': statusLabels[t.status],
-      'Total Amount': t.total_amount,
-      'Balance Due': t.balance_due,
-      'Created': new Date(t.created_at).toLocaleDateString(),
+      const isAdmin = userRoles?.some(r => r.role === 'admin');
+      const isSuperAdmin = userRoles?.some(r => r.role === 'super_admin');
+
+      const records: UnifiedRecord[] = [];
+
+      // Fetch estimates
+      let estimatesQuery = supabase
+        .from('estimates')
+        .select(`
+          id,
+          customer_name,
+          customer_email,
+          total_amount,
+          status,
+          created_at,
+          delivery_address,
+          mobile_homes (
+            manufacturer,
+            model,
+            series
+          )
+        `);
+
+      if (!isSuperAdmin) {
+        if (isAdmin) {
+          // Admins see their own estimates and those of users they created
+          estimatesQuery = estimatesQuery.or(`user_id.eq.${user.id},created_by.eq.${user.id}`);
+        } else {
+          // Regular users see only their own estimates
+          estimatesQuery = estimatesQuery.eq('user_id', user.id);
+        }
+      }
+
+      const { data: estimates } = await estimatesQuery;
+
+      if (estimates) {
+        records.push(...estimates.map(est => ({
+          id: est.id,
+          type: 'estimate' as const,
+          number: `EST-${est.id.slice(-8)}`,
+          customer_name: est.customer_name,
+          customer_email: est.customer_email,
+          amount: est.total_amount,
+          status: est.status,
+          created_at: est.created_at,
+          mobile_home: est.mobile_homes,
+          delivery_address: est.delivery_address,
+        })));
+      }
+
+      // Fetch invoices
+      let invoicesQuery = supabase
+        .from('invoices')
+        .select(`
+          id,
+          invoice_number,
+          customer_name,
+          customer_email,
+          total_amount,
+          status,
+          created_at,
+          delivery_address,
+          balance_due,
+          mobile_homes (
+            manufacturer,
+            model,
+            series
+          )
+        `);
+
+      if (!isSuperAdmin) {
+        if (isAdmin) {
+          // Admins see their own invoices and those of users they created
+          invoicesQuery = invoicesQuery.or(`user_id.eq.${user.id},created_by.eq.${user.id}`);
+        } else {
+          // Regular users see only their own invoices
+          invoicesQuery = invoicesQuery.eq('user_id', user.id);
+        }
+      }
+
+      const { data: invoices } = await invoicesQuery;
+
+      if (invoices) {
+        records.push(...invoices.map(inv => ({
+          id: inv.id,
+          type: 'invoice' as const,
+          number: inv.invoice_number,
+          customer_name: inv.customer_name,
+          customer_email: inv.customer_email,
+          amount: inv.total_amount,
+          status: inv.status,
+          created_at: inv.created_at,
+          mobile_home: inv.mobile_homes,
+          delivery_address: inv.delivery_address,
+          balance_due: inv.balance_due,
+        })));
+      }
+
+      // Fetch deliveries
+      let deliveriesQuery = supabase
+        .from('deliveries')
+        .select(`
+          id,
+          delivery_number,
+          customer_name,
+          customer_email,
+          total_delivery_cost,
+          status,
+          created_at,
+          delivery_address,
+          mobile_homes (
+            manufacturer,
+            model,
+            series
+          )
+        `);
+
+      if (!isSuperAdmin) {
+        if (isAdmin) {
+          // Admins see deliveries they created or are assigned to
+          deliveriesQuery = deliveriesQuery.or(`created_by.eq.${user.id}`);
+        } else {
+          // Regular users see deliveries where they are the customer
+          deliveriesQuery = deliveriesQuery.eq('customer_email', user.email);
+        }
+      }
+
+      const { data: deliveries } = await deliveriesQuery;
+
+      if (deliveries) {
+        records.push(...deliveries.map(del => ({
+          id: del.id,
+          type: 'delivery' as const,
+          number: del.delivery_number,
+          customer_name: del.customer_name,
+          customer_email: del.customer_email,
+          amount: del.total_delivery_cost || 0,
+          status: del.status,
+          created_at: del.created_at,
+          mobile_home: del.mobile_homes,
+          delivery_address: del.delivery_address,
+        })));
+      }
+
+      // Fetch transactions
+      let transactionsQuery = supabase
+        .from('transactions')
+        .select(`
+          id,
+          transaction_number,
+          customer_name,
+          customer_email,
+          total_amount,
+          status,
+          created_at,
+          delivery_address,
+          balance_due,
+          paid_amount,
+          mobile_homes (
+            manufacturer,
+            model,
+            series
+          )
+        `);
+
+      if (!isSuperAdmin) {
+        if (isAdmin) {
+          // Admins see transactions they created or are assigned to
+          transactionsQuery = transactionsQuery.or(`user_id.eq.${user.id},assigned_admin_id.eq.${user.id},created_by.eq.${user.id}`);
+        } else {
+          // Regular users see only their own transactions
+          transactionsQuery = transactionsQuery.eq('user_id', user.id);
+        }
+      }
+
+      const { data: transactions } = await transactionsQuery;
+
+      if (transactions) {
+        records.push(...transactions.map(trans => ({
+          id: trans.id,
+          type: 'transaction' as const,
+          number: trans.transaction_number,
+          customer_name: trans.customer_name,
+          customer_email: trans.customer_email,
+          amount: trans.total_amount,
+          status: trans.status,
+          created_at: trans.created_at,
+          mobile_home: trans.mobile_homes,
+          delivery_address: trans.delivery_address,
+          balance_due: trans.balance_due,
+          paid_amount: trans.paid_amount,
+        })));
+      }
+
+      // Fetch payments
+      let paymentsQuery = supabase
+        .from('payments')
+        .select(`
+          id,
+          amount,
+          payment_method,
+          payment_date,
+          created_at,
+          invoices (
+            customer_name,
+            customer_email,
+            invoice_number
+          )
+        `);
+
+      if (!isSuperAdmin && !isAdmin) {
+        // Regular users see payments for their invoices
+        paymentsQuery = paymentsQuery.eq('invoices.user_id', user.id);
+      }
+
+      const { data: payments } = await paymentsQuery;
+
+      if (payments) {
+        records.push(...payments.map(pay => ({
+          id: pay.id,
+          type: 'payment' as const,
+          number: `PAY-${pay.id.slice(-8)}`,
+          customer_name: pay.invoices?.customer_name || 'Unknown',
+          customer_email: pay.invoices?.customer_email || 'Unknown',
+          amount: pay.amount,
+          status: 'paid',
+          created_at: pay.created_at,
+        })));
+      }
+
+      // Filter records based on search and filters
+      let filteredRecords = records;
+
+      if (searchQuery) {
+        filteredRecords = filteredRecords.filter(record =>
+          record.customer_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          record.customer_email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          record.number.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+      }
+
+      if (selectedType !== 'all') {
+        filteredRecords = filteredRecords.filter(record => record.type === selectedType);
+      }
+
+      if (selectedStatus !== 'all') {
+        filteredRecords = filteredRecords.filter(record => record.status === selectedStatus);
+      }
+
+      // Sort by created_at desc
+      filteredRecords.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+      return filteredRecords;
+    },
+  });
+
+  const filteredRecords = allRecords.filter(record => {
+    if (activeTab === 'all') return true;
+    return record.type === activeTab;
+  });
+
+  const exportRecords = () => {
+    const csvData = filteredRecords.map(record => ({
+      'Type': record.type,
+      'Number': record.number,
+      'Customer': record.customer_name,
+      'Email': record.customer_email,
+      'Amount': record.amount,
+      'Status': record.status,
+      'Date': format(new Date(record.created_at), 'yyyy-MM-dd'),
     }));
-    
+
     const csv = [
       Object.keys(csvData[0] || {}).join(','),
       ...csvData.map(row => Object.values(row).join(','))
     ].join('\n');
-    
+
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'transactions.csv';
+    a.download = 'transaction-history.csv';
     a.click();
     URL.revokeObjectURL(url);
   };
+
+  if (error) {
+    toast({
+      title: "Error",
+      description: "Failed to load transaction history",
+      variant: "destructive",
+    });
+  }
 
   if (isLoading) {
     return (
@@ -110,170 +402,143 @@ export default function TransactionHistory() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Transaction History</h1>
-          <p className="text-gray-600">Manage and track all your transactions</p>
+          <p className="text-gray-600">View all your estimates, invoices, deliveries, transactions, and payments</p>
         </div>
         <div className="flex gap-2">
           <Button
             variant="outline"
-            onClick={() => setShowFilters(!showFilters)}
-            className="flex items-center gap-2"
-          >
-            <Filter className="h-4 w-4" />
-            Filters
-          </Button>
-          <Button
-            variant="outline"
-            onClick={exportTransactions}
+            onClick={exportRecords}
             className="flex items-center gap-2"
           >
             <Download className="h-4 w-4" />
             Export
           </Button>
-          <Button asChild className="flex items-center gap-2">
-            <Link to="/create-transaction">
-              <Plus className="h-4 w-4" />
-              New Transaction
-            </Link>
-          </Button>
         </div>
       </div>
 
-      {/* Search and Quick Filters */}
+      {/* Search and Filters */}
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
           <Input
-            placeholder="Search transactions..."
+            placeholder="Search by customer name, email, or number..."
             value={searchQuery}
-            onChange={(e) => handleSearch(e.target.value)}
+            onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10"
           />
         </div>
-        <Select onValueChange={(value) => handleStatusFilter(value as TransactionStatus | 'all')}>
+        <Select value={selectedType} onValueChange={setSelectedType}>
+          <SelectTrigger className="w-full sm:w-48">
+            <SelectValue placeholder="Filter by type" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Types</SelectItem>
+            <SelectItem value="estimate">Estimates</SelectItem>
+            <SelectItem value="invoice">Invoices</SelectItem>
+            <SelectItem value="delivery">Deliveries</SelectItem>
+            <SelectItem value="transaction">Transactions</SelectItem>
+            <SelectItem value="payment">Payments</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={selectedStatus} onValueChange={setSelectedStatus}>
           <SelectTrigger className="w-full sm:w-48">
             <SelectValue placeholder="Filter by status" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Statuses</SelectItem>
-            <SelectItem value="estimate_submitted">Pending Estimates</SelectItem>
-            <SelectItem value="invoice_generated">Active Invoices</SelectItem>
-            <SelectItem value="payment_partial">Partial Payments</SelectItem>
-            <SelectItem value="delivery_scheduled">Scheduled Deliveries</SelectItem>
+            <SelectItem value="pending">Pending</SelectItem>
+            <SelectItem value="approved">Approved</SelectItem>
             <SelectItem value="completed">Completed</SelectItem>
+            <SelectItem value="cancelled">Cancelled</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
-      {/* Advanced Filters */}
-      {showFilters && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Advanced Filters</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-2">Date Range</label>
-                <CalendarDateRangePicker
-                  onDateRangeChange={(range) => {
-                    setFilters(prev => ({ ...prev, dateRange: range }));
-                  }}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">Min Amount</label>
-                <Input
-                  type="number"
-                  placeholder="0"
-                  onChange={(e) => setFilters(prev => ({ 
-                    ...prev, 
-                    minAmount: e.target.value ? Number(e.target.value) : undefined 
-                  }))}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">Max Amount</label>
-                <Input
-                  type="number"
-                  placeholder="999999"
-                  onChange={(e) => setFilters(prev => ({ 
-                    ...prev, 
-                    maxAmount: e.target.value ? Number(e.target.value) : undefined 
-                  }))}
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="grid w-full grid-cols-6">
+          <TabsTrigger value="all">All ({allRecords.length})</TabsTrigger>
+          <TabsTrigger value="estimate">Estimates ({allRecords.filter(r => r.type === 'estimate').length})</TabsTrigger>
+          <TabsTrigger value="invoice">Invoices ({allRecords.filter(r => r.type === 'invoice').length})</TabsTrigger>
+          <TabsTrigger value="delivery">Deliveries ({allRecords.filter(r => r.type === 'delivery').length})</TabsTrigger>
+          <TabsTrigger value="transaction">Transactions ({allRecords.filter(r => r.type === 'transaction').length})</TabsTrigger>
+          <TabsTrigger value="payment">Payments ({allRecords.filter(r => r.type === 'payment').length})</TabsTrigger>
+        </TabsList>
 
-      {/* Transaction List */}
-      <div className="grid gap-4">
-        {transactions.length === 0 ? (
-          <Card>
-            <CardContent className="text-center py-8">
-              <p className="text-gray-500">No transactions found.</p>
-              <Button asChild className="mt-4">
-                <Link to="/create-transaction">Create your first transaction</Link>
-              </Button>
-            </CardContent>
-          </Card>
-        ) : (
-          transactions.map((transaction) => (
-            <Card key={transaction.id} className="hover:shadow-md transition-shadow">
-              <CardContent className="p-6">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h3 className="font-semibold text-lg">{transaction.transaction_number}</h3>
-                      <Badge className={statusColors[transaction.status]}>
-                        {statusLabels[transaction.status]}
-                      </Badge>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-gray-600">
-                      <div>
-                        <strong>Customer:</strong> {transaction.customer_name}
-                      </div>
-                      <div>
-                        <strong>Email:</strong> {transaction.customer_email}
-                      </div>
-                      <div>
-                        <strong>Total:</strong> {formatCurrency(transaction.total_amount)}
-                      </div>
-                      <div>
-                        <strong>Balance:</strong> {formatCurrency(transaction.balance_due)}
-                      </div>
-                      <div>
-                        <strong>Created:</strong> {new Date(transaction.created_at).toLocaleDateString()}
-                      </div>
-                      {transaction.mobile_home && (
-                        <div>
-                          <strong>Mobile Home:</strong> {transaction.mobile_home.manufacturer} {transaction.mobile_home.model}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button asChild variant="outline" size="sm">
-                      <Link to={`/transaction/${transaction.id}`}>
-                        <Eye className="h-4 w-4 mr-2" />
-                        View Details
-                      </Link>
-                    </Button>
-                  </div>
-                </div>
+        <TabsContent value={activeTab} className="space-y-4">
+          {filteredRecords.length === 0 ? (
+            <Card>
+              <CardContent className="text-center py-8">
+                <p className="text-gray-500">No records found.</p>
               </CardContent>
             </Card>
-          ))
-        )}
-      </div>
-
-      {/* Load More Button (if needed for infinite scroll) */}
-      {transactions.length >= 20 && (
-        <div className="text-center">
-          <Button variant="outline">Load More</Button>
-        </div>
-      )}
+          ) : (
+            filteredRecords.map((record) => {
+              const Icon = typeIcons[record.type];
+              return (
+                <Card key={`${record.type}-${record.id}`} className="hover:shadow-md transition-shadow">
+                  <CardContent className="p-6">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <Icon className="h-5 w-5 text-gray-500" />
+                          <h3 className="font-semibold text-lg">{record.number}</h3>
+                          <Badge className={typeColors[record.type]}>
+                            {record.type.charAt(0).toUpperCase() + record.type.slice(1)}
+                          </Badge>
+                          <Badge className={statusColors[record.status] || 'bg-gray-100 text-gray-800'}>
+                            {record.status.replace('_', ' ').charAt(0).toUpperCase() + record.status.slice(1).replace('_', ' ')}
+                          </Badge>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 text-sm text-gray-600">
+                          <div>
+                            <strong>Customer:</strong> {record.customer_name}
+                          </div>
+                          <div>
+                            <strong>Email:</strong> {record.customer_email}
+                          </div>
+                          <div>
+                            <strong>Amount:</strong> {formatCurrency(record.amount)}
+                          </div>
+                          {record.balance_due !== undefined && (
+                            <div>
+                              <strong>Balance Due:</strong> {formatCurrency(record.balance_due)}
+                            </div>
+                          )}
+                          {record.paid_amount !== undefined && (
+                            <div>
+                              <strong>Paid Amount:</strong> {formatCurrency(record.paid_amount)}
+                            </div>
+                          )}
+                          <div>
+                            <strong>Date:</strong> {format(new Date(record.created_at), 'MMM dd, yyyy')}
+                          </div>
+                          {record.mobile_home && (
+                            <div>
+                              <strong>Mobile Home:</strong> {record.mobile_home.manufacturer} {record.mobile_home.model}
+                            </div>
+                          )}
+                          {record.delivery_address && (
+                            <div>
+                              <strong>Delivery Address:</strong> {record.delivery_address}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="sm">
+                          <Eye className="h-4 w-4 mr-2" />
+                          View Details
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

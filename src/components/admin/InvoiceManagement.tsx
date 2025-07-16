@@ -559,6 +559,12 @@ export const InvoiceManagement = () => {
                     </div>
 
                     <div className="flex items-center gap-2">
+                      <EmailInvoiceButton
+                        invoiceId={invoice.id}
+                        customerEmail={invoice.customer_email}
+                        customerName={invoice.customer_name}
+                        invoiceNumber={invoice.invoice_number}
+                      />
                       {/* Primary Actions - Always Visible */}
                       <Button size="sm" variant="outline" onClick={() => handleViewInvoice(invoice)}>
                         <Eye className="h-3 w-3 mr-1" />
@@ -616,16 +622,6 @@ export const InvoiceManagement = () => {
                               </div>
                             </DropdownMenuItem>
                             
-                            <DropdownMenuItem asChild>
-                              <div className="cursor-pointer">
-                                <EmailInvoiceButton
-                                  invoiceId={invoice.id}
-                                  customerEmail={invoice.customer_email}
-                                  customerName={invoice.customer_name}
-                                  invoiceNumber={invoice.invoice_number}
-                                />
-                              </div>
-                            </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       ) : (
@@ -664,13 +660,6 @@ export const InvoiceManagement = () => {
                             estimateNumber={invoice.invoice_number}
                             documentType="invoice"
                             hasInvoice={true}
-                          />
-
-                          <EmailInvoiceButton
-                            invoiceId={invoice.id}
-                            customerEmail={invoice.customer_email}
-                            customerName={invoice.customer_name}
-                            invoiceNumber={invoice.invoice_number}
                           />
                         </>
                       )}

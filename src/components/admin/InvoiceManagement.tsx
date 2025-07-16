@@ -757,74 +757,72 @@ export const InvoiceManagement = () => {
               {/* Mobile Home Details */}
               {selectedInvoice.estimates?.mobile_homes && (
                 <div className="bg-green-50 rounded-lg p-6 border">
-                  <h3 className="font-semibold text-lg mb-4 text-green-900">Mobile Home Specifications</h3>
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div>
-                      <div className="space-y-3">
-                        <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                          <span className="font-medium text-gray-600">Manufacturer:</span>
-                          <span className="text-gray-900">{selectedInvoice.estimates.mobile_homes.manufacturer}</span>
+                  <h3 className="font-semibold text-lg mb-4 text-green-900">Mobile Home Specifications & Line Items</h3>
+                  <div className="space-y-6">
+                    {/* Mobile Home Basic Info */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      <div>
+                        <div className="space-y-3">
+                          <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                            <span className="font-medium text-gray-600">Manufacturer:</span>
+                            <span className="text-gray-900">{selectedInvoice.estimates.mobile_homes.manufacturer}</span>
+                          </div>
+                          <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                            <span className="font-medium text-gray-600">Series:</span>
+                            <span className="text-gray-900">{selectedInvoice.estimates.mobile_homes.series}</span>
+                          </div>
+                          <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                            <span className="font-medium text-gray-600">Model:</span>
+                            <span className="text-gray-900">{selectedInvoice.estimates.mobile_homes.model}</span>
+                          </div>
                         </div>
-                        <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                          <span className="font-medium text-gray-600">Series:</span>
-                          <span className="text-gray-900">{selectedInvoice.estimates.mobile_homes.series}</span>
-                        </div>
-                        <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                          <span className="font-medium text-gray-600">Model:</span>
-                          <span className="text-gray-900">{selectedInvoice.estimates.mobile_homes.model}</span>
+                      </div>
+                      <div>
+                        <div className="space-y-3">
+                          {selectedInvoice.estimates.mobile_homes.bedrooms && (
+                            <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                              <span className="font-medium text-gray-600">Bedrooms:</span>
+                              <span className="text-gray-900">{selectedInvoice.estimates.mobile_homes.bedrooms}</span>
+                            </div>
+                          )}
+                          {selectedInvoice.estimates.mobile_homes.bathrooms && (
+                            <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                              <span className="font-medium text-gray-600">Bathrooms:</span>
+                              <span className="text-gray-900">{selectedInvoice.estimates.mobile_homes.bathrooms}</span>
+                            </div>
+                          )}
+                          {selectedInvoice.estimates.mobile_homes.square_footage && (
+                            <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                              <span className="font-medium text-gray-600">Square Footage:</span>
+                              <span className="text-gray-900">{selectedInvoice.estimates.mobile_homes.square_footage} sq ft</span>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
-                    <div>
-                      <div className="space-y-3">
-                        {selectedInvoice.estimates.mobile_homes.bedrooms && (
-                          <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                            <span className="font-medium text-gray-600">Bedrooms:</span>
-                            <span className="text-gray-900">{selectedInvoice.estimates.mobile_homes.bedrooms}</span>
-                          </div>
-                        )}
-                        {selectedInvoice.estimates.mobile_homes.bathrooms && (
-                          <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                            <span className="font-medium text-gray-600">Bathrooms:</span>
-                            <span className="text-gray-900">{selectedInvoice.estimates.mobile_homes.bathrooms}</span>
-                          </div>
-                        )}
-                        {selectedInvoice.estimates.mobile_homes.square_footage && (
-                          <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                            <span className="font-medium text-gray-600">Square Footage:</span>
-                            <span className="text-gray-900">{selectedInvoice.estimates.mobile_homes.square_footage} sq ft</span>
-                          </div>
-                        )}
-                        <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                          <span className="font-medium text-gray-600">Base Price:</span>
-                          <span className="text-lg font-bold text-green-600">
-                            {formatCurrency(selectedInvoice.estimates.mobile_homes.price)}
-                          </span>
+
+                    {/* Line Items */}
+                    {selectedInvoice.estimates?.estimate_line_items && selectedInvoice.estimates.estimate_line_items.length > 0 && (
+                      <div>
+                        <h4 className="font-semibold text-md mb-3 text-green-800">Itemized Add-ons</h4>
+                        <div className="space-y-2">
+                          {selectedInvoice.estimates.estimate_line_items.map((item: any, index: number) => (
+                            <div key={index} className="flex justify-between items-center py-3 px-4 bg-white rounded border">
+                              <div>
+                                <div className="font-medium">{item.name}</div>
+                                {item.description && <div className="text-sm text-gray-600">{item.description}</div>}
+                                <div className="text-sm text-gray-500">Qty: {item.quantity} × {formatCurrency(item.unit_price)}</div>
+                              </div>
+                              <div className="text-lg font-semibold text-green-600">{formatCurrency(item.total_price)}</div>
+                            </div>
+                          ))}
                         </div>
                       </div>
-                    </div>
+                    )}
                   </div>
                 </div>
               )}
 
-              {/* Line Items */}
-              {selectedInvoice.estimate_line_items && selectedInvoice.estimate_line_items.length > 0 && (
-                <div className="bg-yellow-50 rounded-lg p-6 border">
-                  <h3 className="font-semibold text-lg mb-4 text-yellow-900">Line Items</h3>
-                  <div className="space-y-3">
-                    {selectedInvoice.estimate_line_items.map((item: any, index: number) => (
-                      <div key={index} className="flex justify-between items-center py-3 px-4 bg-white rounded border">
-                        <div>
-                          <div className="font-medium">{item.name}</div>
-                          {item.description && <div className="text-sm text-gray-600">{item.description}</div>}
-                          <div className="text-sm text-gray-500">Qty: {item.quantity} × {formatCurrency(item.unit_price)}</div>
-                        </div>
-                        <div className="text-lg font-semibold">{formatCurrency(item.total_price)}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
 
               {/* Payment History */}
               {selectedInvoice.payments && selectedInvoice.payments.length > 0 && (

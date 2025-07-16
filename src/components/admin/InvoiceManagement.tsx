@@ -558,118 +558,122 @@ export const InvoiceManagement = () => {
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                      <EmailInvoiceButton
-                        invoiceId={invoice.id}
-                        customerEmail={invoice.customer_email}
-                        customerName={invoice.customer_name}
-                        invoiceNumber={invoice.invoice_number}
-                      />
-                      {/* Primary Actions - Always Visible */}
-                      <Button size="sm" variant="outline" onClick={() => handleViewInvoice(invoice)}>
-                        <Eye className="h-3 w-3 mr-1" />
-                        <span className="hidden sm:inline">View</span>
-                      </Button>
-                      
-                      <Button size="sm" variant="outline" onClick={() => handleEditInvoice(invoice)}>
-                        <Edit className="h-3 w-3 mr-1" />
-                        <span className="hidden sm:inline">Edit</span>
-                      </Button>
-                      
-                      {/* Mobile: Dropdown for Secondary Actions */}
-                      {isMobile ? (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button size="sm" variant="outline">
-                              <MoreHorizontal className="h-3 w-3" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-48">
+                    <div className="flex flex-col gap-2">
+                      {/* First Row: Primary Actions */}
+                      <div className="flex items-center gap-2">
+                        <EmailInvoiceButton
+                          invoiceId={invoice.id}
+                          customerEmail={invoice.customer_email}
+                          customerName={invoice.customer_name}
+                          invoiceNumber={invoice.invoice_number}
+                        />
+                        <Button size="sm" variant="outline" onClick={() => handleViewInvoice(invoice)}>
+                          <Eye className="h-3 w-3 mr-1" />
+                          <span className="hidden sm:inline">View</span>
+                        </Button>
+                        
+                        <Button size="sm" variant="outline" onClick={() => handleEditInvoice(invoice)}>
+                          <Edit className="h-3 w-3 mr-1" />
+                          <span className="hidden sm:inline">Edit</span>
+                        </Button>
+                      </div>
+
+                      {/* Second Row: Secondary Actions */}
+                      <div className="flex items-center gap-2">
+                        {/* Mobile: Dropdown for Secondary Actions */}
+                        {isMobile ? (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button size="sm" variant="outline">
+                                <MoreHorizontal className="h-3 w-3" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-48">
+                              {invoice.status === 'draft' && (
+                                <DropdownMenuItem>
+                                  <Send className="h-4 w-4 mr-2" />
+                                  Send Invoice
+                                </DropdownMenuItem>
+                              )}
+                              
+                              {invoice.status !== 'paid' && invoice.balance_due > 0 && (
+                                <DropdownMenuItem onClick={() => handlePaymentClick(invoice)}>
+                                  <CreditCard className="h-4 w-4 mr-2" />
+                                  Record Payment
+                                </DropdownMenuItem>
+                              )}
+                              
+                              {!invoice.quickbooks_id && (
+                                <DropdownMenuItem 
+                                  onClick={() => syncToQuickBooksMutation.mutate(invoice.id)}
+                                  disabled={syncToQuickBooksMutation.isPending}
+                                >
+                                  <RotateCw className="h-4 w-4 mr-2" />
+                                  {syncToQuickBooksMutation.isPending ? 'Syncing...' : 'Sync to QuickBooks'}
+                                </DropdownMenuItem>
+                              )}
+                              
+                              <DropdownMenuItem asChild>
+                                <div className="cursor-pointer">
+                                  <EstimateDocuSignButton
+                                    estimateId={invoice.estimate_id || ''}
+                                    customerEmail={invoice.customer_email}
+                                    customerName={invoice.customer_name}
+                                    estimateNumber={invoice.invoice_number}
+                                    documentType="invoice"
+                                    hasInvoice={true}
+                                  />
+                                </div>
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        ) : (
+                          /* Desktop: Show All Actions */
+                          <>
                             {invoice.status === 'draft' && (
-                              <DropdownMenuItem>
-                                <Send className="h-4 w-4 mr-2" />
-                                Send Invoice
-                              </DropdownMenuItem>
+                              <Button size="sm">
+                                <Send className="h-3 w-3 mr-1" />
+                                Send
+                              </Button>
                             )}
-                            
+
                             {invoice.status !== 'paid' && invoice.balance_due > 0 && (
-                              <DropdownMenuItem onClick={() => handlePaymentClick(invoice)}>
-                                <CreditCard className="h-4 w-4 mr-2" />
-                                Record Payment
-                              </DropdownMenuItem>
+                              <Button size="sm" variant="outline" onClick={() => handlePaymentClick(invoice)}>
+                                <CreditCard className="h-3 w-3 mr-1" />
+                                Payment
+                              </Button>
                             )}
-                            
+
                             {!invoice.quickbooks_id && (
-                              <DropdownMenuItem 
+                              <Button 
+                                size="sm" 
+                                variant="outline"
                                 onClick={() => syncToQuickBooksMutation.mutate(invoice.id)}
                                 disabled={syncToQuickBooksMutation.isPending}
                               >
-                                <RotateCw className="h-4 w-4 mr-2" />
-                                {syncToQuickBooksMutation.isPending ? 'Syncing...' : 'Sync to QuickBooks'}
-                              </DropdownMenuItem>
+                                <RotateCw className="h-3 w-3 mr-1" />
+                                {syncToQuickBooksMutation.isPending ? 'Syncing...' : 'Sync QB'}
+                              </Button>
                             )}
-                            
-                            <DropdownMenuItem asChild>
-                              <div className="cursor-pointer">
-                                <EstimateDocuSignButton
-                                  estimateId={invoice.estimate_id || ''}
-                                  customerEmail={invoice.customer_email}
-                                  customerName={invoice.customer_name}
-                                  estimateNumber={invoice.invoice_number}
-                                  documentType="invoice"
-                                  hasInvoice={true}
-                                />
-                              </div>
-                            </DropdownMenuItem>
-                            
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      ) : (
-                        /* Desktop: Show All Actions */
-                        <>
-                          {invoice.status === 'draft' && (
-                            <Button size="sm">
-                              <Send className="h-3 w-3 mr-1" />
-                              Send
-                            </Button>
-                          )}
 
-                          {invoice.status !== 'paid' && invoice.balance_due > 0 && (
-                            <Button size="sm" variant="outline" onClick={() => handlePaymentClick(invoice)}>
-                              <CreditCard className="h-3 w-3 mr-1" />
-                              Payment
-                            </Button>
-                          )}
+                            <EstimateDocuSignButton
+                              estimateId={invoice.estimate_id || ''}
+                              customerEmail={invoice.customer_email}
+                              customerName={invoice.customer_name}
+                              estimateNumber={invoice.invoice_number}
+                              documentType="invoice"
+                              hasInvoice={true}
+                            />
+                          </>
+                        )}
 
-                          {!invoice.quickbooks_id && (
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              onClick={() => syncToQuickBooksMutation.mutate(invoice.id)}
-                              disabled={syncToQuickBooksMutation.isPending}
-                            >
-                              <RotateCw className="h-3 w-3 mr-1" />
-                              {syncToQuickBooksMutation.isPending ? 'Syncing...' : 'Sync QB'}
-                            </Button>
-                          )}
-
-                          <EstimateDocuSignButton
-                            estimateId={invoice.estimate_id || ''}
-                            customerEmail={invoice.customer_email}
-                            customerName={invoice.customer_name}
-                            estimateNumber={invoice.invoice_number}
-                            documentType="invoice"
-                            hasInvoice={true}
-                          />
-                        </>
-                      )}
-
-                      {/* QuickBooks ID Display */}
-                      {invoice.quickbooks_id && (
-                        <div className="text-xs text-muted-foreground">
-                          QB: {invoice.quickbooks_id}
-                        </div>
-                      )}
+                        {/* QuickBooks ID Display */}
+                        {invoice.quickbooks_id && (
+                          <div className="text-xs text-muted-foreground">
+                            QB: {invoice.quickbooks_id}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>

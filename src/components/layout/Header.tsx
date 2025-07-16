@@ -145,6 +145,15 @@ export const Header = ({
                       <span>Book A Call</span>
                     </Link>
 
+                    {/* Transaction History Link */}
+                    <Link 
+                      to="/transactions" 
+                      className="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition-colors font-medium"
+                    >
+                      <FileText className="h-4 w-4" />
+                      <span>My Transactions</span>
+                    </Link>
+
                     {/* PWA Install Button */}
                     {canInstall && (
                       <Button
@@ -258,6 +267,14 @@ export const Header = ({
                 >
                   <Calendar className="h-4 w-4" />
                   <span className="font-medium">Book A Call</span>
+                </Link>
+                <Link
+                  to="/transactions"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center gap-3 p-3 text-gray-600 hover:text-blue-600 hover:bg-gray-50 rounded-lg transition-colors"
+                >
+                  <FileText className="h-4 w-4" />
+                  <span className="font-medium">My Transactions</span>
                 </Link>
                 <Link
                   to="/faq"

@@ -57,6 +57,11 @@ function AppRoutes() {
             <MyEstimates />
           </ProtectedRoute>
         } />
+        <Route path="/transactions" element={
+          <ProtectedRoute>
+            <TransactionHistory />
+          </ProtectedRoute>
+        } />
         <Route path="/approve-estimate/:token" element={<ApproveEstimate />} />
         <Route path="/faq" element={<FAQ />} />
         <Route path="/blog" element={<Blog />} />

@@ -145,14 +145,6 @@ export const Header = ({
                       <span>Book A Call</span>
                     </Link>
 
-                    {/* Transaction History Link */}
-                    <Link 
-                      to="/transactions" 
-                      className="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition-colors font-medium"
-                    >
-                      <FileText className="h-4 w-4" />
-                      <span>My Transactions</span>
-                    </Link>
 
                     {/* PWA Install Button */}
                     {canInstall && (
@@ -178,6 +170,13 @@ export const Header = ({
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="bg-white border border-gray-200 shadow-lg">
+                        <DropdownMenuItem asChild>
+                          <Link to="/transactions" className="flex items-center w-full hover:bg-gray-50 px-2 py-2">
+                            <FileText className="h-4 w-4 mr-2" />
+                            My Transactions
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
                         <DropdownMenuItem asChild>
                           <UserSettingsDialog 
                             user={user} 

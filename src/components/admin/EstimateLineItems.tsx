@@ -209,15 +209,15 @@ export const EstimateLineItems = ({ estimateId, isEditable = false }: EstimateLi
             </h4>
             <div className="space-y-2">
               {items.map((item) => (
-                <div key={item.id} className="flex items-center justify-between p-3 border rounded-lg">
-                  <div className="flex items-start gap-3 flex-1">
-                    <div className="flex items-center gap-2">
+                <div key={item.id} className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 border rounded-lg">
+                  <div className="flex items-start gap-3 flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-shrink-0">
                       {getItemIcon(item.item_type)}
                       <Badge variant="outline" className={getItemTypeColor(item.item_type)}>
                         {item.item_type.replace('_', ' ')}
                       </Badge>
                     </div>
-                    <div className="flex-1">
+                    <div className="flex-1 min-w-0">
                       {editingItemId === item.id && editingItem ? (
                         <div className="space-y-2">
                           <Input
@@ -259,13 +259,13 @@ export const EstimateLineItems = ({ estimateId, isEditable = false }: EstimateLi
                           </div>
                         </div>
                       ) : (
-                        <div>
-                          <p className="font-medium">{item.name}</p>
+                        <div className="min-w-0">
+                          <p className="font-medium truncate">{item.name}</p>
                           {item.description && (
-                            <p className="text-sm text-muted-foreground">{item.description}</p>
+                            <p className="text-sm text-muted-foreground break-words">{item.description}</p>
                           )}
                           {estimate?.delivery_address && item.item_type === 'shipping' && (
-                            <p className="text-sm text-muted-foreground">
+                            <p className="text-sm text-muted-foreground break-words">
                               <strong>Delivery Address:</strong> {estimate.delivery_address}
                             </p>
                           )}
@@ -276,34 +276,36 @@ export const EstimateLineItems = ({ estimateId, isEditable = false }: EstimateLi
                       )}
                     </div>
                   </div>
-                  <div className="text-right flex items-center gap-2">
-                    {editingItemId === item.id && editingItem ? (
-                      <div className="flex gap-1">
-                        <Button size="sm" variant="outline" onClick={handleSaveClick} disabled={updateLineItemMutation.isPending}>
-                          <Save className="h-3 w-3" />
-                        </Button>
-                        <Button size="sm" variant="outline" onClick={handleCancelClick}>
-                          <X className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    ) : (
-                      <>
-                        {item.quantity > 1 ? (
-                          <div>
-                            <p className="text-sm text-muted-foreground">
-                              ${item.unit_price.toLocaleString()} × {item.quantity}
-                            </p>
-                            <p className="font-medium">${item.total_price.toLocaleString()}</p>
-                          </div>
-                        ) : (
-                          <p className="font-medium">${item.total_price.toLocaleString()}</p>
-                        )}
-                        {isEditable && (
-                          <Button size="sm" variant="outline" onClick={() => handleEditClick(item)}>
-                            Edit
+                  <div className="flex items-center justify-between sm:justify-end gap-3 flex-shrink-0">
+                    <div className="text-right">
+                      {editingItemId === item.id && editingItem ? (
+                        <div className="flex gap-1">
+                          <Button size="sm" variant="outline" onClick={handleSaveClick} disabled={updateLineItemMutation.isPending}>
+                            <Save className="h-3 w-3" />
                           </Button>
-                        )}
-                      </>
+                          <Button size="sm" variant="outline" onClick={handleCancelClick}>
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <>
+                          {item.quantity > 1 ? (
+                            <div className="text-right">
+                              <p className="text-sm text-muted-foreground whitespace-nowrap">
+                                ${item.unit_price.toLocaleString()} × {item.quantity}
+                              </p>
+                              <p className="font-medium whitespace-nowrap">${item.total_price.toLocaleString()}</p>
+                            </div>
+                          ) : (
+                            <p className="font-medium whitespace-nowrap">${item.total_price.toLocaleString()}</p>
+                          )}
+                        </>
+                      )}
+                    </div>
+                    {isEditable && editingItemId !== item.id && (
+                      <Button size="sm" variant="outline" onClick={() => handleEditClick(item)} className="flex-shrink-0">
+                        Edit
+                      </Button>
                     )}
                   </div>
                 </div>

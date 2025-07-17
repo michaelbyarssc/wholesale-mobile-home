@@ -5425,6 +5425,10 @@ export type Database = {
         }
         Returns: string
       }
+      refresh_analytics_views: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       send_delivery_notifications: {
         Args: { delivery_id_param: string }
         Returns: Json

@@ -5175,7 +5175,63 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      analytics_mobile_homes_mv: {
+        Row: {
+          appointment_rate: number | null
+          appointments: number | null
+          avg_view_time: number | null
+          conversion_rate: number | null
+          estimate_rate: number | null
+          estimate_requests: number | null
+          manufacturer: string | null
+          mobile_home_id: string | null
+          model: string | null
+          sales: number | null
+          series: string | null
+          total_views: number | null
+          unique_views: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "analytics_mobile_home_views_mobile_home_id_fkey"
+            columns: ["mobile_home_id"]
+            isOneToOne: false
+            referencedRelation: "mobile_homes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      analytics_overview_mv: {
+        Row: {
+          avg_sale_value: number | null
+          avg_session_duration: number | null
+          avg_time_on_page: number | null
+          avg_view_time: number | null
+          homes_viewed: number | null
+          last_refresh: string | null
+          total_appointments: number | null
+          total_estimates: number | null
+          total_pageviews: number | null
+          total_sales: number | null
+          total_sessions: number | null
+          total_views: number | null
+          unique_pageviews: number | null
+          unique_users: number | null
+        }
+        Relationships: []
+      }
+      analytics_popular_pages_mv: {
+        Row: {
+          avg_scroll_depth: number | null
+          avg_time: number | null
+          page_path: string | null
+          page_title: string | null
+          unique_view_rate: number | null
+          unique_views: number | null
+          views: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       add_transaction_payment: {

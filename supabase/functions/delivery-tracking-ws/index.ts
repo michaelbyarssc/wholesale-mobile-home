@@ -27,6 +27,7 @@ serve(async (req) => {
 
   let deliveryId: string | null = null;
   let trackingInterval: number | null = null;
+  let deliveryChannel: any = null;
 
   socket.onmessage = async (event) => {
     try {
@@ -38,7 +39,7 @@ serve(async (req) => {
             deliveryId = message.deliveryId;
             
             // Subscribe to real-time updates for this delivery
-            const deliveryChannel = supabase
+            deliveryChannel = supabase
               .channel('delivery-updates')
               .on(
                 'postgres_changes',
@@ -57,49 +58,49 @@ serve(async (req) => {
               )
               .subscribe();
 
-            // Start periodic GPS tracking updates
-            trackingInterval = setInterval(async () => {
-              const { data: gpsData, error: gpsError } = await supabase
+            // Get initial data with optimized queries
+            const [deliveryResult, gpsResult] = await Promise.all([
+              supabase
+                .from('deliveries')
+                .select('*, mobile_homes (display_name)')
+                .eq('id', deliveryId)
+                .maybeSingle(),
+              supabase
                 .from('delivery_gps_tracking')
-                .select('*')
+                .select('latitude,longitude,speed_mph,heading,timestamp')
                 .eq('delivery_id', deliveryId)
                 .order('timestamp', { ascending: false })
                 .limit(1)
-                .single();
+                .maybeSingle()
+            ]);
 
-              if (!gpsError && gpsData) {
+            if (!deliveryResult.error) {
+              socket.send(JSON.stringify({
+                type: 'initial_data',
+                data: {
+                  ...deliveryResult.data,
+                  current_location: gpsResult.data
+                }
+              }));
+            }
+
+            // Start periodic GPS tracking updates
+            trackingInterval = setInterval(async () => {
+              const { data: gpsData } = await supabase
+                .from('delivery_gps_tracking')
+                .select('latitude,longitude,speed_mph,heading,timestamp')
+                .eq('delivery_id', deliveryId)
+                .order('timestamp', { ascending: false })
+                .limit(1)
+                .maybeSingle();
+
+              if (gpsData) {
                 socket.send(JSON.stringify({
                   type: 'gps_update',
                   data: gpsData
                 }));
               }
             }, 10000) as unknown as number;
-
-            // Send initial data
-            const { data: delivery, error: deliveryError } = await supabase
-              .from('deliveries')
-               .select(`
-                 *,
-                 mobile_homes (
-                   display_name
-                 ),
-                 delivery_gps_tracking (
-                   latitude,
-                   longitude,
-                   speed_mph,
-                   heading,
-                   timestamp
-                 )
-               `)
-               .eq('id', deliveryId)
-               .maybeSingle();
-
-            if (!deliveryError) {
-              socket.send(JSON.stringify({
-                type: 'initial_data',
-                data: delivery
-              }));
-            }
           }
           break;
 
@@ -107,6 +108,10 @@ serve(async (req) => {
           if (trackingInterval) {
             clearInterval(trackingInterval);
             trackingInterval = null;
+          }
+          if (deliveryChannel) {
+            await deliveryChannel.unsubscribe();
+            deliveryChannel = null;
           }
           break;
 
@@ -125,6 +130,9 @@ serve(async (req) => {
   socket.onclose = () => {
     if (trackingInterval) {
       clearInterval(trackingInterval);
+    }
+    if (deliveryChannel) {
+      deliveryChannel.unsubscribe();
     }
   };
 

@@ -2,6 +2,7 @@ import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { EstimatesTab } from './EstimatesTab';
 import { InvoiceManagement } from './InvoiceManagement';
+import { DeliveryManagement } from './DeliveryManagement';
 import { Receipt, FileText, Truck } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -44,14 +45,7 @@ export const SalesTab = () => {
         </TabsContent>
 
         <TabsContent value="deliveries" className="space-y-4 mt-4">
-          <div className="flex flex-col gap-4">
-            <p className="text-sm text-muted-foreground">
-              Manage delivery schedules and track delivery status.
-            </p>
-            <div className="border rounded-md p-6 flex items-center justify-center">
-              <p className="text-muted-foreground">Delivery management will be implemented in the next phase.</p>
-            </div>
-          </div>
+          <DeliveryManagement />
         </TabsContent>
       </Tabs>
     </div>

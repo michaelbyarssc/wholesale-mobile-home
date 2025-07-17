@@ -21,15 +21,18 @@ site_url = "http://localhost:3000"
 file_size_limit = "50MiB"
 
 # Edge functions configuration
-# This enables the functions to be deployed automatically
 [functions]
 [functions.send-delivery-tracking]
 verify_jwt = true
-[functions.update-delivery-status]
-verify_jwt = true
+
 [functions.upload-delivery-photo]
 verify_jwt = true
-[functions.capture-signature]
+
+[functions.update-delivery-status]
 verify_jwt = true
+
 [functions.sync-calendar]
+verify_jwt = true
+
+[functions.capture-signature]
 verify_jwt = true

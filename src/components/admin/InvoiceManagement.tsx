@@ -354,6 +354,9 @@ export const InvoiceManagement = () => {
       payment_method: string; 
       notes?: string; 
     }) => {
+      // Get current user for created_by field
+      const { data: userData } = await supabase.auth.getUser();
+      
       const { data, error } = await supabase
         .from('payments')
         .insert({
@@ -361,7 +364,7 @@ export const InvoiceManagement = () => {
           amount: paymentData.amount,
           payment_method: paymentData.payment_method,
           notes: paymentData.notes,
-          created_by: (await supabase.auth.getUser()).data.user?.id
+          created_by: userData.user?.id
         })
         .select()
         .single();

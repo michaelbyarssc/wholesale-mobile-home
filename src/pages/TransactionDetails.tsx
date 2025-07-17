@@ -84,8 +84,8 @@ export default function TransactionDetails() {
     addNote,
   } = useTransactionDetails(transactionId!);
 
-  // Enable real-time updates for this transaction
-  useTransactionRealtime(transactionId);
+  // Enable real-time updates for this transaction (only if we have a transaction)
+  useTransactionRealtime(transaction?.id);
 
   const handleApprove = () => {
     approveTransaction.mutate();

@@ -37,7 +37,7 @@ const notificationTemplates: Record<string, Notification> = {
   status_update: {
     type: 'status_update',
     emailSubject: 'Delivery Status Update',
-    emailTemplate: \`
+    emailTemplate: `
       <h1>Your Delivery Status Has Been Updated</h1>
       <p>Your delivery #{{deliveryNumber}} has been updated to status: {{status}}</p>
       <p>Current Location: {{location}}</p>
@@ -45,29 +45,29 @@ const notificationTemplates: Record<string, Notification> = {
       <p>Estimated arrival: {{eta}}</p>
       {{/if}}
       <p>Track your delivery: {{trackingUrl}}</p>
-    \`,
+    `,
     smsTemplate: 'Your delivery #{{deliveryNumber}} status: {{status}}. {{#if eta}}ETA: {{eta}}. {{/if}}Track: {{trackingUrl}}'
   },
   delivery_completed: {
     type: 'delivery_completed',
     emailSubject: 'Delivery Successfully Completed',
-    emailTemplate: \`
+    emailTemplate: `
       <h1>Your Delivery is Complete!</h1>
       <p>Your delivery #{{deliveryNumber}} has been successfully completed.</p>
       <p>Thank you for choosing our services.</p>
       <p>View delivery details: {{trackingUrl}}</p>
-    \`,
+    `,
     smsTemplate: 'Your delivery #{{deliveryNumber}} has been completed. Thank you for choosing our services!'
   },
   pickup_started: {
     type: 'pickup_started',
     emailSubject: 'Pickup Process Started',
-    emailTemplate: \`
+    emailTemplate: `
       <h1>Pickup Process Has Started</h1>
       <p>The pickup process for your delivery #{{deliveryNumber}} has begun.</p>
       <p>Our team will keep you updated on the progress.</p>
       <p>Track your delivery: {{trackingUrl}}</p>
-    \`,
+    `,
     smsTemplate: 'Pickup started for delivery #{{deliveryNumber}}. Track: {{trackingUrl}}'
   }
 };
@@ -95,14 +95,14 @@ serve(async (req: Request) => {
     // Get delivery details
     const { data: delivery, error: deliveryError } = await supabase
       .from('deliveries')
-      .select(\`
+      .select(`
         *,
         mobile_homes (
           display_name
         )
-      \`)
+      `)
       .eq('id', deliveryId)
-      .single();
+      .maybeSingle();
 
     if (deliveryError) {
       return new Response(
@@ -121,7 +121,7 @@ serve(async (req: Request) => {
     }
 
     // Build notification content
-    const trackingUrl = \`${Deno.env.get('PUBLIC_SITE_URL')}/track/${delivery.delivery_number}\`;
+    const trackingUrl = `${Deno.env.get('PUBLIC_SITE_URL')}/track/${delivery.delivery_number}`;
     const variables = {
       deliveryNumber: delivery.delivery_number,
       status: delivery.status,

@@ -141,8 +141,26 @@ export default function TransactionDetails() {
       <div className="container mx-auto p-6">
         <Card>
           <CardContent className="text-center py-8">
-            <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-            <p className="text-gray-500">Transaction not found.</p>
+            <AlertCircle className="h-12 w-12 text-orange-500 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold mb-2">No Transaction Found</h2>
+            <p className="text-gray-600 mb-4">
+              This estimate hasn't been converted to a transaction yet. 
+              Estimates need to be approved by an admin before they become transactions.
+            </p>
+            <div className="flex gap-2 justify-center">
+              <Button 
+                onClick={() => window.history.back()} 
+                variant="outline"
+              >
+                Go Back
+              </Button>
+              <Button 
+                onClick={() => window.location.href = '/transactions'} 
+                variant="default"
+              >
+                View All Transactions
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>

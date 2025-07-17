@@ -72,14 +72,21 @@ export const AdminAnalyticsDashboard = () => {
       const fromDate = format(dateRange.from, 'yyyy-MM-dd');
       const toDate = format(dateRange.to, 'yyyy-MM-dd');
       
-      // Get overview analytics from materialized view
-      const { data: overview } = await supabase
+      // Get overview analytics for the specified date range
+      const { data: overviewData, error } = await supabase
         .rpc('get_analytics_overview', { 
           p_start_date: fromDate,
           p_end_date: toDate
-        })
-        .single();
-
+        });
+        
+      if (error) {
+        console.error("Error fetching analytics:", error);
+        throw new Error('Failed to fetch analytics data');
+      }
+      
+      // The RPC function returns an array with a single item
+      const overview = overviewData && overviewData.length > 0 ? overviewData[0] : null;
+      
       // Get popular pages data
       const { data: pageViewData } = await supabase
         .from('analytics_popular_pages_mv')
@@ -92,11 +99,11 @@ export const AdminAnalyticsDashboard = () => {
         .select('*')
         .limit(10);
 
-      // Transform data into expected format
-      const totalSessions = overview?.total_sessions || 0;
-      const totalPageViews = overview?.total_pageviews || 0;
-      const totalUsers = overview?.unique_users || 0;
-      const avgSessionDuration = overview?.avg_session_duration || 0;
+      // Transform data into expected format using the correct field names from the RPC function
+      const totalSessions = overview?.total_sessions ?? 0;
+      const totalPageViews = overview?.total_pageviews ?? 0;
+      const totalUsers = overview?.unique_users ?? 0;
+      const avgSessionDuration = overview?.avg_session_duration ?? 0;
 
       const popularPages = (pageViewData || []).map(p => ({
         page: p.page_path,
@@ -128,10 +135,10 @@ export const AdminAnalyticsDashboard = () => {
       // Conversion funnel
       const conversionFunnel = [
         { step: 'Page Views', count: totalPageViews },
-        { step: 'Mobile Home Views', count: overview?.total_views || 0 },
-        { step: 'Estimates', count: overview?.total_estimates || 0 },
-        { step: 'Appointments', count: overview?.total_appointments || 0 },
-        { step: 'Sales', count: overview?.total_sales || 0 }
+        { step: 'Mobile Home Views', count: overview?.total_views ?? 0 },
+        { step: 'Estimates', count: overview?.total_estimates ?? 0 },
+        { step: 'Appointments', count: overview?.total_appointments ?? 0 },
+        { step: 'Sales', count: overview?.total_sales ?? 0 }
       ];
 
       // Top searches (mock data since we don't have this in materialized views)
@@ -169,7 +176,18 @@ export const AdminAnalyticsDashboard = () => {
       <div className="flex items-center justify-between">
         <h2 className="text-3xl font-bold">Analytics Dashboard</h2>
         <div className="flex items-center gap-4">
-          <div className="text-sm text-muted-foreground">Last 30 days</div>
+          <div className="flex items-center space-x-2">
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+            <select 
+              className="text-sm border rounded p-1" 
+              value={Object.keys(DATE_RANGES).find(key => DATE_RANGES[key] === dateRange) || 'last30Days'}
+              onChange={(e) => setDateRange(DATE_RANGES[e.target.value])}
+            >
+              {Object.entries(DATE_RANGES).map(([key, range]) => (
+                <option key={key} value={key}>{range.label}</option>
+              ))}
+            </select>
+          </div>
           <Button
             variant="outline"
             size="sm"

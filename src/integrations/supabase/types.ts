@@ -5378,6 +5378,26 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      get_analytics_overview: {
+        Args: { p_start_date: string; p_end_date: string }
+        Returns: {
+          last_refresh: string
+          total_sessions: number
+          unique_session_ids: number
+          unique_users: number
+          avg_session_duration: number
+          total_estimates: number
+          total_appointments: number
+          total_sales: number
+          avg_sale_value: number
+          total_pageviews: number
+          unique_pageviews: number
+          avg_time_on_page: number
+          total_views: number
+          avg_view_time: number
+          homes_viewed: number
+        }[]
+      }
       get_chat_lead_source: {
         Args: { page_path: string }
         Returns: string

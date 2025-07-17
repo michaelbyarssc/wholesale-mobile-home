@@ -184,7 +184,7 @@ export const AdminAnalyticsDashboard = () => {
             <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{analyticsData.totalUsers.toLocaleString()}</div>
+            <div className="text-2xl font-bold">{analyticsData.totalUsers > 0 ? analyticsData.totalUsers.toLocaleString() : analyticsData.totalSessions.toLocaleString()}</div>
           </CardContent>
         </Card>
 

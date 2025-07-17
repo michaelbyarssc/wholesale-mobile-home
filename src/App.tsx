@@ -33,6 +33,7 @@ const DriverPortal = React.lazy(() => import("./pages/DriverPortal"));
 const DriverLogin = React.lazy(() => import("./pages/DriverLogin"));
 const CustomerDeliveryPortal = React.lazy(() => import("./pages/CustomerDeliveryPortal"));
 const TrackDelivery = React.lazy(() => import("./pages/TrackDelivery"));
+const TransactionDetails = React.lazy(() => import("./pages/TransactionDetails"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -61,6 +62,11 @@ function AppRoutes() {
         <Route path="/transactions" element={
           <ProtectedRoute>
             <TransactionHistory />
+          </ProtectedRoute>
+        } />
+        <Route path="/estimates/:transactionId" element={
+          <ProtectedRoute>
+            <TransactionDetails />
           </ProtectedRoute>
         } />
         <Route path="/approve-estimate/:token" element={<ApproveEstimate />} />

@@ -46,7 +46,7 @@ serve(async (req) => {
                   event: '*',
                   schema: 'public',
                   table: 'deliveries',
-                  filter: \`id=eq.\${deliveryId}\`
+                  filter: `id=eq.${deliveryId}`
                 },
                 (payload) => {
                   socket.send(JSON.stringify({

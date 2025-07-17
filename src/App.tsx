@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { usePageTracking } from '@/hooks/usePageTracking';
+import { usePerformanceMetrics } from '@/hooks/usePerformanceMetrics';
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { LoadingSpinner } from "@/components/loading/LoadingSpinner";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -46,6 +47,7 @@ const queryClient = new QueryClient({
 
 function AppRoutes() {
   usePageTracking();
+  usePerformanceMetrics();
   
   return (
     <Suspense fallback={<LoadingSpinner />}>

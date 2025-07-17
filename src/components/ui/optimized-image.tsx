@@ -70,13 +70,24 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
 
   // Generate responsive source set for better mobile performance
   const generateSrcSet = (baseSrc: string) => {
-    if (!baseSrc || baseSrc.startsWith('data:') || baseSrc.includes('unsplash')) {
-      return baseSrc;
-    }
+    if (!baseSrc || baseSrc.startsWith('data:')) return baseSrc;
     
-    // For local images, we would generate different sizes
-    // This is a placeholder - in production you'd use a CDN or image optimization service
-    return baseSrc;
+    // Handle Unsplash images
+    if (baseSrc.includes('unsplash')) {
+      return `${baseSrc}&w=640 640w,
+              ${baseSrc}&w=750 750w,
+              ${baseSrc}&w=828 828w,
+              ${baseSrc}&w=1080 1080w,
+              ${baseSrc}&w=1200 1200w,
+              ${baseSrc}&w=1920 1920w`;
+    }
+
+    // Handle local images
+    const url = new URL(baseSrc, window.location.origin);
+    const widths = [640, 750, 828, 1080, 1200, 1920];
+    return widths
+      .map(w => `${url.toString()}?w=${w} ${w}w`)
+      .join(',');
   };
 
   return (

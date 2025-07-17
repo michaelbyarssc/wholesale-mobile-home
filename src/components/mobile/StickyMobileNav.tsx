@@ -33,13 +33,13 @@ export const StickyMobileNav = ({ user, cartCount, onCartToggle }: StickyMobileN
   return (
     <>
       {/* Mobile Sticky Navigation - Only show on mobile */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-lg lg:hidden">
+      <div className="fixed bottom-0 left-0 right-0 z-40 bg-background border-t shadow-lg lg:hidden will-change-transform">
         <div className="grid grid-cols-4 gap-1 p-2">
           {/* Call Button */}
           <Button
             onClick={handleCall}
             variant="ghost"
-            className="flex flex-col items-center justify-center h-14 px-2 py-3 text-gray-600 hover:text-blue-600 hover:bg-blue-50 transition-colors touch-manipulation"
+            className="flex flex-col items-center justify-center h-14 px-2 py-3 text-muted-foreground hover:text-primary hover:bg-accent transition-colors touch-manipulation"
           >
             <Phone className="h-5 w-5 mb-1" />
             <span className="text-xs font-medium">Call</span>

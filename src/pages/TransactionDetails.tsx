@@ -1,4 +1,4 @@
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useTransactionDetails } from '@/hooks/useTransactionDetails';
 import { useTransactionRealtime } from '@/hooks/useTransactionRealtime';
 import { TransactionStatus } from '@/types/transaction';
@@ -24,7 +24,8 @@ import {
   User,
   MapPin,
   Calendar,
-  AlertCircle
+  AlertCircle,
+  ArrowLeft
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import { useState } from 'react';
@@ -61,6 +62,7 @@ const statusLabels: Record<TransactionStatus, string> = {
 
 export default function TransactionDetails() {
   const { transactionId } = useParams<{ transactionId: string }>();
+  const navigate = useNavigate();
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [noteDialogOpen, setNoteDialogOpen] = useState(false);
   const [noteContent, setNoteContent] = useState('');
@@ -171,11 +173,22 @@ export default function TransactionDetails() {
     <div className="container mx-auto p-6 space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">
-            {transaction.transaction_number}
-          </h1>
-          <p className="text-gray-600">Transaction Details</p>
+        <div className="flex items-center gap-3">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => navigate(-1)}
+            className="flex items-center gap-2"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">
+              {transaction.transaction_number}
+            </h1>
+            <p className="text-gray-600">Transaction Details</p>
+          </div>
         </div>
         <div className="flex gap-2">
           <Badge className={statusColors[transaction.status]}>

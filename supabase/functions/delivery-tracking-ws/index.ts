@@ -78,21 +78,21 @@ serve(async (req) => {
             // Send initial data
             const { data: delivery, error: deliveryError } = await supabase
               .from('deliveries')
-              .select(\`
-                *,
-                mobile_homes (
-                  display_name
-                ),
-                delivery_gps_tracking (
-                  latitude,
-                  longitude,
-                  speed_mph,
-                  heading,
-                  timestamp
-                )
-              \`)
-              .eq('id', deliveryId)
-              .single();
+               .select(`
+                 *,
+                 mobile_homes (
+                   display_name
+                 ),
+                 delivery_gps_tracking (
+                   latitude,
+                   longitude,
+                   speed_mph,
+                   heading,
+                   timestamp
+                 )
+               `)
+               .eq('id', deliveryId)
+               .maybeSingle();
 
             if (!deliveryError) {
               socket.send(JSON.stringify({

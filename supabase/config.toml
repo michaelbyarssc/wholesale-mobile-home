@@ -36,3 +36,6 @@ verify_jwt = true
 
 [functions.capture-signature]
 verify_jwt = true
+
+[functions.delivery-tracking-ws]
+verify_jwt = false

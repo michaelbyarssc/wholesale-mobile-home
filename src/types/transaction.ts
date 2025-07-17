@@ -19,6 +19,7 @@ export type TransactionPriority = 'low' | 'medium' | 'high' | 'urgent';
 export interface Transaction {
   id: string;
   transaction_number: string;
+  display_number?: string;
   transaction_type: TransactionType;
   status: TransactionStatus;
   priority: TransactionPriority;
@@ -32,6 +33,7 @@ export interface Transaction {
   // Mobile home and services
   mobile_home_id?: string;
   mobile_home?: {
+    id: string;
     model: string;
     manufacturer: string;
     series: string;
@@ -61,6 +63,10 @@ export interface Transaction {
   invoice_expires_at?: string;
   scheduled_delivery_date?: string;
   completed_at?: string;
+  
+  // Related records
+  estimate_id?: string;
+  invoice_id?: string;
   
   // Additional fields
   preferred_contact?: string;

@@ -7,7 +7,7 @@ export const useTransactionDetails = (idParam: string) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // First, check if the ID is a transaction ID or estimate ID
+  // First, check if the ID is a transaction ID, estimate ID, or invoice ID
   const transactionQuery = useQuery({
     queryKey: ['transaction', idParam],
     queryFn: async () => {
@@ -36,6 +36,147 @@ export const useTransactionDetails = (idParam: string) => {
 
         if (transactionError) throw transactionError;
         data = transactionData;
+      }
+
+      // If still not found, try to find by invoice ID
+      if (!data) {
+        const { data: transactionData, error: transactionError } = await supabase
+          .from('transactions')
+          .select(`
+            *,
+            mobile_home:mobile_homes(id, model, manufacturer, series, display_name, price)
+          `)
+          .eq('invoice_id', idParam)
+          .maybeSingle();
+
+        if (transactionError) throw transactionError;
+        data = transactionData;
+      }
+
+      // If still no transaction found, check if this is an invoice
+      if (!data) {
+        const { data: invoiceData, error: invoiceError } = await supabase
+          .from('invoices')
+          .select(`
+            *,
+            mobile_home:mobile_homes(id, model, manufacturer, series, display_name, price)
+          `)
+          .eq('id', idParam)
+          .maybeSingle();
+
+        if (invoiceError) throw invoiceError;
+        
+        if (invoiceData) {
+          // Convert invoice data to transaction-like format for display
+          return {
+            id: invoiceData.id,
+            transaction_number: invoiceData.transaction_number || invoiceData.invoice_number,
+            display_number: undefined,
+            transaction_type: 'sale',
+            status: invoiceData.status === 'paid' ? 'payment_complete' : 'invoice_generated',
+            priority: 'medium',
+            customer_name: invoiceData.customer_name,
+            customer_email: invoiceData.customer_email,
+            customer_phone: invoiceData.customer_phone || '',
+            delivery_address: invoiceData.delivery_address || '',
+            mobile_home_id: invoiceData.mobile_home_id,
+            mobile_home: invoiceData.mobile_home,
+            selected_services: invoiceData.selected_services || [],
+            selected_home_options: invoiceData.selected_home_options || [],
+            base_amount: 0,
+            service_amount: 0,
+            tax_amount: 0,
+            total_amount: invoiceData.total_amount,
+            paid_amount: invoiceData.total_amount - (invoiceData.balance_due || 0),
+            balance_due: invoiceData.balance_due || 0,
+            user_id: invoiceData.user_id,
+            assigned_admin_id: undefined,
+            created_by: undefined,
+            created_at: invoiceData.created_at,
+            updated_at: invoiceData.updated_at,
+            estimate_expires_at: undefined,
+            invoice_expires_at: undefined,
+            scheduled_delivery_date: undefined,
+            completed_at: invoiceData.paid_at,
+            estimate_id: invoiceData.estimate_id,
+            invoice_id: invoiceData.id,
+            preferred_contact: invoiceData.preferred_contact || '',
+            timeline: invoiceData.timeline || '',
+            additional_requirements: invoiceData.additional_requirements || '',
+            internal_notes: undefined,
+            user_notes: undefined,
+            quickbooks_id: invoiceData.quickbooks_id,
+            quickbooks_synced_at: invoiceData.quickbooks_synced_at,
+            repair_description: undefined,
+            repair_category: undefined,
+            repair_urgency: undefined,
+            repair_completed_at: undefined,
+            attachment_urls: []
+          } as Transaction;
+        }
+      }
+
+      // If still not found, check if this is an estimate
+      if (!data) {
+        const { data: estimateData, error: estimateError } = await supabase
+          .from('estimates')
+          .select(`
+            *,
+            mobile_home:mobile_homes(id, model, manufacturer, series, display_name, price)
+          `)
+          .eq('id', idParam)
+          .maybeSingle();
+
+        if (estimateError) throw estimateError;
+        
+        if (estimateData) {
+          // Convert estimate data to transaction-like format for display
+          return {
+            id: estimateData.id,
+            transaction_number: estimateData.transaction_number || `EST-${estimateData.id.slice(0, 8)}`,
+            display_number: undefined,
+            transaction_type: 'sale',
+            status: estimateData.status === 'approved' ? 'estimate_approved' : 'estimate_submitted',
+            priority: 'medium',
+            customer_name: estimateData.customer_name,
+            customer_email: estimateData.customer_email,
+            customer_phone: estimateData.customer_phone || '',
+            delivery_address: estimateData.delivery_address || '',
+            mobile_home_id: estimateData.mobile_home_id,
+            mobile_home: estimateData.mobile_home,
+            selected_services: estimateData.selected_services || [],
+            selected_home_options: estimateData.selected_home_options || [],
+            base_amount: 0,
+            service_amount: 0,
+            tax_amount: 0,
+            total_amount: estimateData.total_amount,
+            paid_amount: 0,
+            balance_due: estimateData.total_amount,
+            user_id: estimateData.user_id,
+            assigned_admin_id: undefined,
+            created_by: undefined,
+            created_at: estimateData.created_at,
+            updated_at: estimateData.updated_at,
+            estimate_expires_at: undefined,
+            invoice_expires_at: undefined,
+            scheduled_delivery_date: undefined,
+            completed_at: estimateData.approved_at,
+            estimate_id: estimateData.id,
+            invoice_id: estimateData.invoice_id,
+            preferred_contact: estimateData.preferred_contact || '',
+            timeline: estimateData.timeline || '',
+            additional_requirements: estimateData.additional_requirements || '',
+            internal_notes: undefined,
+            user_notes: undefined,
+            quickbooks_id: undefined,
+            quickbooks_synced_at: undefined,
+            repair_description: undefined,
+            repair_category: undefined,
+            repair_urgency: undefined,
+            repair_completed_at: undefined,
+            attachment_urls: []
+          } as Transaction;
+        }
       }
 
       return data as Transaction | null;

@@ -1,13 +1,20 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Activity, Eye, Users, TrendingUp, Search, MousePointer, Clock, Target, RefreshCw } from 'lucide-react';
+import { Activity, Eye, Users, TrendingUp, Search, MousePointer, Clock, Target, RefreshCw, Calendar } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
+import { format, subDays, startOfDay, endOfDay, startOfWeek, startOfMonth, subMonths, subYears } from 'date-fns';
+
+type DateRange = {
+  from: Date;
+  to: Date;
+  label: string;
+}
 
 interface AnalyticsData {
   totalSessions: number;
@@ -24,17 +31,53 @@ interface AnalyticsData {
 
 const COLORS = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))'];
 
+// Predefined date ranges
+const DATE_RANGES: Record<string, DateRange> = {
+  today: {
+    label: 'Today',
+    from: startOfDay(new Date()),
+    to: endOfDay(new Date())
+  },
+  thisWeek: {
+    label: 'This Week',
+    from: startOfWeek(new Date()),
+    to: endOfDay(new Date())
+  },
+  last30Days: {
+    label: 'Last 30 Days',
+    from: subDays(new Date(), 30),
+    to: endOfDay(new Date())
+  },
+  last90Days: {
+    label: 'Last 90 Days',
+    from: subDays(new Date(), 90),
+    to: endOfDay(new Date())
+  },
+  lastYear: {
+    label: 'Last Year',
+    from: subYears(new Date(), 1),
+    to: endOfDay(new Date())
+  }
+};
+
 export const AdminAnalyticsDashboard = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [dateRange, setDateRange] = useState<DateRange>(DATE_RANGES.last30Days);
   const { data: analyticsData, isLoading } = useQuery({
-    queryKey: ['admin-analytics'],
+    queryKey: ['admin-analytics', dateRange],
     queryFn: async (): Promise<AnalyticsData> => {
+      // Format dates for query parameters
+      const fromDate = format(dateRange.from, 'yyyy-MM-dd');
+      const toDate = format(dateRange.to, 'yyyy-MM-dd');
+      
       // Get overview analytics from materialized view
       const { data: overview } = await supabase
-        .from('analytics_overview_mv')
-        .select('*')
+        .rpc('get_analytics_overview', { 
+          p_start_date: fromDate,
+          p_end_date: toDate
+        })
         .single();
 
       // Get popular pages data

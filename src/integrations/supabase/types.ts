@@ -5216,6 +5216,7 @@ export type Database = {
           total_sessions: number | null
           total_views: number | null
           unique_pageviews: number | null
+          unique_session_ids: number | null
           unique_users: number | null
         }
         Relationships: []

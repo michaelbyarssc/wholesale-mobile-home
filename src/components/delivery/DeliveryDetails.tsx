@@ -16,6 +16,8 @@ import {
   History, Clock, ClipboardList, CircleArrowUp
 } from 'lucide-react';
 
+import { DeliveryStatus } from '@/types/delivery';
+
 type Delivery = {
   id: string;
   delivery_number: string;
@@ -24,7 +26,7 @@ type Delivery = {
   customer_phone: string;
   delivery_address: string;
   pickup_address: string;
-  status: string;
+  status: DeliveryStatus;
   mobile_home_type: string;
   crew_type: string;
   scheduled_pickup_date: string | null;
@@ -68,14 +70,14 @@ type Photo = {
 type StatusHistoryItem = {
   id: string;
   delivery_id: string;
-  previous_status: string | null;
-  new_status: string;
+  previous_status: DeliveryStatus | null;
+  new_status: DeliveryStatus;
   notes: string | null;
   created_at: string;
   changed_by: string | null;
 };
 
-const statusColors: Record<string, string> = {
+const statusColors: Record<DeliveryStatus, string> = {
   pending_payment: 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200 dark:bg-yellow-900 dark:text-yellow-300',
   scheduled: 'bg-blue-100 text-blue-800 hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-300',
   factory_pickup_scheduled: 'bg-indigo-100 text-indigo-800 hover:bg-indigo-200 dark:bg-indigo-900 dark:text-indigo-300',
@@ -89,9 +91,8 @@ const statusColors: Record<string, string> = {
   delayed: 'bg-orange-100 text-orange-800 hover:bg-orange-200 dark:bg-orange-900 dark:text-orange-300',
 };
 
-const getStatusBadge = (status: string) => {
-  const colorClass = statusColors[status] || 'bg-gray-100 text-gray-800';
-  return <Badge className={colorClass}>{status.replace(/_/g, ' ')}</Badge>;
+const getStatusBadge = (status: DeliveryStatus) => {
+  return <Badge className={statusColors[status]}>{status.replace(/_/g, ' ')}</Badge>;
 };
 
 const getFormattedDateTime = (dateTimeString: string | null) => {
@@ -183,7 +184,7 @@ export const DeliveryDetails = () => {
 
   // Update delivery status mutation
   const updateStatusMutation = useMutation({
-    mutationFn: async ({ newStatus, notes }: { newStatus: string, notes?: string }) => {
+    mutationFn: async ({ newStatus, notes }: { newStatus: DeliveryStatus, notes?: string }) => {
       if (!id) throw new Error('Delivery ID is required');
       
       // First update the delivery status
@@ -206,18 +207,18 @@ export const DeliveryDetails = () => {
       // Then create a status history entry
       const { data: historyEntry, error: historyError } = await supabase
         .from('delivery_status_history')
-        .insert([{
+        .insert({
           delivery_id: id,
           previous_status: delivery?.status,
           new_status: newStatus,
           notes: notes || `Status updated to ${newStatus}`
-        }])
-        .select();
+        })
+        .select()
+        .single();
 
       if (historyError) throw historyError;
 
       // Send customer notifications (if applicable)
-      // This would normally call an edge function to handle SMS/email notifications
       try {
         // Example code - this would need to be implemented as an edge function
         // await supabase.functions.invoke('send-delivery-update', {
@@ -228,7 +229,6 @@ export const DeliveryDetails = () => {
         // });
       } catch (e) {
         console.error('Failed to send notification:', e);
-        // Continue with the update even if notification fails
       }
 
       return { delivery: updatedDelivery, history: historyEntry };
@@ -240,7 +240,7 @@ export const DeliveryDetails = () => {
   });
 
   // Status update button handler
-  const handleStatusUpdate = (newStatus: string) => {
+  const handleStatusUpdate = (newStatus: DeliveryStatus) => {
     updateStatusMutation.mutate({ newStatus });
   };
 

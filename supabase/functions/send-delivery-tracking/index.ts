@@ -1,220 +1,252 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.0";
-import { Resend } from "npm:resend@2.0.0";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.0';
+import { Resend } from 'npm:resend@2.0.0';
+import twilio from 'npm:twilio@4.23.0';
 
+// Initialize Supabase client
+const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+// Initialize Resend client for email
+const resend = new Resend(Deno.env.get('RESEND_API_KEY')!);
+
+// Initialize Twilio client for SMS
+const twilioClient = twilio(
+  Deno.env.get('TWILIO_ACCOUNT_SID')!, 
+  Deno.env.get('TWILIO_AUTH_TOKEN')!
+);
+const twilioPhoneNumber = Deno.env.get('TWILIO_PHONE_NUMBER')!;
+
+// CORS headers
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
-
-// Twilio configuration
-const TWILIO_ACCOUNT_SID = Deno.env.get('TWILIO_ACCOUNT_SID');
-const TWILIO_AUTH_TOKEN = Deno.env.get('TWILIO_AUTH_TOKEN');
-const TWILIO_PHONE_NUMBER = Deno.env.get('TWILIO_PHONE_NUMBER');
-
-interface DeliveryTrackingRequest {
+interface DeliveryNotificationRequest {
   deliveryId: string;
-  notificationType?: 'email' | 'sms' | 'both';
+  notificationType: 'status_update' | 'eta_update' | 'delivery_complete' | 'pickup_complete';
+  customMessage?: string;
 }
 
-async function sendSMS(to: string, message: string) {
-  const url = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`;
-  
-  const body = new URLSearchParams({
-    To: to,
-    From: TWILIO_PHONE_NUMBER!,
-    Body: message,
-  });
+async function getDeliveryDetails(deliveryId: string) {
+  const { data, error } = await supabase
+    .from('deliveries')
+    .select(`
+      *,
+      mobile_homes(display_name)
+    `)
+    .eq('id', deliveryId)
+    .single();
 
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Basic ${btoa(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`)}`,
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: body.toString(),
-  });
-
-  return response.json();
+  if (error) throw new Error(`Error fetching delivery: ${error.message}`);
+  return data;
 }
 
-const handler = async (req: Request): Promise<Response> => {
-  console.log('Send delivery tracking function called');
-  
+async function sendEmailNotification(delivery: any, notificationType: string, customMessage?: string) {
+  const homeName = delivery.mobile_homes?.display_name || 'your mobile home';
+  let subject = '';
+  let content = '';
+
+  switch (notificationType) {
+    case 'status_update':
+      subject = `Update on your delivery: ${delivery.delivery_number}`;
+      content = `
+        <h1>Delivery Status Update</h1>
+        <p>Hello ${delivery.customer_name},</p>
+        <p>Your delivery of ${homeName} has been updated to: <strong>${delivery.status.replace(/_/g, ' ')}</strong>.</p>
+        ${customMessage ? `<p>${customMessage}</p>` : ''}
+        <p>You can track your delivery using this link: <a href="${supabaseUrl}/track/${delivery.delivery_number}">Track Delivery</a></p>
+        <p>Thank you for your business!</p>
+      `;
+      break;
+    case 'eta_update':
+      subject = `Updated ETA for delivery: ${delivery.delivery_number}`;
+      content = `
+        <h1>Delivery ETA Update</h1>
+        <p>Hello ${delivery.customer_name},</p>
+        <p>We have an updated estimated time of arrival for your ${homeName}.</p>
+        <p>Expected delivery: <strong>${new Date(delivery.scheduled_delivery_date).toLocaleString()}</strong></p>
+        ${customMessage ? `<p>${customMessage}</p>` : ''}
+        <p>You can track your delivery using this link: <a href="${supabaseUrl}/track/${delivery.delivery_number}">Track Delivery</a></p>
+        <p>Thank you for your business!</p>
+      `;
+      break;
+    case 'delivery_complete':
+      subject = `Delivery Completed: ${delivery.delivery_number}`;
+      content = `
+        <h1>Delivery Completed!</h1>
+        <p>Hello ${delivery.customer_name},</p>
+        <p>Your ${homeName} has been successfully delivered to ${delivery.delivery_address}.</p>
+        ${customMessage ? `<p>${customMessage}</p>` : ''}
+        <p>Thank you for your business!</p>
+      `;
+      break;
+    case 'pickup_complete':
+      subject = `Pickup Completed for: ${delivery.delivery_number}`;
+      content = `
+        <h1>Factory Pickup Completed</h1>
+        <p>Hello ${delivery.customer_name},</p>
+        <p>Your ${homeName} has been picked up from the factory and is now in transit.</p>
+        <p>Expected delivery: <strong>${new Date(delivery.scheduled_delivery_date).toLocaleString()}</strong></p>
+        ${customMessage ? `<p>${customMessage}</p>` : ''}
+        <p>You can track your delivery using this link: <a href="${supabaseUrl}/track/${delivery.delivery_number}">Track Delivery</a></p>
+        <p>Thank you for your business!</p>
+      `;
+      break;
+  }
+
+  const { data, error } = await resend.emails.send({
+    from: 'Delivery Notifications <delivery@resend.dev>',
+    to: [delivery.customer_email],
+    subject,
+    html: content,
+  });
+
+  if (error) throw new Error(`Error sending email: ${error.message}`);
+  return data;
+}
+
+async function sendSmsNotification(delivery: any, notificationType: string, customMessage?: string) {
+  const homeName = delivery.mobile_homes?.display_name || 'your mobile home';
+  let message = '';
+
+  switch (notificationType) {
+    case 'status_update':
+      message = `Delivery Update: Your ${homeName} delivery (${delivery.delivery_number}) status is now: ${delivery.status.replace(/_/g, ' ')}. ${customMessage || ''} Track at: ${supabaseUrl}/track/${delivery.delivery_number}`;
+      break;
+    case 'eta_update':
+      message = `Updated ETA: Your ${homeName} delivery (${delivery.delivery_number}) is expected on ${new Date(delivery.scheduled_delivery_date).toLocaleString()}. ${customMessage || ''} Track at: ${supabaseUrl}/track/${delivery.delivery_number}`;
+      break;
+    case 'delivery_complete':
+      message = `Delivery Complete! Your ${homeName} has been successfully delivered to your address. ${customMessage || ''} Thank you for your business!`;
+      break;
+    case 'pickup_complete':
+      message = `Pickup Complete: Your ${homeName} has been picked up from the factory and is now in transit. Expected delivery: ${new Date(delivery.scheduled_delivery_date).toLocaleString()}. ${customMessage || ''} Track at: ${supabaseUrl}/track/${delivery.delivery_number}`;
+      break;
+  }
+
+  // Truncate message if too long for SMS
+  if (message.length > 1600) {
+    message = message.substring(0, 1597) + '...';
+  }
+
+  const formattedPhone = delivery.customer_phone.replace(/\D/g, '');
+  if (!formattedPhone.match(/^\d{10,15}$/)) {
+    throw new Error(`Invalid phone number format: ${delivery.customer_phone}`);
+  }
+
+  const result = await twilioClient.messages.create({
+    body: message,
+    from: twilioPhoneNumber,
+    to: `+${formattedPhone.startsWith('1') ? '' : '1'}${formattedPhone}`,
+  });
+
+  return result;
+}
+
+async function logNotification(deliveryId: string, notificationType: string, emailSent: boolean, smsSent: boolean, error?: string) {
+  const { data, error: logError } = await supabase
+    .from('delivery_notifications')
+    .insert({
+      delivery_id: deliveryId,
+      notification_type: notificationType,
+      email_sent: emailSent,
+      sms_sent: smsSent,
+      error_message: error,
+      sent_at: new Date().toISOString()
+    })
+    .select()
+    .single();
+
+  if (logError) {
+    console.error('Error logging notification:', logError);
+  }
+
+  return data;
+}
+
+serve(async (req: Request) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    const { deliveryId, notificationType, customMessage } = await req.json() as DeliveryNotificationRequest;
+
+    if (!deliveryId || !notificationType) {
+      return new Response(
+        JSON.stringify({ error: 'deliveryId and notificationType are required' }),
+        { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+      );
+    }
+
+    // Get delivery details
+    const delivery = await getDeliveryDetails(deliveryId);
+    if (!delivery) {
+      return new Response(
+        JSON.stringify({ error: 'Delivery not found' }),
+        { status: 404, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+      );
+    }
+
+    // Attempt to send email notification
+    let emailResult = null;
+    let emailError = null;
+    let emailSent = false;
+    try {
+      if (delivery.customer_email) {
+        emailResult = await sendEmailNotification(delivery, notificationType, customMessage);
+        emailSent = true;
+      }
+    } catch (error) {
+      console.error('Error sending email:', error);
+      emailError = error.message;
+    }
+
+    // Attempt to send SMS notification
+    let smsResult = null;
+    let smsError = null;
+    let smsSent = false;
+    try {
+      if (delivery.customer_phone) {
+        smsResult = await sendSmsNotification(delivery, notificationType, customMessage);
+        smsSent = true;
+      }
+    } catch (error) {
+      console.error('Error sending SMS:', error);
+      smsError = error.message;
+    }
+
+    // Log the notification
+    const notificationLog = await logNotification(
+      deliveryId, 
+      notificationType, 
+      emailSent, 
+      smsSent, 
+      emailError || smsError ? `Email: ${emailError || 'none'}, SMS: ${smsError || 'none'}` : undefined
     );
 
-    const { deliveryId, notificationType = 'both' }: DeliveryTrackingRequest = await req.json();
-    console.log('Processing delivery tracking for:', deliveryId);
-
-    // Get delivery information and tracking token
-    const { data: deliveryData, error: deliveryError } = await supabase
-      .from('deliveries')
-      .select(`
-        *,
-        mobile_homes:mobile_home_id(model, manufacturer)
-      `)
-      .eq('id', deliveryId)
-      .single();
-
-    if (deliveryError || !deliveryData) {
-      console.error('Error fetching delivery:', deliveryError);
-      throw new Error('Delivery not found');
-    }
-
-    // Get tracking session
-    const { data: trackingData, error: trackingError } = await supabase
-      .from('customer_tracking_sessions')
-      .select('session_token, order_id')
-      .eq('order_id', deliveryData.id) // This might need adjustment based on your schema
-      .eq('active', true)
-      .single();
-
-    // If no tracking session exists, try to find by customer email
-    let trackingToken = trackingData?.session_token;
-    
-    if (!trackingToken) {
-      const { data: orderData } = await supabase
-        .from('orders')
-        .select('id, customer_tracking_sessions!inner(session_token)')
-        .eq('customer_email', deliveryData.customer_email)
-        .eq('customer_tracking_sessions.active', true)
-        .single();
-      
-      trackingToken = orderData?.customer_tracking_sessions?.[0]?.session_token;
-    }
-
-    if (!trackingToken) {
-      throw new Error('No tracking token found for this delivery');
-    }
-
-    const baseUrl = `${Deno.env.get('SUPABASE_URL')?.replace('/v1', '')}/delivery-portal`;
-    const trackingUrl = `${baseUrl}/${trackingToken}`;
-    
-    console.log('Generated tracking URL:', trackingUrl);
-
-    const homeInfo = deliveryData.mobile_homes 
-      ? `${deliveryData.mobile_homes.manufacturer} ${deliveryData.mobile_homes.model}`
-      : 'Mobile Home';
-
-    let emailSent = false;
-    let smsSent = false;
-
-    // Send Email
-    if (notificationType === 'email' || notificationType === 'both') {
-      console.log('Sending email to:', deliveryData.customer_email);
-      
-      const emailResponse = await resend.emails.send({
-        from: "Delivery Updates <deliveries@resend.dev>",
-        to: [deliveryData.customer_email],
-        subject: `Your ${homeInfo} Delivery is Scheduled - Track Your Order`,
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h1 style="color: #333; text-align: center;">Your Mobile Home Delivery</h1>
-            
-            <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
-              <h2 style="color: #333; margin-top: 0;">Delivery Details</h2>
-              <p><strong>Delivery Number:</strong> ${deliveryData.delivery_number}</p>
-              <p><strong>Customer:</strong> ${deliveryData.customer_name}</p>
-              <p><strong>Mobile Home:</strong> ${homeInfo}</p>
-              <p><strong>Delivery Address:</strong> ${deliveryData.delivery_address}</p>
-              <p><strong>Status:</strong> ${deliveryData.status}</p>
-            </div>
-
-            <div style="text-align: center; margin: 30px 0;">
-              <a href="${trackingUrl}" 
-                 style="background: #007bff; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
-                Track Your Delivery
-              </a>
-            </div>
-
-            <div style="background: #e9ecef; padding: 15px; border-radius: 5px; margin: 20px 0;">
-              <p style="margin: 0; color: #666; font-size: 14px;">
-                <strong>Track your delivery:</strong> Click the button above or visit: <br>
-                <a href="${trackingUrl}" style="color: #007bff; word-break: break-all;">${trackingUrl}</a>
-              </p>
-            </div>
-
-            <p style="color: #666; font-size: 12px; text-align: center; margin-top: 30px;">
-              If you have any questions, please contact our customer service team.
-            </p>
-          </div>
-        `,
-      });
-
-      console.log('Email response:', emailResponse);
-      emailSent = !emailResponse.error;
-      
-      if (emailResponse.error) {
-        console.error('Email error:', emailResponse.error);
-      }
-    }
-
-    // Send SMS
-    if (notificationType === 'sms' || notificationType === 'both') {
-      if (deliveryData.customer_phone && TWILIO_ACCOUNT_SID && TWILIO_AUTH_TOKEN) {
-        console.log('Sending SMS to:', deliveryData.customer_phone);
-        
-        const smsMessage = `Your ${homeInfo} delivery (${deliveryData.delivery_number}) is scheduled! Track your delivery: ${trackingUrl}`;
-        
-        const smsResponse = await sendSMS(deliveryData.customer_phone, smsMessage);
-        console.log('SMS response:', smsResponse);
-        
-        smsSent = !smsResponse.error_code;
-        
-        if (smsResponse.error_code) {
-          console.error('SMS error:', smsResponse);
-        }
-      } else {
-        console.log('SMS not sent - missing phone number or Twilio config');
-      }
-    }
-
-    const result = {
-      success: true,
-      deliveryNumber: deliveryData.delivery_number,
-      trackingUrl,
-      notifications: {
-        email: emailSent,
-        sms: smsSent,
-      },
-    };
-
-    console.log('Notification result:', result);
-
-    return new Response(JSON.stringify(result), {
-      status: 200,
-      headers: {
-        "Content-Type": "application/json",
-        ...corsHeaders,
-      },
-    });
-
-  } catch (error: any) {
-    console.error("Error in send-delivery-tracking function:", error);
     return new Response(
-      JSON.stringify({ 
-        error: error.message,
-        success: false 
+      JSON.stringify({
+        success: true,
+        emailSent,
+        smsSent,
+        notificationLog,
+        emailResult,
+        smsResult,
+        emailError,
+        smsError
       }),
-      {
-        status: 500,
-        headers: { 
-          "Content-Type": "application/json", 
-          ...corsHeaders 
-        },
-      }
+      { status: 200, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+    );
+  } catch (error) {
+    console.error('Error in send-delivery-tracking function:', error);
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
     );
   }
-};
-
-serve(handler);
+});

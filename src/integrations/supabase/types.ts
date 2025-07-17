@@ -2060,6 +2060,50 @@ export type Database = {
           },
         ]
       }
+      delivery_notifications: {
+        Row: {
+          created_at: string | null
+          delivery_id: string | null
+          email_sent: boolean | null
+          error_message: string | null
+          id: string
+          notification_type: string
+          scheduled_for: string | null
+          sent_at: string | null
+          sms_sent: boolean | null
+        }
+        Insert: {
+          created_at?: string | null
+          delivery_id?: string | null
+          email_sent?: boolean | null
+          error_message?: string | null
+          id?: string
+          notification_type: string
+          scheduled_for?: string | null
+          sent_at?: string | null
+          sms_sent?: boolean | null
+        }
+        Update: {
+          created_at?: string | null
+          delivery_id?: string | null
+          email_sent?: boolean | null
+          error_message?: string | null
+          id?: string
+          notification_type?: string
+          scheduled_for?: string | null
+          sent_at?: string | null
+          sms_sent?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delivery_notifications_delivery_id_fkey"
+            columns: ["delivery_id"]
+            isOneToOne: false
+            referencedRelation: "deliveries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       delivery_photos: {
         Row: {
           caption: string | null

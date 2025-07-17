@@ -209,7 +209,7 @@ export const DeliveryDetails = () => {
         .from('delivery_status_history')
         .insert({
           delivery_id: id,
-          previous_status: delivery?.status,
+          previous_status: delivery?.status as DeliveryStatus,
           new_status: newStatus,
           notes: notes || `Status updated to ${newStatus}`
         })

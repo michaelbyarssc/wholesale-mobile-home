@@ -69,6 +69,11 @@ function AppRoutes() {
             <TransactionDetails />
           </ProtectedRoute>
         } />
+        <Route path="/invoices/:transactionId" element={
+          <ProtectedRoute>
+            <TransactionDetails />
+          </ProtectedRoute>
+        } />
         <Route path="/approve-estimate/:token" element={<ApproveEstimate />} />
         <Route path="/faq" element={<FAQ />} />
         <Route path="/blog" element={<Blog />} />

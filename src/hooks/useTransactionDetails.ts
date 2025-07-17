@@ -190,6 +190,21 @@ export const useTransactionDetails = (idParam: string) => {
       // Only fetch if we have a transaction
       if (!transactionQuery.data?.id) return [];
       
+      // If this is an invoice-based transaction, we won't have stage history
+      if (transactionQuery.data.invoice_id === transactionQuery.data.id) {
+        // Create a basic history entry for invoice creation
+        return [{
+          id: `history-${transactionQuery.data.id}`,
+          transaction_id: transactionQuery.data.id,
+          from_status: undefined,
+          to_status: transactionQuery.data.status,
+          changed_by: undefined,
+          changed_at: transactionQuery.data.created_at,
+          notes: 'Invoice created',
+          metadata: {}
+        }] as TransactionStageHistory[];
+      }
+      
       const { data, error } = await supabase
         .from('transaction_stage_history')
         .select('*')
@@ -208,13 +223,19 @@ export const useTransactionDetails = (idParam: string) => {
       // Only fetch if we have a transaction
       if (!transactionQuery.data?.id) return [];
       
+      // For invoices and estimates, we might not have transaction notes yet
+      // but we should still allow viewing notes if they exist
       const { data, error } = await supabase
         .from('transaction_notes')
         .select('*')
         .eq('transaction_id', transactionQuery.data.id)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        // If error is that the transaction doesn't exist in notes table, return empty array
+        console.log('Notes query error:', error);
+        return [];
+      }
       return data as TransactionNote[];
     },
     enabled: !!idParam && !!transactionQuery.data?.id,
@@ -225,6 +246,30 @@ export const useTransactionDetails = (idParam: string) => {
     queryFn: async () => {
       // Only fetch if we have a transaction
       if (!transactionQuery.data?.id) return [];
+      
+      // If this is an invoice-based transaction, fetch from payments table
+      if (transactionQuery.data.invoice_id === transactionQuery.data.id) {
+        const { data, error } = await supabase
+          .from('payments')
+          .select('*')
+          .eq('invoice_id', transactionQuery.data.id)
+          .order('payment_date', { ascending: false });
+
+        if (error) throw error;
+        
+        // Convert payments to transaction payment format
+        return (data || []).map(payment => ({
+          id: payment.id,
+          transaction_id: transactionQuery.data!.id,
+          amount: payment.amount,
+          payment_method: payment.payment_method || 'unknown',
+          payment_date: payment.payment_date,
+          payment_reference: payment.notes,
+          recorded_by: payment.created_by,
+          notes: payment.notes,
+          created_at: payment.created_at
+        })) as TransactionPayment[];
+      }
       
       const { data, error } = await supabase
         .from('transaction_payments')

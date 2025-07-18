@@ -5175,64 +5175,7 @@ export type Database = {
       }
     }
     Views: {
-      analytics_mobile_homes_mv: {
-        Row: {
-          appointment_rate: number | null
-          appointments: number | null
-          avg_view_time: number | null
-          conversion_rate: number | null
-          estimate_rate: number | null
-          estimate_requests: number | null
-          manufacturer: string | null
-          mobile_home_id: string | null
-          model: string | null
-          sales: number | null
-          series: string | null
-          total_views: number | null
-          unique_views: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "analytics_mobile_home_views_mobile_home_id_fkey"
-            columns: ["mobile_home_id"]
-            isOneToOne: false
-            referencedRelation: "mobile_homes"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      analytics_overview_mv: {
-        Row: {
-          avg_sale_value: number | null
-          avg_session_duration: number | null
-          avg_time_on_page: number | null
-          avg_view_time: number | null
-          homes_viewed: number | null
-          last_refresh: string | null
-          total_appointments: number | null
-          total_estimates: number | null
-          total_pageviews: number | null
-          total_sales: number | null
-          total_sessions: number | null
-          total_views: number | null
-          unique_pageviews: number | null
-          unique_session_ids: number | null
-          unique_users: number | null
-        }
-        Relationships: []
-      }
-      analytics_popular_pages_mv: {
-        Row: {
-          avg_scroll_depth: number | null
-          avg_time: number | null
-          page_path: string | null
-          page_title: string | null
-          unique_view_rate: number | null
-          unique_views: number | null
-          views: number | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
       add_transaction_payment: {
@@ -5378,8 +5321,28 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      get_analytics_mobile_homes: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          mobile_home_id: string
+          model: string
+          series: string
+          manufacturer: string
+          total_views: number
+          unique_views: number
+          avg_view_time: number
+          estimate_requests: number
+          appointments: number
+          sales: number
+          estimate_rate: number
+          appointment_rate: number
+          conversion_rate: number
+        }[]
+      }
       get_analytics_overview: {
-        Args: { p_start_date: string; p_end_date: string }
+        Args:
+          | Record<PropertyKey, never>
+          | { p_start_date: string; p_end_date: string }
         Returns: {
           last_refresh: string
           total_sessions: number
@@ -5396,6 +5359,18 @@ export type Database = {
           total_views: number
           avg_view_time: number
           homes_viewed: number
+        }[]
+      }
+      get_analytics_popular_pages: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          page_path: string
+          page_title: string
+          views: number
+          unique_views: number
+          avg_time: number
+          avg_scroll_depth: number
+          unique_view_rate: number
         }[]
       }
       get_chat_lead_source: {

@@ -354,52 +354,23 @@ export const InvoiceManagement = () => {
       payment_method: string; 
       notes?: string; 
     }) => {
-      try {
-        console.log('Starting payment recording process...');
-        console.log('Payment data:', paymentData);
-        
-        // Get the current session directly which is more reliable
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        
-        if (sessionError) {
-          console.error('Session error:', sessionError);
-          throw new Error('Session retrieval failed: ' + sessionError.message);
-        }
-
-        if (!session?.user?.id) {
-          console.error('No session or user found');
-          throw new Error('User session not found. Please refresh and try again.');
-        }
-        
-        console.log('User authenticated:', session.user.id);
-        
-        const paymentRecord = {
+      // Get current user for created_by field
+      const { data: userData } = await supabase.auth.getUser();
+      
+      const { data, error } = await supabase
+        .from('payments')
+        .insert({
           invoice_id: paymentData.invoice_id,
           amount: paymentData.amount,
           payment_method: paymentData.payment_method,
-          notes: paymentData.notes || null,
-          created_by: session.user.id
-        };
-        
-        console.log('Inserting payment record:', paymentRecord);
-        
-        const { data, error } = await supabase
-          .from('payments')
-          .insert(paymentRecord)
-          .select()
-          .single();
-        
-        if (error) {
-          console.error('Database insertion error:', error);
-          throw new Error(`Database error: ${error.message}`);
-        }
-        
-        console.log('Payment recorded successfully:', data);
-        return data;
-      } catch (error) {
-        console.error('Payment processing failed:', error);
-        throw error;
-      }
+          notes: paymentData.notes,
+          created_by: userData.user?.id
+        })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['invoices-basic'] });

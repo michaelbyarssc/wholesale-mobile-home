@@ -294,7 +294,10 @@ export const EstimateLineItems = ({ estimateId, isEditable = false }: EstimateLi
   const expectedShippingCost = shippingCalculation ? shippingCalculation.totalCost : 0;
   const expectedTaxCost = parsedAddress ? calculateSalesTax(parsedAddress.state, subtotal, expectedShippingCost) : 0;
   
-  const total = lineItems.reduce((sum, item) => sum + item.total_price, 0);
+  // Calculate total including expected shipping and tax when not in line items
+  const actualShippingCost = shippingCost > 0 ? shippingCost : expectedShippingCost;
+  const actualTaxCost = taxCost > 0 ? taxCost : expectedTaxCost;
+  const total = subtotal + actualShippingCost + actualTaxCost;
 
   return (
     <div className="space-y-4">
@@ -431,13 +434,13 @@ export const EstimateLineItems = ({ estimateId, isEditable = false }: EstimateLi
           )}
           
           {/* Sales Tax Information */}
-          {(taxCost > 0 || (parsedAddress && expectedTaxCost > 0)) && (
+          {(actualTaxCost > 0 && parsedAddress && ['GA', 'AL', 'FL'].includes(parsedAddress.state.toUpperCase())) && (
             <div className="flex justify-between text-gray-600">
               <span className="flex items-center gap-1">
                 <Receipt className="h-4 w-4" />
-                {parsedAddress?.state.toUpperCase()} Sales Tax:
+                {parsedAddress.state.toUpperCase()} Sales Tax:
               </span>
-              <span>${(taxCost || expectedTaxCost).toLocaleString()}</span>
+              <span>${actualTaxCost.toLocaleString()}</span>
             </div>
           )}
           

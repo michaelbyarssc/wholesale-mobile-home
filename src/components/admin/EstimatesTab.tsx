@@ -422,7 +422,7 @@ export const EstimatesTab = () => {
         .delete()
         .eq('estimate_id', estimateId);
       
-      // Delete related payments (they reference invoices)  
+      // Get invoices related to this estimate
       const { data: invoices } = await supabase
         .from('invoices')
         .select('id')
@@ -430,22 +430,35 @@ export const EstimatesTab = () => {
         
       if (invoices && invoices.length > 0) {
         for (const invoice of invoices) {
+          // Delete related payments (they reference invoices)
           await supabase
             .from('payments')
+            .delete()
+            .eq('invoice_id', invoice.id);
+            
+          // Delete related payment_records (they reference invoices)
+          await supabase
+            .from('payment_records')
             .delete()
             .eq('invoice_id', invoice.id);
         }
       }
       
-      // Delete related invoices
-      await supabase
-        .from('invoices')
-        .delete()
-        .eq('estimate_id', estimateId);
-      
       // Delete related transactions
       await supabase
         .from('transactions')
+        .delete()
+        .eq('estimate_id', estimateId);
+      
+      // Clear the invoice_id reference in the estimate before deleting the invoice
+      await supabase
+        .from('estimates')
+        .update({ invoice_id: null })
+        .eq('id', estimateId);
+      
+      // Delete related invoices
+      await supabase
+        .from('invoices')
         .delete()
         .eq('estimate_id', estimateId);
       

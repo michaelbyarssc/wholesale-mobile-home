@@ -35,6 +35,9 @@ export const EstimateLineItems = ({ estimateId, isEditable = false }: EstimateLi
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [editingItem, setEditingItem] = useState<EstimateLineItem | null>(null);
 
+  // Shipping cost calculation - Always call the hook before any conditional returns
+  const { getShippingCost, calculateShippingCost, clearCalculations } = useShippingCost();
+
   // Early return if no estimateId provided
   if (!estimateId) {
     return null;
@@ -196,8 +199,6 @@ export const EstimateLineItems = ({ estimateId, isEditable = false }: EstimateLi
     return acc;
   }, {} as Record<string, EstimateLineItem[]>);
 
-  // Shipping cost calculation - Always call the hook
-  const { getShippingCost, calculateShippingCost, clearCalculations } = useShippingCost();
   
   // Parse delivery address for shipping calculation
   const parsedAddress = useMemo(() => {

@@ -271,6 +271,11 @@ export const EstimateLineItems = ({ estimateId, isEditable = false }: EstimateLi
         const flTax = taxableAmountFL * 0.03; // 3% of subtotal + shipping
         console.log('🏛️ FL tax calculation:', { taxableAmount: taxableAmountFL, tax: flTax });
         return flTax;
+      case 'SC':
+        const taxableAmountSC = subtotal + shipping;
+        const scTax = taxableAmountSC * 0.07; // 7% of subtotal + shipping
+        console.log('🏛️ SC tax calculation:', { taxableAmount: taxableAmountSC, tax: scTax });
+        return scTax;
       default:
         console.log('🏛️ No tax for state:', stateCode);
         return 0;

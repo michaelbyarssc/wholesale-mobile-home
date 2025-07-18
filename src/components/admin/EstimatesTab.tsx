@@ -88,6 +88,7 @@ export const EstimatesTab = () => {
   });
   const [editingEstimate, setEditingEstimate] = useState<Estimate | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
 
   // Fetch mobile homes data from database
   const [mobileHomes, setMobileHomes] = useState<any[]>([]);
@@ -360,6 +361,7 @@ export const EstimatesTab = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-estimates'] });
+      setIsViewDialogOpen(false); // Close the dialog
       toast({
         title: "Estimate Approved",
         description: "Estimate has been approved successfully.",
@@ -991,7 +993,7 @@ export const EstimatesTab = () => {
                       )}
 
                       {/* View Button - always available */}
-                      <Dialog>
+                      <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
                         <DialogTrigger asChild>
                           <Button variant="outline" size="sm">
                             <Eye className="h-4 w-4 mr-1" />

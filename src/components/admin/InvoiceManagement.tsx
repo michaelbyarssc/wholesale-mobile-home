@@ -354,23 +354,48 @@ export const InvoiceManagement = () => {
       payment_method: string; 
       notes?: string; 
     }) => {
-      // Get current user for created_by field
-      const { data: userData } = await supabase.auth.getUser();
-      
-      const { data, error } = await supabase
-        .from('payments')
-        .insert({
+      try {
+        // Get current user for created_by field
+        const { data: userData, error: authError } = await supabase.auth.getUser();
+        
+        if (authError) {
+          console.error('Auth error:', authError);
+          throw new Error('Authentication failed');
+        }
+
+        if (!userData?.user?.id) {
+          throw new Error('User not authenticated');
+        }
+        
+        console.log('Recording payment for invoice:', paymentData.invoice_id, 'Amount:', paymentData.amount);
+        
+        const paymentRecord = {
           invoice_id: paymentData.invoice_id,
           amount: paymentData.amount,
           payment_method: paymentData.payment_method,
-          notes: paymentData.notes,
-          created_by: userData.user?.id
-        })
-        .select()
-        .single();
-      
-      if (error) throw error;
-      return data;
+          notes: paymentData.notes || null,
+          created_by: userData.user.id
+        };
+        
+        console.log('Payment record to insert:', paymentRecord);
+        
+        const { data, error } = await supabase
+          .from('payments')
+          .insert(paymentRecord)
+          .select()
+          .single();
+        
+        if (error) {
+          console.error('Payment insertion error:', error);
+          throw error;
+        }
+        
+        console.log('Payment recorded successfully:', data);
+        return data;
+      } catch (error) {
+        console.error('Payment processing error:', error);
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['invoices-basic'] });

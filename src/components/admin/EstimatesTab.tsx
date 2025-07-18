@@ -149,6 +149,25 @@ export const EstimatesTab = () => {
     }
   });
 
+  // Calculate proper total including shipping and taxes for all estimates
+  const { data: allLineItems = [] } = useQuery({
+    queryKey: ['all-estimate-line-items'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('estimate_line_items')
+        .select('*');
+      
+      if (error) throw error;
+      return data || [];
+    }
+  });
+
+  // Function to calculate total for an estimate including shipping and taxes
+  const calculateEstimateTotal = (estimateId: string): number => {
+    const lineItems = allLineItems.filter(item => item.estimate_id === estimateId);
+    return lineItems.reduce((sum, item) => sum + item.total_price, 0);
+  };
+
   // Fetch DocuSign templates from database
   const { data: docusignTemplates = [] } = useQuery({
     queryKey: ['docusign-templates'],
@@ -789,7 +808,10 @@ export const EstimatesTab = () => {
               <div>
                 <p className="text-sm text-muted-foreground">Total Value</p>
                 <p className="text-2xl font-bold">
-                  ${estimates.reduce((sum, est) => sum + est.total_amount, 0).toLocaleString()}
+                  ${estimates.reduce((sum, est) => {
+                    const calculatedTotal = calculateEstimateTotal(est.id);
+                    return sum + (calculatedTotal > 0 ? calculatedTotal : est.total_amount);
+                  }, 0).toLocaleString()}
                 </p>
               </div>
               <DollarSign className="h-8 w-8 text-green-600" />

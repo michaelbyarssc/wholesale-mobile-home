@@ -94,7 +94,7 @@ const ApproveEstimate = () => {
     
     setApproving(true);
     try {
-      const { data, error } = await supabase.functions.invoke('approve-estimate', {
+      const { data, error } = await supabase.functions.invoke(`approve-estimate?token=${token}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',

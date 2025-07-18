@@ -856,10 +856,7 @@ export const EstimatesTab = () => {
                         {estimate.mobile_homes?.manufacturer} {estimate.mobile_homes?.series} {estimate.mobile_homes?.model}
                       </p>
                        <p className="font-medium">
-                         ${(() => {
-                           const calculatedTotal = calculateEstimateTotal(estimate.id);
-                           return (calculatedTotal > 0 ? calculatedTotal : estimate.total_amount).toLocaleString();
-                         })()}
+                         ${estimate.total_amount.toLocaleString()}
                        </p>
                       <p className="text-xs text-muted-foreground">
                         Created: {format(new Date(estimate.created_at), 'MMM dd, yyyy')}

@@ -419,47 +419,15 @@ export const EstimateLineItems = ({ estimateId, isEditable = false }: EstimateLi
             <span>${subtotal.toLocaleString()}</span>
           </div>
           
-          {/* Detailed Shipping Information */}
+          {/* Shipping Information */}
           {(shippingCost > 0 || (shippingCalculation && parsedAddress)) && (
-            <>
-              <div className="flex justify-between text-gray-600">
-                <span className="flex items-center gap-1">
-                  <Truck className="h-4 w-4" />
-                  Shipping:
-                </span>
-                <span>${(shippingCost || expectedShippingCost).toLocaleString()}</span>
-              </div>
-              
-              {/* Shipping breakdown if calculated */}
-              {shippingCalculation && shippingCalculation.breakdown && (
-                <div className="ml-6 space-y-1 text-sm text-muted-foreground">
-                  <div className="flex justify-between">
-                    <span>Distance: {shippingCalculation.breakdown.distance.toFixed(1)} miles</span>
-                    <span>{shippingCalculation.breakdown.isDoubleWide ? 'Double Wide' : 'Single Wide'}</span>
-                  </div>
-                  <div className="space-y-1">
-                    <div className="flex justify-between">
-                      <span>Base cost (${shippingCalculation.breakdown.pricePerMile.toFixed(2)}/mile):</span>
-                      <span>${shippingCalculation.baseCost.toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Permits ({shippingCalculation.breakdown.crossesStateBorder ? 'Cross-state' : 'In-state'}):</span>
-                      <span>${shippingCalculation.permitCost.toLocaleString()}</span>
-                    </div>
-                    {shippingCalculation.hotelCost > 0 && (
-                      <div className="flex justify-between">
-                        <span>Hotel (over 150 miles):</span>
-                        <span>${shippingCalculation.hotelCost.toLocaleString()}</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between">
-                      <span>Setup & delivery:</span>
-                      <span>${shippingCalculation.flatRate.toLocaleString()}</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </>
+            <div className="flex justify-between text-gray-600">
+              <span className="flex items-center gap-1">
+                <Truck className="h-4 w-4" />
+                Shipping:
+              </span>
+              <span>${(shippingCost || expectedShippingCost).toLocaleString()}</span>
+            </div>
           )}
           
           {/* Sales Tax Information */}

@@ -192,7 +192,7 @@ export const EstimateLineItems = ({ estimateId, isEditable = false }: EstimateLi
   }, {} as Record<string, EstimateLineItem[]>);
 
   // Shipping cost calculation - Always call the hook
-  const { getShippingCost } = useShippingCost();
+  const { getShippingCost, calculateShippingCost, clearCalculations } = useShippingCost();
   
   // Parse delivery address for shipping calculation
   const parsedAddress = useMemo(() => {
@@ -235,11 +235,20 @@ export const EstimateLineItems = ({ estimateId, isEditable = false }: EstimateLi
     };
   }, [estimate?.mobile_homes]);
 
-  // Get shipping calculation (only if we have both mobile home and address)
+  // Get shipping calculation and trigger fresh calculation like the cart
   const shippingCalculation = useMemo(() => {
     if (!fullMobileHome || !parsedAddress) return null;
     return getShippingCost(fullMobileHome, parsedAddress);
   }, [fullMobileHome, parsedAddress, getShippingCost]);
+
+  // Trigger shipping calculation when dependencies change (like cart does)
+  useEffect(() => {
+    if (fullMobileHome && parsedAddress && !shippingCalculation?.breakdown && !shippingCalculation?.isCalculating) {
+      // Clear cached calculations to ensure fresh calculation with 15% markup
+      clearCalculations();
+      calculateShippingCost(fullMobileHome, parsedAddress);
+    }
+  }, [fullMobileHome, parsedAddress, calculateShippingCost, clearCalculations, shippingCalculation]);
 
   // Calculate sales tax based on delivery state
   const calculateSalesTax = (state: string, subtotal: number, shipping: number): number => {

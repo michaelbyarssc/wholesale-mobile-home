@@ -414,6 +414,42 @@ export const EstimatesTab = () => {
   // Delete estimate mutation
   const deleteEstimateMutation = useMutation({
     mutationFn: async (estimateId: string) => {
+      // First delete related records to avoid foreign key constraint errors
+      
+      // Delete related deliveries first (they reference invoices)
+      await supabase
+        .from('deliveries')
+        .delete()
+        .eq('estimate_id', estimateId);
+      
+      // Delete related payments (they reference invoices)  
+      const { data: invoices } = await supabase
+        .from('invoices')
+        .select('id')
+        .eq('estimate_id', estimateId);
+        
+      if (invoices && invoices.length > 0) {
+        for (const invoice of invoices) {
+          await supabase
+            .from('payments')
+            .delete()
+            .eq('invoice_id', invoice.id);
+        }
+      }
+      
+      // Delete related invoices
+      await supabase
+        .from('invoices')
+        .delete()
+        .eq('estimate_id', estimateId);
+      
+      // Delete related transactions
+      await supabase
+        .from('transactions')
+        .delete()
+        .eq('estimate_id', estimateId);
+      
+      // Finally delete the estimate
       const { data, error } = await supabase
         .from('estimates')
         .delete()

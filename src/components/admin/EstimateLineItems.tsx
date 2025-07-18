@@ -38,15 +38,11 @@ export const EstimateLineItems = ({ estimateId, isEditable = false }: EstimateLi
   // Shipping cost calculation - Always call the hook before any conditional returns
   const { getShippingCost, calculateShippingCost, clearCalculations } = useShippingCost();
 
-  // Early return if no estimateId provided
-  if (!estimateId) {
-    return null;
-  }
-
-  // Fetch estimate data with mobile home and delivery address
+  // Fetch estimate data with mobile home and delivery address - Always call hooks
   const { data: estimate } = useQuery({
     queryKey: ['estimate', estimateId],
     queryFn: async () => {
+      if (!estimateId) return null;
       const { data, error } = await supabase
         .from('estimates')
         .select(`
@@ -64,12 +60,14 @@ export const EstimateLineItems = ({ estimateId, isEditable = false }: EstimateLi
       
       if (error) throw error;
       return data;
-    }
+    },
+    enabled: !!estimateId
   });
 
   const { data: lineItems = [], isLoading } = useQuery({
     queryKey: ['estimate-line-items', estimateId],
     queryFn: async () => {
+      if (!estimateId) return [];
       const { data, error } = await supabase
         .from('estimate_line_items')
         .select('*')
@@ -78,8 +76,56 @@ export const EstimateLineItems = ({ estimateId, isEditable = false }: EstimateLi
       
       if (error) throw error;
       return data || [];
-    }
+    },
+    enabled: !!estimateId
   });
+
+  // Parse delivery address for shipping calculation - Always call useMemo
+  const parsedAddress = useMemo(() => {
+    if (!estimate?.delivery_address) return null;
+    const parts = estimate.delivery_address.split(',').map(part => part.trim());
+    const lastPart = parts[parts.length - 1] || '';
+    const stateZip = lastPart.split(' ');
+    
+    return {
+      street: parts[0] || '',
+      city: parts[1] || '',
+      state: stateZip[0] || '',
+      zipCode: stateZip[1] || ''
+    };
+  }, [estimate?.delivery_address]);
+
+  // Create full mobile home object for shipping calculation - Always call useMemo  
+  const fullMobileHome = useMemo(() => {
+    if (!estimate?.mobile_homes) return null;
+    return {
+      ...estimate.mobile_homes,
+      active: true,
+      bathrooms: 1,
+      bedrooms: 1,
+      company_id: '',
+      cost: 0,
+      created_at: '',
+      description: '',
+      display_name: '',
+      display_order: 0,
+      exterior_image_url: '',
+      features: [],
+      floor_plan_image_url: '',
+      length_feet: 60,
+      minimum_profit: 0,
+      price: 0,
+      retail_price: 0,
+      square_footage: 1000,
+      updated_at: ''
+    };
+  }, [estimate?.mobile_homes]);
+
+  // Get shipping calculation and trigger fresh calculation like the cart - Always call useMemo
+  const shippingCalculation = useMemo(() => {
+    if (!fullMobileHome || !parsedAddress) return null;
+    return getShippingCost(fullMobileHome, parsedAddress);
+  }, [fullMobileHome, parsedAddress, getShippingCost]);
 
   // Update line item mutation
   const updateLineItemMutation = useMutation({
@@ -115,6 +161,20 @@ export const EstimateLineItems = ({ estimateId, isEditable = false }: EstimateLi
       });
     }
   });
+
+  // Trigger shipping calculation when dependencies change (like cart does) - Always call useEffect
+  useEffect(() => {
+    if (fullMobileHome && parsedAddress && !shippingCalculation?.breakdown && !shippingCalculation?.isCalculating) {
+      // Clear cached calculations to ensure fresh calculation with 15% markup
+      clearCalculations();
+      calculateShippingCost(fullMobileHome, parsedAddress);
+    }
+  }, [fullMobileHome, parsedAddress, calculateShippingCost, clearCalculations, shippingCalculation]);
+
+  // Early return if no estimateId provided
+  if (!estimateId) {
+    return null;
+  }
 
   const handleEditClick = (item: EstimateLineItem) => {
     setEditingItemId(item.id);
@@ -199,62 +259,6 @@ export const EstimateLineItems = ({ estimateId, isEditable = false }: EstimateLi
     return acc;
   }, {} as Record<string, EstimateLineItem[]>);
 
-  
-  // Parse delivery address for shipping calculation
-  const parsedAddress = useMemo(() => {
-    if (!estimate?.delivery_address) return null;
-    const parts = estimate.delivery_address.split(',').map(part => part.trim());
-    const lastPart = parts[parts.length - 1] || '';
-    const stateZip = lastPart.split(' ');
-    
-    return {
-      street: parts[0] || '',
-      city: parts[1] || '',
-      state: stateZip[0] || '',
-      zipCode: stateZip[1] || ''
-    };
-  }, [estimate?.delivery_address]);
-
-  // Create full mobile home object for shipping calculation
-  const fullMobileHome = useMemo(() => {
-    if (!estimate?.mobile_homes) return null;
-    return {
-      ...estimate.mobile_homes,
-      active: true,
-      bathrooms: 1,
-      bedrooms: 1,
-      company_id: '',
-      cost: 0,
-      created_at: '',
-      description: '',
-      display_name: '',
-      display_order: 0,
-      exterior_image_url: '',
-      features: [],
-      floor_plan_image_url: '',
-      length_feet: 60,
-      minimum_profit: 0,
-      price: 0,
-      retail_price: 0,
-      square_footage: 1000,
-      updated_at: ''
-    };
-  }, [estimate?.mobile_homes]);
-
-  // Get shipping calculation and trigger fresh calculation like the cart
-  const shippingCalculation = useMemo(() => {
-    if (!fullMobileHome || !parsedAddress) return null;
-    return getShippingCost(fullMobileHome, parsedAddress);
-  }, [fullMobileHome, parsedAddress, getShippingCost]);
-
-  // Trigger shipping calculation when dependencies change (like cart does)
-  useEffect(() => {
-    if (fullMobileHome && parsedAddress && !shippingCalculation?.breakdown && !shippingCalculation?.isCalculating) {
-      // Clear cached calculations to ensure fresh calculation with 15% markup
-      clearCalculations();
-      calculateShippingCost(fullMobileHome, parsedAddress);
-    }
-  }, [fullMobileHome, parsedAddress, calculateShippingCost, clearCalculations, shippingCalculation]);
 
   // Calculate sales tax based on delivery state
   const calculateSalesTax = (state: string, subtotal: number, shipping: number): number => {

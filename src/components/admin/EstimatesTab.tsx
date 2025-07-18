@@ -350,26 +350,23 @@ export const EstimatesTab = () => {
   // Approve estimate mutation
   const approveEstimateMutation = useMutation({
     mutationFn: async (estimateId: string) => {
-      const { data, error } = await supabase
-        .from('estimates')
-        .update({ 
-          status: 'approved',
-          approved_at: new Date().toISOString()
-        })
-        .eq('id', estimateId);
+      const { data, error } = await supabase.functions.invoke('approve-estimate', {
+        body: { estimate_uuid: estimateId }
+      });
 
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['admin-estimates'] });
       setIsViewDialogOpen(false); // Close the dialog
       toast({
         title: "Estimate Approved",
-        description: "Estimate has been approved successfully.",
+        description: `Estimate approved successfully. Invoice ${data.invoiceNumber} has been created and sent to the customer.`,
       });
     },
     onError: (error) => {
+      console.error('Approval error:', error);
       toast({
         title: "Error",
         description: "Failed to approve estimate. Please try again.",

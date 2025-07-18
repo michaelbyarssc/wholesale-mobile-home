@@ -923,14 +923,7 @@ export const EstimatesTab = () => {
                         </DialogTrigger>
                         <DialogContent className="w-[95vw] max-w-4xl h-[90vh] max-h-[80vh] overflow-y-auto sm:w-full sm:h-auto p-4 sm:p-6">
                            <DialogHeader>
-                             <DialogTitle className="flex items-center justify-between">
-                               <span>Estimate Details</span>
-                               {estimate.transactions?.[0]?.transaction_number && (
-                                 <Badge variant="outline" className="text-sm font-mono">
-                                   {estimate.transactions[0].transaction_number}
-                                 </Badge>
-                               )}
-                             </DialogTitle>
+                             <DialogTitle>Estimate Details</DialogTitle>
                            </DialogHeader>
                           <div className="space-y-6">
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -970,16 +963,24 @@ export const EstimatesTab = () => {
                                 <Label>Total Amount</Label>
                                 <p className="font-medium text-lg">${estimate.total_amount.toLocaleString()}</p>
                               </div>
-                              <div>
-                                <Label>Created</Label>
-                                <p>{format(new Date(estimate.created_at), 'MMM dd, yyyy HH:mm')}</p>
-                              </div>
-                              {estimate.approved_at && (
-                                <div>
-                                  <Label>Approved</Label>
-                                  <p>{format(new Date(estimate.approved_at), 'MMM dd, yyyy HH:mm')}</p>
-                                </div>
-                              )}
+                               <div>
+                                 <Label>Created</Label>
+                                 <p>{format(new Date(estimate.created_at), 'MMM dd, yyyy HH:mm')}</p>
+                               </div>
+                               {estimate.transactions?.[0]?.transaction_number && (
+                                 <div>
+                                   <Label>Transaction Number</Label>
+                                   <Badge variant="outline" className="text-sm font-mono">
+                                     {estimate.transactions[0].transaction_number}
+                                   </Badge>
+                                 </div>
+                               )}
+                               {estimate.approved_at && (
+                                 <div>
+                                   <Label>Approved</Label>
+                                   <p>{format(new Date(estimate.approved_at), 'MMM dd, yyyy HH:mm')}</p>
+                                 </div>
+                               )}
                             </div>
 
                             <EstimateLineItems estimateId={estimate.id} />

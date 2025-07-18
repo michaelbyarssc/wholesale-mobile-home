@@ -4,10 +4,10 @@ import { EstimatesTab } from './EstimatesTab';
 import { InvoiceManagement } from './InvoiceManagement';
 import { DeliveryManagement } from './DeliveryManagement';
 import { Receipt, FileText, Truck } from 'lucide-react';
-
+import { useIsMobile } from '@/hooks/use-mobile';
 
 export const SalesTab = () => {
-  
+  const isMobile = useIsMobile();
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -24,15 +24,15 @@ export const SalesTab = () => {
         <TabsList className="grid w-full grid-cols-3 h-10 sm:h-11">
           <TabsTrigger value="estimates" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm px-2">
             <FileText className="h-3 w-3 sm:h-4 sm:w-4" />
-            Estimates
+            {isMobile ? 'Estimates' : 'Estimates'}
           </TabsTrigger>
           <TabsTrigger value="invoices" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm px-2">
             <Receipt className="h-3 w-3 sm:h-4 sm:w-4" />
-            Invoices
+            {isMobile ? 'Invoices' : 'Invoices'}
           </TabsTrigger>
           <TabsTrigger value="deliveries" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm px-2">
             <Truck className="h-3 w-3 sm:h-4 sm:w-4" />
-            Deliveries
+            {isMobile ? 'Deliveries' : 'Deliveries'}
           </TabsTrigger>
         </TabsList>
 

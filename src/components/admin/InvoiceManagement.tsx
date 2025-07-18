@@ -170,8 +170,12 @@ export const InvoiceManagement = () => {
       
       if (estimateError) throw estimateError;
       
-      // Use the transaction number from the estimate as the invoice number
-      const invoiceNumber = estimate.transaction_number || 'No transaction number';
+      // Generate proper invoice number using the database function
+      const { data: invoiceNumber, error: numberError } = await supabase.rpc('generate_invoice_number');
+      
+      if (numberError || !invoiceNumber) {
+        throw new Error('Failed to generate invoice number');
+      }
       
       // Create invoice from the approved estimate
       const { data: invoice, error: invoiceError } = await supabase
@@ -179,7 +183,7 @@ export const InvoiceManagement = () => {
         .insert({
           estimate_id: estimate.id,
           invoice_number: invoiceNumber,
-          transaction_number: invoiceNumber,
+          transaction_number: estimate.transaction_number, // Keep original estimate transaction number for tracking
           customer_name: estimate.customer_name,
           customer_email: estimate.customer_email,
           customer_phone: estimate.customer_phone,

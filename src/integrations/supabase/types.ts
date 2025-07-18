@@ -5396,7 +5396,7 @@ export type Database = {
         Returns: undefined
       }
       is_admin: {
-        Args: Record<PropertyKey, never> | { user_id?: string }
+        Args: { user_id?: string }
         Returns: boolean
       }
       migrate_existing_estimates_to_transactions: {

@@ -87,17 +87,13 @@ export const AdminAnalyticsDashboard = () => {
       // The RPC function returns an array with a single item
       const overview = overviewData && overviewData.length > 0 ? overviewData[0] : null;
       
-      // Get popular pages data
+      // Get popular pages data using the new function
       const { data: pageViewData } = await supabase
-        .from('analytics_popular_pages_mv')
-        .select('*')
-        .limit(10);
+        .rpc('get_analytics_popular_pages');
 
-      // Get mobile home analytics
+      // Get mobile home analytics using the new function
       const { data: mobileHomeData } = await supabase
-        .from('analytics_mobile_homes_mv')
-        .select('*')
-        .limit(10);
+        .rpc('get_analytics_mobile_homes');
 
       // Transform data into expected format using the correct field names from the RPC function
       const totalSessions = overview?.total_sessions ?? 0;

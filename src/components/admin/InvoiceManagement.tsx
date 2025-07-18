@@ -354,8 +354,40 @@ export const InvoiceManagement = () => {
       payment_method: string; 
       notes?: string; 
     }) => {
-      // Get current user for created_by field
-      const { data: userData } = await supabase.auth.getUser();
+      console.log('Starting payment processing...', paymentData);
+      
+      // Get current session and user
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      console.log('Session data:', sessionData);
+      
+      if (sessionError || !sessionData.session?.user) {
+        console.error('Authentication error:', sessionError);
+        throw new Error('Authentication required. Please log in again.');
+      }
+
+      const user = sessionData.session.user;
+      console.log('Current user ID:', user.id);
+
+      // Check if user is admin
+      const { data: userRoles, error: rolesError } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id);
+      
+      console.log('User roles:', userRoles);
+      
+      if (rolesError) {
+        console.error('Error fetching user roles:', rolesError);
+        throw new Error('Failed to verify user permissions.');
+      }
+
+      const isAdmin = userRoles?.some(r => r.role === 'admin' || r.role === 'super_admin');
+      if (!isAdmin) {
+        console.error('User is not admin. Roles:', userRoles);
+        throw new Error('Admin privileges required to record payments.');
+      }
+
+      console.log('User is admin, proceeding with payment insertion...');
       
       const { data, error } = await supabase
         .from('payments')
@@ -364,12 +396,17 @@ export const InvoiceManagement = () => {
           amount: paymentData.amount,
           payment_method: paymentData.payment_method,
           notes: paymentData.notes,
-          created_by: userData.user?.id
+          created_by: user.id
         })
         .select()
         .single();
       
-      if (error) throw error;
+      console.log('Payment insertion result:', { data, error });
+      
+      if (error) {
+        console.error('Payment insertion error:', error);
+        throw error;
+      }
       return data;
     },
     onSuccess: () => {

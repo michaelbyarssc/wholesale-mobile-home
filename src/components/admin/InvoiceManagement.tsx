@@ -387,26 +387,29 @@ export const InvoiceManagement = () => {
         throw new Error('Admin privileges required to record payments.');
       }
 
-      console.log('User is admin, proceeding with payment insertion...');
+      console.log('User is admin, proceeding with payment recording...');
       
-      const { data, error } = await supabase
-        .from('payments')
-        .insert({
-          invoice_id: paymentData.invoice_id,
-          amount: paymentData.amount,
-          payment_method: paymentData.payment_method,
-          notes: paymentData.notes,
-          created_by: user.id
-        })
-        .select()
-        .single();
+      const { data, error } = await supabase.rpc('record_invoice_payment', {
+        p_invoice_id: paymentData.invoice_id,
+        p_amount: paymentData.amount,
+        p_payment_method: paymentData.payment_method,
+        p_notes: paymentData.notes
+      });
       
-      console.log('Payment insertion result:', { data, error });
+      console.log('Payment recording result:', { data, error });
       
       if (error) {
-        console.error('Payment insertion error:', error);
+        console.error('Payment recording error:', error);
         throw error;
       }
+      
+      // Type assertion for the RPC response
+      const result = data as { success: boolean; error?: string; payment_id?: string; payment_record_id?: string };
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to record payment');
+      }
+      
       return data;
     },
     onSuccess: () => {

@@ -967,11 +967,11 @@ export const EstimatesTab = () => {
                                  <Label>Created</Label>
                                  <p>{format(new Date(estimate.created_at), 'MMM dd, yyyy HH:mm')}</p>
                                </div>
-                               {estimate.transactions?.[0]?.transaction_number && (
+                               {estimate.transaction_number && (
                                  <div>
                                    <Label>Transaction Number</Label>
                                    <Badge variant="outline" className="text-sm font-mono">
-                                     {estimate.transactions[0].transaction_number}
+                                     {estimate.transaction_number}
                                    </Badge>
                                  </div>
                                )}

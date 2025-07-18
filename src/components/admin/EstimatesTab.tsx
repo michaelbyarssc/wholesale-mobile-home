@@ -16,7 +16,6 @@ import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { Separator } from '@/components/ui/separator';
 import { EstimateLineItems } from './EstimateLineItems';
-import { EstimateShippingInfo } from './EstimateShippingInfo';
 
 interface Estimate {
   id: string;
@@ -1037,17 +1036,6 @@ export const EstimatesTab = () => {
                                 <Label>Delivery Address</Label>
                                 <p>{estimate.delivery_address}</p>
                               </div>
-                              
-                              {/* Shipping Information */}
-                              {estimate.delivery_address && estimate.mobile_homes && (
-                                <div className="col-span-1 sm:col-span-2">
-                                  <Label>Shipping Information</Label>
-                                  <EstimateShippingInfo 
-                                    mobileHome={estimate.mobile_homes}
-                                    deliveryAddress={estimate.delivery_address}
-                                  />
-                                </div>
-                              )}
                               <div>
                                 <Label>Mobile Home</Label>
                                 <p>{estimate.mobile_homes?.manufacturer} {estimate.mobile_homes?.series} {estimate.mobile_homes?.model}</p>

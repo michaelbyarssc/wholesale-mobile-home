@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
@@ -9,7 +9,8 @@ import { Separator } from '@/components/ui/separator';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Home, Settings, Package, Truck, Receipt, Save, X } from 'lucide-react';
+import { useShippingCost } from '@/hooks/useShippingCost';
+import { Home, Settings, Package, Truck, Receipt, Save, X, MapPin, DollarSign } from 'lucide-react';
 
 interface EstimateLineItem {
   id: string;
@@ -34,13 +35,22 @@ export const EstimateLineItems = ({ estimateId, isEditable = false }: EstimateLi
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [editingItem, setEditingItem] = useState<EstimateLineItem | null>(null);
 
-  // Fetch estimate data to get delivery address
+  // Fetch estimate data with mobile home and delivery address
   const { data: estimate } = useQuery({
     queryKey: ['estimate', estimateId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('estimates')
-        .select('delivery_address')
+        .select(`
+          delivery_address,
+          mobile_homes (
+            id,
+            width_feet,
+            manufacturer,
+            series,
+            model
+          )
+        `)
         .eq('id', estimateId)
         .single();
       
@@ -181,6 +191,81 @@ export const EstimateLineItems = ({ estimateId, isEditable = false }: EstimateLi
     return acc;
   }, {} as Record<string, EstimateLineItem[]>);
 
+  // Shipping cost calculation
+  const { calculateShippingCost, getShippingCost } = useShippingCost();
+  
+  // Parse delivery address for shipping calculation
+  const parsedAddress = useMemo(() => {
+    if (!estimate?.delivery_address) return null;
+    const parts = estimate.delivery_address.split(',').map(part => part.trim());
+    const lastPart = parts[parts.length - 1] || '';
+    const stateZip = lastPart.split(' ');
+    
+    return {
+      street: parts[0] || '',
+      city: parts[1] || '',
+      state: stateZip[0] || '',
+      zipCode: stateZip[1] || ''
+    };
+  }, [estimate?.delivery_address]);
+
+  // Create full mobile home object for shipping calculation
+  const fullMobileHome = useMemo(() => {
+    if (!estimate?.mobile_homes) return null;
+    return {
+      ...estimate.mobile_homes,
+      active: true,
+      bathrooms: 1,
+      bedrooms: 1,
+      company_id: '',
+      cost: 0,
+      created_at: '',
+      description: '',
+      display_name: '',
+      display_order: 0,
+      exterior_image_url: '',
+      features: [],
+      floor_plan_image_url: '',
+      length_feet: 60,
+      minimum_profit: 0,
+      price: 0,
+      retail_price: 0,
+      square_footage: 1000,
+      updated_at: ''
+    };
+  }, [estimate?.mobile_homes]);
+
+  // Get shipping calculation
+  const shippingCalculation = fullMobileHome && parsedAddress ? 
+    getShippingCost(fullMobileHome, parsedAddress) : null;
+
+  // Calculate sales tax based on delivery state
+  const calculateSalesTax = (state: string, subtotal: number, shipping: number): number => {
+    const stateCode = state.toUpperCase();
+    console.log('🔍 Sales tax calculation:', { state: stateCode, subtotal, shipping });
+    
+    switch (stateCode) {
+      case 'GA':
+        const taxableAmountGA = subtotal + shipping;
+        const gaTax = taxableAmountGA * 0.08; // 8% of subtotal + shipping
+        console.log('🏛️ GA tax calculation:', { taxableAmount: taxableAmountGA, tax: gaTax });
+        return gaTax;
+      case 'AL':
+        const taxableAmountAL = subtotal + shipping;
+        const alTax = taxableAmountAL * 0.02; // 2% of subtotal + shipping
+        console.log('🏛️ AL tax calculation:', { taxableAmount: taxableAmountAL, tax: alTax });
+        return alTax;
+      case 'FL':
+        const taxableAmountFL = subtotal + shipping;
+        const flTax = taxableAmountFL * 0.03; // 3% of subtotal + shipping
+        console.log('🏛️ FL tax calculation:', { taxableAmount: taxableAmountFL, tax: flTax });
+        return flTax;
+      default:
+        console.log('🏛️ No tax for state:', stateCode);
+        return 0;
+    }
+  };
+
   // Calculate totals
   const subtotal = lineItems
     .filter(item => !['shipping', 'tax'].includes(item.item_type))
@@ -193,6 +278,10 @@ export const EstimateLineItems = ({ estimateId, isEditable = false }: EstimateLi
   const taxCost = lineItems
     .filter(item => item.item_type === 'tax')
     .reduce((sum, item) => sum + item.total_price, 0);
+
+  // Calculate expected shipping and tax if not in line items
+  const expectedShippingCost = shippingCalculation ? shippingCalculation.totalCost : 0;
+  const expectedTaxCost = parsedAddress ? calculateSalesTax(parsedAddress.state, subtotal, expectedShippingCost) : 0;
   
   const total = lineItems.reduce((sum, item) => sum + item.total_price, 0);
 
@@ -323,17 +412,81 @@ export const EstimateLineItems = ({ estimateId, isEditable = false }: EstimateLi
             <span className="font-medium">${subtotal.toLocaleString()}</span>
           </div>
           
-          {shippingCost > 0 && (
-            <div className="flex justify-between items-center">
-              <Label className="text-sm">Shipping & Delivery:</Label>
-              <span className="font-medium">${shippingCost.toLocaleString()}</span>
+          {/* Detailed Shipping Information */}
+          {(shippingCost > 0 || (shippingCalculation && parsedAddress)) && (
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <Label className="text-sm flex items-center gap-2">
+                  <Truck className="h-4 w-4" />
+                  Shipping & Delivery:
+                </Label>
+                <span className="font-medium">
+                  ${(shippingCost || expectedShippingCost).toLocaleString()}
+                </span>
+              </div>
+              
+              {/* Shipping breakdown if calculated */}
+              {shippingCalculation && shippingCalculation.breakdown && (
+                <div className="ml-6 space-y-1 text-sm text-muted-foreground">
+                  <div className="flex justify-between">
+                    <span>Distance: {shippingCalculation.breakdown.distance.toFixed(1)} miles</span>
+                    <span>{shippingCalculation.breakdown.isDoubleWide ? 'Double Wide' : 'Single Wide'}</span>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="flex justify-between">
+                      <span>Base cost (${shippingCalculation.breakdown.pricePerMile.toFixed(2)}/mile):</span>
+                      <span>${shippingCalculation.baseCost.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Permits ({shippingCalculation.breakdown.crossesStateBorder ? 'Cross-state' : 'In-state'}):</span>
+                      <span>${shippingCalculation.permitCost.toLocaleString()}</span>
+                    </div>
+                    {shippingCalculation.hotelCost > 0 && (
+                      <div className="flex justify-between">
+                        <span>Hotel (over 150 miles):</span>
+                        <span>${shippingCalculation.hotelCost.toLocaleString()}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between">
+                      <span>Setup & delivery:</span>
+                      <span>${shippingCalculation.flatRate.toLocaleString()}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
           
-          {taxCost > 0 && (
-            <div className="flex justify-between items-center">
-              <Label className="text-sm">Sales Tax:</Label>
-              <span className="font-medium">${taxCost.toLocaleString()}</span>
+          {/* Sales Tax Information */}
+          {(taxCost > 0 || (parsedAddress && expectedTaxCost > 0)) && (
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <Label className="text-sm flex items-center gap-2">
+                  <Receipt className="h-4 w-4" />
+                  Sales Tax:
+                </Label>
+                <span className="font-medium">
+                  ${(taxCost || expectedTaxCost).toLocaleString()}
+                </span>
+              </div>
+              
+              {/* Tax breakdown if calculated */}
+              {parsedAddress && expectedTaxCost > 0 && (
+                <div className="ml-6 space-y-1 text-sm text-muted-foreground">
+                  <div className="flex justify-between">
+                    <span>State: {parsedAddress.state.toUpperCase()}</span>
+                    <span>
+                      {parsedAddress.state.toUpperCase() === 'GA' && '8%'}
+                      {parsedAddress.state.toUpperCase() === 'AL' && '2%'}
+                      {parsedAddress.state.toUpperCase() === 'FL' && '3%'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Taxable amount (subtotal + shipping):</span>
+                    <span>${(subtotal + (shippingCost || expectedShippingCost)).toLocaleString()}</span>
+                  </div>
+                </div>
+              )}
             </div>
           )}
           

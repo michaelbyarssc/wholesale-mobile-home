@@ -1143,7 +1143,7 @@ export const InvoiceManagement = () => {
                       invoice_id: selectedInvoice.id,
                       amount: parseFloat(paymentAmount),
                       payment_method: paymentMethod,
-                      notes: paymentNotes || undefined,
+                      notes: paymentNotes.trim() || null,
                     });
                   }}
                   disabled={processPaymentMutation.isPending || !paymentAmount}

@@ -286,143 +286,137 @@ export const EstimateLineItems = ({ estimateId, isEditable = false }: EstimateLi
   const total = lineItems.reduce((sum, item) => sum + item.total_price, 0);
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-lg">Detailed Line Items</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {Object.entries(groupedItems).map(([category, items]) => (
-          <div key={category} className="space-y-2">
-            <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">
-              {category}
-            </h4>
-            <div className="space-y-2">
-              {items.map((item) => (
-                <div key={item.id} className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 border rounded-lg">
-                  <div className="flex items-start gap-3 flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      {getItemIcon(item.item_type)}
-                      <Badge variant="outline" className={getItemTypeColor(item.item_type)}>
-                        {item.item_type.replace('_', ' ')}
-                      </Badge>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      {editingItemId === item.id && editingItem ? (
-                        <div className="space-y-2">
-                          <Input
-                            value={editingItem.name}
-                            onChange={(e) => setEditingItem(prev => prev ? { ...prev, name: e.target.value } : null)}
-                            placeholder="Item name"
-                            className="font-medium"
-                          />
-                          <Textarea
-                            value={editingItem.description}
-                            onChange={(e) => setEditingItem(prev => prev ? { ...prev, description: e.target.value } : null)}
-                            placeholder="Item description"
-                            className="text-sm resize-none"
-                            rows={2}
-                          />
-                          <div className="flex gap-2">
-                            <div className="flex-1">
-                              <Label className="text-xs">Quantity</Label>
-                              <Input
-                                type="number"
-                                value={editingItem.quantity}
-                                onChange={(e) => setEditingItem(prev => prev ? { ...prev, quantity: parseFloat(e.target.value) || 1 } : null)}
-                                min="1"
-                                step="1"
-                                className="text-xs"
-                              />
-                            </div>
-                            <div className="flex-1">
-                              <Label className="text-xs">Unit Price</Label>
-                              <Input
-                                type="number"
-                                value={editingItem.unit_price}
-                                onChange={(e) => setEditingItem(prev => prev ? { ...prev, unit_price: parseFloat(e.target.value) || 0 } : null)}
-                                min="0"
-                                step="0.01"
-                                className="text-xs"
-                              />
-                            </div>
+    <div className="space-y-4">
+      {/* Line Items - similar to cart items */}
+      {Object.entries(groupedItems).map(([category, items]) => (
+        <Card key={category}>
+          <CardHeader>
+            <CardTitle className="text-lg">{category}</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {items.map((item) => (
+              <div key={item.id} className="flex items-start justify-between">
+                <div className="flex items-start gap-3 flex-1">
+                  <div className="flex items-center gap-2">
+                    {getItemIcon(item.item_type)}
+                    <Badge variant="outline" className={getItemTypeColor(item.item_type)}>
+                      {item.item_type.replace('_', ' ')}
+                    </Badge>
+                  </div>
+                  <div className="flex-1">
+                    {editingItemId === item.id && editingItem ? (
+                      <div className="space-y-2">
+                        <Input
+                          value={editingItem.name}
+                          onChange={(e) => setEditingItem(prev => prev ? { ...prev, name: e.target.value } : null)}
+                          placeholder="Item name"
+                          className="font-medium"
+                        />
+                        <Textarea
+                          value={editingItem.description}
+                          onChange={(e) => setEditingItem(prev => prev ? { ...prev, description: e.target.value } : null)}
+                          placeholder="Item description"
+                          className="text-sm resize-none"
+                          rows={2}
+                        />
+                        <div className="flex gap-2">
+                          <div className="flex-1">
+                            <Label className="text-xs">Quantity</Label>
+                            <Input
+                              type="number"
+                              value={editingItem.quantity}
+                              onChange={(e) => setEditingItem(prev => prev ? { ...prev, quantity: parseFloat(e.target.value) || 1 } : null)}
+                              min="1"
+                              step="1"
+                              className="text-xs"
+                            />
+                          </div>
+                          <div className="flex-1">
+                            <Label className="text-xs">Unit Price</Label>
+                            <Input
+                              type="number"
+                              value={editingItem.unit_price}
+                              onChange={(e) => setEditingItem(prev => prev ? { ...prev, unit_price: parseFloat(e.target.value) || 0 } : null)}
+                              min="0"
+                              step="0.01"
+                              className="text-xs"
+                            />
                           </div>
                         </div>
-                      ) : (
-                        <div className="min-w-0">
-                          <p className="font-medium truncate">{item.name}</p>
-                          {item.description && (
-                            <p className="text-sm text-muted-foreground break-words">{item.description}</p>
-                          )}
-                          {estimate?.delivery_address && item.item_type === 'shipping' && (
-                            <p className="text-sm text-muted-foreground break-words">
-                              <strong>Delivery Address:</strong> {estimate.delivery_address}
-                            </p>
-                          )}
-                          {item.quantity > 1 && (
-                            <p className="text-xs text-muted-foreground">Quantity: {item.quantity}</p>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between sm:justify-end gap-3 flex-shrink-0">
-                    <div className="text-right">
-                      {editingItemId === item.id && editingItem ? (
-                        <div className="flex gap-1">
-                          <Button size="sm" variant="outline" onClick={handleSaveClick} disabled={updateLineItemMutation.isPending}>
-                            <Save className="h-3 w-3" />
-                          </Button>
-                          <Button size="sm" variant="outline" onClick={handleCancelClick}>
-                            <X className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      ) : (
-                        <>
-                          {item.quantity > 1 ? (
-                            <div className="text-right">
-                              <p className="text-sm text-muted-foreground whitespace-nowrap">
-                                ${item.unit_price.toLocaleString()} × {item.quantity}
-                              </p>
-                              <p className="font-medium whitespace-nowrap">${item.total_price.toLocaleString()}</p>
-                            </div>
-                          ) : (
-                            <p className="font-medium whitespace-nowrap">${item.total_price.toLocaleString()}</p>
-                          )}
-                        </>
-                      )}
-                    </div>
-                    {isEditable && editingItemId !== item.id && (
-                      <Button size="sm" variant="outline" onClick={() => handleEditClick(item)} className="flex-shrink-0">
-                        Edit
-                      </Button>
+                      </div>
+                    ) : (
+                      <div>
+                        <p className="font-medium">{item.name}</p>
+                        {item.description && (
+                          <p className="text-sm text-muted-foreground">{item.description}</p>
+                        )}
+                        {estimate?.delivery_address && item.item_type === 'shipping' && (
+                          <p className="text-sm text-muted-foreground">
+                            <strong>Delivery Address:</strong> {estimate.delivery_address}
+                          </p>
+                        )}
+                        {item.quantity > 1 && (
+                          <p className="text-xs text-muted-foreground">Quantity: {item.quantity}</p>
+                        )}
+                      </div>
                     )}
                   </div>
                 </div>
-              ))}
-            </div>
-          </div>
-        ))}
+                <div className="flex items-center gap-3">
+                  <div className="text-right">
+                    {editingItemId === item.id && editingItem ? (
+                      <div className="flex gap-1">
+                        <Button size="sm" variant="outline" onClick={handleSaveClick} disabled={updateLineItemMutation.isPending}>
+                          <Save className="h-3 w-3" />
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={handleCancelClick}>
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <>
+                        {item.quantity > 1 ? (
+                          <div className="text-right">
+                            <p className="text-sm text-muted-foreground">
+                              ${item.unit_price.toLocaleString()} × {item.quantity}
+                            </p>
+                            <p className="font-medium">${item.total_price.toLocaleString()}</p>
+                          </div>
+                        ) : (
+                          <p className="font-medium">${item.total_price.toLocaleString()}</p>
+                        )}
+                      </>
+                    )}
+                  </div>
+                  {isEditable && editingItemId !== item.id && (
+                    <Button size="sm" variant="outline" onClick={() => handleEditClick(item)}>
+                      Edit
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      ))}
 
-        <Separator />
-
-        {/* Cost Summary */}
+      {/* Totals - similar to cart total */}
+      <div className="border-t pt-4 space-y-4">
         <div className="space-y-2">
-          <div className="flex justify-between items-center">
-            <Label className="text-sm">Subtotal:</Label>
-            <span className="font-medium">${subtotal.toLocaleString()}</span>
+          <div className="flex justify-between text-gray-600">
+            <span>Subtotal:</span>
+            <span>${subtotal.toLocaleString()}</span>
           </div>
           
           {/* Detailed Shipping Information */}
           {(shippingCost > 0 || (shippingCalculation && parsedAddress)) && (
-            <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <Label className="text-sm flex items-center gap-2">
+            <>
+              <div className="flex justify-between text-gray-600">
+                <span className="flex items-center gap-1">
                   <Truck className="h-4 w-4" />
-                  Shipping & Delivery:
-                </Label>
-                <span className="font-medium">
-                  ${(shippingCost || expectedShippingCost).toLocaleString()}
+                  Shipping:
                 </span>
+                <span>${(shippingCost || expectedShippingCost).toLocaleString()}</span>
               </div>
               
               {/* Shipping breakdown if calculated */}
@@ -454,50 +448,23 @@ export const EstimateLineItems = ({ estimateId, isEditable = false }: EstimateLi
                   </div>
                 </div>
               )}
-            </div>
+            </>
           )}
           
           {/* Sales Tax Information */}
           {(taxCost > 0 || (parsedAddress && expectedTaxCost > 0)) && (
-            <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <Label className="text-sm flex items-center gap-2">
-                  <Receipt className="h-4 w-4" />
-                  Sales Tax:
-                </Label>
-                <span className="font-medium">
-                  ${(taxCost || expectedTaxCost).toLocaleString()}
-                </span>
-              </div>
-              
-              {/* Tax breakdown if calculated */}
-              {parsedAddress && expectedTaxCost > 0 && (
-                <div className="ml-6 space-y-1 text-sm text-muted-foreground">
-                  <div className="flex justify-between">
-                    <span>State: {parsedAddress.state.toUpperCase()}</span>
-                    <span>
-                      {parsedAddress.state.toUpperCase() === 'GA' && '8%'}
-                      {parsedAddress.state.toUpperCase() === 'AL' && '2%'}
-                      {parsedAddress.state.toUpperCase() === 'FL' && '3%'}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Taxable amount (subtotal + shipping):</span>
-                    <span>${(subtotal + (shippingCost || expectedShippingCost)).toLocaleString()}</span>
-                  </div>
-                </div>
-              )}
+            <div className="flex justify-between text-gray-600">
+              <span>{parsedAddress?.state.toUpperCase()} Sales Tax:</span>
+              <span>${(taxCost || expectedTaxCost).toLocaleString()}</span>
             </div>
           )}
           
-          <Separator />
-          
-          <div className="flex justify-between items-center">
-            <Label className="font-medium">Total:</Label>
-            <span className="font-bold text-lg text-green-600">${total.toLocaleString()}</span>
+          <div className="flex justify-between text-xl font-bold border-t pt-2">
+            <span>Total:</span>
+            <span>${total.toLocaleString()}</span>
           </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 };

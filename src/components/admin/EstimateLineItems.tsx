@@ -35,6 +35,11 @@ export const EstimateLineItems = ({ estimateId, isEditable = false }: EstimateLi
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [editingItem, setEditingItem] = useState<EstimateLineItem | null>(null);
 
+  // Early return if no estimateId provided
+  if (!estimateId) {
+    return null;
+  }
+
   // Fetch estimate data with mobile home and delivery address
   const { data: estimate } = useQuery({
     queryKey: ['estimate', estimateId],

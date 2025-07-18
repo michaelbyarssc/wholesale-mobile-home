@@ -272,9 +272,8 @@ export const EstimateLineItems = ({ estimateId, isEditable = false }: EstimateLi
         console.log('🏛️ FL tax calculation:', { taxableAmount: taxableAmountFL, tax: flTax });
         return flTax;
       case 'SC':
-        const taxableAmountSC = subtotal + shipping;
-        const scTax = taxableAmountSC * 0.07; // 7% of subtotal + shipping
-        console.log('🏛️ SC tax calculation:', { taxableAmount: taxableAmountSC, tax: scTax });
+        const scTax = 500; // Flat $500 sales tax for South Carolina
+        console.log('🏛️ SC tax calculation (flat rate):', { tax: scTax });
         return scTax;
       default:
         console.log('🏛️ No tax for state:', stateCode);

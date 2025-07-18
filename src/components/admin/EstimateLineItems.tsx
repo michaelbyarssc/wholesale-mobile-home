@@ -433,7 +433,10 @@ export const EstimateLineItems = ({ estimateId, isEditable = false }: EstimateLi
           {/* Sales Tax Information */}
           {(taxCost > 0 || (parsedAddress && expectedTaxCost > 0)) && (
             <div className="flex justify-between text-gray-600">
-              <span>{parsedAddress?.state.toUpperCase()} Sales Tax:</span>
+              <span className="flex items-center gap-1">
+                <Receipt className="h-4 w-4" />
+                {parsedAddress?.state.toUpperCase()} Sales Tax:
+              </span>
               <span>${(taxCost || expectedTaxCost).toLocaleString()}</span>
             </div>
           )}

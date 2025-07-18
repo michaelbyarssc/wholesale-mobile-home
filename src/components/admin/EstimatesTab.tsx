@@ -88,7 +88,7 @@ export const EstimatesTab = () => {
   });
   const [editingEstimate, setEditingEstimate] = useState<Estimate | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+  const [viewingEstimate, setViewingEstimate] = useState<Estimate | null>(null);
 
   // Fetch mobile homes data from database
   const [mobileHomes, setMobileHomes] = useState<any[]>([]);
@@ -359,7 +359,7 @@ export const EstimatesTab = () => {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['admin-estimates'] });
-      setIsViewDialogOpen(false); // Close the dialog
+      setViewingEstimate(null); // Close the dialog
       toast({
         title: "Estimate Approved",
         description: `Estimate approved successfully. Invoice ${data.invoiceNumber} has been created and sent to the customer.`,
@@ -992,9 +992,11 @@ export const EstimatesTab = () => {
                       )}
 
                       {/* View Button - always available */}
-                      <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
+                      <Dialog open={viewingEstimate?.id === estimate.id} onOpenChange={(open) => {
+                        if (!open) setViewingEstimate(null);
+                      }}>
                         <DialogTrigger asChild>
-                          <Button variant="outline" size="sm">
+                          <Button variant="outline" size="sm" onClick={() => setViewingEstimate(estimate)}>
                             <Eye className="h-4 w-4 mr-1" />
                             View
                           </Button>
@@ -1007,61 +1009,53 @@ export const EstimatesTab = () => {
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                               <div>
                                 <Label>Customer</Label>
-                                <p className="font-medium">{estimate.customer_name}</p>
+                                <p className="font-medium">{viewingEstimate?.customer_name}</p>
                               </div>
                               <div>
                                 <Label>Status</Label>
                                 <Badge variant={
-                                  estimate.status === 'draft' ? 'secondary' :
-                                  estimate.status === 'sent' ? 'default' :
-                                  estimate.status === 'approved' ? 'default' :
-                                  estimate.status === 'pending_review' ? 'secondary' :
+                                  viewingEstimate?.status === 'draft' ? 'secondary' :
+                                  viewingEstimate?.status === 'sent' ? 'default' :
+                                  viewingEstimate?.status === 'approved' ? 'default' :
+                                  viewingEstimate?.status === 'pending_review' ? 'secondary' :
                                   'secondary'
                                 }>
-                                  {estimate.status.charAt(0).toUpperCase() + estimate.status.slice(1).replace('_', ' ')}
+                                  {viewingEstimate?.status.charAt(0).toUpperCase() + viewingEstimate?.status.slice(1).replace('_', ' ')}
                                 </Badge>
                               </div>
                               <div>
                                 <Label>Email</Label>
-                                <p>{estimate.customer_email}</p>
+                                <p>{viewingEstimate?.customer_email}</p>
                               </div>
                               <div>
                                 <Label>Phone</Label>
-                                <p>{estimate.customer_phone}</p>
+                                <p>{viewingEstimate?.customer_phone}</p>
                               </div>
                               <div className="col-span-1 sm:col-span-2">
                                 <Label>Delivery Address</Label>
-                                <p>{estimate.delivery_address}</p>
+                                <p>{viewingEstimate?.delivery_address}</p>
                               </div>
                               <div>
                                 <Label>Mobile Home</Label>
-                                <p>{estimate.mobile_homes?.manufacturer} {estimate.mobile_homes?.series} {estimate.mobile_homes?.model}</p>
+                                <p>{viewingEstimate?.mobile_homes?.manufacturer} {viewingEstimate?.mobile_homes?.series} {viewingEstimate?.mobile_homes?.model}</p>
                               </div>
                               <div>
                                 <Label>Total Amount</Label>
-                                <p className="font-medium text-lg">${estimate.total_amount.toLocaleString()}</p>
+                                <p className="font-medium text-lg">${viewingEstimate?.total_amount.toLocaleString()}</p>
                               </div>
                                <div>
                                  <Label>Created</Label>
-                                 <p>{format(new Date(estimate.created_at), 'MMM dd, yyyy HH:mm')}</p>
+                                 <p>{format(new Date(viewingEstimate?.created_at), 'MMM dd, yyyy HH:mm')}</p>
                                </div>
-                               {estimate.transaction_number && (
-                                 <div>
-                                   <Label>Transaction Number</Label>
-                                   <Badge variant="outline" className="text-sm font-mono">
-                                     {estimate.transaction_number}
-                                   </Badge>
-                                 </div>
-                               )}
-                               {estimate.approved_at && (
+                               {viewingEstimate?.approved_at && (
                                  <div>
                                    <Label>Approved</Label>
-                                   <p>{format(new Date(estimate.approved_at), 'MMM dd, yyyy HH:mm')}</p>
+                                   <p>{format(new Date(viewingEstimate.approved_at), 'MMM dd, yyyy HH:mm')}</p>
                                  </div>
                                )}
                             </div>
 
-                            <EstimateLineItems estimateId={estimate?.id} />
+                            <EstimateLineItems estimateId={viewingEstimate?.id} />
 
                             {/* Action Buttons */}
                             <div className="flex flex-col sm:flex-row sm:justify-end gap-2 pt-4 border-t">
@@ -1070,8 +1064,9 @@ export const EstimatesTab = () => {
                                 variant="outline" 
                                 className="w-full sm:w-auto"
                                 onClick={() => {
-                                  setEditingEstimate(estimate);
+                                  setEditingEstimate(viewingEstimate);
                                   setIsEditDialogOpen(true);
+                                  setViewingEstimate(null);
                                 }}
                               >
                                 <Edit className="h-4 w-4 mr-2" />
@@ -1082,7 +1077,7 @@ export const EstimatesTab = () => {
                               <Button 
                                 variant="default" 
                                 className="bg-green-600 hover:bg-green-700 w-full sm:w-auto"
-                                onClick={() => approveEstimateMutation.mutate(estimate.id)}
+                                onClick={() => approveEstimateMutation.mutate(viewingEstimate.id)}
                                 disabled={approveEstimateMutation.isPending}
                               >
                                 <CheckCircle className="h-4 w-4 mr-2" />

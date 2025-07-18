@@ -433,6 +433,12 @@ export const EstimatesTab = () => {
       });
 
       if (error) throw error;
+      
+      // Check if the function actually succeeded
+      if (!data || !data.success) {
+        throw new Error(data?.error || 'Failed to approve estimate');
+      }
+      
       return data;
     },
     onSuccess: (data) => {
@@ -445,9 +451,21 @@ export const EstimatesTab = () => {
     },
     onError: (error) => {
       console.error('Approval error:', error);
+      // Always invalidate queries to show current state
+      queryClient.invalidateQueries({ queryKey: ['admin-estimates'] });
+      
+      let errorMessage = "Failed to approve estimate. Please try again.";
+      
+      // Handle specific error cases
+      if (error.message?.includes('already approved')) {
+        errorMessage = "This estimate has already been approved.";
+      } else if (error.message?.includes('not found')) {
+        errorMessage = "Estimate not found.";
+      }
+      
       toast({
         title: "Error",
-        description: "Failed to approve estimate. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
     }

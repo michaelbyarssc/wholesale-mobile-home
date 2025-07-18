@@ -94,10 +94,10 @@ serve(async (req) => {
     console.log('About to approve estimate with ID:', estimateUuid, 'Type:', typeof estimateUuid);
     
     // Call the approve_estimate function
-    const { data: invoiceId, error: approvalError } = await supabase
+    const { data: approvalResult, error: approvalError } = await supabase
       .rpc('approve_estimate', { estimate_uuid: estimateUuid })
 
-    console.log('approve_estimate result:', { invoiceId, approvalError });
+    console.log('approve_estimate result:', { approvalResult, approvalError });
 
     if (approvalError) {
       console.error('Approval error:', approvalError)
@@ -107,11 +107,19 @@ serve(async (req) => {
       })
     }
 
+    if (!approvalResult || !approvalResult.success) {
+      console.error('Approval failed:', approvalResult)
+      return new Response(JSON.stringify({ error: approvalResult?.error || 'Failed to approve estimate' }), { 
+        status: 500, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
     // Get the created invoice details
     const { data: invoice, error: invoiceError } = await supabase
       .from('invoices')
       .select('*')
-      .eq('id', invoiceId)
+      .eq('id', approvalResult.invoice_id)
       .single()
 
     if (invoiceError || !invoice) {

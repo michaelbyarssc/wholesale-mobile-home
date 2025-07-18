@@ -1061,7 +1061,9 @@ export const EstimatesTab = () => {
                                )}
                             </div>
 
-                            <EstimateLineItems estimateId={estimate.id} />
+                             {isViewDialogOpen && estimate && (
+                               <EstimateLineItems estimateId={estimate.id} />
+                             )}
 
                             {/* Action Buttons */}
                             <div className="flex flex-col sm:flex-row sm:justify-end gap-2 pt-4 border-t">
@@ -1386,7 +1388,9 @@ export const EstimatesTab = () => {
                 )}
               </div>
 
-              <EstimateLineItems estimateId={editingEstimate.id} isEditable={true} />
+               {isEditDialogOpen && editingEstimate && (
+                 <EstimateLineItems estimateId={editingEstimate.id} isEditable={true} />
+               )}
 
               <div className="flex justify-end gap-2 pt-4 border-t">
                 <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>

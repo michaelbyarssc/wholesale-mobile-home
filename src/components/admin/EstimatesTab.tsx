@@ -132,6 +132,11 @@ export const EstimatesTab = () => {
             series,
             model,
             price
+          ),
+          transactions!transactions_estimate_id_fkey (
+            id,
+            transaction_number,
+            status
           )
         `)
         .order('created_at', { ascending: false });
@@ -762,13 +767,18 @@ export const EstimatesTab = () => {
                 <div key={estimate.id} className="border rounded-lg p-4">
                   <div className="flex justify-between items-start">
                     <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-medium">{estimate.customer_name}</h3>
-                        <Badge className={getStatusColor(estimate.status)}>
-                          {getStatusIcon(estimate.status)}
-                          <span className="ml-1 capitalize">{estimate.status}</span>
-                        </Badge>
-                      </div>
+                       <div className="flex items-center gap-2">
+                         <h3 className="font-medium">{estimate.customer_name}</h3>
+                         <Badge className={getStatusColor(estimate.status)}>
+                           {getStatusIcon(estimate.status)}
+                           <span className="ml-1 capitalize">{estimate.status}</span>
+                         </Badge>
+                         {estimate.transactions?.[0]?.transaction_number && (
+                           <Badge variant="outline" className="text-xs font-mono">
+                             {estimate.transactions[0].transaction_number}
+                           </Badge>
+                         )}
+                       </div>
                       <p className="text-sm text-muted-foreground">{estimate.customer_email}</p>
                       <p className="text-sm">
                         {estimate.mobile_homes?.manufacturer} {estimate.mobile_homes?.series} {estimate.mobile_homes?.model}
@@ -912,9 +922,16 @@ export const EstimatesTab = () => {
                           </Button>
                         </DialogTrigger>
                         <DialogContent className="w-[95vw] max-w-4xl h-[90vh] max-h-[80vh] overflow-y-auto sm:w-full sm:h-auto p-4 sm:p-6">
-                          <DialogHeader>
-                            <DialogTitle>Estimate Details</DialogTitle>
-                          </DialogHeader>
+                           <DialogHeader>
+                             <DialogTitle className="flex items-center justify-between">
+                               <span>Estimate Details</span>
+                               {estimate.transactions?.[0]?.transaction_number && (
+                                 <Badge variant="outline" className="text-sm font-mono">
+                                   {estimate.transactions[0].transaction_number}
+                                 </Badge>
+                               )}
+                             </DialogTitle>
+                           </DialogHeader>
                           <div className="space-y-6">
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                               <div>
@@ -1091,7 +1108,14 @@ export const EstimatesTab = () => {
                 <div key={estimate.id} className="border rounded-lg p-4">
                   <div className="flex justify-between items-start">
                     <div className="space-y-2">
-                      <h3 className="font-medium">{estimate.customer_name}</h3>
+                       <div className="flex items-center gap-2">
+                         <h3 className="font-medium">{estimate.customer_name}</h3>
+                         {estimate.transactions?.[0]?.transaction_number && (
+                           <Badge variant="outline" className="text-xs font-mono">
+                             {estimate.transactions[0].transaction_number}
+                           </Badge>
+                         )}
+                       </div>
                       <p className="text-sm text-muted-foreground">{estimate.customer_email}</p>
                       <p className="text-sm">
                         {estimate.mobile_homes?.manufacturer} {estimate.mobile_homes?.series} {estimate.mobile_homes?.model}
@@ -1112,7 +1136,14 @@ export const EstimatesTab = () => {
                 <div key={estimate.id} className="border rounded-lg p-4">
                   <div className="flex justify-between items-start">
                     <div className="space-y-2">
-                      <h3 className="font-medium">{estimate.customer_name}</h3>
+                       <div className="flex items-center gap-2">
+                         <h3 className="font-medium">{estimate.customer_name}</h3>
+                         {estimate.transactions?.[0]?.transaction_number && (
+                           <Badge variant="outline" className="text-xs font-mono">
+                             {estimate.transactions[0].transaction_number}
+                           </Badge>
+                         )}
+                       </div>
                       <p className="text-sm text-muted-foreground">{estimate.customer_email}</p>
                       <p className="text-sm">
                         {estimate.mobile_homes?.manufacturer} {estimate.mobile_homes?.series} {estimate.mobile_homes?.model}
@@ -1133,7 +1164,14 @@ export const EstimatesTab = () => {
                 <div key={estimate.id} className="border rounded-lg p-4">
                   <div className="flex justify-between items-start">
                     <div className="space-y-2">
-                      <h3 className="font-medium">{estimate.customer_name}</h3>
+                       <div className="flex items-center gap-2">
+                         <h3 className="font-medium">{estimate.customer_name}</h3>
+                         {estimate.transactions?.[0]?.transaction_number && (
+                           <Badge variant="outline" className="text-xs font-mono">
+                             {estimate.transactions[0].transaction_number}
+                           </Badge>
+                         )}
+                       </div>
                       <p className="text-sm text-muted-foreground">{estimate.customer_email}</p>
                       <p className="text-sm">
                         {estimate.mobile_homes?.manufacturer} {estimate.mobile_homes?.series} {estimate.mobile_homes?.model}

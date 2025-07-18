@@ -299,6 +299,15 @@ export const EstimateLineItems = ({ estimateId, isEditable = false }: EstimateLi
   const actualTaxCost = taxCost > 0 ? taxCost : expectedTaxCost;
   const total = subtotal + actualShippingCost + actualTaxCost;
 
+  // Debug logging
+  console.log('🔍 EstimateLineItems debug:', {
+    parsedAddress,
+    expectedTaxCost,
+    actualTaxCost,
+    subtotal,
+    actualShippingCost
+  });
+
   return (
     <div className="space-y-4">
       {/* Line Items - similar to cart items */}
@@ -434,7 +443,7 @@ export const EstimateLineItems = ({ estimateId, isEditable = false }: EstimateLi
           )}
           
           {/* Sales Tax Information */}
-          {(actualTaxCost > 0 && parsedAddress && ['GA', 'AL', 'FL'].includes(parsedAddress.state.toUpperCase())) && (
+          {actualTaxCost > 0 && parsedAddress && (
             <div className="flex justify-between text-gray-600">
               <span className="flex items-center gap-1">
                 <Receipt className="h-4 w-4" />

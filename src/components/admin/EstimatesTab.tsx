@@ -865,7 +865,35 @@ export const EstimatesTab = () => {
                           <X className="h-4 w-4 mr-1" />
                           Deny
                         </Button>
-                      )}
+                       )}
+
+                       {/* Delete Button - available for super admins */}
+                       <AlertDialog>
+                         <AlertDialogTrigger asChild>
+                           <Button variant="destructive" size="sm">
+                             <Trash2 className="h-4 w-4 mr-1" />
+                             Delete
+                           </Button>
+                         </AlertDialogTrigger>
+                         <AlertDialogContent>
+                           <AlertDialogHeader>
+                             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                             <AlertDialogDescription>
+                               This action cannot be undone. This will permanently delete the estimate for {estimate.customer_name}.
+                             </AlertDialogDescription>
+                           </AlertDialogHeader>
+                           <AlertDialogFooter>
+                             <AlertDialogCancel>Cancel</AlertDialogCancel>
+                             <AlertDialogAction 
+                               onClick={() => deleteEstimateMutation.mutate(estimate.id)}
+                               disabled={deleteEstimateMutation.isPending}
+                               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                             >
+                               Delete Estimate
+                             </AlertDialogAction>
+                           </AlertDialogFooter>
+                         </AlertDialogContent>
+                       </AlertDialog>
 
                       {/* Send Button - available for draft estimates */}
                       {estimate.status === 'draft' && (

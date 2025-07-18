@@ -1002,7 +1002,7 @@ export const EstimatesTab = () => {
                             View
                           </Button>
                         </DialogTrigger>
-                        <DialogContent className="w-[95vw] max-w-4xl h-[90vh] max-h-[80vh] overflow-y-auto sm:w-full sm:h-auto p-4 sm:p-6">
+                        <DialogContent key={`view-${estimate.id}`} className="w-[95vw] max-w-4xl h-[90vh] max-h-[80vh] overflow-y-auto sm:w-full sm:h-auto p-4 sm:p-6">
                            <DialogHeader>
                              <DialogTitle>Estimate Details</DialogTitle>
                            </DialogHeader>
@@ -1064,7 +1064,7 @@ export const EstimatesTab = () => {
                                )}
                             </div>
 
-                            {isViewDialogOpen && <EstimateLineItems estimateId={estimate.id} />}
+                            <EstimateLineItems estimateId={estimate.id} />
 
                             {/* Action Buttons */}
                             <div className="flex flex-col sm:flex-row sm:justify-end gap-2 pt-4 border-t">

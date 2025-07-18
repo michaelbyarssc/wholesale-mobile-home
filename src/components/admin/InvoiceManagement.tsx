@@ -355,29 +355,33 @@ export const InvoiceManagement = () => {
       notes?: string; 
     }) => {
       try {
-        // Get current user for created_by field
-        const { data: userData, error: authError } = await supabase.auth.getUser();
+        console.log('Starting payment recording process...');
+        console.log('Payment data:', paymentData);
         
-        if (authError) {
-          console.error('Auth error:', authError);
-          throw new Error('Authentication failed');
+        // Get the current session directly which is more reliable
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          console.error('Session error:', sessionError);
+          throw new Error('Session retrieval failed: ' + sessionError.message);
         }
 
-        if (!userData?.user?.id) {
-          throw new Error('User not authenticated');
+        if (!session?.user?.id) {
+          console.error('No session or user found');
+          throw new Error('User session not found. Please refresh and try again.');
         }
         
-        console.log('Recording payment for invoice:', paymentData.invoice_id, 'Amount:', paymentData.amount);
+        console.log('User authenticated:', session.user.id);
         
         const paymentRecord = {
           invoice_id: paymentData.invoice_id,
           amount: paymentData.amount,
           payment_method: paymentData.payment_method,
           notes: paymentData.notes || null,
-          created_by: userData.user.id
+          created_by: session.user.id
         };
         
-        console.log('Payment record to insert:', paymentRecord);
+        console.log('Inserting payment record:', paymentRecord);
         
         const { data, error } = await supabase
           .from('payments')
@@ -386,14 +390,14 @@ export const InvoiceManagement = () => {
           .single();
         
         if (error) {
-          console.error('Payment insertion error:', error);
-          throw error;
+          console.error('Database insertion error:', error);
+          throw new Error(`Database error: ${error.message}`);
         }
         
         console.log('Payment recorded successfully:', data);
         return data;
       } catch (error) {
-        console.error('Payment processing error:', error);
+        console.error('Payment processing failed:', error);
         throw error;
       }
     },

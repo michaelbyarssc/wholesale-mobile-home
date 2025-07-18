@@ -773,11 +773,11 @@ export const EstimatesTab = () => {
                            {getStatusIcon(estimate.status)}
                            <span className="ml-1 capitalize">{estimate.status}</span>
                          </Badge>
-                         {estimate.transactions?.[0]?.transaction_number && (
-                           <Badge variant="outline" className="text-xs font-mono">
-                             {estimate.transactions[0].transaction_number}
-                           </Badge>
-                         )}
+                          {estimate.transaction_number && (
+                            <Badge variant="outline" className="text-xs font-mono">
+                              {estimate.transaction_number}
+                            </Badge>
+                          )}
                        </div>
                       <p className="text-sm text-muted-foreground">{estimate.customer_email}</p>
                       <p className="text-sm">

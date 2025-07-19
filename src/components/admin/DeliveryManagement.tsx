@@ -66,7 +66,10 @@ export const DeliveryManagement = () => {
   const [filter, setFilter] = useState<'all' | 'scheduled' | 'in_transit' | 'completed' | 'pending_payment' | 'factory_pickup_scheduled' | 'factory_pickup_in_progress' | 'factory_pickup_completed' | 'delivery_in_progress' | 'delivered' | 'cancelled' | 'delayed'>('all');
   const [selectedDelivery, setSelectedDelivery] = useState<Delivery | null>(null);
   const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
-  const [selectedDate, setSelectedDate] = useState<Date>();
+  const [selectedPickupDate, setSelectedPickupDate] = useState<Date>();
+  const [selectedPickupTime, setSelectedPickupTime] = useState<string>('');
+  const [selectedDeliveryDate, setSelectedDeliveryDate] = useState<Date>();
+  const [selectedDeliveryTime, setSelectedDeliveryTime] = useState<string>('');
   const [selectedDriver, setSelectedDriver] = useState<string>('');
   const [notes, setNotes] = useState('');
   const [datePickerOpen, setDatePickerOpen] = useState(false);
@@ -106,17 +109,19 @@ export const DeliveryManagement = () => {
   });
 
   const scheduleDeliveryMutation = useMutation({
-    mutationFn: async ({ deliveryId, driverId, scheduledDate, notes }: {
+    mutationFn: async ({ deliveryId, driverId, scheduledPickupDate, scheduledDeliveryDate, notes }: {
       deliveryId: string;
       driverId: string;
-      scheduledDate: Date;
+      scheduledPickupDate: Date;
+      scheduledDeliveryDate: Date;
       notes: string;
     }) => {
-      // Update delivery with scheduled date
+      // Update delivery with scheduled dates
       const { error: deliveryError } = await supabase
         .from('deliveries')
         .update({
-          scheduled_delivery_date: scheduledDate.toISOString(),
+          scheduled_pickup_date: scheduledPickupDate.toISOString(),
+          scheduled_delivery_date: scheduledDeliveryDate.toISOString(),
           status: 'scheduled'
         })
         .eq('id', deliveryId);
@@ -140,7 +145,10 @@ export const DeliveryManagement = () => {
       queryClient.invalidateQueries({ queryKey: ['deliveries'] });
       setScheduleDialogOpen(false);
       setDatePickerOpen(false);
-      setSelectedDate(undefined);
+      setSelectedPickupDate(undefined);
+      setSelectedPickupTime('');
+      setSelectedDeliveryDate(undefined);
+      setSelectedDeliveryTime('');
       setSelectedDriver('');
       setNotes('');
       setSelectedDelivery(null);
@@ -173,19 +181,34 @@ export const DeliveryManagement = () => {
   };
 
   const handleScheduleSubmit = () => {
-    if (!selectedDelivery || !selectedDate || !selectedDriver) {
+    if (!selectedDelivery || !selectedPickupDate || !selectedDeliveryDate || !selectedDriver) {
       toast({
         title: "Missing Information",
-        description: "Please select both a date and a driver.",
+        description: "Please select pickup date, delivery date, and a driver.",
         variant: "destructive"
       });
       return;
     }
 
+    // Combine date and time for pickup
+    const pickupDateTime = new Date(selectedPickupDate);
+    if (selectedPickupTime) {
+      const [hours, minutes] = selectedPickupTime.split(':');
+      pickupDateTime.setHours(parseInt(hours), parseInt(minutes));
+    }
+
+    // Combine date and time for delivery
+    const deliveryDateTime = new Date(selectedDeliveryDate);
+    if (selectedDeliveryTime) {
+      const [hours, minutes] = selectedDeliveryTime.split(':');
+      deliveryDateTime.setHours(parseInt(hours), parseInt(minutes));
+    }
+
     scheduleDeliveryMutation.mutate({
       deliveryId: selectedDelivery.id,
       driverId: selectedDriver,
-      scheduledDate: selectedDate,
+      scheduledPickupDate: pickupDateTime,
+      scheduledDeliveryDate: deliveryDateTime,
       notes: notes
     });
   };
@@ -224,22 +247,56 @@ export const DeliveryManagement = () => {
             </Select>
           </div>
 
-          {/* Date Selection */}
+          {/* Pickup Date & Time Selection */}
           <div className="space-y-2">
-            <Label>Delivery Date</Label>
-            <input
-              type="date"
-              className="w-full px-3 py-2 border border-input rounded-md bg-background text-sm"
-              value={selectedDate ? format(selectedDate, 'yyyy-MM-dd') : ''}
-              onChange={(e) => {
-                if (e.target.value) {
-                  setSelectedDate(new Date(e.target.value));
-                } else {
-                  setSelectedDate(undefined);
-                }
-              }}
-              min={format(new Date(), 'yyyy-MM-dd')}
-            />
+            <Label>Pickup Date & Time</Label>
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                type="date"
+                className="px-3 py-2 border border-input rounded-md bg-background text-sm"
+                value={selectedPickupDate ? format(selectedPickupDate, 'yyyy-MM-dd') : ''}
+                onChange={(e) => {
+                  if (e.target.value) {
+                    setSelectedPickupDate(new Date(e.target.value));
+                  } else {
+                    setSelectedPickupDate(undefined);
+                  }
+                }}
+                min={format(new Date(), 'yyyy-MM-dd')}
+              />
+              <input
+                type="time"
+                className="px-3 py-2 border border-input rounded-md bg-background text-sm"
+                value={selectedPickupTime}
+                onChange={(e) => setSelectedPickupTime(e.target.value)}
+              />
+            </div>
+          </div>
+
+          {/* Delivery Date & Time Selection */}
+          <div className="space-y-2">
+            <Label>Delivery Date & Time</Label>
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                type="date"
+                className="px-3 py-2 border border-input rounded-md bg-background text-sm"
+                value={selectedDeliveryDate ? format(selectedDeliveryDate, 'yyyy-MM-dd') : ''}
+                onChange={(e) => {
+                  if (e.target.value) {
+                    setSelectedDeliveryDate(new Date(e.target.value));
+                  } else {
+                    setSelectedDeliveryDate(undefined);
+                  }
+                }}
+                min={selectedPickupDate ? format(selectedPickupDate, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd')}
+              />
+              <input
+                type="time"
+                className="px-3 py-2 border border-input rounded-md bg-background text-sm"
+                value={selectedDeliveryTime}
+                onChange={(e) => setSelectedDeliveryTime(e.target.value)}
+              />
+            </div>
           </div>
 
           {/* Notes */}

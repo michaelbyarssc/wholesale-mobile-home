@@ -189,7 +189,6 @@ export const InvoiceManagement = () => {
           customer_phone: estimate.customer_phone,
           delivery_address: estimate.delivery_address,
           total_amount: estimate.total_amount,
-          balance_due: estimate.total_amount,
           user_id: estimate.user_id,
           mobile_home_id: estimate.mobile_home_id,
           selected_services: estimate.selected_services,
@@ -204,6 +203,17 @@ export const InvoiceManagement = () => {
         .single();
       
       if (invoiceError) throw invoiceError;
+      
+      // Explicitly update the balance_due to ensure it's set correctly
+      const { error: balanceUpdateError } = await supabase
+        .from('invoices')
+        .update({ balance_due: estimate.total_amount })
+        .eq('id', invoice.id);
+      
+      if (balanceUpdateError) {
+        console.error('Failed to update balance_due:', balanceUpdateError);
+        // Continue anyway as this is not critical
+      }
       
       // Update estimate to link to the invoice
       const { error: updateError } = await supabase

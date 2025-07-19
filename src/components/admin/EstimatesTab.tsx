@@ -437,16 +437,24 @@ export const EstimatesTab = () => {
         body: { estimate_uuid: estimateId }
       });
 
-      if (error) throw error;
+      console.log('🔵 Edge function response:', { data, error });
+
+      if (error) {
+        console.error('🔴 Edge function error:', error);
+        throw error;
+      }
       
       // Check if the function actually succeeded
       if (!data || !data.success) {
+        console.error('🔴 Function returned failure:', data);
         throw new Error(data?.error || 'Failed to approve estimate');
       }
       
+      console.log('🟢 Estimate approved successfully:', data);
       return data;
     },
     onSuccess: (data) => {
+      console.log('🟢 Success callback triggered with:', data);
       // Invalidate all estimate-related queries
       queryClient.invalidateQueries({ queryKey: ['admin-estimates'] });
       queryClient.invalidateQueries({ queryKey: ['approved-estimates'] });
@@ -455,11 +463,11 @@ export const EstimatesTab = () => {
       setIsViewDialogOpen(false); // Close the dialog
       toast({
         title: "Estimate Approved",
-        description: `Estimate approved successfully. Invoice ${data.invoiceNumber} has been created and sent to the customer.`,
+        description: `Estimate approved successfully. Invoice ${data.invoiceNumber || data.invoice_number} has been created and sent to the customer.`,
       });
     },
     onError: (error) => {
-      console.error('Approval error:', error);
+      console.error('🔴 Error callback triggered:', error);
       // Always invalidate queries to show current state
       queryClient.invalidateQueries({ queryKey: ['admin-estimates'] });
       queryClient.invalidateQueries({ queryKey: ['approved-estimates'] });

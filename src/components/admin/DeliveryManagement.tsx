@@ -7,7 +7,6 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Truck, Calendar as CalendarIcon, CheckCircle, Clock, AlertCircle, MapPin, FileText, User, Phone, Home, Package, CalendarDays } from 'lucide-react';
@@ -365,7 +364,7 @@ export const DeliveryManagement = () => {
         <Card className="md:col-span-2">
           <CardHeader>
             <CardTitle className="text-base flex items-center">
-              <Calendar className="h-4 w-4 mr-2" />
+              <CalendarDays className="h-4 w-4 mr-2" />
               Schedule Information
             </CardTitle>
           </CardHeader>
@@ -480,7 +479,7 @@ export const DeliveryManagement = () => {
           </CardHeader>
           <CardContent>
             <div className="flex items-center">
-              <Calendar className="h-4 w-4 text-muted-foreground mr-2" />
+              <CalendarDays className="h-4 w-4 text-muted-foreground mr-2" />
               <span className="text-2xl font-bold">
                 {deliveries?.filter(d => d.status === 'scheduled').length || 0}
               </span>

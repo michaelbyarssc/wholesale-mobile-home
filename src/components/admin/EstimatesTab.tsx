@@ -124,6 +124,7 @@ export const EstimatesTab = () => {
   const { data: estimates = [], isLoading: estimatesLoading } = useQuery({
     queryKey: ['admin-estimates'],
     queryFn: async () => {
+      console.log('🟢 Fetching estimates from database...');
       const { data, error } = await supabase
         .from('estimates')
         .select(`
@@ -145,8 +146,11 @@ export const EstimatesTab = () => {
         .order('created_at', { ascending: false });
       
       if (error) throw error;
+      console.log('🟢 Fetched estimates:', data?.map(e => ({ id: e.id, status: e.status, name: e.customer_name })));
       return data || [];
-    }
+    },
+    refetchOnWindowFocus: true,
+    refetchOnMount: true
   });
 
   // Calculate proper total including shipping and taxes for all estimates

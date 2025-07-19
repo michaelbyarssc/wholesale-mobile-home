@@ -264,15 +264,19 @@ export const DeliveryManagement = () => {
                   />
                 </PopoverContent>
               </Popover>
-              <input
-                type="time"
-                className="px-3 py-2 border border-input rounded-md bg-background text-sm"
-                value={selectedPickupTime}
-                onChange={(e) => setSelectedPickupTime(e.target.value)}
+              <div 
+                onPointerDown={(e) => e.stopPropagation()}
+                onPointerUp={(e) => e.stopPropagation()}
                 onClick={(e) => e.stopPropagation()}
-                onFocus={(e) => e.stopPropagation()}
-                placeholder="Optional"
-              />
+              >
+                <input
+                  type="time"
+                  className="px-3 py-2 border border-input rounded-md bg-background text-sm w-full"
+                  value={selectedPickupTime}
+                  onChange={(e) => setSelectedPickupTime(e.target.value)}
+                  placeholder="Optional"
+                />
+              </div>
             </div>
             <p className="text-xs text-muted-foreground">
               Delivery time will be calculated automatically when driver starts the route

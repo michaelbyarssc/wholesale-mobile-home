@@ -511,71 +511,99 @@ export const EstimatesTab = () => {
   // Delete estimate mutation
   const deleteEstimateMutation = useMutation({
     mutationFn: async (estimateId: string) => {
-      // First delete related records to avoid foreign key constraint errors
+      // Delete in the correct order to avoid foreign key constraint errors
       
-      // Delete related deliveries first (they reference invoices)
-      await supabase
-        .from('deliveries')
-        .delete()
-        .eq('estimate_id', estimateId);
-      
-      // Get invoices related to this estimate
-      const { data: invoices } = await supabase
-        .from('invoices')
-        .select('id')
-        .eq('estimate_id', estimateId);
+      try {
+        // Step 1: Delete customer tracking sessions first
+        const { data: orders } = await supabase
+          .from('orders')
+          .select('id')
+          .eq('estimate_id', estimateId);
         
-      if (invoices && invoices.length > 0) {
-        for (const invoice of invoices) {
-          // Delete related payments (they reference invoices)
-          await supabase
-            .from('payments')
-            .delete()
-            .eq('invoice_id', invoice.id);
-            
-          // Delete related payment_records (they reference invoices)
-          await supabase
-            .from('payment_records')
-            .delete()
-            .eq('invoice_id', invoice.id);
+        if (orders && orders.length > 0) {
+          for (const order of orders) {
+            await supabase
+              .from('customer_tracking_sessions')
+              .delete()
+              .eq('order_id', order.id);
+          }
         }
-      }
-      
-      // Delete related transactions
-      await supabase
-        .from('transactions')
-        .delete()
-        .eq('estimate_id', estimateId);
-      
-      // Clear the invoice_id reference in the estimate before deleting the invoice
-      await supabase
-        .from('estimates')
-        .update({ invoice_id: null })
-        .eq('id', estimateId);
-      
-      // Delete related invoices
-      await supabase
-        .from('invoices')
-        .delete()
-        .eq('estimate_id', estimateId);
-      
-      // Finally delete the estimate
-      const { data, error } = await supabase
-        .from('estimates')
-        .delete()
-        .eq('id', estimateId);
 
-      if (error) throw error;
-      return data;
+        // Step 2: Delete deliveries 
+        await supabase
+          .from('deliveries')
+          .delete()
+          .eq('estimate_id', estimateId);
+
+        // Step 3: Delete orders
+        await supabase
+          .from('orders')
+          .delete()
+          .eq('estimate_id', estimateId);
+
+        // Step 4: Delete payments and payment records
+        const { data: invoices } = await supabase
+          .from('invoices')
+          .select('id')
+          .eq('estimate_id', estimateId);
+          
+        if (invoices && invoices.length > 0) {
+          for (const invoice of invoices) {
+            await supabase
+              .from('payment_records')
+              .delete()
+              .eq('invoice_id', invoice.id);
+              
+            await supabase
+              .from('payments')
+              .delete()
+              .eq('invoice_id', invoice.id);
+          }
+        }
+
+        // Step 5: Delete invoices
+        await supabase
+          .from('invoices')
+          .delete()
+          .eq('estimate_id', estimateId);
+
+        // Step 6: Delete transactions
+        await supabase
+          .from('transactions')
+          .delete()
+          .eq('estimate_id', estimateId);
+
+        // Step 7: Delete estimate line items
+        await supabase
+          .from('estimate_line_items')
+          .delete()
+          .eq('estimate_id', estimateId);
+
+        // Step 8: Finally delete the estimate
+        const { data, error } = await supabase
+          .from('estimates')
+          .delete()
+          .eq('id', estimateId);
+
+        if (error) throw error;
+        return data;
+        
+      } catch (error) {
+        console.error('Error during estimate deletion:', error);
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-estimates'] });
+      queryClient.invalidateQueries({ queryKey: ['all-estimate-line-items'] });
+      setIsViewDialogOpen(false);
       toast({
         title: "Estimate Deleted",
-        description: "Estimate has been deleted successfully.",
+        description: "Estimate and all related records have been deleted successfully.",
       });
     },
     onError: (error) => {
+      console.error('Delete mutation error:', error);
       toast({
         title: "Error",
         description: "Failed to delete estimate. Please try again.",

@@ -432,41 +432,19 @@ export const DeliveryManagement = () => {
           <div className="space-y-2">
             <Label>Factory Pickup Date & Time</Label>
             <div className="grid grid-cols-2 gap-2">
-              <Popover open={datePickerOpen} onOpenChange={(open) => {
-                console.log('📅 Date picker open state changed:', open);
-                setDatePickerOpen(open);
-              }}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "justify-start text-left font-normal",
-                      !selectedPickupDate && "text-muted-foreground"
-                    )}
-                    onClick={() => {
-                      console.log('📅 Date picker button clicked');
-                      setDatePickerOpen(true);
-                    }}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {selectedPickupDate ? format(selectedPickupDate, 'PPP') : <span>Pick a date</span>}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0 z-[60] bg-background border shadow-lg" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={selectedPickupDate}
-                    onSelect={(date) => {
-                      console.log('📅 Date selected:', date);
-                      setSelectedPickupDate(date);
-                      setDatePickerOpen(false);
-                    }}
-                    disabled={(date) => date < new Date()}
-                    initialFocus
-                    className="p-3 pointer-events-auto"
-                  />
-                </PopoverContent>
-              </Popover>
+              <input
+                type="date"
+                className="px-3 py-2 border border-input rounded-md bg-background text-sm w-full"
+                value={selectedPickupDate ? format(selectedPickupDate, 'yyyy-MM-dd') : ''}
+                onChange={(e) => {
+                  if (e.target.value) {
+                    setSelectedPickupDate(new Date(e.target.value));
+                  } else {
+                    setSelectedPickupDate(undefined);
+                  }
+                }}
+                min={format(new Date(), 'yyyy-MM-dd')}
+              />
               <input
                 type="time"
                 className="px-3 py-2 border border-input rounded-md bg-background text-sm w-full"

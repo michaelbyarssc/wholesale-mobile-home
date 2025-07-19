@@ -667,9 +667,7 @@ export const InvoiceManagement = () => {
                       </p>
                         <div className="flex items-center space-x-4 text-sm text-muted-foreground">
                           <span>Total: {formatCurrency(invoice.total_amount)}</span>
-                          {invoice.balance_due !== null && invoice.balance_due !== undefined && (
-                            <span>Balance Due: {formatCurrency(invoice.balance_due || 0)}</span>
-                          )}
+                          <span>Balance Due: {formatCurrency(invoice.balance_due ?? invoice.total_amount)}</span>
                           {invoice.due_date && (
                             <span>Due: {new Date(invoice.due_date).toLocaleDateString()}</span>
                           )}

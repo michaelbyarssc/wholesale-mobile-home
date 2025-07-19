@@ -177,6 +177,13 @@ export const InvoiceManagement = () => {
         throw new Error('Failed to generate invoice number');
       }
       
+      console.log('🔍 About to create invoice with data:', {
+        estimate_id: estimate.id,
+        estimate_total_amount: estimate.total_amount,
+        estimate_total_type: typeof estimate.total_amount,
+        invoice_number: invoiceNumber
+      });
+      
       // Create invoice from the approved estimate
       const { data: invoice, error: invoiceError } = await supabase
         .from('invoices')

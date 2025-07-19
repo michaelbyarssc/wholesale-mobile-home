@@ -77,7 +77,17 @@ export const DeliveryManagement = () => {
   // Driver management state
   const [addDriverDialogOpen, setAddDriverDialogOpen] = useState(false);
   const [manageDriversDialogOpen, setManageDriversDialogOpen] = useState(false);
+  const [editDriverDialogOpen, setEditDriverDialogOpen] = useState(false);
+  const [editingDriver, setEditingDriver] = useState<Driver | null>(null);
   const [newDriverData, setNewDriverData] = useState({
+    first_name: '',
+    last_name: '',
+    email: '',
+    phone: '',
+    license_number: '',
+    cdl_class: 'CDL-A'
+  });
+  const [editDriverData, setEditDriverData] = useState({
     first_name: '',
     last_name: '',
     email: '',
@@ -260,6 +270,34 @@ export const DeliveryManagement = () => {
     }
   });
 
+  const editDriverMutation = useMutation({
+    mutationFn: async ({ driverId, driverData }: { driverId: string; driverData: typeof editDriverData }) => {
+      const { error } = await supabase
+        .from('drivers')
+        .update(driverData)
+        .eq('id', driverId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['drivers'] });
+      setEditDriverDialogOpen(false);
+      setEditingDriver(null);
+      toast({
+        title: "Driver Updated",
+        description: "Driver information has been successfully updated."
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to update driver. Please try again.",
+        variant: "destructive"
+      });
+      console.error('Error updating driver:', error);
+    }
+  });
+
   const getFilteredDeliveries = () => {
     if (!deliveries) return [];
     return deliveries;
@@ -313,6 +351,35 @@ export const DeliveryManagement = () => {
 
   const handleDriverStatusChange = (driverId: string, status: 'available' | 'on_delivery' | 'off_duty' | 'inactive') => {
     updateDriverStatusMutation.mutate({ driverId, status });
+  };
+
+  const handleEditDriver = (driver: Driver) => {
+    setEditingDriver(driver);
+    setEditDriverData({
+      first_name: driver.first_name,
+      last_name: driver.last_name,
+      email: driver.email,
+      phone: driver.phone,
+      license_number: '',
+      cdl_class: 'CDL-A'
+    });
+    setEditDriverDialogOpen(true);
+  };
+
+  const handleUpdateDriver = () => {
+    if (!editingDriver || !editDriverData.first_name || !editDriverData.last_name || !editDriverData.email || !editDriverData.phone) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill in all required fields.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    editDriverMutation.mutate({
+      driverId: editingDriver.id,
+      driverData: editDriverData
+    });
   };
 
   const getFormattedDate = (dateString: string | null) => {
@@ -865,20 +932,30 @@ export const DeliveryManagement = () => {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <Select 
-                          value={driver.status} 
-                          onValueChange={(value) => handleDriverStatusChange(driver.id, value as 'available' | 'on_delivery' | 'off_duty' | 'inactive')}
-                        >
-                          <SelectTrigger className="w-32">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="available">Available</SelectItem>
-                            <SelectItem value="on_delivery">On Delivery</SelectItem>
-                            <SelectItem value="off_duty">Off Duty</SelectItem>
-                            <SelectItem value="inactive">Inactive</SelectItem>
-                          </SelectContent>
-                        </Select>
+                        <div className="flex space-x-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => handleEditDriver(driver)}
+                          >
+                            <Edit className="h-3 w-3 mr-1" />
+                            Edit
+                          </Button>
+                          <Select 
+                            value={driver.status} 
+                            onValueChange={(value) => handleDriverStatusChange(driver.id, value as 'available' | 'on_delivery' | 'off_duty' | 'inactive')}
+                          >
+                            <SelectTrigger className="w-32">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="available">Available</SelectItem>
+                              <SelectItem value="on_delivery">On Delivery</SelectItem>
+                              <SelectItem value="off_duty">Off Duty</SelectItem>
+                              <SelectItem value="inactive">Inactive</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -897,6 +974,104 @@ export const DeliveryManagement = () => {
                 </Button>
               </div>
             )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Driver Dialog */}
+      <Dialog open={editDriverDialogOpen} onOpenChange={setEditDriverDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Driver</DialogTitle>
+            <DialogDescription>
+              Update driver information
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-first-name">First Name *</Label>
+                <Input
+                  id="edit-first-name"
+                  value={editDriverData.first_name}
+                  onChange={(e) => setEditDriverData(prev => ({ ...prev, first_name: e.target.value }))}
+                  placeholder="John"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-last-name">Last Name *</Label>
+                <Input
+                  id="edit-last-name"
+                  value={editDriverData.last_name}
+                  onChange={(e) => setEditDriverData(prev => ({ ...prev, last_name: e.target.value }))}
+                  placeholder="Doe"
+                />
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="edit-email">Email *</Label>
+              <Input
+                id="edit-email"
+                type="email"
+                value={editDriverData.email}
+                onChange={(e) => setEditDriverData(prev => ({ ...prev, email: e.target.value }))}
+                placeholder="john.doe@example.com"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="edit-phone">Phone *</Label>
+              <Input
+                id="edit-phone"
+                value={editDriverData.phone}
+                onChange={(e) => setEditDriverData(prev => ({ ...prev, phone: e.target.value }))}
+                placeholder="(555) 123-4567"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="edit-license">License Number</Label>
+              <Input
+                id="edit-license"
+                value={editDriverData.license_number}
+                onChange={(e) => setEditDriverData(prev => ({ ...prev, license_number: e.target.value }))}
+                placeholder="CDL12345"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="edit-license-class">License Class</Label>
+              <Select value={editDriverData.cdl_class} onValueChange={(value) => 
+                setEditDriverData(prev => ({ ...prev, cdl_class: value }))
+              }>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select license class" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="CDL-A">CDL Class A</SelectItem>
+                  <SelectItem value="CDL-B">CDL Class B</SelectItem>
+                  <SelectItem value="CDL-C">CDL Class C</SelectItem>
+                  <SelectItem value="Regular">Regular License</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          
+          <div className="flex justify-end space-x-2 pt-4">
+            <Button variant="outline" onClick={() => {
+              setEditDriverDialogOpen(false);
+              setEditingDriver(null);
+            }}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleUpdateDriver}
+              disabled={editDriverMutation.isPending}
+            >
+              {editDriverMutation.isPending ? 'Updating...' : 'Update Driver'}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

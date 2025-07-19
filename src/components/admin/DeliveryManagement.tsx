@@ -397,7 +397,21 @@ export const DeliveryManagement = () => {
   const getFormattedDate = (dateString: string | null) => {
     if (!dateString) return 'Not scheduled';
     const date = new Date(dateString);
-    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    
+    // Format date to show in local timezone properly
+    const localDate = date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'numeric', 
+      day: 'numeric'
+    });
+    
+    const localTime = date.toLocaleTimeString('en-US', { 
+      hour: 'numeric', 
+      minute: '2-digit',
+      hour12: true 
+    });
+    
+    return `${localDate} at ${localTime}`;
   };
 
   const ScheduleDeliveryDialog = () => (

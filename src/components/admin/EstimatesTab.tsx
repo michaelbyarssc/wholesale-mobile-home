@@ -442,7 +442,11 @@ export const EstimatesTab = () => {
       return data;
     },
     onSuccess: (data) => {
+      // Invalidate all estimate-related queries
       queryClient.invalidateQueries({ queryKey: ['admin-estimates'] });
+      queryClient.invalidateQueries({ queryKey: ['approved-estimates'] });
+      queryClient.invalidateQueries({ queryKey: ['estimate'] }); // This will match all estimate queries
+      queryClient.invalidateQueries({ queryKey: ['user-estimates'] });
       setIsViewDialogOpen(false); // Close the dialog
       toast({
         title: "Estimate Approved",
@@ -453,6 +457,9 @@ export const EstimatesTab = () => {
       console.error('Approval error:', error);
       // Always invalidate queries to show current state
       queryClient.invalidateQueries({ queryKey: ['admin-estimates'] });
+      queryClient.invalidateQueries({ queryKey: ['approved-estimates'] });
+      queryClient.invalidateQueries({ queryKey: ['estimate'] });
+      queryClient.invalidateQueries({ queryKey: ['user-estimates'] });
       
       let errorMessage = "Failed to approve estimate. Please try again.";
       

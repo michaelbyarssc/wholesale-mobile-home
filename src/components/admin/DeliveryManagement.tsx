@@ -83,7 +83,7 @@ export const DeliveryManagement = () => {
     email: '',
     phone: '',
     license_number: '',
-    license_class: 'CDL-A'
+    cdl_class: 'CDL-A'
   });
   
   const queryClient = useQueryClient();
@@ -217,7 +217,7 @@ export const DeliveryManagement = () => {
         email: '',
         phone: '',
         license_number: '',
-        license_class: 'CDL-A'
+        cdl_class: 'CDL-A'
       });
       toast({
         title: "Driver Added",
@@ -794,8 +794,8 @@ export const DeliveryManagement = () => {
             
             <div className="space-y-2">
               <Label htmlFor="license-class">License Class</Label>
-              <Select value={newDriverData.license_class} onValueChange={(value) => 
-                setNewDriverData(prev => ({ ...prev, license_class: value }))
+              <Select value={newDriverData.cdl_class} onValueChange={(value) => 
+                setNewDriverData(prev => ({ ...prev, cdl_class: value }))
               }>
                 <SelectTrigger>
                   <SelectValue placeholder="Select license class" />

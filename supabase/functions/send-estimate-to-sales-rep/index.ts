@@ -684,16 +684,10 @@ serve(async (req) => {
         // Send email notification to admin
         const { error: emailNotifyError } = await supabase.functions.invoke('send-email-notification', {
           body: {
-            to: assignedAdminId,
+            recipient_id: assignedAdminId,
             subject: `New Estimate Request - ${customerInfo.name}`,
-            template: 'estimate_request',
-            data: {
-              customer_name: customerInfo.name,
-              estimate_id: estimate.id,
-              total_amount: Math.floor(calculatedTotal),
-              cart_items: cart_items,
-              delivery_address: deliveryAddress
-            }
+            message: `A new estimate request has been submitted by ${customerInfo.name} for $${Math.floor(calculatedTotal).toLocaleString()}.`,
+            type: 'estimate_request'
           }
         })
 

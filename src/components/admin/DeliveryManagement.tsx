@@ -127,16 +127,27 @@ export const DeliveryManagement = () => {
       scheduledPickupDate: Date;
       notes: string;
     }) => {
-      // Update delivery with scheduled pickup date
+      console.log('📅 Scheduling pickup:', {
+        deliveryId,
+        driverId,
+        scheduledPickupDate: scheduledPickupDate.toISOString(),
+        notes
+      });
+
+      // Update delivery with scheduled pickup date and status
       const { error: deliveryError } = await supabase
         .from('deliveries')
         .update({
           scheduled_pickup_date: scheduledPickupDate.toISOString(),
-          status: 'scheduled'
+          status: 'factory_pickup_scheduled',
+          special_instructions: notes
         })
         .eq('id', deliveryId);
 
-      if (deliveryError) throw deliveryError;
+      if (deliveryError) {
+        console.error('❌ Delivery update error:', deliveryError);
+        throw deliveryError;
+      }
 
       // Create or update delivery assignment
       const { error: assignmentError } = await supabase
@@ -151,7 +162,12 @@ export const DeliveryManagement = () => {
           onConflict: 'delivery_id,driver_id,role'
         });
 
-      if (assignmentError) throw assignmentError;
+      if (assignmentError) {
+        console.error('❌ Assignment error:', assignmentError);
+        throw assignmentError;
+      }
+
+      console.log('✅ Pickup scheduled successfully');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['deliveries'] });
@@ -163,14 +179,14 @@ export const DeliveryManagement = () => {
       setNotes('');
       setSelectedDelivery(null);
       toast({
-        title: "Delivery Scheduled",
-        description: "The delivery has been successfully scheduled."
+        title: "Factory Pickup Scheduled",
+        description: "The factory pickup has been successfully scheduled with the driver."
       });
     },
     onError: (error) => {
       toast({
         title: "Error",
-        description: "Failed to schedule delivery. Please try again.",
+        description: "Failed to schedule factory pickup. Please try again.",
         variant: "destructive"
       });
       console.error('Error scheduling delivery:', error);
@@ -261,7 +277,7 @@ export const DeliveryManagement = () => {
     if (!selectedDelivery || !selectedPickupDate || !selectedDriver) {
       toast({
         title: "Missing Information",
-        description: "Please select pickup date and a driver.",
+        description: "Please select a pickup date and assign a driver.",
         variant: "destructive"
       });
       return;
@@ -307,16 +323,7 @@ export const DeliveryManagement = () => {
 
   const ScheduleDeliveryDialog = () => (
     <Dialog open={scheduleDialogOpen} onOpenChange={setScheduleDialogOpen}>
-      <DialogContent 
-        className="max-w-md"
-        onPointerDownOutside={(e) => e.preventDefault()}
-        onInteractOutside={(e) => {
-          // Only allow closing when clicking outside the dialog
-          if (e.target instanceof Element && !e.target.closest('.dialog-content')) {
-            setScheduleDialogOpen(false);
-          }
-        }}
-      >
+      <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Schedule Delivery</DialogTitle>
           <DialogDescription>
@@ -324,7 +331,7 @@ export const DeliveryManagement = () => {
           </DialogDescription>
         </DialogHeader>
         
-        <div className="dialog-content space-y-4">
+        <div className="space-y-4">
           {/* Driver Selection */}
           <div className="space-y-2">
             <Label>Select Driver</Label>
@@ -344,9 +351,9 @@ export const DeliveryManagement = () => {
 
           {/* Pickup Date & Time Selection */}
           <div className="space-y-2">
-            <Label>Pickup Date & Time</Label>
+            <Label>Factory Pickup Date & Time</Label>
             <div className="grid grid-cols-2 gap-2">
-              <Popover>
+              <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
@@ -363,7 +370,10 @@ export const DeliveryManagement = () => {
                   <Calendar
                     mode="single"
                     selected={selectedPickupDate}
-                    onSelect={setSelectedPickupDate}
+                    onSelect={(date) => {
+                      setSelectedPickupDate(date);
+                      setDatePickerOpen(false);
+                    }}
                     disabled={(date) => date < new Date()}
                     initialFocus
                     className="p-3 pointer-events-auto"
@@ -375,30 +385,33 @@ export const DeliveryManagement = () => {
                 className="px-3 py-2 border border-input rounded-md bg-background text-sm w-full"
                 value={selectedPickupTime}
                 onChange={(e) => setSelectedPickupTime(e.target.value)}
-                placeholder="Optional"
+                placeholder="Select time"
               />
             </div>
             <p className="text-xs text-muted-foreground">
-              Delivery time will be calculated automatically when driver starts the route
+              Driver will pick up the mobile home from the factory at this scheduled time
             </p>
           </div>
 
-          {/* Notes */}
+          {/* Special Instructions */}
           <div className="space-y-2">
-            <Label>Notes (Optional)</Label>
+            <Label>Special Instructions (Optional)</Label>
             <Textarea
-              placeholder="Add any special delivery instructions..."
+              placeholder="Add any special pickup or delivery instructions..."
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={3}
             />
           </div>
 
-          {/* Actions */}
           <div className="flex justify-end space-x-2 pt-4">
             <Button variant="outline" onClick={() => {
               setScheduleDialogOpen(false);
-              setDatePickerOpen(false);
+              setSelectedPickupDate(undefined);
+              setSelectedPickupTime('');
+              setSelectedDriver('');
+              setNotes('');
+              setSelectedDelivery(null);
             }}>
               Cancel
             </Button>
@@ -406,7 +419,7 @@ export const DeliveryManagement = () => {
               onClick={handleScheduleSubmit}
               disabled={scheduleDeliveryMutation.isPending}
             >
-              {scheduleDeliveryMutation.isPending ? 'Scheduling...' : 'Schedule Delivery'}
+              {scheduleDeliveryMutation.isPending ? 'Scheduling...' : 'Schedule Factory Pickup'}
             </Button>
           </div>
         </div>

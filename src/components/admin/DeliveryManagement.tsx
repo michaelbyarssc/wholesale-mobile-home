@@ -432,7 +432,10 @@ export const DeliveryManagement = () => {
           <div className="space-y-2">
             <Label>Factory Pickup Date & Time</Label>
             <div className="grid grid-cols-2 gap-2">
-              <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
+              <Popover open={datePickerOpen} onOpenChange={(open) => {
+                console.log('📅 Date picker open state changed:', open);
+                setDatePickerOpen(open);
+              }}>
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
@@ -440,16 +443,21 @@ export const DeliveryManagement = () => {
                       "justify-start text-left font-normal",
                       !selectedPickupDate && "text-muted-foreground"
                     )}
+                    onClick={() => {
+                      console.log('📅 Date picker button clicked');
+                      setDatePickerOpen(true);
+                    }}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
                     {selectedPickupDate ? format(selectedPickupDate, 'PPP') : <span>Pick a date</span>}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0 z-50" align="start">
+                <PopoverContent className="w-auto p-0 z-[60] bg-background border shadow-lg" align="start">
                   <Calendar
                     mode="single"
                     selected={selectedPickupDate}
                     onSelect={(date) => {
+                      console.log('📅 Date selected:', date);
                       setSelectedPickupDate(date);
                       setDatePickerOpen(false);
                     }}

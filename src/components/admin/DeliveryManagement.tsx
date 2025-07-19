@@ -15,6 +15,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
+import { Calendar } from '@/components/ui/calendar';
 
 type Driver = {
   id: string;
@@ -239,19 +240,33 @@ export const DeliveryManagement = () => {
           <div className="space-y-2">
             <Label>Pickup Date & Time</Label>
             <div className="grid grid-cols-2 gap-2">
-              <input
-                type="date"
-                className="px-3 py-2 border border-input rounded-md bg-background text-sm"
-                value={selectedPickupDate ? format(selectedPickupDate, 'yyyy-MM-dd') : ''}
-                onChange={(e) => {
-                  if (e.target.value) {
-                    setSelectedPickupDate(new Date(e.target.value));
-                  } else {
-                    setSelectedPickupDate(undefined);
-                  }
-                }}
-                min={format(new Date(), 'yyyy-MM-dd')}
-              />
+              <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "justify-start text-left font-normal",
+                      !selectedPickupDate && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {selectedPickupDate ? format(selectedPickupDate, 'PPP') : <span>Pick a date</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={selectedPickupDate}
+                    onSelect={(date) => {
+                      setSelectedPickupDate(date);
+                      setDatePickerOpen(false);
+                    }}
+                    disabled={(date) => date < new Date()}
+                    initialFocus
+                    className={cn("p-3 pointer-events-auto")}
+                  />
+                </PopoverContent>
+              </Popover>
               <input
                 type="time"
                 className="px-3 py-2 border border-input rounded-md bg-background text-sm"

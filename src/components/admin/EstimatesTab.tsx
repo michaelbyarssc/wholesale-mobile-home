@@ -428,6 +428,7 @@ export const EstimatesTab = () => {
   // Approve estimate mutation
   const approveEstimateMutation = useMutation({
     mutationFn: async (estimateId: string) => {
+      console.log('🔵 Approving estimate with ID:', estimateId);
       const { data, error } = await supabase.functions.invoke('approve-estimate', {
         body: { estimate_uuid: estimateId }
       });
@@ -1218,7 +1219,10 @@ export const EstimatesTab = () => {
                               <Button 
                                 variant="default" 
                                 className="bg-green-600 hover:bg-green-700 w-full sm:w-auto"
-                                onClick={() => approveEstimateMutation.mutate(estimate.id)}
+                                onClick={() => {
+                                  console.log('🔴 Clicking approve for estimate:', estimate.id, 'Status:', estimate.status);
+                                  approveEstimateMutation.mutate(estimate.id);
+                                }}
                                 disabled={approveEstimateMutation.isPending}
                               >
                                 <CheckCircle className="h-4 w-4 mr-2" />

@@ -712,7 +712,7 @@ export const InvoiceManagement = () => {
                                 </DropdownMenuItem>
                               )}
                               
-                              {invoice.status !== 'paid' && invoice.balance_due > 0 && (
+                              {invoice.status !== 'paid' && (invoice.balance_due ?? invoice.total_amount) > 0 && (
                                 <DropdownMenuItem onClick={() => handlePaymentClick(invoice)}>
                                   <CreditCard className="h-4 w-4 mr-2" />
                                   Record Payment
@@ -763,7 +763,7 @@ export const InvoiceManagement = () => {
                               </Button>
                             )}
 
-                            {invoice.status !== 'paid' && invoice.balance_due > 0 && (
+                            {invoice.status !== 'paid' && (invoice.balance_due ?? invoice.total_amount) > 0 && (
                               <Button size="sm" variant="outline" onClick={() => handlePaymentClick(invoice)}>
                                 <CreditCard className="h-3 w-3 mr-1" />
                                 Payment

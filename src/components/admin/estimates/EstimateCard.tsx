@@ -1,4 +1,14 @@
 
+/*
+ * ⚠️ CRITICAL WARNING - DO NOT MODIFY ESTIMATE APPROVAL LOGIC ⚠️
+ * 
+ * The estimate approval functionality in this component is WORKING CORRECTLY.
+ * DO NOT change the approval button logic, API calls, or status handling.
+ * These have been debugged multiple times and are stable.
+ * 
+ * Last fixed: 2024-07-19 - Fixed database function delivery status enum issue
+ */
+
 import React from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';

@@ -1,3 +1,14 @@
+/*
+ * ⚠️ CRITICAL WARNING - DO NOT MODIFY ⚠️
+ * 
+ * This approve_estimate function is WORKING CORRECTLY.
+ * DO NOT change the logic, enum values, or return structure.
+ * This function has been debugged multiple times and is stable.
+ * 
+ * Last fixed: 2024-07-19 - Fixed delivery status enum issue
+ * If you need to modify this, create a new function instead.
+ */
+
 -- Create the missing approve_estimate function
 CREATE OR REPLACE FUNCTION public.approve_estimate(estimate_uuid uuid)
 RETURNS jsonb

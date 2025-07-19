@@ -283,6 +283,7 @@ export const useTransactionDetails = (idParam: string) => {
     enabled: !!idParam && !!transactionQuery.data?.id,
   });
 
+  // ⚠️ WARNING: Transaction approval logic is WORKING - DO NOT MODIFY ⚠️
   const approveTransaction = useMutation({
     mutationFn: async () => {
       if (!transactionQuery.data?.id) throw new Error('No transaction found');

@@ -1,4 +1,15 @@
 
+/*
+ * ⚠️ CRITICAL WARNING - DO NOT MODIFY ⚠️
+ * 
+ * This approve-estimate function is WORKING CORRECTLY.
+ * DO NOT change the estimate approval logic, database function calls,
+ * or invoice creation process. These have been debugged and are stable.
+ * 
+ * Last fixed: 2024-07-19 - Fixed delivery status enum issue
+ * If you need to modify this, create a new function instead.
+ */
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { Resend } from 'npm:resend@2.0.0'

@@ -398,20 +398,22 @@ export const DeliveryManagement = () => {
     if (!dateString) return 'Not scheduled';
     const date = new Date(dateString);
     
-    // Format date to show in local timezone properly
-    const localDate = date.toLocaleDateString('en-US', {
+    // Format date to show in Eastern timezone
+    const easternDate = date.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'numeric', 
-      day: 'numeric'
+      day: 'numeric',
+      timeZone: 'America/New_York'
     });
     
-    const localTime = date.toLocaleTimeString('en-US', { 
+    const easternTime = date.toLocaleTimeString('en-US', { 
       hour: 'numeric', 
       minute: '2-digit',
-      hour12: true 
+      hour12: true,
+      timeZone: 'America/New_York'
     });
     
-    return `${localDate} at ${localTime}`;
+    return `${easternDate} at ${easternTime}`;
   };
 
   const ScheduleDeliveryDialog = () => (

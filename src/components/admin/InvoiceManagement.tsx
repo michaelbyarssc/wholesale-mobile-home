@@ -874,12 +874,24 @@ export const InvoiceManagement = () => {
                     <h3 className="font-semibold text-lg mb-3 text-purple-900">Financial Summary</h3>
                     <div className="space-y-2 text-sm">
                       <div><span className="font-medium text-gray-600">Total Amount:</span> <span className="font-bold text-lg">{formatCurrency(selectedInvoice.total_amount)}</span></div>
-                      {selectedInvoice.balance_due !== undefined && (
-                        <div><span className="font-medium text-gray-600">Balance Due:</span> <span className="font-bold text-lg text-red-600">{formatCurrency(selectedInvoice.balance_due)}</span></div>
-                      )}
+                      <div><span className="font-medium text-gray-600">Balance Due:</span> <span className="font-bold text-lg text-red-600">{formatCurrency(selectedInvoice.balance_due ?? selectedInvoice.total_amount)}</span></div>
                       {selectedInvoice.payments && selectedInvoice.payments.length > 0 && (
                         <div><span className="font-medium text-gray-600">Payments Made:</span> <span className="font-bold text-green-600">{formatCurrency(selectedInvoice.payments.reduce((sum: number, p: any) => sum + p.amount, 0))}</span></div>
                       )}
+                      {/* Add Payment Button */}
+                      <div className="pt-2">
+                        <Button 
+                          onClick={() => {
+                            setSelectedInvoice(selectedInvoice);
+                            setShowPaymentDialog(true);
+                          }}
+                          size="sm"
+                          className="w-full"
+                        >
+                          <CreditCard className="h-4 w-4 mr-2" />
+                          Add Payment
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </div>

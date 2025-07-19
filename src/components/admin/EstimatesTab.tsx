@@ -1232,6 +1232,7 @@ export const EstimatesTab = () => {
                                 variant="default" 
                                 className="bg-green-600 hover:bg-green-700 w-full sm:w-auto"
                                 onClick={() => {
+                                  console.log('🟡 BUTTON CLICKED! Estimate:', estimate.id, 'Status:', estimate.status);
                                   console.log('🔴 Clicking approve for estimate:', estimate.id, 'Status:', estimate.status);
                                   approveEstimateMutation.mutate(estimate.id);
                                 }}

@@ -116,18 +116,41 @@ serve(async (req) => {
     }
 
     // Get the created invoice details
+    console.log('Looking for invoice with ID:', approvalResult.invoice_id);
     const { data: invoice, error: invoiceError } = await supabase
       .from('invoices')
       .select('*')
       .eq('id', approvalResult.invoice_id)
-      .single()
+      .maybeSingle()
 
-    if (invoiceError || !invoice) {
+    console.log('Invoice query result:', { invoice, invoiceError });
+
+    if (invoiceError) {
       console.error('Invoice retrieval error:', invoiceError)
-      return new Response('Invoice created but could not retrieve details', { 
+      return new Response(JSON.stringify({ 
+        error: 'Invoice created but could not retrieve details', 
+        details: invoiceError 
+      }), { 
         status: 500, 
-        headers: corsHeaders 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
+    }
+
+    if (!invoice) {
+      console.error('Invoice not found with ID:', approvalResult.invoice_id)
+      // Return success anyway since the approval worked, just skip the email
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          message: 'Estimate approved successfully (email sending skipped)',
+          invoiceNumber: approvalResult.invoice_number,
+          invoiceId: approvalResult.invoice_id
+        }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        },
+      )
     }
 
     // Send invoice email to customer

@@ -269,6 +269,8 @@ export const DeliveryManagement = () => {
                 className="px-3 py-2 border border-input rounded-md bg-background text-sm"
                 value={selectedPickupTime}
                 onChange={(e) => setSelectedPickupTime(e.target.value)}
+                onClick={(e) => e.stopPropagation()}
+                onFocus={(e) => e.stopPropagation()}
                 placeholder="Optional"
               />
             </div>

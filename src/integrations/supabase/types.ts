@@ -5442,6 +5442,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: number
       }
+      test_payment_insert: {
+        Args: { p_invoice_id: string; p_amount: number }
+        Returns: Json
+      }
       transition_transaction_stage: {
         Args: {
           p_transaction_id: string

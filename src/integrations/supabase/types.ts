@@ -5422,13 +5422,20 @@ export type Database = {
         Returns: string
       }
       record_invoice_payment: {
-        Args: {
-          p_invoice_id: string
-          p_amount: number
-          p_payment_method?: string
-          p_payment_reference?: string
-          p_notes?: string
-        }
+        Args:
+          | {
+              p_invoice_id: string
+              p_amount: number
+              p_payment_method?: string
+              p_notes?: string
+            }
+          | {
+              p_invoice_id: string
+              p_amount: number
+              p_payment_method?: string
+              p_payment_reference?: string
+              p_notes?: string
+            }
         Returns: Json
       }
       refresh_analytics_views: {

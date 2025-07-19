@@ -70,6 +70,7 @@ export const DeliveryManagement = () => {
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [selectedDriver, setSelectedDriver] = useState<string>('');
   const [notes, setNotes] = useState('');
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
   
   const queryClient = useQueryClient();
 
@@ -139,6 +140,7 @@ export const DeliveryManagement = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['deliveries'] });
       setScheduleDialogOpen(false);
+      setDatePickerOpen(false);
       setSelectedDate(undefined);
       setSelectedDriver('');
       setNotes('');
@@ -167,6 +169,7 @@ export const DeliveryManagement = () => {
 
   const handleScheduleDelivery = (delivery: Delivery) => {
     setSelectedDelivery(delivery);
+    setDatePickerOpen(false); // Ensure any open popover is closed
     setScheduleDialogOpen(true);
   };
 
@@ -225,7 +228,7 @@ export const DeliveryManagement = () => {
           {/* Date Selection */}
           <div className="space-y-2">
             <Label>Delivery Date</Label>
-            <Popover>
+            <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
@@ -238,11 +241,14 @@ export const DeliveryManagement = () => {
                   {selectedDate ? format(selectedDate, "PPP") : <span>Pick a date</span>}
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-auto p-0 z-50" align="start">
+              <PopoverContent className="w-auto p-0 z-[100]" align="start">
                 <Calendar
                   mode="single"
                   selected={selectedDate}
-                  onSelect={setSelectedDate}
+                  onSelect={(date) => {
+                    setSelectedDate(date);
+                    setDatePickerOpen(false);
+                  }}
                   disabled={(date) => date < new Date()}
                   initialFocus
                 />
@@ -263,7 +269,10 @@ export const DeliveryManagement = () => {
 
           {/* Actions */}
           <div className="flex justify-end space-x-2 pt-4">
-            <Button variant="outline" onClick={() => setScheduleDialogOpen(false)}>
+            <Button variant="outline" onClick={() => {
+              setScheduleDialogOpen(false);
+              setDatePickerOpen(false);
+            }}>
               Cancel
             </Button>
             <Button 

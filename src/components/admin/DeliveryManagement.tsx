@@ -210,7 +210,16 @@ export const DeliveryManagement = () => {
 
   const ScheduleDeliveryDialog = () => (
     <Dialog open={scheduleDialogOpen} onOpenChange={setScheduleDialogOpen}>
-      <DialogContent className="max-w-md">
+      <DialogContent 
+        className="max-w-md"
+        onPointerDownOutside={(e) => e.preventDefault()}
+        onInteractOutside={(e) => {
+          // Only allow closing when clicking outside the dialog
+          if (e.target instanceof Element && !e.target.closest('.dialog-content')) {
+            setScheduleDialogOpen(false);
+          }
+        }}
+      >
         <DialogHeader>
           <DialogTitle>Schedule Delivery</DialogTitle>
           <DialogDescription>
@@ -218,7 +227,7 @@ export const DeliveryManagement = () => {
           </DialogDescription>
         </DialogHeader>
         
-        <div className="space-y-4">
+        <div className="dialog-content space-y-4">
           {/* Driver Selection */}
           <div className="space-y-2">
             <Label>Select Driver</Label>
@@ -264,19 +273,13 @@ export const DeliveryManagement = () => {
                   />
                 </PopoverContent>
               </Popover>
-              <div 
-                onPointerDown={(e) => e.stopPropagation()}
-                onPointerUp={(e) => e.stopPropagation()}
-                onClick={(e) => e.stopPropagation()}
-              >
-                <input
-                  type="time"
-                  className="px-3 py-2 border border-input rounded-md bg-background text-sm w-full"
-                  value={selectedPickupTime}
-                  onChange={(e) => setSelectedPickupTime(e.target.value)}
-                  placeholder="Optional"
-                />
-              </div>
+              <input
+                type="time"
+                className="px-3 py-2 border border-input rounded-md bg-background text-sm w-full"
+                value={selectedPickupTime}
+                onChange={(e) => setSelectedPickupTime(e.target.value)}
+                placeholder="Optional"
+              />
             </div>
             <p className="text-xs text-muted-foreground">
               Delivery time will be calculated automatically when driver starts the route

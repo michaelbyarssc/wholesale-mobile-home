@@ -240,7 +240,7 @@ export const DeliveryManagement = () => {
           <div className="space-y-2">
             <Label>Pickup Date & Time</Label>
             <div className="grid grid-cols-2 gap-2">
-              <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
+              <Popover>
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
@@ -257,13 +257,10 @@ export const DeliveryManagement = () => {
                   <Calendar
                     mode="single"
                     selected={selectedPickupDate}
-                    onSelect={(date) => {
-                      setSelectedPickupDate(date);
-                      setDatePickerOpen(false);
-                    }}
+                    onSelect={setSelectedPickupDate}
                     disabled={(date) => date < new Date()}
                     initialFocus
-                    className={cn("p-3 pointer-events-auto")}
+                    className="p-3 pointer-events-auto"
                   />
                 </PopoverContent>
               </Popover>

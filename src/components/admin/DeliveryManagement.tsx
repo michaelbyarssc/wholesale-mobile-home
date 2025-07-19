@@ -312,7 +312,17 @@ export const DeliveryManagement = () => {
   };
 
   const handleScheduleSubmit = () => {
+    console.log('🔍 Schedule submit clicked');
+    console.log('🔍 Current form data:', {
+      selectedDelivery: selectedDelivery?.id,
+      selectedPickupDate,
+      selectedPickupTime,
+      selectedDriver,
+      notes
+    });
+
     if (!selectedDelivery || !selectedPickupDate || !selectedDriver) {
+      console.log('❌ Missing required data');
       toast({
         title: "Missing Information",
         description: "Please select a pickup date and assign a driver.",
@@ -327,6 +337,8 @@ export const DeliveryManagement = () => {
       const [hours, minutes] = selectedPickupTime.split(':');
       pickupDateTime.setHours(parseInt(hours), parseInt(minutes));
     }
+
+    console.log('🔍 Final pickup date time:', pickupDateTime.toISOString());
 
     scheduleDeliveryMutation.mutate({
       deliveryId: selectedDelivery.id,

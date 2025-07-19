@@ -5430,6 +5430,15 @@ export type Database = {
         }
         Returns: Json
       }
+      record_invoice_payment_optimized: {
+        Args: {
+          p_invoice_id: string
+          p_amount: number
+          p_payment_method?: string
+          p_notes?: string
+        }
+        Returns: Json
+      }
       record_invoice_payment_simple: {
         Args: {
           p_invoice_id: string

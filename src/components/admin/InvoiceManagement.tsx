@@ -400,7 +400,6 @@ export const InvoiceManagement = () => {
       
       // Get current session and user
       const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-      console.log('Session data:', sessionData);
       
       if (sessionError || !sessionData.session?.user) {
         console.error('Authentication error:', sessionError);
@@ -408,15 +407,12 @@ export const InvoiceManagement = () => {
       }
 
       const user = sessionData.session.user;
-      console.log('Current user ID:', user.id);
 
       // Check if user is admin
       const { data: userRoles, error: rolesError } = await supabase
         .from('user_roles')
         .select('role')
         .eq('user_id', user.id);
-      
-      console.log('User roles:', userRoles);
       
       if (rolesError) {
         console.error('Error fetching user roles:', rolesError);
@@ -429,56 +425,36 @@ export const InvoiceManagement = () => {
         throw new Error('Admin privileges required to record payments.');
       }
 
-      console.log('User is admin, proceeding with payment recording...');
+      console.log('User is admin, proceeding with optimized payment recording...');
       
-      // Insert payment directly instead of using RPC function
-      const { data: insertedPayment, error: paymentError } = await supabase
-        .from('payments')
-        .insert({
-          invoice_id: paymentData.invoice_id,
-          amount: paymentData.amount,
-          payment_method: paymentData.payment_method,
-          notes: paymentData.notes,
-          payment_date: new Date().toISOString(),
-          created_by: user.id
-        })
-        .select()
-        .single();
-      
-      console.log('Payment insert result:', { insertedPayment, paymentError });
-      
-      if (paymentError) {
-        console.error('Payment insert error:', paymentError);
-        throw paymentError;
+      // Use the optimized database function for faster processing
+      const { data: result, error } = await supabase.rpc('record_invoice_payment_optimized', {
+        p_invoice_id: paymentData.invoice_id,
+        p_amount: paymentData.amount,
+        p_payment_method: paymentData.payment_method,
+        p_notes: paymentData.notes
+      });
+
+      if (error) {
+        console.error('Payment processing error:', error);
+        throw new Error(`Failed to record payment: ${error.message}`);
       }
+
+      // Type the result properly
+      const paymentResult = result as any;
       
-      // Get current invoice to calculate new balance
-      const { data: currentInvoice, error: invoiceError } = await supabase
-        .from('invoices')
-        .select('total_amount, balance_due')
-        .eq('id', paymentData.invoice_id)
-        .single();
-        
-      if (invoiceError) throw invoiceError;
-      
-      // Calculate new balance
-      const currentBalance = currentInvoice.balance_due ?? currentInvoice.total_amount;
-      const newBalance = Math.max(0, currentBalance - paymentData.amount);
-      
-      // Update invoice balance
-      const { error: updateError } = await supabase
-        .from('invoices')
-        .update({
-          balance_due: newBalance,
-          status: newBalance === 0 ? 'paid' : 'sent',
-          paid_at: newBalance === 0 ? new Date().toISOString() : null,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', paymentData.invoice_id);
-      
-      if (updateError) throw updateError;
-      
-      return { success: true, payment_id: insertedPayment.id, new_balance: newBalance };
+      if (!paymentResult?.success) {
+        console.error('Payment function returned error:', paymentResult);
+        throw new Error(paymentResult?.error || 'Failed to record payment');
+      }
+
+      console.log('Payment recorded successfully:', paymentResult);
+      return { 
+        success: true, 
+        payment_id: paymentResult.payment_id, 
+        new_balance: paymentResult.new_balance,
+        invoice_status: paymentResult.invoice_status
+      };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['invoices-basic'] });

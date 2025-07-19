@@ -532,14 +532,13 @@ export const DeliveryManagement = () => {
               <TableHead>Customer</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Pickup Date</TableHead>
-              <TableHead>Delivery Date</TableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredDeliveries.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center">No deliveries found</TableCell>
+                <TableCell colSpan={5} className="text-center">No deliveries found</TableCell>
               </TableRow>
             ) : (
               filteredDeliveries.map((delivery) => (
@@ -553,7 +552,6 @@ export const DeliveryManagement = () => {
                   </TableCell>
                   <TableCell>{getStatusBadge(delivery.status)}</TableCell>
                   <TableCell>{getFormattedDate(delivery.scheduled_pickup_date)}</TableCell>
-                  <TableCell>{getFormattedDate(delivery.scheduled_delivery_date)}</TableCell>
                   <TableCell>
                     <div className="flex space-x-2">
                       <Button 

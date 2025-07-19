@@ -189,6 +189,7 @@ export const InvoiceManagement = () => {
           customer_phone: estimate.customer_phone,
           delivery_address: estimate.delivery_address,
           total_amount: estimate.total_amount,
+          balance_due: estimate.total_amount, // Explicitly set balance_due to total_amount
           user_id: estimate.user_id,
           mobile_home_id: estimate.mobile_home_id,
           selected_services: estimate.selected_services,

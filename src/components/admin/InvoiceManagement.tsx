@@ -431,28 +431,54 @@ export const InvoiceManagement = () => {
 
       console.log('User is admin, proceeding with payment recording...');
       
-      const { data, error } = await supabase.rpc('record_invoice_payment', {
-        p_invoice_id: paymentData.invoice_id,
-        p_amount: paymentData.amount,
-        p_payment_method: paymentData.payment_method,
-        p_notes: paymentData.notes
-      });
+      // Insert payment directly instead of using RPC function
+      const { data: insertedPayment, error: paymentError } = await supabase
+        .from('payments')
+        .insert({
+          invoice_id: paymentData.invoice_id,
+          amount: paymentData.amount,
+          payment_method: paymentData.payment_method,
+          notes: paymentData.notes,
+          payment_date: new Date().toISOString(),
+          created_by: user.id
+        })
+        .select()
+        .single();
       
-      console.log('Payment recording result:', { data, error });
+      console.log('Payment insert result:', { insertedPayment, paymentError });
       
-      if (error) {
-        console.error('Payment recording error:', error);
-        throw error;
+      if (paymentError) {
+        console.error('Payment insert error:', paymentError);
+        throw paymentError;
       }
       
-      // Type assertion for the RPC response
-      const result = data as { success: boolean; error?: string; payment_id?: string; payment_record_id?: string };
+      // Get current invoice to calculate new balance
+      const { data: currentInvoice, error: invoiceError } = await supabase
+        .from('invoices')
+        .select('total_amount, balance_due')
+        .eq('id', paymentData.invoice_id)
+        .single();
+        
+      if (invoiceError) throw invoiceError;
       
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to record payment');
-      }
+      // Calculate new balance
+      const currentBalance = currentInvoice.balance_due ?? currentInvoice.total_amount;
+      const newBalance = Math.max(0, currentBalance - paymentData.amount);
       
-      return data;
+      // Update invoice balance
+      const { error: updateError } = await supabase
+        .from('invoices')
+        .update({
+          balance_due: newBalance,
+          status: newBalance === 0 ? 'paid' : 'sent',
+          paid_at: newBalance === 0 ? new Date().toISOString() : null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', paymentData.invoice_id);
+      
+      if (updateError) throw updateError;
+      
+      return { success: true, payment_id: insertedPayment.id, new_balance: newBalance };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['invoices-basic'] });

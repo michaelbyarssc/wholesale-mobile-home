@@ -124,15 +124,17 @@ export const DeliveryManagement = () => {
 
       if (deliveryError) throw deliveryError;
 
-      // Create delivery assignment
+      // Create or update delivery assignment
       const { error: assignmentError } = await supabase
         .from('delivery_assignments')
-        .insert({
+        .upsert({
           delivery_id: deliveryId,
           driver_id: driverId,
           role: 'driver',
           notes: notes,
           assigned_by: (await supabase.auth.getUser()).data.user?.id
+        }, {
+          onConflict: 'delivery_id,driver_id,role'
         });
 
       if (assignmentError) throw assignmentError;

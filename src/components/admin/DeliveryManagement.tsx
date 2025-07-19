@@ -9,7 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Truck, Calendar as CalendarIcon, CheckCircle, Clock, AlertCircle, MapPin, FileText, User, Phone, Home, Package, CalendarDays } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Truck, Calendar as CalendarIcon, CheckCircle, Clock, AlertCircle, MapPin, FileText, User, Phone, Home, Package, CalendarDays, Plus, Edit, UserPlus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
@@ -23,7 +24,7 @@ type Driver = {
   last_name: string;
   email: string;
   phone: string;
-  status: string;
+  status: 'available' | 'on_delivery' | 'off_duty' | 'inactive';
 };
 
 type Delivery = {
@@ -72,6 +73,18 @@ export const DeliveryManagement = () => {
   const [selectedDriver, setSelectedDriver] = useState<string>('');
   const [notes, setNotes] = useState('');
   const [datePickerOpen, setDatePickerOpen] = useState(false);
+  
+  // Driver management state
+  const [addDriverDialogOpen, setAddDriverDialogOpen] = useState(false);
+  const [manageDriversDialogOpen, setManageDriversDialogOpen] = useState(false);
+  const [newDriverData, setNewDriverData] = useState({
+    first_name: '',
+    last_name: '',
+    email: '',
+    phone: '',
+    license_number: '',
+    license_class: 'CDL-A'
+  });
   
   const queryClient = useQueryClient();
 
@@ -164,6 +177,73 @@ export const DeliveryManagement = () => {
     }
   });
 
+  const addDriverMutation = useMutation({
+    mutationFn: async (driverData: typeof newDriverData) => {
+      const { data: user } = await supabase.auth.getUser();
+      
+      const { error } = await supabase
+        .from('drivers')
+        .insert({
+          ...driverData,
+          status: 'available',
+          active: true,
+          created_by: user.user?.id
+        });
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['drivers'] });
+      setAddDriverDialogOpen(false);
+      setNewDriverData({
+        first_name: '',
+        last_name: '',
+        email: '',
+        phone: '',
+        license_number: '',
+        license_class: 'CDL-A'
+      });
+      toast({
+        title: "Driver Added",
+        description: "New driver has been successfully added to the system."
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to add driver. Please try again.",
+        variant: "destructive"
+      });
+      console.error('Error adding driver:', error);
+    }
+  });
+
+  const updateDriverStatusMutation = useMutation({
+    mutationFn: async ({ driverId, status }: { driverId: string; status: 'available' | 'on_delivery' | 'off_duty' | 'inactive' }) => {
+      const { error } = await supabase
+        .from('drivers')
+        .update({ status })
+        .eq('id', driverId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['drivers'] });
+      toast({
+        title: "Driver Status Updated",
+        description: "Driver status has been successfully updated."
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to update driver status. Please try again.",
+        variant: "destructive"
+      });
+      console.error('Error updating driver status:', error);
+    }
+  });
+
   const getFilteredDeliveries = () => {
     if (!deliveries) return [];
     return deliveries;
@@ -200,6 +280,23 @@ export const DeliveryManagement = () => {
       scheduledPickupDate: pickupDateTime,
       notes: notes
     });
+  };
+
+  const handleAddDriver = () => {
+    if (!newDriverData.first_name || !newDriverData.last_name || !newDriverData.email || !newDriverData.phone) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill in all required fields.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    addDriverMutation.mutate(newDriverData);
+  };
+
+  const handleDriverStatusChange = (driverId: string, status: 'available' | 'on_delivery' | 'off_duty' | 'inactive') => {
+    updateDriverStatusMutation.mutate({ driverId, status });
   };
 
   const getFormattedDate = (dateString: string | null) => {
@@ -485,6 +582,15 @@ export const DeliveryManagement = () => {
         </div>
         
         <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => setAddDriverDialogOpen(true)}>
+            <UserPlus className="h-4 w-4 mr-2" />
+            Add Driver
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setManageDriversDialogOpen(true)}>
+            <User className="h-4 w-4 mr-2" />
+            Manage Drivers
+          </Button>
+          <Separator orientation="vertical" className="h-6" />
           <Button variant="outline" size="sm" onClick={() => setFilter('all')} 
                   className={filter === 'all' ? 'bg-primary text-primary-foreground' : ''}>
             All
@@ -609,6 +715,178 @@ export const DeliveryManagement = () => {
       </div>
       
       <ScheduleDeliveryDialog />
+      
+      {/* Add Driver Dialog */}
+      <Dialog open={addDriverDialogOpen} onOpenChange={setAddDriverDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add New Driver</DialogTitle>
+            <DialogDescription>
+              Add a new driver to the delivery system
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="first-name">First Name *</Label>
+                <Input
+                  id="first-name"
+                  value={newDriverData.first_name}
+                  onChange={(e) => setNewDriverData(prev => ({ ...prev, first_name: e.target.value }))}
+                  placeholder="John"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="last-name">Last Name *</Label>
+                <Input
+                  id="last-name"
+                  value={newDriverData.last_name}
+                  onChange={(e) => setNewDriverData(prev => ({ ...prev, last_name: e.target.value }))}
+                  placeholder="Doe"
+                />
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="email">Email *</Label>
+              <Input
+                id="email"
+                type="email"
+                value={newDriverData.email}
+                onChange={(e) => setNewDriverData(prev => ({ ...prev, email: e.target.value }))}
+                placeholder="john.doe@example.com"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="phone">Phone *</Label>
+              <Input
+                id="phone"
+                value={newDriverData.phone}
+                onChange={(e) => setNewDriverData(prev => ({ ...prev, phone: e.target.value }))}
+                placeholder="(555) 123-4567"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="license">License Number</Label>
+              <Input
+                id="license"
+                value={newDriverData.license_number}
+                onChange={(e) => setNewDriverData(prev => ({ ...prev, license_number: e.target.value }))}
+                placeholder="CDL12345"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="license-class">License Class</Label>
+              <Select value={newDriverData.license_class} onValueChange={(value) => 
+                setNewDriverData(prev => ({ ...prev, license_class: value }))
+              }>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select license class" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="CDL-A">CDL Class A</SelectItem>
+                  <SelectItem value="CDL-B">CDL Class B</SelectItem>
+                  <SelectItem value="CDL-C">CDL Class C</SelectItem>
+                  <SelectItem value="Regular">Regular License</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          
+          <div className="flex justify-end space-x-2 pt-4">
+            <Button variant="outline" onClick={() => setAddDriverDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleAddDriver}
+              disabled={addDriverMutation.isPending}
+            >
+              {addDriverMutation.isPending ? 'Adding...' : 'Add Driver'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Manage Drivers Dialog */}
+      <Dialog open={manageDriversDialogOpen} onOpenChange={setManageDriversDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Manage Drivers</DialogTitle>
+            <DialogDescription>
+              View and manage all drivers in the system
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            {drivers && drivers.length > 0 ? (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Phone</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {drivers.map((driver) => (
+                    <TableRow key={driver.id}>
+                      <TableCell className="font-medium">
+                        {driver.first_name} {driver.last_name}
+                      </TableCell>
+                      <TableCell>{driver.email}</TableCell>
+                      <TableCell>{driver.phone}</TableCell>
+                      <TableCell>
+                        <Badge className={
+                          driver.status === 'available' ? 'bg-green-100 text-green-800' :
+                          driver.status === 'on_delivery' ? 'bg-blue-100 text-blue-800' :
+                          driver.status === 'off_duty' ? 'bg-yellow-100 text-yellow-800' :
+                          'bg-red-100 text-red-800'
+                        }>
+                          {driver.status.replace('_', ' ')}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Select 
+                          value={driver.status} 
+                          onValueChange={(value) => handleDriverStatusChange(driver.id, value as 'available' | 'on_delivery' | 'off_duty' | 'inactive')}
+                        >
+                          <SelectTrigger className="w-32">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="available">Available</SelectItem>
+                            <SelectItem value="on_delivery">On Delivery</SelectItem>
+                            <SelectItem value="off_duty">Off Duty</SelectItem>
+                            <SelectItem value="inactive">Inactive</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : (
+              <div className="text-center py-8">
+                <User className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+                <p className="text-muted-foreground">No drivers found</p>
+                <Button className="mt-4" onClick={() => {
+                  setManageDriversDialogOpen(false);
+                  setAddDriverDialogOpen(true);
+                }}>
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  Add First Driver
+                </Button>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

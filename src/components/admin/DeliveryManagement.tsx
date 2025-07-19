@@ -331,12 +331,13 @@ export const DeliveryManagement = () => {
       return;
     }
 
-    // Combine date and time for pickup
-    const pickupDateTime = new Date(selectedPickupDate);
-    if (selectedPickupTime) {
-      const [hours, minutes] = selectedPickupTime.split(':');
-      pickupDateTime.setHours(parseInt(hours), parseInt(minutes));
-    }
+    // Combine date and time for pickup in Eastern timezone
+    const dateStr = format(selectedPickupDate, 'yyyy-MM-dd');
+    const timeStr = selectedPickupTime || '09:00';
+    
+    // Create datetime string in Eastern timezone
+    const easternDateTimeStr = `${dateStr}T${timeStr}:00-04:00`; // EDT offset
+    const pickupDateTime = new Date(easternDateTimeStr);
 
     console.log('🔍 Final pickup date time:', pickupDateTime.toISOString());
 

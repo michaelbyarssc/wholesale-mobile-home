@@ -5,9 +5,26 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
-import { Truck, Calendar, CheckCircle, Clock, AlertCircle, MapPin, FileText, User, Phone, Home, Package } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Truck, Calendar as CalendarIcon, CheckCircle, Clock, AlertCircle, MapPin, FileText, User, Phone, Home, Package, CalendarDays } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
+import { toast } from '@/hooks/use-toast';
+
+type Driver = {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone: string;
+  status: string;
+};
 
 type Delivery = {
   id: string;
@@ -49,6 +66,12 @@ const getStatusBadge = (status: string) => {
 export const DeliveryManagement = () => {
   const [filter, setFilter] = useState<'all' | 'scheduled' | 'in_transit' | 'completed' | 'pending_payment' | 'factory_pickup_scheduled' | 'factory_pickup_in_progress' | 'factory_pickup_completed' | 'delivery_in_progress' | 'delivered' | 'cancelled' | 'delayed'>('all');
   const [selectedDelivery, setSelectedDelivery] = useState<Delivery | null>(null);
+  const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date>();
+  const [selectedDriver, setSelectedDriver] = useState<string>('');
+  const [notes, setNotes] = useState('');
+  
+  const queryClient = useQueryClient();
 
   const { data: deliveries, isLoading, error } = useQuery({
     queryKey: ['deliveries', filter],
@@ -68,6 +91,73 @@ export const DeliveryManagement = () => {
     },
   });
 
+  const { data: drivers } = useQuery({
+    queryKey: ['drivers'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('drivers')
+        .select('id, first_name, last_name, email, phone, status')
+        .eq('active', true)
+        .order('first_name');
+      
+      if (error) throw error;
+      return data as Driver[];
+    },
+  });
+
+  const scheduleDeliveryMutation = useMutation({
+    mutationFn: async ({ deliveryId, driverId, scheduledDate, notes }: {
+      deliveryId: string;
+      driverId: string;
+      scheduledDate: Date;
+      notes: string;
+    }) => {
+      // Update delivery with scheduled date
+      const { error: deliveryError } = await supabase
+        .from('deliveries')
+        .update({
+          scheduled_delivery_date: scheduledDate.toISOString(),
+          status: 'scheduled'
+        })
+        .eq('id', deliveryId);
+
+      if (deliveryError) throw deliveryError;
+
+      // Create delivery assignment
+      const { error: assignmentError } = await supabase
+        .from('delivery_assignments')
+        .insert({
+          delivery_id: deliveryId,
+          driver_id: driverId,
+          role: 'driver',
+          notes: notes,
+          assigned_by: (await supabase.auth.getUser()).data.user?.id
+        });
+
+      if (assignmentError) throw assignmentError;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['deliveries'] });
+      setScheduleDialogOpen(false);
+      setSelectedDate(undefined);
+      setSelectedDriver('');
+      setNotes('');
+      setSelectedDelivery(null);
+      toast({
+        title: "Delivery Scheduled",
+        description: "The delivery has been successfully scheduled."
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to schedule delivery. Please try again.",
+        variant: "destructive"
+      });
+      console.error('Error scheduling delivery:', error);
+    }
+  });
+
   const getFilteredDeliveries = () => {
     if (!deliveries) return [];
     return deliveries;
@@ -75,11 +165,119 @@ export const DeliveryManagement = () => {
 
   const filteredDeliveries = getFilteredDeliveries();
 
+  const handleScheduleDelivery = (delivery: Delivery) => {
+    setSelectedDelivery(delivery);
+    setScheduleDialogOpen(true);
+  };
+
+  const handleScheduleSubmit = () => {
+    if (!selectedDelivery || !selectedDate || !selectedDriver) {
+      toast({
+        title: "Missing Information",
+        description: "Please select both a date and a driver.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    scheduleDeliveryMutation.mutate({
+      deliveryId: selectedDelivery.id,
+      driverId: selectedDriver,
+      scheduledDate: selectedDate,
+      notes: notes
+    });
+  };
+
   const getFormattedDate = (dateString: string | null) => {
     if (!dateString) return 'Not scheduled';
     const date = new Date(dateString);
     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
+
+  const ScheduleDeliveryDialog = () => (
+    <Dialog open={scheduleDialogOpen} onOpenChange={setScheduleDialogOpen}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Schedule Delivery</DialogTitle>
+          <DialogDescription>
+            Schedule delivery for {selectedDelivery?.delivery_number}
+          </DialogDescription>
+        </DialogHeader>
+        
+        <div className="space-y-4">
+          {/* Driver Selection */}
+          <div className="space-y-2">
+            <Label>Select Driver</Label>
+            <Select value={selectedDriver} onValueChange={setSelectedDriver}>
+              <SelectTrigger>
+                <SelectValue placeholder="Choose a driver" />
+              </SelectTrigger>
+              <SelectContent>
+                {drivers?.map((driver) => (
+                  <SelectItem key={driver.id} value={driver.id}>
+                    {driver.first_name} {driver.last_name} ({driver.status})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Date Selection */}
+          <div className="space-y-2">
+            <Label>Delivery Date</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "w-full justify-start text-left font-normal",
+                    !selectedDate && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {selectedDate ? format(selectedDate, "PPP") : <span>Pick a date</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={setSelectedDate}
+                  disabled={(date) => date < new Date()}
+                  initialFocus
+                  className={cn("p-3 pointer-events-auto")}
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+
+          {/* Notes */}
+          <div className="space-y-2">
+            <Label>Notes (Optional)</Label>
+            <Textarea
+              placeholder="Add any special delivery instructions..."
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={3}
+            />
+          </div>
+
+          {/* Actions */}
+          <div className="flex justify-end space-x-2 pt-4">
+            <Button variant="outline" onClick={() => setScheduleDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleScheduleSubmit}
+              disabled={scheduleDeliveryMutation.isPending}
+            >
+              {scheduleDeliveryMutation.isPending ? 'Scheduling...' : 'Schedule Delivery'}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
 
   const DeliveryDetailsDialog = ({ delivery }: { delivery: Delivery }) => (
     <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
@@ -343,6 +541,15 @@ export const DeliveryManagement = () => {
                   <TableCell>{getFormattedDate(delivery.scheduled_delivery_date)}</TableCell>
                   <TableCell>
                     <div className="flex space-x-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleScheduleDelivery(delivery)}
+                        disabled={delivery.status === 'completed' || delivery.status === 'delivered'}
+                      >
+                        <CalendarDays className="h-3 w-3 mr-1" />
+                        Schedule
+                      </Button>
                       <Button variant="outline" size="sm">
                         <MapPin className="h-3 w-3 mr-1" />
                         Track
@@ -364,6 +571,8 @@ export const DeliveryManagement = () => {
           </TableBody>
         </Table>
       </div>
+      
+      <ScheduleDeliveryDialog />
     </div>
   );
 };

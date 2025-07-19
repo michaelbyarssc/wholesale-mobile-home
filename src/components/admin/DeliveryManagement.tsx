@@ -3,7 +3,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Truck, Calendar, CheckCircle, Clock, AlertCircle, MapPin, FileText } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Separator } from '@/components/ui/separator';
+import { Truck, Calendar, CheckCircle, Clock, AlertCircle, MapPin, FileText, User, Phone, Home, Package } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 
@@ -11,11 +13,17 @@ type Delivery = {
   id: string;
   delivery_number: string;
   customer_name: string;
+  customer_email: string;
   customer_phone: string;
   delivery_address: string;
+  pickup_address: string;
   status: string;
+  mobile_home_type: string;
+  crew_type: string;
   scheduled_pickup_date: string | null;
   scheduled_delivery_date: string | null;
+  total_delivery_cost: number;
+  special_instructions: string;
   created_at: string;
 };
 
@@ -40,6 +48,7 @@ const getStatusBadge = (status: string) => {
 
 export const DeliveryManagement = () => {
   const [filter, setFilter] = useState<'all' | 'scheduled' | 'in_transit' | 'completed' | 'pending_payment' | 'factory_pickup_scheduled' | 'factory_pickup_in_progress' | 'factory_pickup_completed' | 'delivery_in_progress' | 'delivered' | 'cancelled' | 'delayed'>('all');
+  const [selectedDelivery, setSelectedDelivery] = useState<Delivery | null>(null);
 
   const { data: deliveries, isLoading, error } = useQuery({
     queryKey: ['deliveries', filter],
@@ -71,6 +80,148 @@ export const DeliveryManagement = () => {
     const date = new Date(dateString);
     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
+
+  const DeliveryDetailsDialog = ({ delivery }: { delivery: Delivery }) => (
+    <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+      <DialogHeader>
+        <DialogTitle>Delivery Details - {delivery.delivery_number}</DialogTitle>
+        <DialogDescription>
+          Complete information for this delivery
+        </DialogDescription>
+      </DialogHeader>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Customer Information */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center">
+              <User className="h-4 w-4 mr-2" />
+              Customer Information
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div>
+              <label className="text-sm font-medium text-muted-foreground">Name</label>
+              <p className="text-sm">{delivery.customer_name}</p>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-muted-foreground">Email</label>
+              <p className="text-sm">{delivery.customer_email}</p>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-muted-foreground">Phone</label>
+              <p className="text-sm">{delivery.customer_phone}</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Delivery Information */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center">
+              <Truck className="h-4 w-4 mr-2" />
+              Delivery Information
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div>
+              <label className="text-sm font-medium text-muted-foreground">Status</label>
+              <div className="mt-1">{getStatusBadge(delivery.status)}</div>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-muted-foreground">Mobile Home Type</label>
+              <p className="text-sm capitalize">{delivery.mobile_home_type?.replace('_', ' ')}</p>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-muted-foreground">Crew Type</label>
+              <p className="text-sm capitalize">{delivery.crew_type?.replace('_', ' ')}</p>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-muted-foreground">Total Cost</label>
+              <p className="text-sm font-medium">${delivery.total_delivery_cost?.toFixed(2) || '0.00'}</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Addresses */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center">
+              <MapPin className="h-4 w-4 mr-2" />
+              Pickup Address
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm">{delivery.pickup_address}</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center">
+              <Home className="h-4 w-4 mr-2" />
+              Delivery Address
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm">{delivery.delivery_address}</p>
+          </CardContent>
+        </Card>
+
+        {/* Schedule Information */}
+        <Card className="md:col-span-2">
+          <CardHeader>
+            <CardTitle className="text-base flex items-center">
+              <Calendar className="h-4 w-4 mr-2" />
+              Schedule Information
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm font-medium text-muted-foreground">Scheduled Pickup</label>
+              <p className="text-sm">{getFormattedDate(delivery.scheduled_pickup_date)}</p>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-muted-foreground">Scheduled Delivery</label>
+              <p className="text-sm">{getFormattedDate(delivery.scheduled_delivery_date)}</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Special Instructions */}
+        {delivery.special_instructions && (
+          <Card className="md:col-span-2">
+            <CardHeader>
+              <CardTitle className="text-base flex items-center">
+                <FileText className="h-4 w-4 mr-2" />
+                Special Instructions
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm">{delivery.special_instructions}</p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Additional Details */}
+        <Card className="md:col-span-2">
+          <CardHeader>
+            <CardTitle className="text-base">Additional Information</CardTitle>
+          </CardHeader>
+          <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="text-sm font-medium text-muted-foreground">Created</label>
+              <p className="text-sm">{getFormattedDate(delivery.created_at)}</p>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-muted-foreground">Delivery ID</label>
+              <p className="text-sm font-mono text-xs">{delivery.id}</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </DialogContent>
+  );
 
   if (isLoading) {
     return <div className="flex items-center justify-center h-64">Loading deliveries...</div>;
@@ -196,10 +347,15 @@ export const DeliveryManagement = () => {
                         <MapPin className="h-3 w-3 mr-1" />
                         Track
                       </Button>
-                      <Button variant="outline" size="sm">
-                        <FileText className="h-3 w-3 mr-1" />
-                        Details
-                      </Button>
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button variant="outline" size="sm">
+                            <FileText className="h-3 w-3 mr-1" />
+                            Details
+                          </Button>
+                        </DialogTrigger>
+                        <DeliveryDetailsDialog delivery={delivery} />
+                      </Dialog>
                     </div>
                   </TableCell>
                 </TableRow>

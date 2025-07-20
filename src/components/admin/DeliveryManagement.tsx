@@ -566,10 +566,14 @@ export const DeliveryManagement = () => {
 
   const getFormattedDate = (dateString: string | null, deliveryAddress?: string) => {
     if (!dateString) return 'Not scheduled';
+    
+    // Parse the ISO string directly 
     const date = new Date(dateString);
+    console.log('🔍 Formatting date:', dateString, 'parsed as:', date);
     
     // Determine timezone based on delivery address if provided
     const timezone = deliveryAddress ? getTimezoneFromAddress(deliveryAddress) : 'America/New_York';
+    console.log('🔍 Using timezone:', timezone, 'for address:', deliveryAddress);
     
     // Format date to show in the appropriate timezone
     const formattedDate = date.toLocaleDateString('en-US', {
@@ -586,6 +590,7 @@ export const DeliveryManagement = () => {
       timeZone: timezone
     });
     
+    console.log('🔍 Formatted result:', `${formattedDate} at ${formattedTime}`);
     return `${formattedDate} at ${formattedTime}`;
   };
 

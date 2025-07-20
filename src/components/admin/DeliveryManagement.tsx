@@ -331,15 +331,24 @@ export const DeliveryManagement = () => {
       return;
     }
 
+    // Debug the incoming values
+    console.log('🔍 selectedPickupDate:', selectedPickupDate);
+    console.log('🔍 selectedPickupTime:', selectedPickupTime);
+    
     // Combine date and time for pickup in Eastern timezone
     const dateStr = format(selectedPickupDate, 'yyyy-MM-dd');
     const timeStr = selectedPickupTime || '09:00';
     
+    console.log('🔍 dateStr:', dateStr);
+    console.log('🔍 timeStr:', timeStr);
+    
     // Create datetime string in Eastern timezone (EST is -05:00)
     const easternDateTimeStr = `${dateStr}T${timeStr}:00-05:00`; // EST offset
+    console.log('🔍 easternDateTimeStr:', easternDateTimeStr);
+    
     const pickupDateTime = new Date(easternDateTimeStr);
-
     console.log('🔍 Final pickup date time:', pickupDateTime.toISOString());
+    console.log('🔍 Final pickup date time (EST):', pickupDateTime.toLocaleString('en-US', { timeZone: 'America/New_York' }));
 
     scheduleDeliveryMutation.mutate({
       deliveryId: selectedDelivery.id,

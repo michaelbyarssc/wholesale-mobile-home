@@ -488,27 +488,24 @@ export const DeliveryManagement = () => {
     const deliveryAddress = selectedDelivery?.delivery_address || '';
     const deliveryTimezone = getTimezoneFromAddress(deliveryAddress);
     
-    // Debug the incoming values
+    console.log('🔍 Timezone for delivery:', deliveryTimezone);
     console.log('🔍 selectedPickupDate:', selectedPickupDate);
     console.log('🔍 selectedPickupTime:', selectedPickupTime);
-    console.log('🔍 deliveryAddress:', deliveryAddress);
-    console.log('🔍 deliveryTimezone:', deliveryTimezone);
     
-    // Combine date and time for pickup - create a proper Date object
+    // Create date string in YYYY-MM-DD format
     const dateStr = format(selectedPickupDate, 'yyyy-MM-dd');
     const timeStr = selectedPickupTime || '09:00';
     
-    console.log('🔍 dateStr:', dateStr);
-    console.log('🔍 timeStr:', timeStr);
+    // Create datetime string and parse it as a local date
+    const dateTimeStr = `${dateStr}T${timeStr}:00.000`;
+    console.log('🔍 DateTime string:', dateTimeStr);
     
-    // Create a simple local datetime first
-    const [hours, minutes] = timeStr.split(':');
-    const pickupDateTime = new Date(selectedPickupDate);
-    pickupDateTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+    // Parse as local time (this creates a Date object representing the exact time the user selected)
+    const pickupDateTime = new Date(dateTimeStr);
     
-    console.log('🔍 pickupDateTime:', pickupDateTime);
-    console.log('🔍 Final pickup date time:', pickupDateTime.toISOString());
-    console.log('🔍 Final pickup date time (Local):', pickupDateTime.toLocaleString('en-US', { timeZone: deliveryTimezone }));
+    console.log('🔍 Created pickup date:', pickupDateTime);
+    console.log('🔍 ISO string to save:', pickupDateTime.toISOString());
+    console.log('🔍 Local string:', pickupDateTime.toLocaleString());
 
     scheduleDeliveryMutation.mutate({
       deliveryId: selectedDelivery.id,
@@ -567,27 +564,21 @@ export const DeliveryManagement = () => {
   const getFormattedDate = (dateString: string | null, deliveryAddress?: string) => {
     if (!dateString) return 'Not scheduled';
     
-    // Parse the ISO string directly 
-    const date = new Date(dateString);
-    console.log('🔍 Formatting date:', dateString, 'parsed as:', date);
+    // Parse the ISO string - this is UTC time from database
+    const utcDate = new Date(dateString);
+    console.log('🔍 Original UTC date from DB:', dateString, 'parsed as:', utcDate);
     
-    // Determine timezone based on delivery address if provided
-    const timezone = deliveryAddress ? getTimezoneFromAddress(deliveryAddress) : 'America/New_York';
-    console.log('🔍 Using timezone:', timezone, 'for address:', deliveryAddress);
-    
-    // Format date to show in the appropriate timezone
-    const formattedDate = date.toLocaleDateString('en-US', {
+    // Use the browser's local timezone for display (since user created it in their local time)
+    const formattedDate = utcDate.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'numeric', 
-      day: 'numeric',
-      timeZone: timezone
+      day: 'numeric'
     });
     
-    const formattedTime = date.toLocaleTimeString('en-US', { 
+    const formattedTime = utcDate.toLocaleTimeString('en-US', { 
       hour: 'numeric', 
       minute: '2-digit',
-      hour12: true,
-      timeZone: timezone
+      hour12: true
     });
     
     console.log('🔍 Formatted result:', `${formattedDate} at ${formattedTime}`);

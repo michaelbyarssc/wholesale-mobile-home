@@ -494,19 +494,19 @@ export const DeliveryManagement = () => {
     console.log('🔍 deliveryAddress:', deliveryAddress);
     console.log('🔍 deliveryTimezone:', deliveryTimezone);
     
-    // Combine date and time for pickup in the delivery address timezone
+    // Combine date and time for pickup - create a proper Date object
     const dateStr = format(selectedPickupDate, 'yyyy-MM-dd');
     const timeStr = selectedPickupTime || '09:00';
     
     console.log('🔍 dateStr:', dateStr);
     console.log('🔍 timeStr:', timeStr);
     
-    // Create datetime string in the appropriate timezone for the delivery address
-    const timezoneOffset = getTimezoneOffset(deliveryTimezone);
-    const easternDateTimeStr = `${dateStr}T${timeStr}:00${timezoneOffset}`;
-    console.log('🔍 easternDateTimeStr:', easternDateTimeStr);
+    // Create a simple local datetime first
+    const [hours, minutes] = timeStr.split(':');
+    const pickupDateTime = new Date(selectedPickupDate);
+    pickupDateTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
     
-    const pickupDateTime = new Date(easternDateTimeStr);
+    console.log('🔍 pickupDateTime:', pickupDateTime);
     console.log('🔍 Final pickup date time:', pickupDateTime.toISOString());
     console.log('🔍 Final pickup date time (Local):', pickupDateTime.toLocaleString('en-US', { timeZone: deliveryTimezone }));
 

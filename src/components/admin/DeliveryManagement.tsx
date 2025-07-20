@@ -18,6 +18,159 @@ import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 import { Calendar } from '@/components/ui/calendar';
 
+// Function to determine timezone based on delivery address
+const getTimezoneFromAddress = (address: string): string => {
+  const normalizedAddress = address.toLowerCase();
+  
+  // Map states to timezones - this is a simplified version
+  const stateTimezoneMap: Record<string, string> = {
+    // Eastern Time
+    'maine': 'America/New_York', 'me': 'America/New_York',
+    'new hampshire': 'America/New_York', 'nh': 'America/New_York',
+    'vermont': 'America/New_York', 'vt': 'America/New_York',
+    'massachusetts': 'America/New_York', 'ma': 'America/New_York',
+    'rhode island': 'America/New_York', 'ri': 'America/New_York',
+    'connecticut': 'America/New_York', 'ct': 'America/New_York',
+    'new york': 'America/New_York', 'ny': 'America/New_York',
+    'new jersey': 'America/New_York', 'nj': 'America/New_York',
+    'pennsylvania': 'America/New_York', 'pa': 'America/New_York',
+    'delaware': 'America/New_York', 'de': 'America/New_York',
+    'maryland': 'America/New_York', 'md': 'America/New_York',
+    'district of columbia': 'America/New_York', 'dc': 'America/New_York',
+    'virginia': 'America/New_York', 'va': 'America/New_York',
+    'west virginia': 'America/New_York', 'wv': 'America/New_York',
+    'north carolina': 'America/New_York', 'nc': 'America/New_York',
+    'south carolina': 'America/New_York', 'sc': 'America/New_York',
+    'georgia': 'America/New_York', 'ga': 'America/New_York',
+    'florida': 'America/New_York', 'fl': 'America/New_York',
+    'ohio': 'America/New_York', 'oh': 'America/New_York',
+    'kentucky': 'America/New_York', 'ky': 'America/New_York',
+    'tennessee': 'America/New_York', 'tn': 'America/New_York',
+    'indiana': 'America/New_York', 'in': 'America/New_York', // Most of Indiana
+    'michigan': 'America/New_York', 'mi': 'America/New_York',
+    
+    // Central Time
+    'alabama': 'America/Chicago', 'al': 'America/Chicago',
+    'arkansas': 'America/Chicago', 'ar': 'America/Chicago',
+    'illinois': 'America/Chicago', 'il': 'America/Chicago',
+    'iowa': 'America/Chicago', 'ia': 'America/Chicago',
+    'kansas': 'America/Chicago', 'ks': 'America/Chicago',
+    'louisiana': 'America/Chicago', 'la': 'America/Chicago',
+    'minnesota': 'America/Chicago', 'mn': 'America/Chicago',
+    'mississippi': 'America/Chicago', 'ms': 'America/Chicago',
+    'missouri': 'America/Chicago', 'mo': 'America/Chicago',
+    'nebraska': 'America/Chicago', 'ne': 'America/Chicago',
+    'north dakota': 'America/Chicago', 'nd': 'America/Chicago',
+    'oklahoma': 'America/Chicago', 'ok': 'America/Chicago',
+    'south dakota': 'America/Chicago', 'sd': 'America/Chicago',
+    'texas': 'America/Chicago', 'tx': 'America/Chicago',
+    'wisconsin': 'America/Chicago', 'wi': 'America/Chicago',
+    
+    // Mountain Time
+    'arizona': 'America/Phoenix', 'az': 'America/Phoenix', // No DST
+    'colorado': 'America/Denver', 'co': 'America/Denver',
+    'idaho': 'America/Denver', 'id': 'America/Denver',
+    'montana': 'America/Denver', 'mt': 'America/Denver',
+    'nevada': 'America/Denver', 'nv': 'America/Denver', // Most of Nevada
+    'new mexico': 'America/Denver', 'nm': 'America/Denver',
+    'utah': 'America/Denver', 'ut': 'America/Denver',
+    'wyoming': 'America/Denver', 'wy': 'America/Denver',
+    
+    // Pacific Time
+    'california': 'America/Los_Angeles', 'ca': 'America/Los_Angeles',
+    'oregon': 'America/Los_Angeles', 'or': 'America/Los_Angeles',
+    'washington': 'America/Los_Angeles', 'wa': 'America/Los_Angeles',
+    
+    // Alaska Time
+    'alaska': 'America/Anchorage', 'ak': 'America/Anchorage',
+    
+    // Hawaii Time
+    'hawaii': 'Pacific/Honolulu', 'hi': 'Pacific/Honolulu'
+  };
+  
+  // Try to find state in address
+  for (const [state, timezone] of Object.entries(stateTimezoneMap)) {
+    if (normalizedAddress.includes(state)) {
+      return timezone;
+    }
+  }
+  
+  // Default to Eastern Time if no match found
+  return 'America/New_York';
+};
+
+// Function to get timezone offset based on timezone
+const getTimezoneOffset = (timezone: string): string => {
+  const now = new Date();
+  
+  // Create a date in the target timezone
+  const formatter = new Intl.DateTimeFormat('en', {
+    timeZone: timezone,
+    timeZoneName: 'longOffset'
+  });
+  
+  const parts = formatter.formatToParts(now);
+  const offsetPart = parts.find(part => part.type === 'timeZoneName');
+  
+  if (offsetPart && offsetPart.value.startsWith('GMT')) {
+    // Convert GMT+/-X to +/-XX:XX format
+    const offset = offsetPart.value.replace('GMT', '');
+    if (offset === '') return '+00:00';
+    
+    // Handle single digit hours
+    if (offset.length === 2) {
+      return offset.charAt(0) + '0' + offset.charAt(1) + ':00';
+    }
+    
+    return offset + ':00';
+  }
+  
+  // Fallback: calculate offset manually
+  const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+  const targetTime = new Date(utc + (getTimezoneOffsetHours(timezone) * 3600000));
+  const offsetHours = (targetTime.getTime() - utc) / 3600000;
+  
+  const sign = offsetHours >= 0 ? '+' : '-';
+  const hours = Math.abs(Math.floor(offsetHours));
+  const minutes = Math.abs((offsetHours % 1) * 60);
+  
+  return `${sign}${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+};
+
+// Helper function to get timezone offset in hours
+const getTimezoneOffsetHours = (timezone: string): number => {
+  const offsetMap: Record<string, number> = {
+    'America/New_York': -5, // EST, -4 for EDT
+    'America/Chicago': -6,  // CST, -5 for CDT
+    'America/Denver': -7,   // MST, -6 for MDT
+    'America/Los_Angeles': -8, // PST, -7 for PDT
+    'America/Phoenix': -7,  // MST (no DST)
+    'America/Anchorage': -9, // AKST, -8 for AKDT
+    'Pacific/Honolulu': -10  // HST (no DST)
+  };
+  
+  const baseOffset = offsetMap[timezone] || -5;
+  
+  // Check if we're in daylight saving time for zones that observe it
+  if (timezone !== 'America/Phoenix' && timezone !== 'Pacific/Honolulu') {
+    const now = new Date();
+    const year = now.getFullYear();
+    
+    // Rough DST calculation (second Sunday in March to first Sunday in November)
+    const dstStart = new Date(year, 2, 1); // March
+    dstStart.setDate(dstStart.getDate() + (7 - dstStart.getDay()) + 7);
+    
+    const dstEnd = new Date(year, 10, 1); // November
+    dstEnd.setDate(dstEnd.getDate() + (7 - dstEnd.getDay()));
+    
+    if (now >= dstStart && now < dstEnd) {
+      return baseOffset + 1; // Add 1 hour for DST
+    }
+  }
+  
+  return baseOffset;
+};
+
 type Driver = {
   id: string;
   first_name: string;
@@ -331,28 +484,31 @@ export const DeliveryManagement = () => {
       return;
     }
 
+    // Get the delivery address to determine timezone
+    const deliveryAddress = selectedDelivery?.delivery_address || '';
+    const deliveryTimezone = getTimezoneFromAddress(deliveryAddress);
+    
     // Debug the incoming values
     console.log('🔍 selectedPickupDate:', selectedPickupDate);
     console.log('🔍 selectedPickupTime:', selectedPickupTime);
+    console.log('🔍 deliveryAddress:', deliveryAddress);
+    console.log('🔍 deliveryTimezone:', deliveryTimezone);
     
-    // Combine date and time for pickup in Eastern timezone
+    // Combine date and time for pickup in the delivery address timezone
     const dateStr = format(selectedPickupDate, 'yyyy-MM-dd');
     const timeStr = selectedPickupTime || '09:00';
     
     console.log('🔍 dateStr:', dateStr);
     console.log('🔍 timeStr:', timeStr);
     
-    // Create datetime string in Eastern timezone (EDT in summer, EST in winter)
-    // Use EDT (-04:00) for daylight saving time or EST (-05:00) for standard time
-    const now = new Date();
-    const isDST = now.getTimezoneOffset() < new Date(now.getFullYear(), 0, 1).getTimezoneOffset();
-    const easternOffset = isDST ? '-04:00' : '-05:00'; // EDT or EST
-    const easternDateTimeStr = `${dateStr}T${timeStr}:00${easternOffset}`;
+    // Create datetime string in the appropriate timezone for the delivery address
+    const timezoneOffset = getTimezoneOffset(deliveryTimezone);
+    const easternDateTimeStr = `${dateStr}T${timeStr}:00${timezoneOffset}`;
     console.log('🔍 easternDateTimeStr:', easternDateTimeStr);
     
     const pickupDateTime = new Date(easternDateTimeStr);
     console.log('🔍 Final pickup date time:', pickupDateTime.toISOString());
-    console.log('🔍 Final pickup date time (EST):', pickupDateTime.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+    console.log('🔍 Final pickup date time (Local):', pickupDateTime.toLocaleString('en-US', { timeZone: deliveryTimezone }));
 
     scheduleDeliveryMutation.mutate({
       deliveryId: selectedDelivery.id,
@@ -408,26 +564,29 @@ export const DeliveryManagement = () => {
     });
   };
 
-  const getFormattedDate = (dateString: string | null) => {
+  const getFormattedDate = (dateString: string | null, deliveryAddress?: string) => {
     if (!dateString) return 'Not scheduled';
     const date = new Date(dateString);
     
-    // Format date to show in Eastern timezone
-    const easternDate = date.toLocaleDateString('en-US', {
+    // Determine timezone based on delivery address if provided
+    const timezone = deliveryAddress ? getTimezoneFromAddress(deliveryAddress) : 'America/New_York';
+    
+    // Format date to show in the appropriate timezone
+    const formattedDate = date.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'numeric', 
       day: 'numeric',
-      timeZone: 'America/New_York'
+      timeZone: timezone
     });
     
-    const easternTime = date.toLocaleTimeString('en-US', { 
+    const formattedTime = date.toLocaleTimeString('en-US', { 
       hour: 'numeric', 
       minute: '2-digit',
       hour12: true,
-      timeZone: 'America/New_York'
+      timeZone: timezone
     });
     
-    return `${easternDate} at ${easternTime}`;
+    return `${formattedDate} at ${formattedTime}`;
   };
 
   const ScheduleDeliveryDialog = () => (
@@ -788,7 +947,7 @@ export const DeliveryManagement = () => {
                     </div>
                   </TableCell>
                   <TableCell>{getStatusBadge(delivery.status)}</TableCell>
-                  <TableCell>{getFormattedDate(delivery.scheduled_pickup_date)}</TableCell>
+                  <TableCell>{getFormattedDate(delivery.scheduled_pickup_date, delivery.delivery_address)}</TableCell>
                   <TableCell>
                     <div className="flex space-x-2">
                       <Button 

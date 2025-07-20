@@ -342,8 +342,12 @@ export const DeliveryManagement = () => {
     console.log('🔍 dateStr:', dateStr);
     console.log('🔍 timeStr:', timeStr);
     
-    // Create datetime string in Eastern timezone (EST is -05:00)
-    const easternDateTimeStr = `${dateStr}T${timeStr}:00-05:00`; // EST offset
+    // Create datetime string in Eastern timezone (EDT in summer, EST in winter)
+    // Use EDT (-04:00) for daylight saving time or EST (-05:00) for standard time
+    const now = new Date();
+    const isDST = now.getTimezoneOffset() < new Date(now.getFullYear(), 0, 1).getTimezoneOffset();
+    const easternOffset = isDST ? '-04:00' : '-05:00'; // EDT or EST
+    const easternDateTimeStr = `${dateStr}T${timeStr}:00${easternOffset}`;
     console.log('🔍 easternDateTimeStr:', easternDateTimeStr);
     
     const pickupDateTime = new Date(easternDateTimeStr);

@@ -17,6 +17,12 @@ import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 import { Calendar } from '@/components/ui/calendar';
+import { 
+  formatDateTimeForStorage, 
+  formatDateTimeForDisplay, 
+  formatDateTimeForUIDisplay,
+  validateTimezoneAwareDate 
+} from '@/lib/timezone-utils';
 
 // Function to determine timezone based on delivery address
 const getTimezoneFromAddress = (address: string): string => {
@@ -193,9 +199,12 @@ type Delivery = {
   crew_type: string;
   scheduled_pickup_date: string | null;
   scheduled_delivery_date: string | null;
+  scheduled_pickup_date_tz: string | null;
+  scheduled_delivery_date_tz: string | null;
   total_delivery_cost: number;
   special_instructions: string;
   created_at: string;
+  created_at_tz: string | null;
 };
 
 const statusColors: Record<string, string> = {
@@ -284,24 +293,24 @@ export const DeliveryManagement = () => {
   });
 
   const scheduleDeliveryMutation = useMutation({
-    mutationFn: async ({ deliveryId, driverId, scheduledPickupDate, notes }: {
+    mutationFn: async ({ deliveryId, driverId, scheduledPickupDateTz, notes }: {
       deliveryId: string;
       driverId: string;
-      scheduledPickupDate: Date;
+      scheduledPickupDateTz: string;
       notes: string;
     }) => {
-      console.log('📅 Scheduling pickup:', {
+      console.log('📅 Scheduling pickup with timezone-aware date:', {
         deliveryId,
         driverId,
-        scheduledPickupDate: scheduledPickupDate.toISOString(),
+        scheduledPickupDateTz,
         notes
       });
 
-      // Update delivery with scheduled pickup date and status
+      // Update delivery with timezone-aware scheduled pickup date and status
       const { error: deliveryError } = await supabase
         .from('deliveries')
         .update({
-          scheduled_pickup_date: scheduledPickupDate.toISOString(),
+          scheduled_pickup_date_tz: scheduledPickupDateTz,
           status: 'factory_pickup_scheduled',
           special_instructions: notes
         })
@@ -484,33 +493,18 @@ export const DeliveryManagement = () => {
       return;
     }
 
-    // Get the delivery address to determine timezone
-    const deliveryAddress = selectedDelivery?.delivery_address || '';
-    const deliveryTimezone = getTimezoneFromAddress(deliveryAddress);
-    
-    console.log('🔍 Timezone for delivery:', deliveryTimezone);
-    console.log('🔍 selectedPickupDate:', selectedPickupDate);
-    console.log('🔍 selectedPickupTime:', selectedPickupTime);
-    
-    // Create date string in YYYY-MM-DD format
-    const dateStr = format(selectedPickupDate, 'yyyy-MM-dd');
     const timeStr = selectedPickupTime || '09:00';
+    const deliveryAddress = selectedDelivery?.delivery_address || '';
     
-    // Create datetime string and parse it as a local date
-    const dateTimeStr = `${dateStr}T${timeStr}:00.000`;
-    console.log('🔍 DateTime string:', dateTimeStr);
+    // Create timezone-aware date string for storage
+    const scheduledPickupDateTz = formatDateTimeForStorage(selectedPickupDate, timeStr, deliveryAddress);
     
-    // Parse as local time (this creates a Date object representing the exact time the user selected)
-    const pickupDateTime = new Date(dateTimeStr);
-    
-    console.log('🔍 Created pickup date:', pickupDateTime);
-    console.log('🔍 ISO string to save:', pickupDateTime.toISOString());
-    console.log('🔍 Local string:', pickupDateTime.toLocaleString());
+    console.log('🔍 Scheduling pickup with timezone-aware date:', scheduledPickupDateTz);
 
     scheduleDeliveryMutation.mutate({
       deliveryId: selectedDelivery.id,
       driverId: selectedDriver,
-      scheduledPickupDate: pickupDateTime,
+      scheduledPickupDateTz,
       notes: notes
     });
   };
@@ -561,28 +555,8 @@ export const DeliveryManagement = () => {
     });
   };
 
-  const getFormattedDate = (dateString: string | null, deliveryAddress?: string) => {
-    if (!dateString) return 'Not scheduled';
-    
-    // Parse the ISO string - this is UTC time from database
-    const utcDate = new Date(dateString);
-    console.log('🔍 Original UTC date from DB:', dateString, 'parsed as:', utcDate);
-    
-    // Use the browser's local timezone for display (since user created it in their local time)
-    const formattedDate = utcDate.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'numeric', 
-      day: 'numeric'
-    });
-    
-    const formattedTime = utcDate.toLocaleTimeString('en-US', { 
-      hour: 'numeric', 
-      minute: '2-digit',
-      hour12: true
-    });
-    
-    console.log('🔍 Formatted result:', `${formattedDate} at ${formattedTime}`);
-    return `${formattedDate} at ${formattedTime}`;
+  const getFormattedDate = (dateString: string | null) => {
+    return formatDateTimeForDisplay(dateString);
   };
 
   const ScheduleDeliveryDialog = () => (
@@ -630,7 +604,7 @@ export const DeliveryManagement = () => {
                 }}
                 min={format(new Date(), 'yyyy-MM-dd')}
               />
-              <input
+               <input
                 type="time"
                 className="px-3 py-2 border border-input rounded-md bg-background text-sm w-full"
                 value={selectedPickupTime}
@@ -638,6 +612,15 @@ export const DeliveryManagement = () => {
                 placeholder="Select time"
               />
             </div>
+            
+            {/* Show timezone-aware preview */}
+            {selectedPickupDate && selectedPickupTime && selectedDelivery && (
+              <div className="mt-2 p-2 bg-muted rounded text-sm">
+                <span className="font-medium">Pickup scheduled for:</span>{' '}
+                {formatDateTimeForUIDisplay(selectedPickupDate, selectedPickupTime, selectedDelivery.delivery_address)}
+              </div>
+            )}
+            
             <p className="text-xs text-muted-foreground">
               Driver will pick up the mobile home from the factory at this scheduled time
             </p>
@@ -775,11 +758,11 @@ export const DeliveryManagement = () => {
           <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="text-sm font-medium text-muted-foreground">Scheduled Pickup</label>
-              <p className="text-sm">{getFormattedDate(delivery.scheduled_pickup_date)}</p>
+              <p className="text-sm">{getFormattedDate(delivery.scheduled_pickup_date_tz)}</p>
             </div>
             <div>
               <label className="text-sm font-medium text-muted-foreground">Scheduled Delivery</label>
-              <p className="text-sm">{getFormattedDate(delivery.scheduled_delivery_date)}</p>
+              <p className="text-sm">{getFormattedDate(delivery.scheduled_delivery_date_tz)}</p>
             </div>
           </CardContent>
         </Card>
@@ -807,7 +790,7 @@ export const DeliveryManagement = () => {
           <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="text-sm font-medium text-muted-foreground">Created</label>
-              <p className="text-sm">{getFormattedDate(delivery.created_at)}</p>
+              <p className="text-sm">{getFormattedDate(delivery.created_at_tz)}</p>
             </div>
             <div>
               <label className="text-sm font-medium text-muted-foreground">Delivery ID</label>
@@ -943,7 +926,7 @@ export const DeliveryManagement = () => {
                     </div>
                   </TableCell>
                   <TableCell>{getStatusBadge(delivery.status)}</TableCell>
-                  <TableCell>{getFormattedDate(delivery.scheduled_pickup_date, delivery.delivery_address)}</TableCell>
+                  <TableCell>{getFormattedDate(delivery.scheduled_pickup_date_tz)}</TableCell>
                   <TableCell>
                     <div className="flex space-x-2">
                       <Button 

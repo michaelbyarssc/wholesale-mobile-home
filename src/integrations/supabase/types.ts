@@ -1571,11 +1571,14 @@ export type Database = {
       deliveries: {
         Row: {
           actual_delivery_date: string | null
+          actual_delivery_date_tz: string | null
           actual_pickup_date: string | null
+          actual_pickup_date_tz: string | null
           company_id: string | null
           completed_at: string | null
           completion_notes: string | null
           created_at: string
+          created_at_tz: string | null
           created_by: string | null
           crew_type: Database["public"]["Enums"]["delivery_crew_type"]
           customer_email: string
@@ -1600,20 +1603,26 @@ export type Database = {
           pickup_address: string
           route_restrictions: string | null
           scheduled_delivery_date: string | null
+          scheduled_delivery_date_tz: string | null
           scheduled_pickup_date: string | null
+          scheduled_pickup_date_tz: string | null
           special_instructions: string | null
           status: Database["public"]["Enums"]["delivery_status"]
           total_delivery_cost: number | null
           transaction_number: string | null
           updated_at: string
+          updated_at_tz: string | null
         }
         Insert: {
           actual_delivery_date?: string | null
+          actual_delivery_date_tz?: string | null
           actual_pickup_date?: string | null
+          actual_pickup_date_tz?: string | null
           company_id?: string | null
           completed_at?: string | null
           completion_notes?: string | null
           created_at?: string
+          created_at_tz?: string | null
           created_by?: string | null
           crew_type: Database["public"]["Enums"]["delivery_crew_type"]
           customer_email: string
@@ -1638,20 +1647,26 @@ export type Database = {
           pickup_address: string
           route_restrictions?: string | null
           scheduled_delivery_date?: string | null
+          scheduled_delivery_date_tz?: string | null
           scheduled_pickup_date?: string | null
+          scheduled_pickup_date_tz?: string | null
           special_instructions?: string | null
           status?: Database["public"]["Enums"]["delivery_status"]
           total_delivery_cost?: number | null
           transaction_number?: string | null
           updated_at?: string
+          updated_at_tz?: string | null
         }
         Update: {
           actual_delivery_date?: string | null
+          actual_delivery_date_tz?: string | null
           actual_pickup_date?: string | null
+          actual_pickup_date_tz?: string | null
           company_id?: string | null
           completed_at?: string | null
           completion_notes?: string | null
           created_at?: string
+          created_at_tz?: string | null
           created_by?: string | null
           crew_type?: Database["public"]["Enums"]["delivery_crew_type"]
           customer_email?: string
@@ -1676,12 +1691,15 @@ export type Database = {
           pickup_address?: string
           route_restrictions?: string | null
           scheduled_delivery_date?: string | null
+          scheduled_delivery_date_tz?: string | null
           scheduled_pickup_date?: string | null
+          scheduled_pickup_date_tz?: string | null
           special_instructions?: string | null
           status?: Database["public"]["Enums"]["delivery_status"]
           total_delivery_cost?: number | null
           transaction_number?: string | null
           updated_at?: string
+          updated_at_tz?: string | null
         }
         Relationships: [
           {
@@ -1795,6 +1813,7 @@ export type Database = {
         Row: {
           active: boolean
           assigned_at: string
+          assigned_at_tz: string | null
           assigned_by: string | null
           completed_at: string | null
           created_at: string
@@ -1807,10 +1826,12 @@ export type Database = {
           role: string
           started_at: string | null
           updated_at: string
+          updated_at_tz: string | null
         }
         Insert: {
           active?: boolean
           assigned_at?: string
+          assigned_at_tz?: string | null
           assigned_by?: string | null
           completed_at?: string | null
           created_at?: string
@@ -1823,10 +1844,12 @@ export type Database = {
           role?: string
           started_at?: string | null
           updated_at?: string
+          updated_at_tz?: string | null
         }
         Update: {
           active?: boolean
           assigned_at?: string
+          assigned_at_tz?: string | null
           assigned_by?: string | null
           completed_at?: string | null
           created_at?: string
@@ -1839,6 +1862,7 @@ export type Database = {
           role?: string
           started_at?: string | null
           updated_at?: string
+          updated_at_tz?: string | null
         }
         Relationships: [
           {
@@ -2228,6 +2252,7 @@ export type Database = {
         Row: {
           changed_by: string | null
           created_at: string
+          created_at_tz: string | null
           delivery_id: string | null
           id: string
           new_status: Database["public"]["Enums"]["delivery_status"]
@@ -2237,6 +2262,7 @@ export type Database = {
         Insert: {
           changed_by?: string | null
           created_at?: string
+          created_at_tz?: string | null
           delivery_id?: string | null
           id?: string
           new_status: Database["public"]["Enums"]["delivery_status"]
@@ -2248,6 +2274,7 @@ export type Database = {
         Update: {
           changed_by?: string | null
           created_at?: string
+          created_at_tz?: string | null
           delivery_id?: string | null
           id?: string
           new_status?: Database["public"]["Enums"]["delivery_status"]
@@ -2615,7 +2642,9 @@ export type Database = {
           additional_requirements: string | null
           approval_token: string | null
           approved_at: string | null
+          approved_at_tz: string | null
           created_at: string
+          created_at_tz: string | null
           customer_email: string
           customer_name: string
           customer_phone: string
@@ -2631,13 +2660,16 @@ export type Database = {
           total_amount: number
           transaction_number: string | null
           updated_at: string
+          updated_at_tz: string | null
           user_id: string | null
         }
         Insert: {
           additional_requirements?: string | null
           approval_token?: string | null
           approved_at?: string | null
+          approved_at_tz?: string | null
           created_at?: string
+          created_at_tz?: string | null
           customer_email: string
           customer_name: string
           customer_phone: string
@@ -2653,13 +2685,16 @@ export type Database = {
           total_amount: number
           transaction_number?: string | null
           updated_at?: string
+          updated_at_tz?: string | null
           user_id?: string | null
         }
         Update: {
           additional_requirements?: string | null
           approval_token?: string | null
           approved_at?: string | null
+          approved_at_tz?: string | null
           created_at?: string
+          created_at_tz?: string | null
           customer_email?: string
           customer_name?: string
           customer_phone?: string
@@ -2675,6 +2710,7 @@ export type Database = {
           total_amount?: number
           transaction_number?: string | null
           updated_at?: string
+          updated_at_tz?: string | null
           user_id?: string | null
         }
         Relationships: [
@@ -3142,11 +3178,13 @@ export type Database = {
           additional_requirements: string | null
           balance_due: number | null
           created_at: string
+          created_at_tz: string | null
           customer_email: string
           customer_name: string
           customer_phone: string
           delivery_address: string | null
           due_date: string
+          due_date_tz: string | null
           estimate_id: string | null
           id: string
           invoice_number: string
@@ -3162,17 +3200,20 @@ export type Database = {
           total_amount: number
           transaction_number: string | null
           updated_at: string
+          updated_at_tz: string | null
           user_id: string | null
         }
         Insert: {
           additional_requirements?: string | null
           balance_due?: number | null
           created_at?: string
+          created_at_tz?: string | null
           customer_email: string
           customer_name: string
           customer_phone: string
           delivery_address?: string | null
           due_date?: string
+          due_date_tz?: string | null
           estimate_id?: string | null
           id?: string
           invoice_number: string
@@ -3188,17 +3229,20 @@ export type Database = {
           total_amount: number
           transaction_number?: string | null
           updated_at?: string
+          updated_at_tz?: string | null
           user_id?: string | null
         }
         Update: {
           additional_requirements?: string | null
           balance_due?: number | null
           created_at?: string
+          created_at_tz?: string | null
           customer_email?: string
           customer_name?: string
           customer_phone?: string
           delivery_address?: string | null
           due_date?: string
+          due_date_tz?: string | null
           estimate_id?: string | null
           id?: string
           invoice_number?: string
@@ -3214,6 +3258,7 @@ export type Database = {
           total_amount?: number
           transaction_number?: string | null
           updated_at?: string
+          updated_at_tz?: string | null
           user_id?: string | null
         }
         Relationships: [
@@ -3825,6 +3870,7 @@ export type Database = {
         Row: {
           company_id: string
           created_at: string
+          created_at_tz: string | null
           created_by: string | null
           customer_email: string
           customer_name: string
@@ -3839,11 +3885,13 @@ export type Database = {
           status: string
           total_value: number
           updated_at: string
+          updated_at_tz: string | null
           user_id: string | null
         }
         Insert: {
           company_id: string
           created_at?: string
+          created_at_tz?: string | null
           created_by?: string | null
           customer_email: string
           customer_name: string
@@ -3858,11 +3906,13 @@ export type Database = {
           status?: string
           total_value?: number
           updated_at?: string
+          updated_at_tz?: string | null
           user_id?: string | null
         }
         Update: {
           company_id?: string
           created_at?: string
+          created_at_tz?: string | null
           created_by?: string | null
           customer_email?: string
           customer_name?: string
@@ -3877,6 +3927,7 @@ export type Database = {
           status?: string
           total_value?: number
           updated_at?: string
+          updated_at_tz?: string | null
           user_id?: string | null
         }
         Relationships: [
@@ -5224,6 +5275,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: number
       }
+      convert_utc_to_tz_string: {
+        Args: { utc_timestamp: string; address: string }
+        Returns: string
+      }
       create_activity: {
         Args: {
           p_user_id: string
@@ -5386,6 +5441,10 @@ export type Database = {
           avg_time_spent: number
           conversion_rate: number
         }[]
+      }
+      get_timezone_abbrev: {
+        Args: { address: string }
+        Returns: string
       }
       get_transaction_dashboard_data: {
         Args: { p_user_id?: string; p_date_range_days?: number }

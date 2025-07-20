@@ -335,8 +335,8 @@ export const DeliveryManagement = () => {
     const dateStr = format(selectedPickupDate, 'yyyy-MM-dd');
     const timeStr = selectedPickupTime || '09:00';
     
-    // Create datetime string in Eastern timezone
-    const easternDateTimeStr = `${dateStr}T${timeStr}:00-04:00`; // EDT offset
+    // Create datetime string in Eastern timezone (EST is -05:00)
+    const easternDateTimeStr = `${dateStr}T${timeStr}:00-05:00`; // EST offset
     const pickupDateTime = new Date(easternDateTimeStr);
 
     console.log('🔍 Final pickup date time:', pickupDateTime.toISOString());

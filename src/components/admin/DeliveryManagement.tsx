@@ -597,7 +597,9 @@ export const DeliveryManagement = () => {
                 value={selectedPickupDate ? format(selectedPickupDate, 'yyyy-MM-dd') : ''}
                 onChange={(e) => {
                   if (e.target.value) {
-                    setSelectedPickupDate(new Date(e.target.value));
+                    // Create date in local timezone to avoid UTC conversion issues
+                    const [year, month, day] = e.target.value.split('-').map(Number);
+                    setSelectedPickupDate(new Date(year, month - 1, day));
                   } else {
                     setSelectedPickupDate(undefined);
                   }

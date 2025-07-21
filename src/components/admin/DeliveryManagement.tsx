@@ -209,6 +209,9 @@ type Delivery = {
   created_at_tz: string | null;
   mso_vin_section_1: string | null;
   mso_vin_section_2: string | null;
+  invoices?: {
+    transaction_number: string;
+  } | null;
 };
 
 const statusColors: Record<string, string> = {
@@ -275,7 +278,12 @@ export const DeliveryManagement = () => {
     queryFn: async () => {
       let query = supabase
         .from('deliveries')
-        .select('*');
+        .select(`
+          *,
+          invoices (
+            transaction_number
+          )
+        `);
       
       if (filter !== 'all') {
         query = query.eq('status', filter);
@@ -755,11 +763,14 @@ export const DeliveryManagement = () => {
     React.useEffect(() => {
       const fetchDeliveryData = async () => {
         try {
-          // Get delivery with mobile home data and factory information
+          // Get delivery with mobile home data, factory information, and transaction number
           const { data: deliveryWithHome, error: deliveryError } = await supabase
             .from('deliveries')
             .select(`
               *,
+              invoices (
+                transaction_number
+              ),
               mobile_homes (
                 manufacturer,
                 series,
@@ -838,7 +849,12 @@ export const DeliveryManagement = () => {
     return (
       <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-xl font-bold">Delivery Report - {delivery.delivery_number}</DialogTitle>
+          <DialogTitle className="text-xl font-bold">
+            Delivery Report - {delivery.invoices?.transaction_number 
+              ? `WMH-D-${delivery.invoices.transaction_number.split('-').pop()}`
+              : delivery.delivery_number
+            }
+          </DialogTitle>
           <DialogDescription>
             Detailed delivery specifications and information
           </DialogDescription>
@@ -876,7 +892,12 @@ export const DeliveryManagement = () => {
                   </div>
                   <div className="flex justify-between items-center py-2 border-b border-gray-200">
                     <span className="font-medium text-gray-600">Delivery Number:</span>
-                    <span className="text-gray-900 font-mono">{delivery.delivery_number}</span>
+                    <span className="text-gray-900 font-mono">
+                      {delivery.invoices?.transaction_number 
+                        ? `WMH-D-${delivery.invoices.transaction_number.split('-').pop()}`
+                        : delivery.delivery_number
+                      }
+                    </span>
                   </div>
                 </div>
               </div>
@@ -1038,7 +1059,12 @@ export const DeliveryManagement = () => {
                   </div>
                   <div className="flex justify-between items-center py-2 border-b border-gray-200">
                     <span className="font-medium text-gray-600">Transaction Number:</span>
-                    <span className="text-gray-900 font-mono">{delivery.delivery_number}</span>
+                    <span className="text-gray-900 font-mono">
+                      {delivery.invoices?.transaction_number 
+                        ? `WMH-D-${delivery.invoices.transaction_number.split('-').pop()}`
+                        : delivery.delivery_number
+                      }
+                    </span>
                   </div>
                 </div>
                 <div className="space-y-3">
@@ -1251,7 +1277,12 @@ export const DeliveryManagement = () => {
             ) : (
               filteredDeliveries.map((delivery) => (
                 <TableRow key={delivery.id}>
-                  <TableCell className="font-medium">{delivery.delivery_number}</TableCell>
+                  <TableCell className="font-medium">
+                    {delivery.invoices?.transaction_number 
+                      ? `WMH-D-${delivery.invoices.transaction_number.split('-').pop()}`
+                      : delivery.delivery_number
+                    }
+                  </TableCell>
                   <TableCell>
                     <div>
                       <div>{delivery.customer_name}</div>

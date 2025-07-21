@@ -16,7 +16,7 @@ serve(async (req) => {
   }
 
   try {
-    const { cart_items, delivery_address, total_amount, shipping_cost, sales_tax, sales_rep_email, user_id } = await req.json()
+    const { cart_items, delivery_address, total_amount, shipping_cost, sales_tax, sales_rep_email, user_id, customer_info } = await req.json()
 
     console.log('🔍 send-estimate-to-sales-rep: Received request:', {
       cart_items: cart_items?.length || 0,
@@ -25,7 +25,8 @@ serve(async (req) => {
       shipping_cost,
       sales_tax,
       sales_rep_email,
-      user_id
+      user_id,
+      customer_info
     })
 
     if (!cart_items || cart_items.length === 0) {
@@ -39,7 +40,16 @@ serve(async (req) => {
 
     // Get customer information
     let customerInfo = { name: 'N/A', email: 'N/A', phone: 'N/A' }
-    if (user_id) {
+    
+    // First, try to use customer_info passed from the frontend (for anonymous users)
+    if (customer_info && (customer_info.name || customer_info.email || customer_info.phone)) {
+      customerInfo = {
+        name: customer_info.name || 'N/A',
+        email: customer_info.email || 'N/A',
+        phone: customer_info.phone || 'N/A'
+      }
+      console.log('🔍 send-estimate-to-sales-rep: Using customer info from form:', customerInfo)
+    } else if (user_id) {
       console.log('🔍 send-estimate-to-sales-rep: Looking up customer profile for user_id:', user_id)
       
       const { data: profile, error: profileError } = await supabase
@@ -56,12 +66,12 @@ serve(async (req) => {
           email: profile.email || 'N/A',
           phone: profile.phone_number || 'N/A'
         }
-        console.log('🔍 send-estimate-to-sales-rep: Customer info populated:', customerInfo)
+        console.log('🔍 send-estimate-to-sales-rep: Customer info populated from profile:', customerInfo)
       } else {
         console.log('🔍 send-estimate-to-sales-rep: No profile found or error occurred:', profileError)
       }
     } else {
-      console.log('🔍 send-estimate-to-sales-rep: No user_id provided, using default customer info')
+      console.log('🔍 send-estimate-to-sales-rep: No user_id or customer_info provided, using default customer info')
     }
 
     // Get customer markup for price calculations

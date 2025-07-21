@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Receipt, Truck } from 'lucide-react';
@@ -7,6 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { DeliveryAddress } from '@/hooks/useShoppingCart';
 import { ShippingCostDisplay } from './ShippingCostDisplay';
+import { CustomerInfoModal } from './CustomerInfoModal';
 import type { Database } from '@/integrations/supabase/types';
 
 type MobileHome = Database['public']['Tables']['mobile_homes']['Row'];
@@ -31,6 +32,8 @@ export const CartTotal = ({
   onCloseCart
 }: CartTotalProps) => {
   const { toast } = useToast();
+  const [showCustomerModal, setShowCustomerModal] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   console.log('🚛 CartTotal - Received props:', {
     totalShippingCost,
@@ -88,7 +91,7 @@ export const CartTotal = ({
     }
   };
 
-  const handleConvertToEstimate = async () => {
+  const handleConvertToEstimate = () => {
     console.log('🔍 CartTotal: Send to sales rep clicked');
     
     // Check if delivery address is required and missing
@@ -111,24 +114,31 @@ export const CartTotal = ({
       return;
     }
     
-    try {
+    // Show customer info modal
+    setShowCustomerModal(true);
+  };
 
+  const handleSubmitWithCustomerInfo = async (customerInfo: { name: string; email: string; phone: string }) => {
+    setIsSubmitting(true);
+    
+    try {
       // Get current user
       const { data: { user } } = await supabase.auth.getUser();
       const userId = user?.id || null;
 
-      console.log('🔍 CartTotal: Sending cart items to sales rep:', cartItems);
+      console.log('🔍 CartTotal: Sending cart items to sales rep with customer info:', { cartItems, customerInfo });
 
-      // Send estimate to sales representative
+      // Send estimate to sales representative with customer info
       const { data, error } = await supabase.functions.invoke('send-estimate-to-sales-rep', {
         body: {
           cart_items: cartItems,
           delivery_address: deliveryAddress,
           total_amount: total,
-          shipping_cost: totalShippingCost, // Pass the actual calculated shipping cost
-          sales_tax: salesTax, // Pass the actual calculated sales tax
+          shipping_cost: totalShippingCost,
+          sales_tax: salesTax,
           sales_rep_email: 'michaelbyarssc@gmail.com',
-          user_id: userId
+          user_id: userId,
+          customer_info: customerInfo
         }
       });
 
@@ -155,6 +165,9 @@ export const CartTotal = ({
         return;
       }
 
+      // Close the modal
+      setShowCustomerModal(false);
+      
       // Clear the cart after successful submission
       onClearCart();
       
@@ -175,6 +188,8 @@ export const CartTotal = ({
         description: `Failed to send estimate: ${error.message || 'Unknown error'}. Please try again.`,
         variant: "destructive",
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -267,6 +282,14 @@ export const CartTotal = ({
           </Button>
         </div>
       </div>
+
+      {/* Customer Info Modal */}
+      <CustomerInfoModal
+        isOpen={showCustomerModal}
+        onClose={() => setShowCustomerModal(false)}
+        onSubmit={handleSubmitWithCustomerInfo}
+        isLoading={isSubmitting}
+      />
     </div>
   );
 };

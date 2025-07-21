@@ -1008,11 +1008,11 @@ export const EstimatesTab = () => {
                            {getStatusIcon(estimate.status)}
                            <span className="ml-1 capitalize">{estimate.status}</span>
                          </Badge>
-                          {estimate.transaction_number && (
-                            <Badge variant="outline" className="text-xs font-mono">
-                              {estimate.transaction_number}
-                            </Badge>
-                          )}
+                           {estimate.transaction_number && (
+                             <Badge variant="outline" className="text-xs font-mono">
+                               WMH-E-{estimate.transaction_number.split('-').pop()}
+                             </Badge>
+                           )}
                        </div>
                       <p className="text-sm text-muted-foreground">{estimate.customer_email}</p>
                       <p className="text-sm">
@@ -1240,14 +1240,14 @@ export const EstimatesTab = () => {
                                   <Label>Created</Label>
                                   <p>{format(new Date(viewingEstimate.created_at), 'MMM dd, yyyy HH:mm')}</p>
                                 </div>
-                                {viewingEstimate.transaction_number && (
-                                  <div>
-                                    <Label>Transaction Number</Label>
-                                    <Badge variant="outline" className="text-sm font-mono">
-                                      {viewingEstimate.transaction_number}
-                                    </Badge>
-                                  </div>
-                                )}
+                                 {viewingEstimate.transaction_number && (
+                                   <div>
+                                     <Label>Transaction Number</Label>
+                                     <Badge variant="outline" className="text-sm font-mono">
+                                       WMH-E-{viewingEstimate.transaction_number.split('-').pop()}
+                                     </Badge>
+                                   </div>
+                                 )}
                                 {viewingEstimate.approved_at && (
                                   <div>
                                     <Label>Approved</Label>
@@ -1389,11 +1389,11 @@ export const EstimatesTab = () => {
                     <div className="space-y-2">
                        <div className="flex items-center gap-2">
                          <h3 className="font-medium">{estimate.customer_name}</h3>
-                         {estimate.transactions?.[0]?.transaction_number && (
-                           <Badge variant="outline" className="text-xs font-mono">
-                             {estimate.transactions[0].transaction_number}
-                           </Badge>
-                         )}
+                          {estimate.transactions?.[0]?.transaction_number && (
+                            <Badge variant="outline" className="text-xs font-mono">
+                              WMH-E-{estimate.transactions[0].transaction_number.split('-').pop()}
+                            </Badge>
+                          )}
                        </div>
                       <p className="text-sm text-muted-foreground">{estimate.customer_email}</p>
                       <p className="text-sm">
@@ -1417,11 +1417,11 @@ export const EstimatesTab = () => {
                     <div className="space-y-2">
                        <div className="flex items-center gap-2">
                          <h3 className="font-medium">{estimate.customer_name}</h3>
-                         {estimate.transactions?.[0]?.transaction_number && (
-                           <Badge variant="outline" className="text-xs font-mono">
-                             {estimate.transactions[0].transaction_number}
-                           </Badge>
-                         )}
+                          {estimate.transactions?.[0]?.transaction_number && (
+                            <Badge variant="outline" className="text-xs font-mono">
+                              WMH-E-{estimate.transactions[0].transaction_number.split('-').pop()}
+                            </Badge>
+                          )}
                        </div>
                       <p className="text-sm text-muted-foreground">{estimate.customer_email}</p>
                       <p className="text-sm">
@@ -1445,11 +1445,11 @@ export const EstimatesTab = () => {
                     <div className="space-y-2">
                        <div className="flex items-center gap-2">
                          <h3 className="font-medium">{estimate.customer_name}</h3>
-                         {estimate.transactions?.[0]?.transaction_number && (
-                           <Badge variant="outline" className="text-xs font-mono">
-                             {estimate.transactions[0].transaction_number}
-                           </Badge>
-                         )}
+                          {estimate.transactions?.[0]?.transaction_number && (
+                            <Badge variant="outline" className="text-xs font-mono">
+                              WMH-E-{estimate.transactions[0].transaction_number.split('-').pop()}
+                            </Badge>
+                          )}
                        </div>
                       <p className="text-sm text-muted-foreground">{estimate.customer_email}</p>
                       <p className="text-sm">

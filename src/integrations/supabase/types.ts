@@ -1587,7 +1587,7 @@ export type Database = {
           customer_signature_url: string | null
           delivery_address: string
           delivery_cost: number | null
-          delivery_number: string
+          delivery_number: string | null
           escort_required: boolean | null
           estimate_id: string | null
           factory_id: string | null
@@ -1631,7 +1631,7 @@ export type Database = {
           customer_signature_url?: string | null
           delivery_address: string
           delivery_cost?: number | null
-          delivery_number: string
+          delivery_number?: string | null
           escort_required?: boolean | null
           estimate_id?: string | null
           factory_id?: string | null
@@ -1675,7 +1675,7 @@ export type Database = {
           customer_signature_url?: string | null
           delivery_address?: string
           delivery_cost?: number | null
-          delivery_number?: string
+          delivery_number?: string | null
           escort_required?: boolean | null
           estimate_id?: string | null
           factory_id?: string | null

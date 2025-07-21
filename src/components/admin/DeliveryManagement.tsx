@@ -608,31 +608,31 @@ export const DeliveryManagement = () => {
                 }}
                 min={format(new Date(), 'yyyy-MM-dd')}
               />
-               <input
-                type="time"
-                className="px-3 py-2 border border-input rounded-md bg-background text-sm w-full"
-                value={selectedPickupTime}
-                onChange={(e) => {
-                  e.stopPropagation();
-                  setSelectedPickupTime(e.target.value);
-                }}
-                onInput={(e) => {
-                  e.stopPropagation();
-                }}
-                onFocus={(e) => {
-                  e.stopPropagation();
-                }}
-                onBlur={(e) => {
-                  e.stopPropagation();
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    e.stopPropagation();
-                  }
-                }}
-                placeholder="Select time"
-              />
+               <div className="relative">
+                 <Select value={selectedPickupTime} onValueChange={setSelectedPickupTime}>
+                   <SelectTrigger className="w-full">
+                     <SelectValue placeholder="Select time" />
+                   </SelectTrigger>
+                   <SelectContent>
+                     {Array.from({ length: 24 }, (_, hour) => {
+                       const is12Hour = hour === 0 || hour > 12;
+                       const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+                       const period = hour < 12 ? 'AM' : 'PM';
+                       
+                       return [0, 15, 30, 45].map(minute => {
+                         const timeValue = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+                         const displayTime = `${displayHour}:${minute.toString().padStart(2, '0')} ${period}`;
+                         
+                         return (
+                           <SelectItem key={timeValue} value={timeValue}>
+                             {displayTime}
+                           </SelectItem>
+                         );
+                       });
+                     }).flat()}
+                   </SelectContent>
+                 </Select>
+               </div>
             </div>
             
             {/* Show timezone-aware preview */}

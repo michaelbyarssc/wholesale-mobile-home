@@ -463,47 +463,7 @@ serve(async (req) => {
 
     console.log('🔍 send-estimate-to-sales-rep: Estimate created successfully:', estimate.id)
 
-    // Create transaction record with WMH transaction number
-    console.log('🔍 send-estimate-to-sales-rep: Creating transaction record for estimate:', estimate.id)
-    console.log('🔍 send-estimate-to-sales-rep: Transaction parameters:', {
-      p_estimate_id: estimate.id,
-      p_mobile_home_id: estimate.mobile_home_id,
-      p_customer_name: estimate.customer_name,
-      p_customer_email: estimate.customer_email,
-      p_total_amount: Math.floor(calculatedTotal),
-      actualSalesTax: actualSalesTax,
-      calculatedTotal: calculatedTotal
-    })
-    
-    const { data: transactionResult, error: transactionError } = await supabase
-      .rpc('create_transaction_from_estimate', {
-        p_estimate_id: estimate.id,
-        p_mobile_home_id: estimate.mobile_home_id,
-        p_customer_name: estimate.customer_name,
-        p_customer_email: estimate.customer_email,
-        p_customer_phone: estimate.customer_phone,
-        p_delivery_address: estimate.delivery_address,
-        p_selected_services: estimate.selected_services,
-        p_selected_home_options: estimate.selected_home_options,
-        p_base_amount: 0, // Will be calculated by the function
-        p_service_amount: 0, // Will be calculated by the function
-        p_tax_amount: Math.floor(actualSalesTax || 0),
-        p_total_amount: Math.floor(calculatedTotal),
-        p_preferred_contact: null,
-        p_timeline: null,
-        p_additional_requirements: null,
-        p_transaction_type: 'sale'
-      })
-
-    if (transactionError) {
-      console.error('🔍 send-estimate-to-sales-rep: Error creating transaction:', transactionError)
-      console.error('🔍 send-estimate-to-sales-rep: Transaction error details:', JSON.stringify(transactionError, null, 2))
-      // Don't fail the entire process if transaction creation fails
-      console.log('🔍 send-estimate-to-sales-rep: Continuing without transaction record')
-    } else {
-      console.log('🔍 send-estimate-to-sales-rep: Transaction created successfully:', transactionResult)
-      console.log('🔍 send-estimate-to-sales-rep: Transaction result details:', JSON.stringify(transactionResult, null, 2))
-    }
+    console.log('🔍 send-estimate-to-sales-rep: Estimate created successfully with transaction number:', estimate.transaction_number)
 
     // Create detailed line items for the estimate
     const lineItems = []

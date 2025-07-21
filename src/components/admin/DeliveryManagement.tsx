@@ -865,6 +865,12 @@ export const DeliveryManagement = () => {
                           <span className="text-gray-900">{mobileHome.width_feet}' × {mobileHome.length_feet}'</span>
                         </div>
                       )}
+                      {deliveryData?.mso_vin_number && (
+                        <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                          <span className="font-medium text-gray-600">MSO/VIN Number:</span>
+                          <span className="text-gray-900 font-mono">{deliveryData.mso_vin_number}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

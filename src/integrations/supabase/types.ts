@@ -2248,6 +2248,124 @@ export type Database = {
           },
         ]
       }
+      delivery_schedules: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          delivery_completed_at: string | null
+          delivery_confirmed_at: string | null
+          delivery_driver_id: string | null
+          delivery_id: string
+          delivery_notes: string | null
+          delivery_photos: string[] | null
+          delivery_scheduled_date: string | null
+          delivery_scheduled_time_end: string | null
+          delivery_scheduled_time_start: string | null
+          delivery_signature_url: string | null
+          delivery_started_at: string | null
+          delivery_timezone: string | null
+          id: string
+          pickup_completed_at: string | null
+          pickup_confirmed_at: string | null
+          pickup_driver_id: string | null
+          pickup_notes: string | null
+          pickup_photos: string[] | null
+          pickup_scheduled_date: string | null
+          pickup_scheduled_time_end: string | null
+          pickup_scheduled_time_start: string | null
+          pickup_signature_url: string | null
+          pickup_started_at: string | null
+          pickup_timezone: string | null
+          repair_notes: string | null
+          repair_photos: string[] | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          delivery_completed_at?: string | null
+          delivery_confirmed_at?: string | null
+          delivery_driver_id?: string | null
+          delivery_id: string
+          delivery_notes?: string | null
+          delivery_photos?: string[] | null
+          delivery_scheduled_date?: string | null
+          delivery_scheduled_time_end?: string | null
+          delivery_scheduled_time_start?: string | null
+          delivery_signature_url?: string | null
+          delivery_started_at?: string | null
+          delivery_timezone?: string | null
+          id?: string
+          pickup_completed_at?: string | null
+          pickup_confirmed_at?: string | null
+          pickup_driver_id?: string | null
+          pickup_notes?: string | null
+          pickup_photos?: string[] | null
+          pickup_scheduled_date?: string | null
+          pickup_scheduled_time_end?: string | null
+          pickup_scheduled_time_start?: string | null
+          pickup_signature_url?: string | null
+          pickup_started_at?: string | null
+          pickup_timezone?: string | null
+          repair_notes?: string | null
+          repair_photos?: string[] | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          delivery_completed_at?: string | null
+          delivery_confirmed_at?: string | null
+          delivery_driver_id?: string | null
+          delivery_id?: string
+          delivery_notes?: string | null
+          delivery_photos?: string[] | null
+          delivery_scheduled_date?: string | null
+          delivery_scheduled_time_end?: string | null
+          delivery_scheduled_time_start?: string | null
+          delivery_signature_url?: string | null
+          delivery_started_at?: string | null
+          delivery_timezone?: string | null
+          id?: string
+          pickup_completed_at?: string | null
+          pickup_confirmed_at?: string | null
+          pickup_driver_id?: string | null
+          pickup_notes?: string | null
+          pickup_photos?: string[] | null
+          pickup_scheduled_date?: string | null
+          pickup_scheduled_time_end?: string | null
+          pickup_scheduled_time_start?: string | null
+          pickup_signature_url?: string | null
+          pickup_started_at?: string | null
+          pickup_timezone?: string | null
+          repair_notes?: string | null
+          repair_photos?: string[] | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delivery_schedules_delivery_driver_id_fkey"
+            columns: ["delivery_driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_schedules_delivery_id_fkey"
+            columns: ["delivery_id"]
+            isOneToOne: false
+            referencedRelation: "deliveries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_schedules_pickup_driver_id_fkey"
+            columns: ["pickup_driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       delivery_status_history: {
         Row: {
           changed_by: string | null

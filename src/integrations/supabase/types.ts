@@ -2507,6 +2507,50 @@ export type Database = {
           },
         ]
       }
+      driver_sessions: {
+        Row: {
+          active: boolean
+          created_at: string
+          device_info: Json | null
+          driver_id: string
+          expires_at: string
+          id: string
+          last_activity: string | null
+          phone_number: string
+          session_token: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          device_info?: Json | null
+          driver_id: string
+          expires_at: string
+          id?: string
+          last_activity?: string | null
+          phone_number: string
+          session_token: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          device_info?: Json | null
+          driver_id?: string
+          expires_at?: string
+          id?: string
+          last_activity?: string | null
+          phone_number?: string
+          session_token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driver_sessions_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       driver_vehicles: {
         Row: {
           active: boolean
@@ -5467,6 +5511,10 @@ export type Database = {
         Returns: string
       }
       generate_delivery_number: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      generate_driver_session_token: {
         Args: Record<PropertyKey, never>
         Returns: string
       }

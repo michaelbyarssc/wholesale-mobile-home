@@ -29,6 +29,7 @@ interface Estimate {
   approved_at?: string;
   user_id: string | null;
   mobile_home_id: string | null;
+  transaction_number?: string;
   mobile_homes: {
     manufacturer: string;
     series: string;
@@ -89,6 +90,7 @@ export const EstimatesTab = () => {
   const [editingEstimate, setEditingEstimate] = useState<Estimate | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+  const [viewingEstimate, setViewingEstimate] = useState<Estimate | null>(null);
 
   // Fetch mobile homes data from database
   const [mobileHomes, setMobileHomes] = useState<any[]>([]);
@@ -1179,191 +1181,200 @@ export const EstimatesTab = () => {
                       {/* View Button - always available */}
                       <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
                         <DialogTrigger asChild>
-                          <Button variant="outline" size="sm">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => {
+                              setViewingEstimate(estimate);
+                              setIsViewDialogOpen(true);
+                            }}
+                          >
                             <Eye className="h-4 w-4 mr-1" />
                             View
                           </Button>
                         </DialogTrigger>
-                        <DialogContent key={`view-${estimate.id}`} className="w-[95vw] max-w-4xl h-[90vh] max-h-[80vh] overflow-y-auto sm:w-full sm:h-auto p-4 sm:p-6">
+                        <DialogContent key={`view-${viewingEstimate?.id}`} className="w-[95vw] max-w-4xl h-[90vh] max-h-[80vh] overflow-y-auto sm:w-full sm:h-auto p-4 sm:p-6">
                            <DialogHeader>
                              <DialogTitle>Estimate Details</DialogTitle>
                            </DialogHeader>
-                          <div className="space-y-6">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                              <div>
-                                <Label>Customer</Label>
-                                <p className="font-medium">{estimate.customer_name}</p>
-                              </div>
-                              <div>
-                                <Label>Status</Label>
-                                <Badge variant={
-                                  estimate.status === 'draft' ? 'secondary' :
-                                  estimate.status === 'sent' ? 'default' :
-                                  estimate.status === 'approved' ? 'default' :
-                                  estimate.status === 'pending_review' ? 'secondary' :
-                                  'secondary'
-                                }>
-                                  {estimate.status.charAt(0).toUpperCase() + estimate.status.slice(1).replace('_', ' ')}
-                                </Badge>
-                              </div>
-                              <div>
-                                <Label>Email</Label>
-                                <p>{estimate.customer_email}</p>
-                              </div>
-                              <div>
-                                <Label>Phone</Label>
-                                <p>{estimate.customer_phone}</p>
-                              </div>
-                              <div className="col-span-1 sm:col-span-2">
-                                <Label>Delivery Address</Label>
-                                <p>{estimate.delivery_address}</p>
-                              </div>
-                              <div>
-                                <Label>Mobile Home</Label>
-                                <p>{estimate.mobile_homes?.manufacturer} {estimate.mobile_homes?.series} {estimate.mobile_homes?.model}</p>
-                              </div>
-                              <div>
-                                <Label>Total Amount</Label>
-                                <p className="font-medium text-lg">${estimate.total_amount.toLocaleString()}</p>
-                              </div>
+                          {viewingEstimate && (
+                            <div className="space-y-6">
+                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                <div>
-                                 <Label>Created</Label>
-                                 <p>{format(new Date(estimate.created_at), 'MMM dd, yyyy HH:mm')}</p>
+                                 <Label>Customer</Label>
+                                 <p className="font-medium">{viewingEstimate.customer_name}</p>
                                </div>
-                               {estimate.transaction_number && (
-                                 <div>
-                                   <Label>Transaction Number</Label>
-                                   <Badge variant="outline" className="text-sm font-mono">
-                                     {estimate.transaction_number}
-                                   </Badge>
-                                 </div>
-                               )}
-                               {estimate.approved_at && (
-                                 <div>
-                                   <Label>Approved</Label>
-                                   <p>{format(new Date(estimate.approved_at), 'MMM dd, yyyy HH:mm')}</p>
-                                 </div>
-                               )}
-                            </div>
-
-                            <EstimateLineItems estimateId={estimate?.id} />
-
-                            {/* Action Buttons */}
-                            <div className="flex flex-col sm:flex-row sm:justify-end gap-2 pt-4 border-t">
-                              {/* Edit Button */}
-                              <Button 
-                                variant="outline" 
-                                className="w-full sm:w-auto"
-                                onClick={() => {
-                                  setEditingEstimate(estimate);
-                                  setIsEditDialogOpen(true);
-                                }}
-                              >
-                                <Edit className="h-4 w-4 mr-2" />
-                                Edit
-                              </Button>
-
-                              {/* Approve Button */}
-                              <Button 
-                                variant="default" 
-                                className="bg-green-600 hover:bg-green-700 w-full sm:w-auto"
-                                onClick={() => {
-                                  console.log('🟡 BUTTON CLICKED! Estimate:', estimate.id, 'Status:', estimate.status);
-                                  console.log('🔴 Clicking approve for estimate:', estimate.id, 'Status:', estimate.status);
-                                  approveEstimateMutation.mutate(estimate.id);
-                                }}
-                                disabled={approveEstimateMutation.isPending}
-                              >
-                                <CheckCircle className="h-4 w-4 mr-2" />
-                                Approve
-                              </Button>
-
-                              {/* Deny Button */}
-                              <Button 
-                                variant="destructive" 
-                                className="w-full sm:w-auto"
-                                onClick={() => denyEstimateMutation.mutate(estimate.id)}
-                                disabled={denyEstimateMutation.isPending}
-                              >
-                                <X className="h-4 w-4 mr-2" />
-                                Deny
-                              </Button>
-
-                              {/* Send Button with DocuSign */}
-                              <Dialog>
-                                <DialogTrigger asChild>
-                                  <Button className="bg-blue-600 hover:bg-blue-700">
-                                    <Send className="h-4 w-4 mr-2" />
-                                    Send for Signature
-                                  </Button>
-                                </DialogTrigger>
-                                <DialogContent>
-                                  <DialogHeader>
-                                    <DialogTitle>Send Estimate via DocuSign</DialogTitle>
-                                  </DialogHeader>
-                                  <div className="space-y-4">
-                                    <div>
-                                      <Label>Select DocuSign Template</Label>
-                                      <Select value={selectedTemplate} onValueChange={setSelectedTemplate}>
-                                        <SelectTrigger>
-                                          <SelectValue placeholder="Choose a template" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          {docusignTemplates.map((template) => (
-                                            <SelectItem key={template.id} value={template.template_id}>
-                                              {template.name}
-                                            </SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
-                                    </div>
-                                    <div className="flex justify-end gap-2">
-                                      <Button variant="outline">Cancel</Button>
-                                      <Button 
-                                        onClick={() => sendEstimateWithDocuSignMutation.mutate({ 
-                                          estimateId: estimate.id, 
-                                          templateId: selectedTemplate 
-                                        })}
-                                        disabled={!selectedTemplate || sendEstimateWithDocuSignMutation.isPending}
-                                        className="bg-blue-600 hover:bg-blue-700"
-                                      >
-                                        Send for Signature
-                                      </Button>
-                                    </div>
+                               <div>
+                                 <Label>Status</Label>
+                                 <Badge variant={
+                                   viewingEstimate.status === 'draft' ? 'secondary' :
+                                   viewingEstimate.status === 'sent' ? 'default' :
+                                   viewingEstimate.status === 'approved' ? 'default' :
+                                   viewingEstimate.status === 'pending_review' ? 'secondary' :
+                                   'secondary'
+                                 }>
+                                   {viewingEstimate.status.charAt(0).toUpperCase() + viewingEstimate.status.slice(1).replace('_', ' ')}
+                                 </Badge>
+                               </div>
+                               <div>
+                                 <Label>Email</Label>
+                                 <p>{viewingEstimate.customer_email}</p>
+                               </div>
+                               <div>
+                                 <Label>Phone</Label>
+                                 <p>{viewingEstimate.customer_phone}</p>
+                               </div>
+                               <div className="col-span-1 sm:col-span-2">
+                                 <Label>Delivery Address</Label>
+                                 <p>{viewingEstimate.delivery_address}</p>
+                               </div>
+                               <div>
+                                 <Label>Mobile Home</Label>
+                                 <p>{viewingEstimate.mobile_homes?.manufacturer} {viewingEstimate.mobile_homes?.series} {viewingEstimate.mobile_homes?.model}</p>
+                               </div>
+                               <div>
+                                 <Label>Total Amount</Label>
+                                 <p className="font-medium text-lg">${viewingEstimate.total_amount.toLocaleString()}</p>
+                               </div>
+                                <div>
+                                  <Label>Created</Label>
+                                  <p>{format(new Date(viewingEstimate.created_at), 'MMM dd, yyyy HH:mm')}</p>
+                                </div>
+                                {viewingEstimate.transaction_number && (
+                                  <div>
+                                    <Label>Transaction Number</Label>
+                                    <Badge variant="outline" className="text-sm font-mono">
+                                      {viewingEstimate.transaction_number}
+                                    </Badge>
                                   </div>
-                                </DialogContent>
-                              </Dialog>
+                                )}
+                                {viewingEstimate.approved_at && (
+                                  <div>
+                                    <Label>Approved</Label>
+                                    <p>{format(new Date(viewingEstimate.approved_at), 'MMM dd, yyyy HH:mm')}</p>
+                                  </div>
+                                )}
+                             </div>
 
-                              {/* Delete Button with confirmation */}
-                              <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                  <Button variant="destructive" size="sm">
-                                    <Trash2 className="h-4 w-4 mr-2" />
-                                    Delete
-                                  </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                  <AlertDialogHeader>
-                                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                      This action cannot be undone. This will permanently delete the estimate for {estimate.customer_name}.
-                                    </AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction 
-                                      onClick={() => deleteEstimateMutation.mutate(estimate.id)}
-                                      disabled={deleteEstimateMutation.isPending}
-                                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                    >
-                                      Delete Estimate
-                                    </AlertDialogAction>
-                                  </AlertDialogFooter>
-                                </AlertDialogContent>
-                              </AlertDialog>
-                            </div>
-                          </div>
-                        </DialogContent>
+                             <EstimateLineItems estimateId={viewingEstimate?.id} />
+
+                             {/* Action Buttons */}
+                             <div className="flex flex-col sm:flex-row sm:justify-end gap-2 pt-4 border-t">
+                               {/* Edit Button */}
+                               <Button 
+                                 variant="outline" 
+                                 className="w-full sm:w-auto"
+                                 onClick={() => {
+                                   setEditingEstimate(viewingEstimate);
+                                   setIsEditDialogOpen(true);
+                                 }}
+                               >
+                                 <Edit className="h-4 w-4 mr-2" />
+                                 Edit
+                               </Button>
+
+                               {/* Approve Button */}
+                               <Button 
+                                 variant="default" 
+                                 className="bg-green-600 hover:bg-green-700 w-full sm:w-auto"
+                                 onClick={() => {
+                                   console.log('🟡 BUTTON CLICKED! Estimate:', viewingEstimate.id, 'Status:', viewingEstimate.status);
+                                   console.log('🔴 Clicking approve for estimate:', viewingEstimate.id, 'Status:', viewingEstimate.status);
+                                   approveEstimateMutation.mutate(viewingEstimate.id);
+                                 }}
+                                 disabled={approveEstimateMutation.isPending}
+                               >
+                                 <CheckCircle className="h-4 w-4 mr-2" />
+                                 Approve
+                               </Button>
+
+                               {/* Deny Button */}
+                               <Button 
+                                 variant="destructive" 
+                                 className="w-full sm:w-auto"
+                                 onClick={() => denyEstimateMutation.mutate(viewingEstimate.id)}
+                                 disabled={denyEstimateMutation.isPending}
+                               >
+                                 <X className="h-4 w-4 mr-2" />
+                                 Deny
+                               </Button>
+
+                               {/* Send Button with DocuSign */}
+                               <Dialog>
+                                 <DialogTrigger asChild>
+                                   <Button className="bg-blue-600 hover:bg-blue-700">
+                                     <Send className="h-4 w-4 mr-2" />
+                                     Send for Signature
+                                   </Button>
+                                 </DialogTrigger>
+                                 <DialogContent>
+                                   <DialogHeader>
+                                     <DialogTitle>Send Estimate via DocuSign</DialogTitle>
+                                   </DialogHeader>
+                                   <div className="space-y-4">
+                                     <div>
+                                       <Label>Select DocuSign Template</Label>
+                                       <Select value={selectedTemplate} onValueChange={setSelectedTemplate}>
+                                         <SelectTrigger>
+                                           <SelectValue placeholder="Choose a template" />
+                                         </SelectTrigger>
+                                         <SelectContent>
+                                           {docusignTemplates.map((template) => (
+                                             <SelectItem key={template.id} value={template.template_id}>
+                                               {template.name}
+                                             </SelectItem>
+                                           ))}
+                                         </SelectContent>
+                                       </Select>
+                                     </div>
+                                     <div className="flex justify-end gap-2">
+                                       <Button variant="outline">Cancel</Button>
+                                       <Button 
+                                         onClick={() => sendEstimateWithDocuSignMutation.mutate({ 
+                                           estimateId: viewingEstimate.id, 
+                                           templateId: selectedTemplate 
+                                         })}
+                                         disabled={!selectedTemplate || sendEstimateWithDocuSignMutation.isPending}
+                                         className="bg-blue-600 hover:bg-blue-700"
+                                       >
+                                         Send for Signature
+                                       </Button>
+                                     </div>
+                                   </div>
+                                 </DialogContent>
+                               </Dialog>
+
+                               {/* Delete Button with confirmation */}
+                               <AlertDialog>
+                                 <AlertDialogTrigger asChild>
+                                   <Button variant="destructive" size="sm">
+                                     <Trash2 className="h-4 w-4 mr-2" />
+                                     Delete
+                                   </Button>
+                                 </AlertDialogTrigger>
+                                 <AlertDialogContent>
+                                   <AlertDialogHeader>
+                                     <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                     <AlertDialogDescription>
+                                       This action cannot be undone. This will permanently delete the estimate for {viewingEstimate.customer_name}.
+                                     </AlertDialogDescription>
+                                   </AlertDialogHeader>
+                                   <AlertDialogFooter>
+                                     <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                     <AlertDialogAction 
+                                       onClick={() => deleteEstimateMutation.mutate(viewingEstimate.id)}
+                                       disabled={deleteEstimateMutation.isPending}
+                                       className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                     >
+                                       Delete Estimate
+                                     </AlertDialogAction>
+                                   </AlertDialogFooter>
+                                 </AlertDialogContent>
+                               </AlertDialog>
+                             </div>
+                           </div>
+                           )}
+                         </DialogContent>
                       </Dialog>
                     </div>
                   </div>

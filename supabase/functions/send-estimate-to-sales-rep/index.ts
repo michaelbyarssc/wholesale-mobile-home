@@ -399,7 +399,7 @@ serve(async (req) => {
 
     // Send email to sales representative
     const { data, error } = await resend.emails.send({
-      from: 'Wholesale Homes of the Carolinas <onboarding@resend.dev>',
+      from: 'Wholesale Homes <onboarding@resend.dev>',
       to: [sales_rep_email],
       subject: `New Cart Estimate Request - ${customerInfo.name}`,
       html: emailContent,

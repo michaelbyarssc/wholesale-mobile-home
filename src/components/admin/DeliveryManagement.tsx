@@ -10,7 +10,9 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
-import { Truck, Calendar as CalendarIcon, CheckCircle, Clock, AlertCircle, MapPin, FileText, User, Phone, Home, Package, CalendarDays, Plus, Edit, UserPlus } from 'lucide-react';
+import { Truck, Calendar as CalendarIcon, CheckCircle, Clock, AlertCircle, MapPin, FileText, User, Phone, Home, Package, CalendarDays, Plus, Edit, UserPlus, Settings } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { NewDeliveryScheduling } from '@/components/delivery/NewDeliveryScheduling';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
@@ -842,37 +844,40 @@ export const DeliveryManagement = () => {
             Track and manage customer deliveries
           </p>
         </div>
-        
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => setAddDriverDialogOpen(true)}>
-            <UserPlus className="h-4 w-4 mr-2" />
-            Add Driver
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => setManageDriversDialogOpen(true)}>
-            <User className="h-4 w-4 mr-2" />
-            Manage Drivers
-          </Button>
-          <Separator orientation="vertical" className="h-6" />
-          <Button variant="outline" size="sm" onClick={() => setFilter('all')} 
-                  className={filter === 'all' ? 'bg-primary text-primary-foreground' : ''}>
-            All
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => setFilter('scheduled')}
-                  className={filter === 'scheduled' ? 'bg-primary text-primary-foreground' : ''}>
-            Scheduled
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => setFilter('in_transit')}
-                  className={filter === 'in_transit' ? 'bg-primary text-primary-foreground' : ''}>
-            In Transit
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => setFilter('completed')}
-                  className={filter === 'completed' ? 'bg-primary text-primary-foreground' : ''}>
-            Completed
-          </Button>
-        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+      <Tabs defaultValue="scheduling" className="space-y-4">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="scheduling" className="flex items-center gap-2">
+            <CalendarIcon className="h-4 w-4" />
+            Scheduling
+          </TabsTrigger>
+          <TabsTrigger value="deliveries" className="flex items-center gap-2">
+            <Truck className="h-4 w-4" />
+            All Deliveries
+          </TabsTrigger>
+          <TabsTrigger value="drivers" className="flex items-center gap-2">
+            <User className="h-4 w-4" />
+            Drivers
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="scheduling" className="space-y-4">
+          <NewDeliveryScheduling />
+        </TabsContent>
+
+        <TabsContent value="deliveries" className="space-y-4">
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h4 className="text-md font-medium">All Deliveries</h4>
+                <p className="text-sm text-muted-foreground">
+                  View and manage all delivery records
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Total Deliveries</CardTitle>
@@ -911,10 +916,10 @@ export const DeliveryManagement = () => {
               </span>
             </div>
           </CardContent>
-        </Card>
-      </div>
+            </Card>
+            </div>
 
-      <div className="rounded-md border">
+            <div className="rounded-md border">
         <Table>
           <TableCaption>List of all deliveries</TableCaption>
           <TableHeader>
@@ -972,9 +977,105 @@ export const DeliveryManagement = () => {
                 </TableRow>
               ))
             )}
-          </TableBody>
-        </Table>
-      </div>
+              </TableBody>
+            </Table>
+            </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="drivers" className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h4 className="text-md font-medium">Driver Management</h4>
+              <p className="text-sm text-muted-foreground">
+                Add and manage delivery drivers
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={() => setAddDriverDialogOpen(true)}>
+                <UserPlus className="h-4 w-4 mr-2" />
+                Add Driver
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setManageDriversDialogOpen(true)}>
+                <User className="h-4 w-4 mr-2" />
+                Manage Drivers
+              </Button>
+            </div>
+          </div>
+          
+          {drivers && drivers.length > 0 ? (
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Phone</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {drivers.map((driver) => (
+                    <TableRow key={driver.id}>
+                      <TableCell className="font-medium">
+                        {driver.first_name} {driver.last_name}
+                      </TableCell>
+                      <TableCell>{driver.email}</TableCell>
+                      <TableCell>{driver.phone}</TableCell>
+                      <TableCell>
+                        <Badge className={
+                          driver.status === 'available' ? 'bg-green-100 text-green-800' :
+                          driver.status === 'on_delivery' ? 'bg-blue-100 text-blue-800' :
+                          driver.status === 'off_duty' ? 'bg-yellow-100 text-yellow-800' :
+                          'bg-red-100 text-red-800'
+                        }>
+                          {driver.status.replace('_', ' ')}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex space-x-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => handleEditDriver(driver)}
+                          >
+                            <Edit className="h-3 w-3 mr-1" />
+                            Edit
+                          </Button>
+                          <Select 
+                            value={driver.status} 
+                            onValueChange={(value) => handleDriverStatusChange(driver.id, value as 'available' | 'on_delivery' | 'off_duty' | 'inactive')}
+                          >
+                            <SelectTrigger className="w-32">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="available">Available</SelectItem>
+                              <SelectItem value="on_delivery">On Delivery</SelectItem>
+                              <SelectItem value="off_duty">Off Duty</SelectItem>
+                              <SelectItem value="inactive">Inactive</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <User className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+              <p className="text-muted-foreground">No drivers found</p>
+              <Button className="mt-4" onClick={() => setAddDriverDialogOpen(true)}>
+                <UserPlus className="h-4 w-4 mr-2" />
+                Add First Driver
+              </Button>
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
       
       <ScheduleDeliveryDialog />
       

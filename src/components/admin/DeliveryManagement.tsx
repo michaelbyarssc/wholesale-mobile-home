@@ -611,6 +611,11 @@ export const DeliveryManagement = () => {
                 className="px-3 py-2 border border-input rounded-md bg-background text-sm w-full"
                 value={selectedPickupTime}
                 onChange={(e) => setSelectedPickupTime(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                  }
+                }}
                 placeholder="Select time"
               />
             </div>

@@ -1067,7 +1067,17 @@ export const DeliveryManagement = () => {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div>
                   <h4 className="font-semibold text-gray-900 mb-3">Pickup Location</h4>
-                  <p className="text-gray-700">{delivery.pickup_address}</p>
+                  <p className="text-gray-700">
+                    {mobileHome?.mobile_home_factories?.[0]?.factories ? (
+                      <>
+                        {mobileHome.mobile_home_factories[0].factories.name}<br/>
+                        {mobileHome.mobile_home_factories[0].factories.street_address}<br/>
+                        {mobileHome.mobile_home_factories[0].factories.city}, {mobileHome.mobile_home_factories[0].factories.state} {mobileHome.mobile_home_factories[0].factories.zip_code}
+                      </>
+                    ) : (
+                      delivery.pickup_address || 'Factory address not available'
+                    )}
+                  </p>
                 </div>
                 <div>
                   <h4 className="font-semibold text-gray-900 mb-3">Delivery Location</h4>

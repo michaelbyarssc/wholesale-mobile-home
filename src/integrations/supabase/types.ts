@@ -5553,6 +5553,12 @@ export type Database = {
         | "completed"
         | "cancelled"
         | "delayed"
+        | "awaiting_pickup_schedule"
+        | "pickup_scheduled"
+        | "pickup_in_progress"
+        | "pickup_completed"
+        | "awaiting_delivery_schedule"
+        | "delivery_scheduled"
       driver_status: "available" | "on_delivery" | "off_duty" | "inactive"
       mobile_home_type: "single_wide" | "double_wide" | "triple_wide"
       transaction_priority: "low" | "medium" | "high" | "urgent"
@@ -5715,6 +5721,12 @@ export const Constants = {
         "completed",
         "cancelled",
         "delayed",
+        "awaiting_pickup_schedule",
+        "pickup_scheduled",
+        "pickup_in_progress",
+        "pickup_completed",
+        "awaiting_delivery_schedule",
+        "delivery_scheduled",
       ],
       driver_status: ["available", "on_delivery", "off_duty", "inactive"],
       mobile_home_type: ["single_wide", "double_wide", "triple_wide"],

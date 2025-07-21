@@ -1278,10 +1278,7 @@ export const DeliveryManagement = () => {
               filteredDeliveries.map((delivery) => (
                 <TableRow key={delivery.id}>
                   <TableCell className="font-medium">
-                    {delivery.invoices?.transaction_number 
-                      ? `WMH-D-${delivery.invoices.transaction_number.split('-').pop()}`
-                      : delivery.delivery_number
-                    }
+                    {delivery.delivery_number}
                   </TableCell>
                   <TableCell>
                     <div>

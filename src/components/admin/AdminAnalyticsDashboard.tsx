@@ -163,10 +163,24 @@ export const AdminAnalyticsDashboard = () => {
       
       const dailyActivity = Array.from(dailyActivityMap.values());
 
-      // Simplify device types since we don't have the data
-      const deviceTypes = [
-        { type: 'All Devices', count: totalSessions }
-      ];
+      // Get actual device types data
+      const { data: deviceTypesData } = await supabase
+        .from('analytics_sessions')
+        .select('device_type')
+        .gte('created_at', startDate)
+        .lte('created_at', endDate);
+
+      // Process device types data
+      const deviceTypeMap = new Map();
+      (deviceTypesData || []).forEach(session => {
+        const deviceType = session.device_type || 'Unknown';
+        deviceTypeMap.set(deviceType, (deviceTypeMap.get(deviceType) || 0) + 1);
+      });
+
+      const deviceTypes = Array.from(deviceTypeMap.entries()).map(([type, count]) => ({
+        type: type,
+        count: count
+      }));
 
       // Conversion funnel
       const conversionFunnel = [

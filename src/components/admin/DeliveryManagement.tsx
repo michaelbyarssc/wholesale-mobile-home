@@ -755,7 +755,7 @@ export const DeliveryManagement = () => {
     React.useEffect(() => {
       const fetchDeliveryData = async () => {
         try {
-          // Get delivery with mobile home data
+          // Get delivery with mobile home data and factory information
           const { data: deliveryWithHome, error: deliveryError } = await supabase
             .from('deliveries')
             .select(`
@@ -770,7 +770,16 @@ export const DeliveryManagement = () => {
                 square_footage,
                 width_feet,
                 length_feet,
-                price
+                price,
+                mobile_home_factories (
+                  factories (
+                    name,
+                    street_address,
+                    city,
+                    state,
+                    zip_code
+                  )
+                )
               )
             `)
             .eq('id', delivery.id)
@@ -943,6 +952,36 @@ export const DeliveryManagement = () => {
                         </div>
                       )}
                     </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Factory Pickup Address Card */}
+          {mobileHome?.mobile_home_factories?.[0]?.factories && (
+            <Card className="shadow-lg">
+              <CardHeader className="bg-blue-50 border-b">
+                <CardTitle className="text-blue-900 flex items-center">
+                  <MapPin className="h-5 w-5 mr-2" />
+                  Factory Pickup Address
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-6">
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                    <span className="font-medium text-gray-600">Factory Name:</span>
+                    <span className="text-gray-900">{mobileHome.mobile_home_factories[0].factories.name}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                    <span className="font-medium text-gray-600">Street Address:</span>
+                    <span className="text-gray-900">{mobileHome.mobile_home_factories[0].factories.street_address}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                    <span className="font-medium text-gray-600">City, State, ZIP:</span>
+                    <span className="text-gray-900">
+                      {mobileHome.mobile_home_factories[0].factories.city}, {mobileHome.mobile_home_factories[0].factories.state} {mobileHome.mobile_home_factories[0].factories.zip_code}
+                    </span>
                   </div>
                 </div>
               </CardContent>

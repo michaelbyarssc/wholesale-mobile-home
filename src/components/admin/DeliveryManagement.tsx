@@ -682,147 +682,329 @@ export const DeliveryManagement = () => {
     </Dialog>
   );
 
-  const DeliveryDetailsDialog = ({ delivery }: { delivery: Delivery }) => (
-    <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-      <DialogHeader>
-        <DialogTitle>Delivery Details - {delivery.delivery_number}</DialogTitle>
-        <DialogDescription>
-          Complete information for this delivery
-        </DialogDescription>
-      </DialogHeader>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Customer Information */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center">
-              <User className="h-4 w-4 mr-2" />
-              Customer Information
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div>
-              <label className="text-sm font-medium text-muted-foreground">Name</label>
-              <p className="text-sm">{delivery.customer_name}</p>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-muted-foreground">Email</label>
-              <p className="text-sm">{delivery.customer_email}</p>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-muted-foreground">Phone</label>
-              <p className="text-sm">{delivery.customer_phone}</p>
-            </div>
-          </CardContent>
-        </Card>
+  const DeliveryDetailsDialog = ({ delivery }: { delivery: Delivery }) => {
+    const [deliveryData, setDeliveryData] = useState<any>(null);
+    const [mobileHome, setMobileHome] = useState<any>(null);
+    const [services, setServices] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
 
-        {/* Delivery Information */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center">
-              <Truck className="h-4 w-4 mr-2" />
-              Delivery Information
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div>
-              <label className="text-sm font-medium text-muted-foreground">Status</label>
-              <div className="mt-1">{getStatusBadge(delivery.status)}</div>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-muted-foreground">Mobile Home Type</label>
-              <p className="text-sm capitalize">{delivery.mobile_home_type?.replace('_', ' ')}</p>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-muted-foreground">Crew Type</label>
-              <p className="text-sm capitalize">{delivery.crew_type?.replace('_', ' ')}</p>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-muted-foreground">Total Cost</label>
-              <p className="text-sm font-medium">${delivery.total_delivery_cost?.toFixed(2) || '0.00'}</p>
-            </div>
-          </CardContent>
-        </Card>
+    // Fetch detailed delivery data with mobile home and services
+    React.useEffect(() => {
+      const fetchDeliveryData = async () => {
+        try {
+          // Get delivery with mobile home data
+          const { data: deliveryWithHome, error: deliveryError } = await supabase
+            .from('deliveries')
+            .select(`
+              *,
+              mobile_homes (
+                manufacturer,
+                series,
+                model,
+                display_name,
+                bedrooms,
+                bathrooms,
+                square_footage,
+                width_feet,
+                length_feet,
+                price
+              )
+            `)
+            .eq('id', delivery.id)
+            .single();
 
-        {/* Addresses */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center">
-              <MapPin className="h-4 w-4 mr-2" />
-              Pickup Address
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm">{delivery.pickup_address}</p>
-          </CardContent>
-        </Card>
+          if (deliveryError) throw deliveryError;
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center">
-              <Home className="h-4 w-4 mr-2" />
-              Delivery Address
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm">{delivery.delivery_address}</p>
-          </CardContent>
-        </Card>
+          setDeliveryData(deliveryWithHome);
+          setMobileHome(deliveryWithHome.mobile_homes);
 
-        {/* Schedule Information */}
-        <Card className="md:col-span-2">
-          <CardHeader>
-            <CardTitle className="text-base flex items-center">
-              <CalendarDays className="h-4 w-4 mr-2" />
-              Schedule Information
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm font-medium text-muted-foreground">Scheduled Pickup</label>
-              <p className="text-sm">{getFormattedDate(delivery.scheduled_pickup_date_tz)}</p>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-muted-foreground">Scheduled Delivery</label>
-              <p className="text-sm">{getFormattedDate(delivery.scheduled_delivery_date_tz)}</p>
-            </div>
-          </CardContent>
-        </Card>
+          // Get services if there's an invoice with selected services
+          if (deliveryWithHome.invoice_id) {
+            const { data: invoice, error: invoiceError } = await supabase
+              .from('invoices')
+              .select('selected_services')
+              .eq('id', deliveryWithHome.invoice_id)
+              .single();
 
-        {/* Special Instructions */}
-        {delivery.special_instructions && (
-          <Card className="md:col-span-2">
-            <CardHeader>
-              <CardTitle className="text-base flex items-center">
-                <FileText className="h-4 w-4 mr-2" />
-                Special Instructions
+            if (!invoiceError && invoice?.selected_services?.length > 0) {
+              const { data: servicesData, error: servicesError } = await supabase
+                .from('services')
+                .select('name, description, category')
+                .in('id', invoice.selected_services);
+
+              if (!servicesError) {
+                setServices(servicesData || []);
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching delivery details:', error);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      fetchDeliveryData();
+    }, [delivery.id]);
+
+    if (loading) {
+      return (
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Loading Delivery Details...</DialogTitle>
+          </DialogHeader>
+          <div className="flex items-center justify-center p-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          </div>
+        </DialogContent>
+      );
+    }
+
+    const homeDisplayName = mobileHome?.display_name || 
+      `${mobileHome?.manufacturer} ${mobileHome?.series} ${mobileHome?.model}`;
+
+    return (
+      <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="text-xl font-bold">Delivery Report - {delivery.delivery_number}</DialogTitle>
+          <DialogDescription>
+            Detailed delivery specifications and information
+          </DialogDescription>
+        </DialogHeader>
+        
+        <div className="space-y-6">
+          {/* Customer Information Card */}
+          <Card className="shadow-lg">
+            <CardHeader className="bg-blue-50 border-b">
+              <CardTitle className="text-blue-900 flex items-center">
+                <User className="h-5 w-5 mr-2" />
+                Customer Information
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <p className="text-sm">{delivery.special_instructions}</p>
+            <CardContent className="p-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                    <span className="font-medium text-gray-600">Customer Name:</span>
+                    <span className="text-gray-900">{delivery.customer_name}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                    <span className="font-medium text-gray-600">Email:</span>
+                    <span className="text-gray-900">{delivery.customer_email}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                    <span className="font-medium text-gray-600">Phone:</span>
+                    <span className="text-gray-900">{delivery.customer_phone}</span>
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                    <span className="font-medium text-gray-600">Delivery Status:</span>
+                    <div>{getStatusBadge(delivery.status)}</div>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                    <span className="font-medium text-gray-600">Delivery Number:</span>
+                    <span className="text-gray-900 font-mono">{delivery.delivery_number}</span>
+                  </div>
+                </div>
+              </div>
             </CardContent>
           </Card>
-        )}
 
-        {/* Additional Details */}
-        <Card className="md:col-span-2">
-          <CardHeader>
-            <CardTitle className="text-base">Additional Information</CardTitle>
-          </CardHeader>
-          <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="text-sm font-medium text-muted-foreground">Created</label>
-              <p className="text-sm">{getFormattedDate(delivery.created_at_tz)}</p>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-muted-foreground">Delivery ID</label>
-              <p className="text-sm font-mono text-xs">{delivery.id}</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    </DialogContent>
-  );
+          {/* Mobile Home Specifications Card */}
+          {mobileHome && (
+            <Card className="shadow-lg">
+              <CardHeader className="bg-green-50 border-b">
+                <CardTitle className="text-green-900 flex items-center">
+                  <Home className="h-5 w-5 mr-2" />
+                  Mobile Home Specifications
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-900 mb-4">{homeDisplayName}</h3>
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                        <span className="font-medium text-gray-600">Manufacturer:</span>
+                        <span className="text-gray-900">{mobileHome.manufacturer}</span>
+                      </div>
+                      <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                        <span className="font-medium text-gray-600">Series:</span>
+                        <span className="text-gray-900">{mobileHome.series}</span>
+                      </div>
+                      <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                        <span className="font-medium text-gray-600">Model:</span>
+                        <span className="text-gray-900">{mobileHome.model}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <div className="space-y-3">
+                      {mobileHome.bedrooms && (
+                        <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                          <span className="font-medium text-gray-600">Bedrooms:</span>
+                          <span className="text-gray-900">{mobileHome.bedrooms}</span>
+                        </div>
+                      )}
+                      {mobileHome.bathrooms && (
+                        <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                          <span className="font-medium text-gray-600">Bathrooms:</span>
+                          <span className="text-gray-900">{mobileHome.bathrooms}</span>
+                        </div>
+                      )}
+                      {mobileHome.square_footage && (
+                        <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                          <span className="font-medium text-gray-600">Square Footage:</span>
+                          <span className="text-gray-900">{mobileHome.square_footage} sq ft</span>
+                        </div>
+                      )}
+                      {mobileHome.width_feet && mobileHome.length_feet && (
+                        <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                          <span className="font-medium text-gray-600">Dimensions:</span>
+                          <span className="text-gray-900">{mobileHome.width_feet}' × {mobileHome.length_feet}'</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Additional Services Card */}
+          {services.length > 0 && (
+            <Card className="shadow-lg">
+              <CardHeader className="bg-amber-50 border-b">
+                <CardTitle className="text-amber-900 flex items-center">
+                  <Package className="h-5 w-5 mr-2" />
+                  Additional Services
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-6">
+                <div className="space-y-3">
+                  {services.map((service, index) => (
+                    <div key={index} className="flex justify-between items-start py-3 border-b border-gray-200 last:border-b-0">
+                      <div>
+                        <p className="font-medium text-gray-900">{service.name}</p>
+                        {service.description && (
+                          <p className="text-sm text-gray-600">{service.description}</p>
+                        )}
+                        {service.category && (
+                          <p className="text-xs text-gray-500 mt-1 capitalize">{service.category}</p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Delivery Information Card */}
+          <Card className="shadow-lg">
+            <CardHeader className="bg-purple-50 border-b">
+              <CardTitle className="text-purple-900 flex items-center">
+                <Truck className="h-5 w-5 mr-2" />
+                Delivery Information
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                    <span className="font-medium text-gray-600">Mobile Home Type:</span>
+                    <span className="text-gray-900 capitalize">{delivery.mobile_home_type?.replace('_', ' ')}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                    <span className="font-medium text-gray-600">Crew Type:</span>
+                    <span className="text-gray-900 capitalize">{delivery.crew_type?.replace('_', ' ')}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                    <span className="font-medium text-gray-600">Transaction Number:</span>
+                    <span className="text-gray-900 font-mono">{delivery.delivery_number}</span>
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                    <span className="font-medium text-gray-600">Created:</span>
+                    <span className="text-gray-900">{getFormattedDate(delivery.created_at)}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                    <span className="font-medium text-gray-600">Status:</span>
+                    <div>{getStatusBadge(delivery.status)}</div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Addresses Card */}
+          <Card className="shadow-lg">
+            <CardHeader className="bg-orange-50 border-b">
+              <CardTitle className="text-orange-900 flex items-center">
+                <MapPin className="h-5 w-5 mr-2" />
+                Pickup & Delivery Locations
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div>
+                  <h4 className="font-semibold text-gray-900 mb-3">Pickup Location</h4>
+                  <p className="text-gray-700">{delivery.pickup_address}</p>
+                </div>
+                <div>
+                  <h4 className="font-semibold text-gray-900 mb-3">Delivery Location</h4>
+                  <p className="text-gray-700">{delivery.delivery_address}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Schedule Information Card */}
+          <Card className="shadow-lg">
+            <CardHeader className="bg-teal-50 border-b">
+              <CardTitle className="text-teal-900 flex items-center">
+                <CalendarDays className="h-5 w-5 mr-2" />
+                Schedule Information
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                    <span className="font-medium text-gray-600">Scheduled Pickup:</span>
+                    <span className="text-gray-900">{getFormattedDate(delivery.scheduled_pickup_date_tz) || 'Not scheduled'}</span>
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                    <span className="font-medium text-gray-600">Scheduled Delivery:</span>
+                    <span className="text-gray-900">{getFormattedDate(delivery.scheduled_delivery_date_tz) || 'Not scheduled'}</span>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Special Instructions Card */}
+          {delivery.special_instructions && (
+            <Card className="shadow-lg">
+              <CardHeader className="bg-slate-50 border-b">
+                <CardTitle className="text-slate-900 flex items-center">
+                  <FileText className="h-5 w-5 mr-2" />
+                  Special Instructions
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-6">
+                <p className="text-gray-700 whitespace-pre-wrap">{delivery.special_instructions}</p>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      </DialogContent>
+    );
+  };
 
   if (isLoading) {
     return <div className="flex items-center justify-center h-64">Loading deliveries...</div>;

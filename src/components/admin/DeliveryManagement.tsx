@@ -207,6 +207,8 @@ type Delivery = {
   special_instructions: string;
   created_at: string;
   created_at_tz: string | null;
+  mso_vin_section_1: string | null;
+  mso_vin_section_2: string | null;
 };
 
 const statusColors: Record<string, string> = {
@@ -259,6 +261,12 @@ export const DeliveryManagement = () => {
     license_number: '',
     cdl_class: 'CDL-A'
   });
+  
+  // MSO/VIN editing state
+  const [editMsoVinDialogOpen, setEditMsoVinDialogOpen] = useState(false);
+  const [editingMsoVinDelivery, setEditingMsoVinDelivery] = useState<Delivery | null>(null);
+  const [msoVinSection1, setMsoVinSection1] = useState('');
+  const [msoVinSection2, setMsoVinSection2] = useState('');
   
   const queryClient = useQueryClient();
 
@@ -462,6 +470,43 @@ export const DeliveryManagement = () => {
     }
   });
 
+  const updateMsoVinMutation = useMutation({
+    mutationFn: async ({ deliveryId, msoVinSection1, msoVinSection2 }: { 
+      deliveryId: string; 
+      msoVinSection1: string; 
+      msoVinSection2: string; 
+    }) => {
+      const { error } = await supabase
+        .from('deliveries')
+        .update({ 
+          mso_vin_section_1: msoVinSection1 || null,
+          mso_vin_section_2: msoVinSection2 || null 
+        })
+        .eq('id', deliveryId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['deliveries'] });
+      setEditMsoVinDialogOpen(false);
+      setEditingMsoVinDelivery(null);
+      setMsoVinSection1('');
+      setMsoVinSection2('');
+      toast({
+        title: "MSO/VIN Updated",
+        description: "The MSO/VIN numbers have been successfully updated."
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to update MSO/VIN numbers. Please try again.",
+        variant: "destructive"
+      });
+      console.error('Error updating MSO/VIN:', error);
+    }
+  });
+
   const getFilteredDeliveries = () => {
     if (!deliveries) return [];
     return deliveries;
@@ -473,6 +518,24 @@ export const DeliveryManagement = () => {
     setSelectedDelivery(delivery);
     setDatePickerOpen(false); // Ensure any open popover is closed
     setScheduleDialogOpen(true);
+  };
+
+  const handleEditMsoVin = (delivery: Delivery) => {
+    setEditingMsoVinDelivery(delivery);
+    // Pre-populate with existing values if they exist
+    setMsoVinSection1((delivery as any).mso_vin_section_1 || '');
+    setMsoVinSection2((delivery as any).mso_vin_section_2 || '');
+    setEditMsoVinDialogOpen(true);
+  };
+
+  const handleMsoVinSubmit = () => {
+    if (!editingMsoVinDelivery) return;
+
+    updateMsoVinMutation.mutate({
+      deliveryId: editingMsoVinDelivery.id,
+      msoVinSection1,
+      msoVinSection2
+    });
   };
 
   const handleScheduleSubmit = () => {
@@ -865,10 +928,18 @@ export const DeliveryManagement = () => {
                           <span className="text-gray-900">{mobileHome.width_feet}' × {mobileHome.length_feet}'</span>
                         </div>
                       )}
-                      {deliveryData?.mso_vin_number && (
+                      {deliveryData?.mso_vin_section_1 && (
                         <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                          <span className="font-medium text-gray-600">MSO/VIN Number:</span>
-                          <span className="text-gray-900 font-mono">{deliveryData.mso_vin_number}</span>
+                          <span className="font-medium text-gray-600">
+                            MSO/VIN {deliveryData.mobile_home_type === 'double_wide' ? 'Section 1:' : 'Number:'}
+                          </span>
+                          <span className="text-gray-900 font-mono">{deliveryData.mso_vin_section_1}</span>
+                        </div>
+                      )}
+                      {deliveryData?.mso_vin_section_2 && deliveryData.mobile_home_type === 'double_wide' && (
+                        <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                          <span className="font-medium text-gray-600">MSO/VIN Section 2:</span>
+                          <span className="text-gray-900 font-mono">{deliveryData.mso_vin_section_2}</span>
                         </div>
                       )}
                     </div>
@@ -1150,6 +1221,14 @@ export const DeliveryManagement = () => {
                       >
                         <CalendarDays className="h-3 w-3 mr-1" />
                         Schedule
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleEditMsoVin(delivery)}
+                      >
+                        <Edit className="h-3 w-3 mr-1" />
+                        MSO/VIN
                       </Button>
                       <Button variant="outline" size="sm">
                         <MapPin className="h-3 w-3 mr-1" />
@@ -1546,6 +1625,67 @@ export const DeliveryManagement = () => {
               disabled={editDriverMutation.isPending}
             >
               {editDriverMutation.isPending ? 'Updating...' : 'Update Driver'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit MSO/VIN Dialog */}
+      <Dialog open={editMsoVinDialogOpen} onOpenChange={setEditMsoVinDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit MSO/VIN Numbers</DialogTitle>
+            <DialogDescription>
+              Update the MSO/VIN numbers for delivery {editingMsoVinDelivery?.delivery_number}
+              {editingMsoVinDelivery?.mobile_home_type === 'double_wide' ? 
+                ' (Double Wide - 2 sections)' : 
+                ' (Single Wide - 1 section)'
+              }
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="mso-vin-1">
+                MSO/VIN Section 1 {editingMsoVinDelivery?.mobile_home_type === 'single_wide' ? '(Single Wide)' : '(First Section)'}
+              </Label>
+              <Input
+                id="mso-vin-1"
+                value={msoVinSection1}
+                onChange={(e) => setMsoVinSection1(e.target.value)}
+                placeholder="Enter MSO/VIN number"
+                className="font-mono"
+              />
+            </div>
+            
+            {editingMsoVinDelivery?.mobile_home_type === 'double_wide' && (
+              <div className="space-y-2">
+                <Label htmlFor="mso-vin-2">MSO/VIN Section 2 (Second Section)</Label>
+                <Input
+                  id="mso-vin-2"
+                  value={msoVinSection2}
+                  onChange={(e) => setMsoVinSection2(e.target.value)}
+                  placeholder="Enter MSO/VIN number"
+                  className="font-mono"
+                />
+              </div>
+            )}
+          </div>
+          
+          <div className="flex justify-end space-x-2 pt-4">
+            <Button variant="outline" onClick={() => {
+              setEditMsoVinDialogOpen(false);
+              setEditingMsoVinDelivery(null);
+              setMsoVinSection1('');
+              setMsoVinSection2('');
+            }}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleMsoVinSubmit}
+              disabled={updateMsoVinMutation.isPending}
+            >
+              {updateMsoVinMutation.isPending ? 'Updating...' : 'Update MSO/VIN'}
             </Button>
           </div>
         </DialogContent>

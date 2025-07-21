@@ -1598,7 +1598,8 @@ export type Database = {
           mileage_cost: number | null
           mobile_home_id: string | null
           mobile_home_type: Database["public"]["Enums"]["mobile_home_type"]
-          mso_vin_number: string | null
+          mso_vin_section_1: string | null
+          mso_vin_section_2: string | null
           permit_cost: number | null
           permits_required: boolean | null
           pickup_address: string
@@ -1643,7 +1644,8 @@ export type Database = {
           mileage_cost?: number | null
           mobile_home_id?: string | null
           mobile_home_type: Database["public"]["Enums"]["mobile_home_type"]
-          mso_vin_number?: string | null
+          mso_vin_section_1?: string | null
+          mso_vin_section_2?: string | null
           permit_cost?: number | null
           permits_required?: boolean | null
           pickup_address: string
@@ -1688,7 +1690,8 @@ export type Database = {
           mileage_cost?: number | null
           mobile_home_id?: string | null
           mobile_home_type?: Database["public"]["Enums"]["mobile_home_type"]
-          mso_vin_number?: string | null
+          mso_vin_section_1?: string | null
+          mso_vin_section_2?: string | null
           permit_cost?: number | null
           permits_required?: boolean | null
           pickup_address?: string

@@ -245,19 +245,7 @@ export const UserManagementTab = () => {
 
   return (
     <div className="space-y-6">
-      {isSuperAdmin && (
-        <Card>
-           <CardContent>
-            <div className="flex justify-between items-center">
-              <div>
-                <h3 className="text-lg font-semibold">Admin Tools</h3>
-                <p className="text-sm text-gray-600">Tools to help manage user profiles</p>
-              </div>
-              <FixProfilesButton />
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      
       
       {pendingApprovals.length > 0 && (
         <PendingApprovalsCard 

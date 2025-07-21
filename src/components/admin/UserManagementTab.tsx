@@ -247,7 +247,7 @@ export const UserManagementTab = () => {
     <div className="space-y-6">
       {isSuperAdmin && (
         <Card>
-          <CardContent className="pt-6">
+           <CardContent>
             <div className="flex justify-between items-center">
               <div>
                 <h3 className="text-lg font-semibold">Admin Tools</h3>

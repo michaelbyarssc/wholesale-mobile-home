@@ -5510,10 +5510,6 @@ export type Database = {
         Args: { customer_name: string }
         Returns: string
       }
-      generate_delivery_number: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
       generate_driver_session_token: {
         Args: Record<PropertyKey, never>
         Returns: string

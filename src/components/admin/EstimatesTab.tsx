@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -121,7 +121,7 @@ export const EstimatesTab = () => {
   }, []);
 
   // Fetch estimates from database
-  const { data: estimates = [], isLoading: estimatesLoading } = useQuery({
+  const { data: estimates = [], isLoading: estimatesLoading, refetch: refetchEstimates } = useQuery({
     queryKey: ['admin-estimates'],
     queryFn: async () => {
       console.log('🟢 Fetching estimates from database...');
@@ -152,6 +152,32 @@ export const EstimatesTab = () => {
     refetchOnWindowFocus: true,
     refetchOnMount: true
   });
+
+  // Set up real-time subscription for estimates
+  useEffect(() => {
+    console.log('🟡 Setting up real-time subscription for estimates');
+    
+    const channel = supabase
+      .channel('estimates-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'estimates'
+        },
+        (payload) => {
+          console.log('🟡 Real-time estimate change detected:', payload);
+          refetchEstimates();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      console.log('🟡 Cleaning up real-time subscription');
+      supabase.removeChannel(channel);
+    };
+  }, [refetchEstimates]);
 
   // Calculate proper total including shipping and taxes for all estimates
   const { data: allLineItems = [] } = useQuery({
@@ -455,12 +481,18 @@ export const EstimatesTab = () => {
     },
     onSuccess: (data) => {
       console.log('🟢 Success callback triggered with:', data);
+      
+      // Force immediate refetch of estimates
+      refetchEstimates();
+      
       // Invalidate all estimate-related queries
       queryClient.invalidateQueries({ queryKey: ['admin-estimates'] });
       queryClient.invalidateQueries({ queryKey: ['approved-estimates'] });
       queryClient.invalidateQueries({ queryKey: ['estimate'] }); // This will match all estimate queries
       queryClient.invalidateQueries({ queryKey: ['user-estimates'] });
+      
       setIsViewDialogOpen(false); // Close the dialog
+      
       toast({
         title: "Estimate Approved",
         description: `Estimate approved successfully. Invoice ${data.invoiceNumber || data.invoice_number} has been created and sent to the customer.`,
@@ -468,6 +500,10 @@ export const EstimatesTab = () => {
     },
     onError: (error) => {
       console.error('🔴 Error callback triggered:', error);
+      
+      // Force immediate refetch to show current state
+      refetchEstimates();
+      
       // Always invalidate queries to show current state
       queryClient.invalidateQueries({ queryKey: ['admin-estimates'] });
       queryClient.invalidateQueries({ queryKey: ['approved-estimates'] });

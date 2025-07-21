@@ -81,16 +81,31 @@ serve(async (req) => {
           .from('estimates')
           .select('*')
           .eq('id', estimateUuid)
-          .is('approved_at', null)
-          .single()
+          .maybeSingle()
 
-        if (estimateError || !estimateData) {
+        if (estimateError) {
           console.error('Admin approval error:', estimateError);
-          return new Response('Estimate not found or already approved', { 
-            status: 404, 
-            headers: corsHeaders 
+          return new Response(JSON.stringify({ 
+            success: false, 
+            error: 'Database error retrieving estimate', 
+            details: estimateError 
+          }), { 
+            status: 500, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
           })
         }
+
+        if (!estimateData) {
+          console.error('Estimate not found with ID:', estimateUuid);
+          return new Response(JSON.stringify({ 
+            success: false, 
+            error: 'Estimate not found' 
+          }), { 
+            status: 404, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          })
+        }
+        
         estimate = estimateData;
       } catch (jsonError) {
         console.error('Error parsing JSON:', jsonError);

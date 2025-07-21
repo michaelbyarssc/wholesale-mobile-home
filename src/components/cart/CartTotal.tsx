@@ -272,10 +272,10 @@ export const CartTotal = ({
           <Button 
             onClick={handleConvertToEstimate}
             className="bg-green-600 hover:bg-green-700"
-            disabled={!deliveryAddress}
+            disabled={!deliveryAddress || isSubmitting}
           >
             <Receipt className="h-4 w-4 mr-2" />
-            Submit Estimate for Review
+            {isSubmitting ? 'Processing...' : 'Submit Estimate for Review'}
           </Button>
           <Button onClick={handleCloseCart} variant="outline">
             Close Cart

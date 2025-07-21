@@ -112,16 +112,56 @@ export const AdminAnalyticsDashboard = () => {
         conversionRate: m.estimate_rate
       }));
 
-      // Calculate daily activity (last 7 days)
-      const dailyActivity = Array.from({ length: 7 }, (_, i) => {
-        const date = new Date();
-        date.setDate(date.getDate() - i);
-        return {
-          date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-          sessions: Math.round(totalSessions / 30), // Approximate daily average
-          pageViews: Math.round(totalPageViews / 30) // Approximate daily average
-        };
-      }).reverse();
+      // Get actual daily activity data for the date range
+      const startDate = format(dateRange.from, 'yyyy-MM-dd');
+      const endDate = format(dateRange.to, 'yyyy-MM-dd');
+      
+      // Query daily sessions
+      const { data: dailySessionsData } = await supabase
+        .from('analytics_sessions')
+        .select('created_at')
+        .gte('created_at', startDate)
+        .lte('created_at', endDate)
+        .order('created_at');
+
+      // Query daily page views
+      const { data: dailyPageViewsData } = await supabase
+        .from('analytics_page_views')
+        .select('created_at')
+        .gte('created_at', startDate)
+        .lte('created_at', endDate)
+        .order('created_at');
+
+      // Process daily activity data
+      const dailyActivityMap = new Map();
+      
+      // Initialize map with dates in range
+      let currentDate = new Date(dateRange.from);
+      const endDateObj = new Date(dateRange.to);
+      
+      while (currentDate <= endDateObj) {
+        const dateStr = format(currentDate, 'MMM dd');
+        dailyActivityMap.set(dateStr, { date: dateStr, sessions: 0, pageViews: 0 });
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+      
+      // Count sessions by day
+      (dailySessionsData || []).forEach(session => {
+        const dateStr = format(new Date(session.created_at), 'MMM dd');
+        if (dailyActivityMap.has(dateStr)) {
+          dailyActivityMap.get(dateStr).sessions += 1;
+        }
+      });
+      
+      // Count page views by day
+      (dailyPageViewsData || []).forEach(pageView => {
+        const dateStr = format(new Date(pageView.created_at), 'MMM dd');
+        if (dailyActivityMap.has(dateStr)) {
+          dailyActivityMap.get(dateStr).pageViews += 1;
+        }
+      });
+      
+      const dailyActivity = Array.from(dailyActivityMap.values());
 
       // Simplify device types since we don't have the data
       const deviceTypes = [

@@ -8,25 +8,25 @@ import { Truck, Search, Mail, MessageSquare, HelpCircle } from "lucide-react";
 import { toast } from "sonner";
 
 export default function TrackDelivery() {
-  const [trackingToken, setTrackingToken] = useState("");
+  const [trackingNumber, setTrackingNumber] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleTrackDelivery = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!trackingToken.trim()) {
-      toast.error("Please enter a tracking token");
+    if (!trackingNumber.trim()) {
+      toast.error("Please enter your tracking number");
       return;
     }
 
     setLoading(true);
     
     try {
-      // Navigate to the delivery portal with the token
-      navigate(`/delivery-portal/${trackingToken.trim()}`);
+      // Navigate to the delivery portal with the tracking number
+      navigate(`/delivery-portal/${trackingNumber.trim()}`);
     } catch (error) {
-      toast.error("Please check your tracking token and try again");
+      toast.error("Please check your tracking number and try again");
       setLoading(false);
     }
   };
@@ -40,7 +40,7 @@ export default function TrackDelivery() {
           </div>
           <h1 className="text-3xl font-bold mb-2">Track Your Delivery</h1>
           <p className="text-muted-foreground">
-            Enter your tracking token to see real-time updates on your mobile home delivery
+            Enter your estimate number, invoice number, or delivery number to track your mobile home delivery
           </p>
         </div>
 
@@ -51,25 +51,25 @@ export default function TrackDelivery() {
               Enter Tracking Information
             </CardTitle>
             <CardDescription>
-              Use the tracking token sent to you via email or SMS
+              Enter your estimate number, invoice number, or delivery number
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleTrackDelivery} className="space-y-4">
               <div>
-                <label htmlFor="tracking-token" className="block text-sm font-medium mb-2">
-                  Tracking Token
+                <label htmlFor="tracking-number" className="block text-sm font-medium mb-2">
+                  Tracking Number
                 </label>
                 <Input
-                  id="tracking-token"
+                  id="tracking-number"
                   type="text"
-                  placeholder="track_abc123xyz..."
-                  value={trackingToken}
-                  onChange={(e) => setTrackingToken(e.target.value)}
+                  placeholder="WMH-E-123456, WMH-I-123456, or WMH-D-123456"
+                  value={trackingNumber}
+                  onChange={(e) => setTrackingNumber(e.target.value)}
                   className="font-mono"
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Your tracking token starts with "track_" and was sent to you via email or SMS
+                  Enter your estimate number (WMH-E-), invoice number (WMH-I-), or delivery number (WMH-D-)
                 </p>
               </div>
               <Button type="submit" disabled={loading} className="w-full">
@@ -83,7 +83,7 @@ export default function TrackDelivery() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <HelpCircle className="h-5 w-5" />
-              How to Find Your Tracking Token
+              How to Find Your Tracking Number
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -95,8 +95,8 @@ export default function TrackDelivery() {
                 <div>
                   <h4 className="font-medium">Check Your Email</h4>
                   <p className="text-sm text-muted-foreground">
-                    Look for an email with the subject "Your Mobile Home Delivery is Scheduled" 
-                    containing your tracking link and token.
+                    Look for your estimate, invoice, or delivery confirmation email 
+                    containing your tracking number (starts with WMH-E-, WMH-I-, or WMH-D-).
                   </p>
                 </div>
               </div>
@@ -108,7 +108,7 @@ export default function TrackDelivery() {
                 <div>
                   <h4 className="font-medium">Check Your Text Messages</h4>
                   <p className="text-sm text-muted-foreground">
-                    Look for an SMS containing your delivery information and tracking link.
+                    Look for an SMS containing your estimate, invoice, or delivery number.
                   </p>
                 </div>
               </div>
@@ -129,9 +129,9 @@ export default function TrackDelivery() {
             <Separator />
 
             <div className="bg-muted/50 p-4 rounded-lg">
-              <h4 className="font-medium mb-2">Still can't find your tracking token?</h4>
+              <h4 className="font-medium mb-2">Still can't find your tracking number?</h4>
               <p className="text-sm text-muted-foreground mb-3">
-                Contact our customer service team with your delivery number or order information, 
+                Contact our customer service team with your order information, 
                 and we'll help you track your delivery.
               </p>
               <div className="text-sm">

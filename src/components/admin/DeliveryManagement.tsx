@@ -850,10 +850,7 @@ export const DeliveryManagement = () => {
       <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold">
-            Delivery Report - {delivery.invoices?.transaction_number 
-              ? `WMH-D-${delivery.invoices.transaction_number.split('-').pop()}`
-              : delivery.delivery_number
-            }
+            Delivery Report - {delivery.delivery_number?.replace('WMH-I-', 'WMH-D-') || 'N/A'}
           </DialogTitle>
           <DialogDescription>
             Detailed delivery specifications and information
@@ -893,10 +890,7 @@ export const DeliveryManagement = () => {
                   <div className="flex justify-between items-center py-2 border-b border-gray-200">
                     <span className="font-medium text-gray-600">Delivery Number:</span>
                     <span className="text-gray-900 font-mono">
-                      {delivery.invoices?.transaction_number 
-                        ? `WMH-D-${delivery.invoices.transaction_number.split('-').pop()}`
-                        : delivery.delivery_number
-                      }
+                      {delivery.delivery_number?.replace('WMH-I-', 'WMH-D-') || 'N/A'}
                     </span>
                   </div>
                 </div>
@@ -1060,10 +1054,7 @@ export const DeliveryManagement = () => {
                   <div className="flex justify-between items-center py-2 border-b border-gray-200">
                     <span className="font-medium text-gray-600">Transaction Number:</span>
                     <span className="text-gray-900 font-mono">
-                      {delivery.invoices?.transaction_number 
-                        ? `WMH-D-${delivery.invoices.transaction_number.split('-').pop()}`
-                        : delivery.delivery_number
-                      }
+                      {delivery.delivery_number?.replace('WMH-I-', 'WMH-D-') || 'N/A'}
                     </span>
                   </div>
                 </div>

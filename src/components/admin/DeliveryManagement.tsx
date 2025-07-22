@@ -1278,7 +1278,7 @@ export const DeliveryManagement = () => {
               filteredDeliveries.map((delivery) => (
                 <TableRow key={delivery.id}>
                   <TableCell className="font-medium">
-                    {delivery.delivery_number}
+                    {delivery.delivery_number?.replace('WMH-I-', 'WMH-D-') || 'N/A'}
                   </TableCell>
                   <TableCell>
                     <div>

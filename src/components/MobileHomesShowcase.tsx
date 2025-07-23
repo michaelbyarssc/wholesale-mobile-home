@@ -365,37 +365,39 @@ export const MobileHomesShowcase = ({
             <p className="text-gray-600 text-sm mt-2">{home.description}</p>
           )}
           
-          {/* Pricing Display Logic - Always use calculated pricing for logged in users */}
+          {/* Pricing Display Logic - Always show retail price for logged in users */}
           {user ? (
-            // Logged in users (including admins) see retail price above their calculated pricing
-            !pricingLoading ? (
-              <div className="mt-2 space-y-1">
-                {home.retail_price && (
-                  <div>
-                    <p className="text-xs text-gray-400 uppercase tracking-wide">Retail Price</p>
-                    <span className="text-lg text-gray-400 line-through">
-                      {formatPrice(home.retail_price)}
+            // Logged in users always see retail price when available
+            <div className="mt-2 space-y-1">
+              {home.retail_price && (
+                <div>
+                  <p className="text-xs text-gray-400 uppercase tracking-wide">Retail Price</p>
+                  <span className="text-lg text-gray-400 line-through">
+                    {formatPrice(home.retail_price)}
+                  </span>
+                </div>
+              )}
+              <div>
+                <p className="text-sm text-green-600 font-medium">Your Price</p>
+                {!pricingLoading ? (
+                  <>
+                    <span className="text-2xl font-bold text-green-600">
+                      {formatPrice(calculateMobileHomePrice(home))}
                     </span>
+                    {home.retail_price && (
+                      <p className="text-sm text-green-600 font-medium mt-1">
+                        You Save: {formatPrice(home.retail_price - calculateMobileHomePrice(home))}
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <div className="flex items-center">
+                    <LoadingSpinner size="sm" className="mr-2" />
+                    <span className="text-sm text-gray-500 italic">Calculating...</span>
                   </div>
                 )}
-                <div>
-                  <p className="text-sm text-green-600 font-medium">Your Price</p>
-                  <span className="text-2xl font-bold text-green-600">
-                    {formatPrice(calculateMobileHomePrice(home))}
-                  </span>
-                  {home.retail_price && (
-                    <p className="text-sm text-green-600 font-medium mt-1">
-                      You Save: {formatPrice(home.retail_price - calculateMobileHomePrice(home))}
-                    </p>
-                  )}
-                </div>
               </div>
-            ) : (
-              <div className="mt-2 flex items-center">
-                <LoadingSpinner size="sm" className="mr-2" />
-                <span className="text-sm text-gray-500 italic">Loading your pricing...</span>
-              </div>
-            )
+            </div>
           ) : (
             // Non-logged in users see retail price or login prompt
             home.retail_price ? (

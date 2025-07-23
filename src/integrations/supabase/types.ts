@@ -5544,6 +5544,12 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      get_admin_accessible_users: {
+        Args: { admin_id: string }
+        Returns: {
+          user_id: string
+        }[]
+      }
       get_analytics_mobile_homes: {
         Args: Record<PropertyKey, never>
         Returns: {

@@ -123,9 +123,16 @@ export const UserTableRow = ({ profile, onUserUpdated, mobileView = false }: Use
 
   if (mobileView) {
     return (
-      <div className="flex items-center gap-2">
-        <UserEditDialog profile={profile} onUserUpdated={onUserUpdated} />
-        <UserActions profile={profile} onUserUpdated={onUserUpdated} />
+      <div className="flex items-center justify-between w-full">
+        <MarkupEditor
+          userId={profile.user_id}
+          currentMarkup={profile.markup_percentage || 0}
+          onMarkupUpdated={onUserUpdated}
+        />
+        <div className="flex items-center gap-2">
+          <UserEditDialog profile={profile} onUserUpdated={onUserUpdated} />
+          <UserActions profile={profile} onUserUpdated={onUserUpdated} />
+        </div>
       </div>
     );
   }

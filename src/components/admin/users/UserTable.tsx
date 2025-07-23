@@ -95,17 +95,14 @@ export const UserTable = ({ userProfiles, onUserUpdated }: UserTableProps) => {
                    </div>
                  )}
                 
-                <div className="flex items-center justify-between pt-2 border-t border-border">
-                  <div className="text-xs text-muted-foreground">
-                    Markup: {profile.markup_percentage || 0}%
-                  </div>
-                  <UserTableRow 
-                    key={profile.user_id} 
-                    profile={profile} 
-                    onUserUpdated={onUserUpdated}
-                    mobileView={true}
-                  />
-                </div>
+                 <div className="pt-2 border-t border-border">
+                   <UserTableRow 
+                     key={profile.user_id} 
+                     profile={profile} 
+                     onUserUpdated={onUserUpdated}
+                     mobileView={true}
+                   />
+                 </div>
               </div>
             ))
           )}

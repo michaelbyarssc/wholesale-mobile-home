@@ -367,13 +367,28 @@ export const MobileHomesShowcase = ({
           
           {/* Pricing Display Logic - Always use calculated pricing for logged in users */}
           {user ? (
-            // Logged in users (including admins) see their calculated pricing
+            // Logged in users (including admins) see retail price above their calculated pricing
             !pricingLoading ? (
-              <div className="mt-2">
-                <span className="text-2xl font-bold text-green-600">
-                  {formatPrice(calculateMobileHomePrice(home))}
-                </span>
-                <p className="text-sm text-gray-500 mt-1">Your price</p>
+              <div className="mt-2 space-y-1">
+                {home.retail_price && (
+                  <div>
+                    <p className="text-xs text-gray-400 uppercase tracking-wide">Retail Price</p>
+                    <span className="text-lg text-gray-400 line-through">
+                      {formatPrice(home.retail_price)}
+                    </span>
+                  </div>
+                )}
+                <div>
+                  <p className="text-sm text-green-600 font-medium">Your Price</p>
+                  <span className="text-2xl font-bold text-green-600">
+                    {formatPrice(calculateMobileHomePrice(home))}
+                  </span>
+                  {home.retail_price && (
+                    <p className="text-sm text-green-600 font-medium mt-1">
+                      You Save: {formatPrice(home.retail_price - calculateMobileHomePrice(home))}
+                    </p>
+                  )}
+                </div>
               </div>
             ) : (
               <div className="mt-2 flex items-center">

@@ -105,13 +105,13 @@ export const SuperAdminMarkupTab = () => {
         { setting_key: 'fallback_admin_phone', setting_value: formattedPhone }
       ];
 
-      for (const setting of settingsToUpdate) {
-        const { error } = await supabase
-          .from('admin_settings')
-          .upsert(setting);
+      const { error } = await supabase
+        .from('admin_settings')
+        .upsert(settingsToUpdate, { 
+          onConflict: 'setting_key'
+        });
 
-        if (error) throw error;
-      }
+      if (error) throw error;
 
       // Update local state with formatted phone
       setFallbackPhone(formattedPhone);

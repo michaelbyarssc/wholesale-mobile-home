@@ -52,7 +52,7 @@ serve(async (req) => {
       .in('setting_key', ['business_name', 'business_email']);
 
     const businessName = businessSettings?.find(s => s.setting_key === 'business_name')?.setting_value || 'Wholesale Mobile Home';
-    const businessEmail = businessSettings?.find(s => s.setting_key === 'business_email')?.setting_value || 'noreply@wholesalemobilehome.com';
+    const businessEmail = businessSettings?.find(s => s.setting_key === 'business_email')?.setting_value || 'noreply@invoice.wholesalemobilehome.com';
 
     // Create HTML email content
     const htmlContent = `

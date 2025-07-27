@@ -182,7 +182,7 @@ serve(async (req) => {
     // Send invoice email to customer
     try {
       await resend.emails.send({
-        from: 'Wholesale Homes of the Carolinas <onboarding@resend.dev>',
+        from: 'Wholesale Homes of the Carolinas <noreply@invoice.wholesalemobilehome.com>',
         to: [estimate.customer_email],
         subject: `Invoice ${invoice.invoice_number} - Due on Receipt`,
         html: `

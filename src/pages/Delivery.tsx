@@ -101,6 +101,11 @@ const Delivery = () => {
       return;
     }
 
+    // Reset tab if admin loses access to restricted tabs
+    if (isAdmin && !isSuperAdmin && (activeTab === "scheduling" || activeTab === "drivers")) {
+      setActiveTab("dashboard");
+    }
+
     // Handle emulation mode for super admins
     if (isSuperAdmin && emulationMode !== "none") {
       switch (emulationMode) {
@@ -596,7 +601,7 @@ const Delivery = () => {
             </div>
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-6">
+              <TabsList className={`grid w-full ${isSuperAdmin ? 'grid-cols-6' : 'grid-cols-4'}`}>
                 <TabsTrigger value="dashboard" className="flex items-center gap-2">
                   <BarChart3 className="h-4 w-4" />
                   Dashboard
@@ -609,14 +614,18 @@ const Delivery = () => {
                   <CheckCircle className="h-4 w-4" />
                   Completed
                 </TabsTrigger>
-                <TabsTrigger value="scheduling" className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4" />
-                  Scheduling
-                </TabsTrigger>
-                <TabsTrigger value="drivers" className="flex items-center gap-2">
-                  <Users className="h-4 w-4" />
-                  Driver Management
-                </TabsTrigger>
+                {isSuperAdmin && (
+                  <TabsTrigger value="scheduling" className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4" />
+                    Scheduling
+                  </TabsTrigger>
+                )}
+                {isSuperAdmin && (
+                  <TabsTrigger value="drivers" className="flex items-center gap-2">
+                    <Users className="h-4 w-4" />
+                    Driver Management
+                  </TabsTrigger>
+                )}
                 <TabsTrigger value="tracking" className="flex items-center gap-2">
                   <MapPin className="h-4 w-4" />
                   GPS Tracking
@@ -635,13 +644,17 @@ const Delivery = () => {
                 <CompletedDeliveries />
               </TabsContent>
 
-              <TabsContent value="scheduling" className="mt-6">
-                <NewDeliveryScheduling />
-              </TabsContent>
+              {isSuperAdmin && (
+                <TabsContent value="scheduling" className="mt-6">
+                  <NewDeliveryScheduling />
+                </TabsContent>
+              )}
 
-              <TabsContent value="drivers" className="mt-6">
-                <DriverManagement />
-              </TabsContent>
+              {isSuperAdmin && (
+                <TabsContent value="drivers" className="mt-6">
+                  <DriverManagement />
+                </TabsContent>
+              )}
 
               <TabsContent value="tracking" className="mt-6">
                 <GPSTracking />

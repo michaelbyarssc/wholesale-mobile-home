@@ -28,7 +28,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const Delivery = () => {
-  const { user, userProfile } = useAuthUser();
+  const { user, userProfile, handleLogout } = useAuthUser();
   const { cartItems } = useShoppingCart();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -323,7 +323,7 @@ const Delivery = () => {
     return (
       <div className="min-h-screen bg-background">
         <EmulationBanner />
-        <Header user={user} userProfile={userProfile} cartItems={cartItems} isLoading={true} onLogout={() => {}} onToggleCart={() => {}} />
+        <Header user={user} userProfile={userProfile} cartItems={cartItems} isLoading={true} onLogout={handleLogout} onToggleCart={() => {}} />
         <main className="flex-1 py-8">
           <div className="container mx-auto px-4">
             <LoadingSpinner />
@@ -340,7 +340,7 @@ const Delivery = () => {
     return (
       <div className="min-h-screen bg-background">
         <EmulationBanner />
-        <Header user={user} userProfile={userProfile} cartItems={cartItems} isLoading={false} onLogout={() => {}} onToggleCart={() => {}} />
+        <Header user={user} userProfile={userProfile} cartItems={cartItems} isLoading={false} onLogout={handleLogout} onToggleCart={() => {}} />
         <main className="flex-1 py-8">
           <div className="container mx-auto px-4 max-w-4xl">
             {urlTrackingToken ? (
@@ -585,7 +585,7 @@ const Delivery = () => {
     return (
       <div className="min-h-screen bg-background">
         <EmulationBanner />
-        <Header user={user} userProfile={userProfile} cartItems={cartItems} isLoading={false} onLogout={() => {}} onToggleCart={() => {}} />
+        <Header user={user} userProfile={userProfile} cartItems={cartItems} isLoading={false} onLogout={handleLogout} onToggleCart={() => {}} />
         <main className="flex-1 py-8">
           <div className="container mx-auto px-4">
             <div className="mb-8">
@@ -658,7 +658,7 @@ const Delivery = () => {
   // Fallback - should not reach here
   return (
     <div className="min-h-screen bg-background">
-      <Header user={user} userProfile={userProfile} cartItems={cartItems} isLoading={false} onLogout={() => {}} onToggleCart={() => {}} />
+      <Header user={user} userProfile={userProfile} cartItems={cartItems} isLoading={false} onLogout={handleLogout} onToggleCart={() => {}} />
       <main className="flex-1 py-8">
         <div className="container mx-auto px-4">
           <Card>

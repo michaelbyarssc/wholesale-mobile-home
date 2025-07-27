@@ -18,8 +18,11 @@ const handler = async (req: Request): Promise<Response> => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  let requestData: SMSRequest;
+  
   try {
-    const { to, message, delivery_id, notification_rule_id }: SMSRequest = await req.json();
+    requestData = await req.json();
+    const { to, message, delivery_id, notification_rule_id } = requestData;
     
     const twilioAccountSid = Deno.env.get("TWILIO_ACCOUNT_SID");
     const twilioAuthToken = Deno.env.get("TWILIO_AUTH_TOKEN");
@@ -86,24 +89,21 @@ const handler = async (req: Request): Promise<Response> => {
     console.error("Error sending SMS:", error);
     
     // Log the error in notification_logs if notification_rule_id provided
-    if (req.body) {
+    if (requestData?.notification_rule_id) {
       try {
-        const body = await req.json();
-        if (body.notification_rule_id) {
-          const supabase = createClient(
-            Deno.env.get("SUPABASE_URL") ?? "",
-            Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
-          );
+        const supabase = createClient(
+          Deno.env.get("SUPABASE_URL") ?? "",
+          Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+        );
 
-          await supabase
-            .from("notification_logs")
-            .update({
-              status: "failed",
-              error_message: error.message,
-              retry_count: 1,
-            })
-            .eq("id", body.notification_rule_id);
-        }
+        await supabase
+          .from("notification_logs")
+          .update({
+            status: "failed",
+            error_message: error.message,
+            retry_count: 1,
+          })
+          .eq("id", requestData.notification_rule_id);
       } catch (e) {
         console.error("Error updating notification log:", e);
       }

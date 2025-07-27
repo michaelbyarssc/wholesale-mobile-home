@@ -239,19 +239,19 @@ const Delivery = () => {
     if (!isSuperAdmin) return null;
 
     return (
-      <div className="fixed top-4 right-4 z-50">
+      <div className="fixed top-20 right-4 z-[60]">
         {!showEmulationControls ? (
           <Button
             onClick={() => setShowEmulationControls(true)}
             variant="outline"
             size="sm"
-            className="bg-background/95 backdrop-blur-sm border-2 border-purple-500/50 text-purple-700 hover:bg-purple-50"
+            className="bg-purple-600 text-white border-purple-600 hover:bg-purple-700 shadow-lg"
           >
             <UserCheck className="h-4 w-4 mr-2" />
             Emulate User
           </Button>
         ) : (
-          <Card className="bg-background/95 backdrop-blur-sm border-2 border-purple-500/50">
+          <Card className="bg-white border-2 border-purple-600 shadow-xl">
             <CardContent className="p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="font-medium text-purple-700">User Emulation</h3>

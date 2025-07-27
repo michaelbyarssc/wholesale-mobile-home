@@ -12,7 +12,7 @@ import { DeliveryDashboard } from "@/components/delivery/DeliveryDashboard";
 import { DriverManagement } from "@/components/delivery/DriverManagement";
 import { ActiveDeliveries } from "@/components/delivery/ActiveDeliveries";
 import { CompletedDeliveries } from "@/components/delivery/CompletedDeliveries";
-import { DeliveryScheduling } from "@/components/delivery/DeliveryScheduling";
+import { NewDeliveryScheduling } from "@/components/delivery/NewDeliveryScheduling";
 import { GPSTracking } from "@/components/delivery/GPSTracking";
 import { DriverPortal } from "@/components/delivery/DriverPortal";
 import { DriverMobileApp } from "@/components/delivery/DriverMobileApp";
@@ -636,7 +636,7 @@ const Delivery = () => {
               </TabsContent>
 
               <TabsContent value="scheduling" className="mt-6">
-                <DeliveryScheduling />
+                <NewDeliveryScheduling />
               </TabsContent>
 
               <TabsContent value="drivers" className="mt-6">

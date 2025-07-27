@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ChevronDown, Search, ArrowRight } from 'lucide-react';
+import { Search, ArrowRight } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -137,7 +137,15 @@ export const FaqHomeSection = () => {
               variant="outline" 
               size="lg"
               className="group"
-              onClick={() => window.location.href = '/faq'}
+              onClick={() => {
+                // Use hash navigation to FAQ section instead of full page reload
+                if (window.location.pathname === '/') {
+                  // For now, just scroll to top or do nothing since FAQ page isn't in routing
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                } else {
+                  window.location.href = '/';
+                }
+              }}
             >
               View All FAQs
               <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />

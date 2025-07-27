@@ -199,7 +199,21 @@ Created: ${new Date(estimate.created_at).toLocaleDateString()}
       emailResults.push({ to: estimate.customer_email, status: 'failed', error: error.message })
     }
 
-    // Send emails to admin users
+    // Get SMS settings
+    const { data: smsSettings } = await supabase
+      .from('admin_settings')
+      .select('setting_key, setting_value')
+      .in('setting_key', ['sms_enabled', 'sms_template', 'fallback_phone'])
+
+    const smsConfig = smsSettings?.reduce((acc, setting) => {
+      acc[setting.setting_key] = setting.setting_value
+      return acc
+    }, {} as Record<string, any>) || {}
+
+    const isSmsEnabled = smsConfig.sms_enabled === true
+    const smsTemplate = smsConfig.sms_template || 'New estimate submitted for {customer_name}. Total: ${total_amount}. Review: {approval_url}'
+
+    // Send emails and SMS to admin users
     if (adminUsers && adminUsers.length > 0) {
       for (const admin of adminUsers) {
         if (admin.email) {
@@ -231,6 +245,43 @@ Created: ${new Date(estimate.created_at).toLocaleDateString()}
           } catch (error) {
             console.error(`Failed to send admin email to ${admin.email}:`, error)
             emailResults.push({ to: admin.email, status: 'failed', error: error.message })
+          }
+        }
+
+        // Send SMS if enabled and admin has SMS preferences
+        if (isSmsEnabled && admin.user_id) {
+          try {
+            // Get admin SMS preferences
+            const { data: smsPrefs } = await supabase
+              .from('notification_preferences')
+              .select('sms_enabled, phone_number')
+              .eq('user_id', admin.user_id)
+              .single()
+
+            if (smsPrefs?.sms_enabled && smsPrefs?.phone_number) {
+              // Format SMS message
+              const smsMessage = smsTemplate
+                .replace('{customer_name}', estimate.customer_name)
+                .replace('{total_amount}', estimate.total_amount.toString())
+                .replace('{approval_url}', approvalUrl)
+
+              // Send SMS
+              const smsResult = await supabase.functions.invoke('send-sms-notification', {
+                body: {
+                  to: smsPrefs.phone_number,
+                  message: smsMessage,
+                  notification_rule_id: null
+                }
+              })
+
+              if (smsResult.error) {
+                console.error(`Failed to send SMS to ${admin.email}:`, smsResult.error)
+              } else {
+                console.log(`SMS sent to ${admin.email} at ${smsPrefs.phone_number}`)
+              }
+            }
+          } catch (error) {
+            console.error(`Error sending SMS to admin ${admin.email}:`, error)
           }
         }
       }

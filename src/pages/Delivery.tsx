@@ -21,9 +21,11 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { LoadingSpinner } from "@/components/layout/LoadingSpinner";
 import { useShoppingCart } from "@/hooks/useShoppingCart";
-import { Truck, Users, Calendar, MapPin, BarChart3, CheckCircle, Search, HelpCircle, Mail, MessageSquare, Navigation, AlertCircle, Loader2 } from "lucide-react";
+import { Truck, Users, Calendar, MapPin, BarChart3, CheckCircle, Search, HelpCircle, Mail, MessageSquare, Navigation, AlertCircle, Loader2, UserCheck, X, Eye } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { validateTrackingToken, extractTokenFromUrl } from "@/utils/trackingUtils";
+import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const Delivery = () => {
   const { user } = useAuthUser();
@@ -41,6 +43,10 @@ const Delivery = () => {
   const [driverPassword, setDriverPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  
+  // Emulation state for super admins
+  const [emulationMode, setEmulationMode] = useState<"none" | "customer" | "admin" | "driver">("none");
+  const [showEmulationControls, setShowEmulationControls] = useState(false);
 
   // Get tracking token from various sources
   const urlTrackingToken = token || trackingToken || searchParams.get('token') || searchParams.get('tracking') || extractTokenFromUrl(window.location.pathname);
@@ -85,13 +91,29 @@ const Delivery = () => {
   });
 
   const isAdmin = userRoles?.some(role => ['admin', 'super_admin'].includes(role.role));
+  const isSuperAdmin = userRoles?.some(role => role.role === 'super_admin');
   const isDriver = !!driverProfile;
 
-  // Determine what view to show based on context
+  // Determine what view to show based on context and emulation
   useEffect(() => {
     if (isLoadingDriver || isLoadingRoles) {
       setCurrentView("loading");
       return;
+    }
+
+    // Handle emulation mode for super admins
+    if (isSuperAdmin && emulationMode !== "none") {
+      switch (emulationMode) {
+        case "customer":
+          setCurrentView("customer_tracking");
+          return;
+        case "admin":
+          setCurrentView("admin_dashboard");
+          return;
+        case "driver":
+          setCurrentView("driver_portal");
+          return;
+      }
     }
 
     // If there's a tracking token in URL, show customer tracking
@@ -125,7 +147,7 @@ const Delivery = () => {
 
     // Default: show customer tracking interface
     setCurrentView("customer_tracking");
-  }, [user, isAdmin, isDriver, isLoadingDriver, isLoadingRoles, urlTrackingToken, mode, searchParams]);
+  }, [user, isAdmin, isDriver, isLoadingDriver, isLoadingRoles, urlTrackingToken, mode, searchParams, isSuperAdmin, emulationMode]);
 
   // Handle driver login
   const handleDriverLogin = async (e: React.FormEvent) => {
@@ -193,10 +215,114 @@ const Delivery = () => {
     }
   };
 
+  // Handle emulation mode changes
+  const handleEmulationChange = (mode: "none" | "customer" | "admin" | "driver") => {
+    setEmulationMode(mode);
+    if (mode === "none") {
+      setShowEmulationControls(false);
+    }
+  };
+
+  // Create mock driver profile for emulation
+  const mockDriverProfile = {
+    id: "mock-driver-id",
+    user_id: user?.id || "mock-user-id",
+    first_name: "Demo",
+    last_name: "Driver",
+    phone: "555-0123",
+    license_number: "DL123456",
+    status: "available"
+  };
+
+  // Emulation Controls Component
+  const EmulationControls = () => {
+    if (!isSuperAdmin) return null;
+
+    return (
+      <div className="fixed top-4 right-4 z-50">
+        {!showEmulationControls ? (
+          <Button
+            onClick={() => setShowEmulationControls(true)}
+            variant="outline"
+            size="sm"
+            className="bg-background/95 backdrop-blur-sm border-2 border-purple-500/50 text-purple-700 hover:bg-purple-50"
+          >
+            <UserCheck className="h-4 w-4 mr-2" />
+            Emulate User
+          </Button>
+        ) : (
+          <Card className="bg-background/95 backdrop-blur-sm border-2 border-purple-500/50">
+            <CardContent className="p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="font-medium text-purple-700">User Emulation</h3>
+                <Button
+                  onClick={() => setShowEmulationControls(false)}
+                  variant="ghost"
+                  size="sm"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+              
+              <Select value={emulationMode} onValueChange={handleEmulationChange}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Select user type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Normal (Super Admin)</SelectItem>
+                  <SelectItem value="customer">Customer View</SelectItem>
+                  <SelectItem value="admin">Admin View</SelectItem>
+                  <SelectItem value="driver">Driver View</SelectItem>
+                </SelectContent>
+              </Select>
+              
+              {emulationMode !== "none" && (
+                <div className="flex items-center gap-2 text-sm text-purple-700">
+                  <Eye className="h-3 w-3" />
+                  Emulating: {emulationMode}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+      </div>
+    );
+  };
+
+  // Emulation Status Banner
+  const EmulationBanner = () => {
+    if (!isSuperAdmin || emulationMode === "none") return null;
+    
+    return (
+      <div className="bg-purple-100 border-b border-purple-200 px-4 py-2">
+        <div className="container mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Badge variant="secondary" className="bg-purple-200 text-purple-800">
+              <Eye className="h-3 w-3 mr-1" />
+              Emulation Mode: {emulationMode.charAt(0).toUpperCase() + emulationMode.slice(1)}
+            </Badge>
+            <span className="text-sm text-purple-700">
+              You are viewing the delivery portal as a {emulationMode} would see it
+            </span>
+          </div>
+          <Button
+            onClick={() => handleEmulationChange("none")}
+            variant="outline"
+            size="sm"
+            className="border-purple-300 text-purple-700 hover:bg-purple-50"
+          >
+            Exit Emulation
+          </Button>
+        </div>
+      </div>
+    );
+  };
+
   // Render loading state
   if (currentView === "loading") {
     return (
       <div className="min-h-screen bg-background">
+        <EmulationBanner />
         <Header user={user} userProfile={null} cartItems={cartItems} isLoading={true} onLogout={() => {}} onToggleCart={() => {}} />
         <main className="flex-1 py-8">
           <div className="container mx-auto px-4">
@@ -204,6 +330,7 @@ const Delivery = () => {
           </div>
         </main>
         <Footer />
+        <EmulationControls />
       </div>
     );
   }
@@ -212,6 +339,7 @@ const Delivery = () => {
   if (currentView === "customer_tracking") {
     return (
       <div className="min-h-screen bg-background">
+        <EmulationBanner />
         <Header user={user} userProfile={null} cartItems={cartItems} isLoading={false} onLogout={() => {}} onToggleCart={() => {}} />
         <main className="flex-1 py-8">
           <div className="container mx-auto px-4 max-w-4xl">
@@ -343,6 +471,7 @@ const Delivery = () => {
           </div>
         </main>
         <Footer />
+        <EmulationControls />
       </div>
     );
   }
@@ -351,6 +480,7 @@ const Delivery = () => {
   if (currentView === "driver_login") {
     return (
       <div className="min-h-screen bg-gradient-to-br from-primary/20 to-background flex items-center justify-center p-4">
+        <EmulationBanner />
         <div className="w-full max-w-md">
           <Card className="shadow-lg">
             <CardHeader className="text-center pb-6">
@@ -431,19 +561,30 @@ const Delivery = () => {
             </CardContent>
           </Card>
         </div>
+        <EmulationControls />
       </div>
     );
   }
 
   // Render driver portal (mobile app for drivers)
-  if (currentView === "driver_portal" && isDriver && !isAdmin) {
-    return <DriverMobileApp driverProfile={driverProfile} />;
+  if (currentView === "driver_portal") {
+    // Use real driver profile if user is a driver, otherwise use mock for emulation
+    const activeDriverProfile = isDriver ? driverProfile : mockDriverProfile;
+    
+    return (
+      <div className="min-h-screen bg-background">
+        <EmulationBanner />
+        <DriverMobileApp driverProfile={activeDriverProfile} />
+        <EmulationControls />
+      </div>
+    );
   }
 
   // Render admin dashboard (existing delivery management)
-  if (currentView === "admin_dashboard" && isAdmin) {
+  if (currentView === "admin_dashboard") {
     return (
       <div className="min-h-screen bg-background">
+        <EmulationBanner />
         <Header user={user} userProfile={null} cartItems={cartItems} isLoading={false} onLogout={() => {}} onToggleCart={() => {}} />
         <main className="flex-1 py-8">
           <div className="container mx-auto px-4">
@@ -509,6 +650,7 @@ const Delivery = () => {
           </div>
         </main>
         <Footer />
+        <EmulationControls />
       </div>
     );
   }

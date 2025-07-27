@@ -13,6 +13,17 @@ if (typeof window !== 'undefined') {
   // Measure Core Web Vitals
   measureCoreWebVitals();
   
+  // Add global error handler for unhandled promise rejections
+  window.addEventListener('unhandledrejection', (event) => {
+    console.error('Unhandled promise rejection:', event.reason);
+    event.preventDefault();
+  });
+  
+  // Add global error handler for script errors
+  window.addEventListener('error', (event) => {
+    console.error('Global error:', event.error);
+  });
+  
   // Performance optimizations
   if ('requestIdleCallback' in window) {
     requestIdleCallback(() => {

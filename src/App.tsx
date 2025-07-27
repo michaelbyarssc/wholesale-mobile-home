@@ -10,27 +10,52 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { LoadingSpinner } from "@/components/loading/LoadingSpinner";
 import ProtectedRoute from "./components/ProtectedRoute";
 
-// Lazy load components for better performance
-const Index = React.lazy(() => import("./pages/Index"));
-const Auth = React.lazy(() => import("./pages/Auth"));
-const Admin = React.lazy(() => import("./pages/Admin"));
-const EstimateForm = React.lazy(() => import("./pages/EstimateForm"));
-const MyEstimates = React.lazy(() => import("./pages/MyEstimates"));
-const ApproveEstimate = React.lazy(() => import("./pages/ApproveEstimate"));
-const NotFound = React.lazy(() => import("./pages/NotFound"));
-const TransactionHistory = React.lazy(() => import("./pages/TransactionHistory"));
+// Lazy load components with proper error handling
+const lazyWithErrorBoundary = (importFunc: () => Promise<any>, componentName: string) => {
+  return React.lazy(() => 
+    importFunc().catch((error) => {
+      console.error(`Failed to load ${componentName}:`, error);
+      return {
+        default: () => (
+          <div className="min-h-screen flex items-center justify-center">
+            <div className="text-center">
+              <h2 className="text-xl font-semibold mb-2">Failed to load {componentName}</h2>
+              <button 
+                onClick={() => window.location.reload()} 
+                className="bg-blue-500 text-white px-4 py-2 rounded"
+              >
+                Refresh Page
+              </button>
+            </div>
+          </div>
+        )
+      };
+    })
+  );
+};
+
+const Index = lazyWithErrorBoundary(() => import("./pages/Index"), "Home Page");
+const Auth = lazyWithErrorBoundary(() => import("./pages/Auth"), "Authentication");
+const Admin = lazyWithErrorBoundary(() => import("./pages/Admin"), "Admin Panel");
+const EstimateForm = lazyWithErrorBoundary(() => import("./pages/EstimateForm"), "Estimate Form");
+const MyEstimates = lazyWithErrorBoundary(() => import("./pages/MyEstimates"), "My Estimates");
+const ApproveEstimate = lazyWithErrorBoundary(() => import("./pages/ApproveEstimate"), "Approve Estimate");
+const NotFound = lazyWithErrorBoundary(() => import("./pages/NotFound"), "404 Page");
+const TransactionHistory = lazyWithErrorBoundary(() => import("./pages/TransactionHistory"), "Transaction History");
 const MobileHomeDetail = React.lazy(() => 
-  import("./pages/MobileHomeDetail").then(module => ({ 
-    default: module.MobileHomeDetail 
-  }))
+  import("./pages/MobileHomeDetail")
+    .then(module => ({ default: module.MobileHomeDetail }))
+    .catch(() => ({ 
+      default: () => <div className="p-4">Error loading home details. Please refresh.</div> 
+    }))
 );
-const FAQ = React.lazy(() => import("./pages/FAQ"));
-const Blog = React.lazy(() => import("./pages/Blog"));
-const Support = React.lazy(() => import("./pages/Support"));
-const Appointments = React.lazy(() => import("./pages/Appointments"));
-const CalendarAuthCallback = React.lazy(() => import("./pages/CalendarAuthCallback"));
-const Delivery = React.lazy(() => import("./pages/Delivery"));
-const TransactionDetails = React.lazy(() => import("./pages/TransactionDetails"));
+const FAQ = lazyWithErrorBoundary(() => import("./pages/FAQ"), "FAQ");
+const Blog = lazyWithErrorBoundary(() => import("./pages/Blog"), "Blog");
+const Support = lazyWithErrorBoundary(() => import("./pages/Support"), "Support");
+const Appointments = lazyWithErrorBoundary(() => import("./pages/Appointments"), "Appointments");
+const CalendarAuthCallback = lazyWithErrorBoundary(() => import("./pages/CalendarAuthCallback"), "Calendar Auth");
+const Delivery = lazyWithErrorBoundary(() => import("./pages/Delivery"), "Delivery");
+const TransactionDetails = lazyWithErrorBoundary(() => import("./pages/TransactionDetails"), "Transaction Details");
 
 const queryClient = new QueryClient({
   defaultOptions: {

@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
 import { usePageTracking } from '@/hooks/usePageTracking';
 import { usePerformanceMetrics } from '@/hooks/usePerformanceMetrics';
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -30,10 +30,6 @@ const Support = React.lazy(() => import("./pages/Support"));
 const Appointments = React.lazy(() => import("./pages/Appointments"));
 const CalendarAuthCallback = React.lazy(() => import("./pages/CalendarAuthCallback"));
 const Delivery = React.lazy(() => import("./pages/Delivery"));
-const DriverPortal = React.lazy(() => import("./pages/DriverPortal"));
-const DriverLogin = React.lazy(() => import("./pages/DriverLogin"));
-const CustomerDeliveryPortal = React.lazy(() => import("./pages/CustomerDeliveryPortal"));
-const TrackDelivery = React.lazy(() => import("./pages/TrackDelivery"));
 const TransactionDetails = React.lazy(() => import("./pages/TransactionDetails"));
 
 const queryClient = new QueryClient({
@@ -44,6 +40,17 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+// Redirect components that preserve URL parameters
+const DeliveryPortalRedirect = () => {
+  const { token } = useParams();
+  return <Navigate to={token ? `/delivery/${token}` : "/delivery"} replace />;
+};
+
+const TrackingRedirect = () => {
+  const { trackingToken } = useParams();
+  return <Navigate to={trackingToken ? `/delivery/${trackingToken}` : "/delivery"} replace />;
+};
 
 function AppRoutes() {
   usePageTracking();
@@ -83,13 +90,16 @@ function AppRoutes() {
         <Route path="/appointments" element={<Appointments />} />
         <Route path="/calendar-auth-callback" element={<CalendarAuthCallback />} />
         <Route path="/delivery" element={<Delivery />} />
-        <Route path="/track-delivery" element={<TrackDelivery />} />
-        <Route path="/delivery-portal/:token" element={<CustomerDeliveryPortal />} />
-        <Route path="/delivery-portal" element={<CustomerDeliveryPortal />} />
-        <Route path="/track/:trackingToken" element={<CustomerDeliveryPortal />} />
-        <Route path="/track" element={<CustomerDeliveryPortal />} />
-        <Route path="/driver-login" element={<DriverLogin />} />
-        <Route path="/driver-portal" element={<DriverPortal />} />
+        <Route path="/delivery/:token" element={<Delivery />} />
+        <Route path="/delivery/:trackingToken" element={<Delivery />} />
+        {/* Redirect old URLs to unified delivery page */}
+        <Route path="/track-delivery" element={<Navigate to="/delivery" replace />} />
+        <Route path="/delivery-portal/:token" element={<DeliveryPortalRedirect />} />
+        <Route path="/delivery-portal" element={<Navigate to="/delivery" replace />} />
+        <Route path="/track/:trackingToken" element={<TrackingRedirect />} />
+        <Route path="/track" element={<Navigate to="/delivery" replace />} />
+        <Route path="/driver-login" element={<Navigate to="/delivery?mode=driver" replace />} />
+        <Route path="/driver-portal" element={<Navigate to="/delivery?mode=driver" replace />} />
         <Route path="/admin" element={
           <ProtectedRoute adminOnly>
             <Admin />

@@ -43,7 +43,7 @@ export const Header = ({
   const { data: businessInfo } = useBusinessInfo();
   const { canInstall, installApp } = usePWA();
 
-  const displayName = userProfile?.first_name || 'User';
+  const displayName = userProfile?.first_name || 'Michael';
 
   const handleChangePassword = () => {
     setIsPasswordDialogOpen(true);
@@ -144,7 +144,6 @@ export const Header = ({
                       <Calendar className="h-4 w-4" />
                       <span>Book A Call</span>
                     </Link>
-
 
                     {/* PWA Install Button */}
                     {canInstall && (

@@ -3834,8 +3834,10 @@ export type Database = {
           recipient_email: string | null
           recipient_phone: string | null
           recipient_user_id: string | null
+          retry_at: string | null
           retry_count: number | null
           sent_at: string | null
+          sms_status: string | null
           status: string
         }
         Insert: {
@@ -3850,8 +3852,10 @@ export type Database = {
           recipient_email?: string | null
           recipient_phone?: string | null
           recipient_user_id?: string | null
+          retry_at?: string | null
           retry_count?: number | null
           sent_at?: string | null
+          sms_status?: string | null
           status?: string
         }
         Update: {
@@ -3866,8 +3870,10 @@ export type Database = {
           recipient_email?: string | null
           recipient_phone?: string | null
           recipient_user_id?: string | null
+          retry_at?: string | null
           retry_count?: number | null
           sent_at?: string | null
+          sms_status?: string | null
           status?: string
         }
         Relationships: [
@@ -3903,8 +3909,10 @@ export type Database = {
           id: string
           inventory_updates: boolean
           notification_frequency: string
+          phone_number: string | null
           price_updates: boolean
           push_notifications: boolean
+          sms_notifications: boolean | null
           system_notifications: boolean
           updated_at: string
           user_id: string
@@ -3917,8 +3925,10 @@ export type Database = {
           id?: string
           inventory_updates?: boolean
           notification_frequency?: string
+          phone_number?: string | null
           price_updates?: boolean
           push_notifications?: boolean
+          sms_notifications?: boolean | null
           system_notifications?: boolean
           updated_at?: string
           user_id: string
@@ -3931,8 +3941,10 @@ export type Database = {
           id?: string
           inventory_updates?: boolean
           notification_frequency?: string
+          phone_number?: string | null
           price_updates?: boolean
           push_notifications?: boolean
+          sms_notifications?: boolean | null
           system_notifications?: boolean
           updated_at?: string
           user_id?: string
@@ -5498,6 +5510,10 @@ export type Database = {
       }
       extract_base_transaction_number: {
         Args: { formatted_number: string }
+        Returns: string
+      }
+      format_phone_number: {
+        Args: { phone_input: string }
         Returns: string
       }
       generate_appointment_confirmation_token: {

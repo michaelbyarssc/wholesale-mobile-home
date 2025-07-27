@@ -23,6 +23,7 @@ import { OfflineIndicator } from '@/components/pwa/OfflineIndicator';
 
 import { TestimonialForm } from '@/components/reviews/TestimonialForm';
 import { Button } from '@/components/ui/button';
+import { FaqHomeSection } from '@/components/FaqHomeSection';
 import { SEO } from '@/components/SEO';
 import { SocialProofBanner } from '@/components/SocialProofBanner';
 
@@ -366,6 +367,8 @@ const Index = () => {
           </div>
         </div>
       </section>
+
+      <FaqHomeSection />
 
       <NewsletterCTASection />
 

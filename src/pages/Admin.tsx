@@ -14,6 +14,7 @@ import { CombinedSettingsTab } from '@/components/admin/CombinedSettingsTab';
 import { UserManagementTab } from '@/components/admin/UserManagementTab';
 import { SocialProofManager } from '@/components/admin/SocialProofManager';
 import { NotificationCenter } from '@/components/admin/NotificationCenter';
+import { FAQManagementTab } from '@/components/admin/FAQManagementTab';
 
 import { Menu, X } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -185,6 +186,13 @@ const Admin = () => {
              ⭐ Social Proof
            </Button>
            <Button
+             variant={activeTab === 'faq' ? 'default' : 'ghost'}
+             className={`${mobile ? 'justify-start w-full h-11 text-base font-medium' : ''} text-xs sm:text-sm`}
+             onClick={() => handleTabChange('faq')}
+           >
+             ❓ FAQ
+           </Button>
+           <Button
              variant={activeTab === 'settings' ? 'default' : 'ghost'}
              className={`${mobile ? 'justify-start w-full h-11 text-base font-medium' : ''} text-xs sm:text-sm`}
              onClick={() => handleTabChange('settings')}
@@ -280,7 +288,7 @@ const Admin = () => {
           {/* Desktop Tab Navigation */}
           {!isMobile && isSuperAdmin && (
             <div className="border rounded-lg p-1 bg-muted/30 overflow-x-auto">
-              <TabsList className="grid w-full grid-cols-7 h-12 bg-transparent min-w-[600px]">
+              <TabsList className="grid w-full grid-cols-8 h-12 bg-transparent min-w-[700px]">
                 <TabsTrigger 
                   value="mobile-homes" 
                   className="text-xs sm:text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm px-2"
@@ -316,6 +324,12 @@ const Admin = () => {
                   className="text-xs sm:text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm px-1"
                 >
                   Social
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="faq" 
+                  className="text-xs sm:text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm px-2"
+                >
+                  FAQ
                 </TabsTrigger>
                 <TabsTrigger 
                   value="settings" 
@@ -389,6 +403,10 @@ const Admin = () => {
 
                 <TabsContent value="social-proof" className="p-3 sm:p-6 m-0">
                   <SocialProofManager />
+                </TabsContent>
+
+                <TabsContent value="faq" className="p-3 sm:p-6 m-0">
+                  <FAQManagementTab />
                 </TabsContent>
 
                 <TabsContent value="reviews" className="p-3 sm:p-6 m-0">

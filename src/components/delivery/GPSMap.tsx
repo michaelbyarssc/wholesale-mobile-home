@@ -366,32 +366,27 @@ export const GPSMap = ({ deliveryId, height = "400px", showControls = true }: GP
     updateMapData();
   }, [deliveries, mapboxToken]);
 
-  // Fetch Mapbox token from database, localStorage, or environment
+  // Fetch Mapbox token from Supabase secrets, localStorage, or environment
   useEffect(() => {
     const fetchMapboxToken = async () => {
-      // First try to get from database
-      try {
-        const { data: settings, error } = await supabase
-          .from('app_settings')
-          .select('value')
-          .eq('key', 'mapbox_public_token')
-          .single();
-          
-        if (settings?.value && !error) {
-          console.log('GPSMap: Using token from database');
-          setMapboxToken(settings.value);
-          return;
-        }
-      } catch (error) {
-        console.log('GPSMap: Could not fetch token from database:', error);
-      }
-
-      // Then try localStorage
+      // First try localStorage
       const storedToken = localStorage.getItem('mapbox_token');
       if (storedToken) {
         console.log('GPSMap: Using stored token from localStorage');
         setMapboxToken(storedToken);
         return;
+      }
+
+      // Then try to get from Supabase secrets via edge function
+      try {
+        const { data: secretData, error } = await supabase.functions.invoke('get-mapbox-token');
+        if (secretData?.token && !error) {
+          console.log('GPSMap: Using token from Supabase secrets');
+          setMapboxToken(secretData.token);
+          return;
+        }
+      } catch (error) {
+        console.log('GPSMap: Could not fetch token from Supabase secrets:', error);
       }
 
       // Finally try environment variable

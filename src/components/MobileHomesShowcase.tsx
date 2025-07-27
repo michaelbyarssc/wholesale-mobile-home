@@ -25,7 +25,7 @@ import { MobileHomeCardSkeleton } from './loading/MobileHomeCardSkeleton';
 import { FiltersSkeleton } from './loading/FiltersSkeleton';
 import { TabsSkeleton } from './loading/TabsSkeleton';
 import { LoadingSpinner } from './loading/LoadingSpinner';
-import { useCustomerPricing } from '@/hooks/useCustomerPricing';
+import { useMemoizedPricing } from '@/hooks/useMemoizedPricing';
 import { useHomeComparison } from '@/hooks/useHomeComparison';
 import { useWishlist } from '@/hooks/useWishlist';
 import { CartItem, DeliveryAddress } from '@/hooks/useShoppingCart';
@@ -77,7 +77,6 @@ export const MobileHomesShowcase = ({
   const [activeTab, setActiveTab] = useState('');
   const [selectedHomeForServices, setSelectedHomeForServices] = useState<MobileHome | null>(null);
   const [isFiltersCollapsed, setIsFiltersCollapsed] = useState(true);
-  const { calculateMobileHomePrice, loading: pricingLoading } = useCustomerPricing(user);
   const { trackMobileHomeView, trackEvent } = useAnalytics();
   
   // Initialize home comparison functionality
@@ -113,7 +112,6 @@ export const MobileHomesShowcase = ({
   const { data: mobileHomes = [], isLoading } = useQuery({
     queryKey: ['public-mobile-homes'],
     queryFn: async () => {
-      console.log('Fetching mobile homes...');
       
       const { data, error } = await supabase
         .from('mobile_homes')
@@ -131,13 +129,15 @@ export const MobileHomesShowcase = ({
       console.log('Active homes data:', data);
       
       return data as MobileHome[];
-    }
+    },
+    staleTime: 3 * 60 * 1000, // Cache for 3 minutes
+    gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
+    refetchOnWindowFocus: false
   });
 
   const { data: homeImages = [], isLoading: imagesLoading } = useQuery({
     queryKey: ['mobile-home-images'],
     queryFn: async () => {
-      console.log('Fetching mobile home images...');
       const { data, error } = await supabase
         .from('mobile_home_images')
         .select('*')
@@ -149,10 +149,15 @@ export const MobileHomesShowcase = ({
         console.error('Error fetching mobile home images:', error);
         throw error;
       }
-      console.log('Mobile home images fetched:', data?.length || 0);
       return data as MobileHomeImage[];
-    }
+    },
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    gcTime: 15 * 60 * 1000, // Keep in cache for 15 minutes
+    refetchOnWindowFocus: false
   });
+
+  // Initialize memoized pricing for better performance
+  const { getHomePrice, pricingLoading, calculateMobileHomePrice } = useMemoizedPricing(user, mobileHomes);
 
   // Initialize comprehensive filters
   const [filters, setFilters] = useState<FilterState>(() => {
@@ -379,16 +384,16 @@ export const MobileHomesShowcase = ({
               )}
               <div>
                 <p className="text-sm text-green-600 font-medium">Your Price</p>
-                {!pricingLoading ? (
-                  <>
-                    <span className="text-2xl font-bold text-green-600">
-                      {formatPrice(calculateMobileHomePrice(home))}
-                    </span>
-                    {home.retail_price && (
-                      <p className="text-sm text-green-600 font-medium mt-1">
-                        You Save: {formatPrice(home.retail_price - calculateMobileHomePrice(home))}
-                      </p>
-                    )}
+                 {!pricingLoading ? (
+                   <>
+                     <span className="text-2xl font-bold text-green-600">
+                       {formatPrice(getHomePrice(home.id))}
+                     </span>
+                     {home.retail_price && (
+                       <p className="text-sm text-green-600 font-medium mt-1">
+                         You Save: {formatPrice(home.retail_price - getHomePrice(home.id))}
+                       </p>
+                     )}
                   </>
                 ) : (
                   <div className="flex items-center">
@@ -530,7 +535,7 @@ export const MobileHomesShowcase = ({
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString()
               }))}
-              userPrice={user && !pricingLoading ? calculateMobileHomePrice(home) : undefined}
+              userPrice={user && !pricingLoading ? getHomePrice(home.id) : undefined}
               onAddToCart={user ? handleAddToCart : undefined}
               onToggleWishlist={toggleWishlist}
               isInWishlist={isInWishlist(home.id)}

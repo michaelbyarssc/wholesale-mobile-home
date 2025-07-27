@@ -13,12 +13,11 @@ export const useCustomerPricing = (user: User | null) => {
 
   console.log('useCustomerPricing: Hook called with user:', user?.id);
 
-  // Fetch customer markup with tiered pricing info
+  // Fetch customer markup with tiered pricing info (cached for 5 minutes)
   const { data: customerMarkup, isLoading: markupLoading } = useQuery({
     queryKey: ['customer-markup', user?.id],
     queryFn: async () => {
       if (!user) {
-        console.log('useCustomerPricing: No user, returning default markup');
         return { 
           markup_percentage: 30, 
           tier_level: 'user', 
@@ -26,7 +25,6 @@ export const useCustomerPricing = (user: User | null) => {
         };
       }
 
-      console.log('useCustomerPricing: Fetching tiered markup for user:', user.id);
       const { data, error } = await supabase
         .from('customer_markups')
         .select('markup_percentage, tier_level, super_admin_markup_percentage')
@@ -42,14 +40,16 @@ export const useCustomerPricing = (user: User | null) => {
         };
       }
 
-      console.log('useCustomerPricing: Tiered markup fetched:', data);
       return data || { 
         markup_percentage: 30, 
         tier_level: 'user', 
         super_admin_markup_percentage: 30 
       };
     },
-    enabled: true
+    enabled: true,
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
+    refetchOnWindowFocus: false
   });
 
   useEffect(() => {

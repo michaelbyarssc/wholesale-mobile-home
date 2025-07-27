@@ -7,7 +7,7 @@ import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-
 import { usePageTracking } from '@/hooks/usePageTracking';
 import { usePerformanceMetrics } from '@/hooks/usePerformanceMetrics';
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { LoadingSpinner } from "@/components/loading/LoadingSpinner";
+import { LoadingSpinner } from "@/components/layout/LoadingSpinner";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 // Lazy load components with proper error handling

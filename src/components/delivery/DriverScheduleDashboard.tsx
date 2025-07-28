@@ -54,7 +54,7 @@ export const DriverScheduleDashboard = () => {
 
       if (driversError) throw driversError;
 
-      // Get all deliveries for the week to show unassigned loads
+      // Get all active deliveries (not filtering by dates since many have NULL scheduled dates)
       const { data: allDeliveries, error: deliveriesError } = await supabase
         .from('deliveries')
         .select(`
@@ -66,9 +66,8 @@ export const DriverScheduleDashboard = () => {
             drivers(first_name, last_name)
           )
         `)
-        .or(`scheduled_pickup_date.gte.${weekStart.toISOString()},scheduled_delivery_date.gte.${weekStart.toISOString()}`)
-        .or(`scheduled_pickup_date.lte.${weekEnd.toISOString()},scheduled_delivery_date.lte.${weekEnd.toISOString()}`)
-        .order('scheduled_pickup_date');
+        .in('status', ['scheduled', 'factory_pickup_scheduled', 'factory_pickup_in_progress', 'in_transit', 'delivery_in_progress'])
+        .order('created_at', { ascending: false });
 
       if (deliveriesError) throw deliveriesError;
 

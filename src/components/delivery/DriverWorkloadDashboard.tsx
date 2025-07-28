@@ -52,7 +52,7 @@ export const DriverWorkloadDashboard: React.FC<Props> = ({ drivers, deliveries }
   const driverMetrics = drivers.map(driver => {
     const assignments = driver.delivery_assignments || [];
     const activeAssignments = assignments.filter(a => 
-      !['delivered', 'completed', 'cancelled'].includes(a.deliveries?.status || '')
+      ['scheduled', 'factory_pickup_scheduled', 'factory_pickup_in_progress', 'in_transit', 'delivery_in_progress'].includes(a.deliveries?.status || '')
     );
     
     const totalRevenue = assignments.reduce((sum, assignment) => 

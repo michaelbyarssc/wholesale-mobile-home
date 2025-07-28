@@ -49,22 +49,16 @@ export const LoadTimelineView: React.FC<Props> = ({ deliveries, drivers, current
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [driverFilter, setDriverFilter] = useState<string>('all');
 
-  // Filter deliveries to show only future scheduled deliveries for assigned drivers
+  // Filter deliveries to show all active deliveries with driver assignments
   const filteredDeliveries = deliveries.filter(delivery => {
     // Only show deliveries that have driver assignments
     if (!delivery.delivery_assignments || delivery.delivery_assignments.length === 0) {
       return false;
     }
 
-    // Only show deliveries scheduled for the future
-    const now = new Date();
-    const pickupDate = delivery.scheduled_pickup_date ? parseISO(delivery.scheduled_pickup_date) : null;
-    const deliveryDate = delivery.scheduled_delivery_date ? parseISO(delivery.scheduled_delivery_date) : null;
-    
-    const hasFuturePickup = pickupDate && isAfter(pickupDate, now);
-    const hasFutureDelivery = deliveryDate && isAfter(deliveryDate, now);
-    
-    if (!hasFuturePickup && !hasFutureDelivery) {
+    // Show all active deliveries regardless of scheduled dates
+    const activeStatuses = ['scheduled', 'factory_pickup_scheduled', 'factory_pickup_in_progress', 'in_transit', 'delivery_in_progress'];
+    if (!activeStatuses.includes(delivery.status)) {
       return false;
     }
 
@@ -207,7 +201,7 @@ export const LoadTimelineView: React.FC<Props> = ({ deliveries, drivers, current
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <BarChart3 className="h-5 w-5" />
-            Future Scheduled Deliveries ({sortedDeliveries.length} loads)
+            Active Deliveries ({sortedDeliveries.length} loads)
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -245,20 +239,34 @@ export const LoadTimelineView: React.FC<Props> = ({ deliveries, drivers, current
 
                     {/* Timeline Dates */}
                     <div className="space-y-2">
-                      {delivery.scheduled_pickup_date && (
+                      {delivery.scheduled_pickup_date ? (
                         <div className="flex items-center gap-2 text-sm">
                           <Clock className="h-3 w-3 text-blue-500" />
                           <span className="font-medium">Pickup:</span>
                           <span>{format(parseISO(delivery.scheduled_pickup_date), 'MMM d, h:mm a')}</span>
                         </div>
+                      ) : (
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Clock className="h-3 w-3" />
+                          <span className="font-medium">Pickup:</span>
+                          <span className="italic">Not scheduled</span>
+                        </div>
                       )}
-                      {delivery.scheduled_delivery_date && (
+                      
+                      {delivery.scheduled_delivery_date ? (
                         <div className="flex items-center gap-2 text-sm">
                           <Truck className="h-3 w-3 text-green-500" />
                           <span className="font-medium">Delivery:</span>
                           <span>{format(parseISO(delivery.scheduled_delivery_date), 'MMM d, h:mm a')}</span>
                         </div>
+                      ) : (
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Truck className="h-3 w-3" />
+                          <span className="font-medium">Delivery:</span>
+                          <span className="italic">Not scheduled</span>
+                        </div>
                       )}
+                      
                       {transitDays !== null && (
                         <div className="text-xs text-muted-foreground">
                           Transit time: {transitDays} {transitDays === 1 ? 'day' : 'days'}
@@ -305,7 +313,7 @@ export const LoadTimelineView: React.FC<Props> = ({ deliveries, drivers, current
             {sortedDeliveries.length === 0 && (
               <div className="text-center py-8 text-muted-foreground">
                 <BarChart3 className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>No future deliveries found for assigned drivers matching your filters.</p>
+                <p>No active deliveries found for assigned drivers matching your filters.</p>
               </div>
             )}
           </div>

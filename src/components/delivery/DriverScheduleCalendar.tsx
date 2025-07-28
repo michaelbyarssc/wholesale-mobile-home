@@ -87,6 +87,21 @@ export const DriverScheduleCalendar: React.FC<Props> = ({ drivers, deliveries, c
     });
   };
 
+  // Get all unscheduled deliveries for this driver
+  const getUnscheduledDeliveriesForDriver = (driver: Driver) => {
+    const driverDeliveries = driver.delivery_assignments?.map(assignment => assignment.deliveries) || [];
+    
+    return driverDeliveries.filter(delivery => {
+      if (!delivery) return false;
+      
+      // Show if it has no scheduled dates and is in an active status
+      const hasNoScheduledDates = !delivery.scheduled_pickup_date && !delivery.scheduled_delivery_date;
+      const isActive = ['scheduled', 'factory_pickup_scheduled', 'factory_pickup_in_progress', 'in_transit', 'delivery_in_progress'].includes(delivery.status);
+      
+      return hasNoScheduledDates && isActive;
+    });
+  };
+
   const getStatusColor = (status: string) => {
     const colors = {
       available: 'bg-green-100 text-green-800 border-green-200',
@@ -200,42 +215,88 @@ export const DriverScheduleCalendar: React.FC<Props> = ({ drivers, deliveries, c
             ))}
 
             {/* Driver Rows */}
-            {drivers.map((driver) => (
-              <React.Fragment key={driver.id}>
-                {/* Driver Info Column */}
-                <div className="p-2 border-r">
-                  <div className="space-y-1">
-                    <div className="font-medium text-sm">
-                      {driver.first_name} {driver.last_name}
+            {drivers.map((driver) => {
+              const unscheduledDeliveries = getUnscheduledDeliveriesForDriver(driver);
+              
+              return (
+                <React.Fragment key={driver.id}>
+                  {/* Driver Info Column */}
+                  <div className="p-2 border-r">
+                    <div className="space-y-1">
+                      <div className="font-medium text-sm">
+                        {driver.first_name} {driver.last_name}
+                      </div>
+                      <Badge 
+                        variant="outline" 
+                        className={cn("text-xs", getStatusColor(driver.status))}
+                      >
+                        {driver.status.replace('_', ' ')}
+                      </Badge>
+                      {unscheduledDeliveries.length > 0 && (
+                        <Badge variant="outline" className="text-xs bg-yellow-50 text-yellow-700 border-yellow-200">
+                          {unscheduledDeliveries.length} unscheduled
+                        </Badge>
+                      )}
                     </div>
-                    <Badge 
-                      variant="outline" 
-                      className={cn("text-xs", getStatusColor(driver.status))}
-                    >
-                      {driver.status.replace('_', ' ')}
-                    </Badge>
                   </div>
-                </div>
 
-                {/* Schedule Columns for Each Day */}
-                {weekDays.map((day) => {
-                  const dayDeliveries = getDeliveriesForDriverAndDay(driver, day);
+                  {/* Schedule Columns for Each Day */}
+                  {weekDays.map((day) => {
+                    const dayDeliveries = getDeliveriesForDriverAndDay(driver, day);
+                    
+                    return (
+                      <div key={`${driver.id}-${day.toISOString()}`} className="p-1 border-r border-b min-h-[80px]">
+                        <div className="space-y-1">
+                          {dayDeliveries.map((delivery) => (
+                            <Button
+                              key={delivery.id}
+                              variant="ghost"
+                              size="sm"
+                              className={cn(
+                                "w-full text-xs p-1 h-auto justify-start",
+                                getDeliveryStatusColor(delivery.status)
+                              )}
+                              onClick={() => handleDeliveryClick(delivery)}
+                            >
+                              <div className="text-left truncate">
+                                <div className="font-medium">{delivery.delivery_number}</div>
+                                <div className="text-xs opacity-75">{delivery.customer_name}</div>
+                              </div>
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </React.Fragment>
+              );
+            })}
+          </div>
+
+          {/* Show unscheduled deliveries section */}
+          {drivers.some(driver => getUnscheduledDeliveriesForDriver(driver).length > 0) && (
+            <div className="mt-6 pt-6 border-t">
+              <h3 className="font-semibold mb-4 text-sm">Unscheduled Deliveries</h3>
+              <div className="space-y-3">
+                {drivers.map((driver) => {
+                  const unscheduledDeliveries = getUnscheduledDeliveriesForDriver(driver);
+                  if (unscheduledDeliveries.length === 0) return null;
                   
                   return (
-                    <div key={`${driver.id}-${day.toISOString()}`} className="p-1 border-r border-b min-h-[80px]">
-                      <div className="space-y-1">
-                        {dayDeliveries.map((delivery) => (
+                    <div key={`unscheduled-${driver.id}`} className="border rounded-lg p-3">
+                      <div className="font-medium text-sm mb-2">
+                        {driver.first_name} {driver.last_name}
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {unscheduledDeliveries.map((delivery) => (
                           <Button
                             key={delivery.id}
-                            variant="ghost"
+                            variant="outline"
                             size="sm"
-                            className={cn(
-                              "w-full text-xs p-1 h-auto justify-start",
-                              getDeliveryStatusColor(delivery.status)
-                            )}
+                            className="text-xs h-auto py-1"
                             onClick={() => handleDeliveryClick(delivery)}
                           >
-                            <div className="text-left truncate">
+                            <div className="text-left">
                               <div className="font-medium">{delivery.delivery_number}</div>
                               <div className="text-xs opacity-75">{delivery.customer_name}</div>
                             </div>
@@ -245,9 +306,9 @@ export const DriverScheduleCalendar: React.FC<Props> = ({ drivers, deliveries, c
                     </div>
                   );
                 })}
-              </React.Fragment>
-            ))}
-          </div>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 

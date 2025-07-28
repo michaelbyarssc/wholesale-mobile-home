@@ -59,7 +59,19 @@ export const DriverScheduleDashboard = () => {
         .from('deliveries')
         .select(`
           *,
-          mobile_homes(manufacturer, model),
+          mobile_homes(
+            manufacturer, 
+            model,
+            mobile_home_factories(
+              factories(
+                name,
+                street_address,
+                city,
+                state,
+                zip_code
+              )
+            )
+          ),
           delivery_assignments(
             id,
             driver_id,

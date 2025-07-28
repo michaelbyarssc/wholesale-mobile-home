@@ -30,6 +30,15 @@ interface Delivery {
   mobile_homes: {
     manufacturer: string;
     model: string;
+    mobile_home_factories: Array<{
+      factories: {
+        name: string;
+        street_address: string;
+        city: string;
+        state: string;
+        zip_code: string;
+      };
+    }>;
   } | null;
   delivery_assignments: Array<{
     id: string;
@@ -100,6 +109,21 @@ export const LoadTimelineView: React.FC<Props> = ({ deliveries, drivers, current
       console.warn('Failed to parse date:', dateString, error);
       return null;
     }
+  };
+
+  // Helper function to get factory address from delivery data
+  const getFactoryAddress = (delivery: Delivery): string => {
+    const factory = delivery.mobile_homes?.mobile_home_factories?.[0]?.factories;
+    if (!factory) return 'Factory Location TBD';
+    
+    const parts = [
+      factory.street_address,
+      factory.city,
+      factory.state,
+      factory.zip_code
+    ].filter(Boolean);
+    
+    return parts.join(', ') || 'Factory Location TBD';
   };
 
   const getStatusColor = (status: string) => {
@@ -289,7 +313,7 @@ export const LoadTimelineView: React.FC<Props> = ({ deliveries, drivers, current
                         <MapPin className="h-3 w-3 text-blue-500 mt-0.5" />
                         <div className="text-sm">
                           <p className="font-medium">Pickup Address:</p>
-                          <p className="text-muted-foreground text-xs">{delivery.pickup_address || 'Factory Location TBD'}</p>
+                          <p className="text-muted-foreground text-xs">{getFactoryAddress(delivery)}</p>
                         </div>
                       </div>
                       <div className="flex items-start gap-2">

@@ -319,7 +319,16 @@ export const DeliveryManagement = () => {
           ),
           mobile_homes (
             manufacturer,
-            model
+            model,
+            mobile_home_factories (
+              factories (
+                name,
+                street_address,
+                city,
+                state,
+                zip_code
+              )
+            )
           ),
           delivery_assignments (
             id,

@@ -29,6 +29,15 @@ interface Delivery {
   mobile_homes: {
     manufacturer: string;
     model: string;
+    mobile_home_factories?: Array<{
+      factories: {
+        name: string;
+        street_address: string;
+        city: string;
+        state: string;
+        zip_code: string;
+      };
+    }>;
   } | null;
   invoices: {
     id: string;
@@ -115,15 +124,10 @@ export const LoadTimelineView: React.FC<Props> = ({ deliveries, drivers, current
     }
   };
 
-  // Helper function to get factory address from invoice data
+  // Helper function to get factory address from mobile home's assigned factory
   const getFactoryAddress = (delivery: Delivery): string => {
-    // Try to get factory address from pickup_address first (if available)
-    if (delivery.pickup_address && delivery.pickup_address.trim() !== '') {
-      return delivery.pickup_address;
-    }
-    
-    // Fallback: Try to get from invoice mobile_home_factories if available
-    const factory = delivery.invoices?.mobile_homes?.mobile_home_factories?.[0]?.factories;
+    // First, try to get factory address from the mobile home's assigned factory
+    const factory = delivery.mobile_homes?.mobile_home_factories?.[0]?.factories;
     if (factory) {
       const parts = [
         factory.street_address,
@@ -132,7 +136,14 @@ export const LoadTimelineView: React.FC<Props> = ({ deliveries, drivers, current
         factory.zip_code
       ].filter(Boolean);
       
-      return parts.join(', ') || 'Factory Location TBD';
+      if (parts.length > 0) {
+        return parts.join(', ');
+      }
+    }
+    
+    // Fallback to pickup_address if no factory data available
+    if (delivery.pickup_address && delivery.pickup_address.trim() !== '') {
+      return delivery.pickup_address;
     }
     
     return 'Factory Location TBD';

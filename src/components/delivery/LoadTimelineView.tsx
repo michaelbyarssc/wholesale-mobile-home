@@ -275,22 +275,6 @@ export const LoadTimelineView: React.FC<Props> = ({ deliveries, drivers, current
                         );
                       })()}
                       
-                      {(() => {
-                        const deliveryDate = safeParseDateTz(delivery.scheduled_delivery_date_tz);
-                        return deliveryDate ? (
-                          <div className="flex items-center gap-2 text-sm">
-                            <Truck className="h-3 w-3 text-green-500" />
-                            <span className="font-medium">Delivery:</span>
-                            <span>{format(deliveryDate, 'MMM d, h:mm a')}</span>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <Truck className="h-3 w-3" />
-                            <span className="font-medium">Delivery:</span>
-                            <span className="italic">Not scheduled</span>
-                          </div>
-                        );
-                      })()}
                       
                       {transitDays !== null && (
                         <div className="text-xs text-muted-foreground">

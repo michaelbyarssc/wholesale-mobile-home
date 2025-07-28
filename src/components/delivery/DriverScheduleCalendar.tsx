@@ -373,23 +373,10 @@ export const DriverScheduleCalendar: React.FC<Props> = ({ drivers, deliveries, c
               <div>
                 <p className="text-sm font-medium flex items-center gap-1">
                   <MapPin className="h-3 w-3" />
-                  Pickup Address (Factory)
+                  Pickup Address
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  {(() => {
-                    // Get factory address from mobile home's assigned factory through invoices
-                    const factory = selectedDelivery.invoices?.mobile_homes?.mobile_home_factories?.[0]?.factories;
-                    if (factory) {
-                      const parts = [
-                        factory.street_address,
-                        factory.city,
-                        factory.state,
-                        factory.zip_code
-                      ].filter(Boolean);
-                      return parts.join(', ') || 'Factory address not available';
-                    }
-                    return selectedDelivery.pickup_address || 'Factory address not available';
-                  })()}
+                  {selectedDelivery.pickup_address || 'Pickup address not available'}
                 </p>
               </div>
 

@@ -75,7 +75,28 @@ export const DriverScheduleCalendar: React.FC<Props> = ({ drivers, deliveries, c
   const safeParseDateTz = (dateString: string | null): Date | null => {
     if (!dateString) return null;
     try {
-      const date = new Date(dateString);
+      // Handle timezone-aware date strings like "2025-08-18 07:00:00 EDT"
+      let cleanDateString = dateString;
+      
+      // Replace timezone abbreviations with proper timezone offsets
+      const timezoneMap: Record<string, string> = {
+        'EDT': '-04:00',
+        'EST': '-05:00',
+        'CDT': '-05:00',
+        'CST': '-06:00',
+        'MDT': '-06:00',
+        'MST': '-07:00',
+        'PDT': '-07:00',
+        'PST': '-08:00'
+      };
+      
+      // Check if the string contains a timezone abbreviation
+      const timezoneMatch = dateString.match(/\s([A-Z]{3})$/);
+      if (timezoneMatch && timezoneMap[timezoneMatch[1]]) {
+        cleanDateString = dateString.replace(/\s[A-Z]{3}$/, timezoneMap[timezoneMatch[1]]);
+      }
+      
+      const date = new Date(cleanDateString);
       return isNaN(date.getTime()) ? null : date;
     } catch (error) {
       console.warn('Failed to parse date:', dateString, error);
@@ -87,7 +108,7 @@ export const DriverScheduleCalendar: React.FC<Props> = ({ drivers, deliveries, c
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
   const getDeliveriesForDriverAndDay = (driver: Driver, day: Date) => {
-    const driverDeliveries = driver.delivery_assignments?.map(assignment => assignment.deliveries) || [];
+    const driverDeliveries = driver.delivery_assignments?.map(assignment => assignment.deliveries).filter(Boolean) || [];
     
     return driverDeliveries.filter(delivery => {
       if (!delivery) return false;
@@ -101,7 +122,7 @@ export const DriverScheduleCalendar: React.FC<Props> = ({ drivers, deliveries, c
 
   // Get all unscheduled deliveries for this driver
   const getUnscheduledDeliveriesForDriver = (driver: Driver) => {
-    const driverDeliveries = driver.delivery_assignments?.map(assignment => assignment.deliveries) || [];
+    const driverDeliveries = driver.delivery_assignments?.map(assignment => assignment.deliveries).filter(Boolean) || [];
     
     return driverDeliveries.filter(delivery => {
       if (!delivery) return false;

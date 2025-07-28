@@ -126,8 +126,8 @@ export const LoadTimelineView: React.FC<Props> = ({ deliveries, drivers, current
 
   // Helper function to get factory address from mobile home's assigned factory
   const getFactoryAddress = (delivery: Delivery): string => {
-    // First, try to get factory address from the mobile home's assigned factory
-    const factory = delivery.mobile_homes?.mobile_home_factories?.[0]?.factories;
+    // First, try to get factory address from the invoice's mobile home factory data
+    const factory = delivery.invoices?.mobile_homes?.mobile_home_factories?.[0]?.factories;
     if (factory) {
       const parts = [
         factory.street_address,

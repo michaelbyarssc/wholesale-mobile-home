@@ -21,6 +21,7 @@ interface Delivery {
   delivery_number: string;
   customer_name: string;
   delivery_address: string;
+  pickup_address: string;
   status: string;
   scheduled_pickup_date_tz: string | null;
   scheduled_delivery_date_tz: string | null;
@@ -301,7 +302,14 @@ export const LoadTimelineView: React.FC<Props> = ({ deliveries, drivers, current
                     {/* Location */}
                     <div className="space-y-2">
                       <div className="flex items-start gap-2">
-                        <MapPin className="h-3 w-3 text-gray-500 mt-0.5" />
+                        <MapPin className="h-3 w-3 text-blue-500 mt-0.5" />
+                        <div className="text-sm">
+                          <p className="font-medium">Pickup Address:</p>
+                          <p className="text-muted-foreground text-xs">{delivery.pickup_address || 'Factory Location TBD'}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <MapPin className="h-3 w-3 text-green-500 mt-0.5" />
                         <div className="text-sm">
                           <p className="font-medium">Delivery Address:</p>
                           <p className="text-muted-foreground text-xs">{delivery.delivery_address}</p>

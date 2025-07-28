@@ -126,6 +126,10 @@ export const DriverScheduleDashboard = () => {
     setCurrentWeek(direction === 'next' ? addWeeks(currentWeek, 1) : subWeeks(currentWeek, 1));
   };
 
+  const handleWeekChange = (date: Date) => {
+    setCurrentWeek(date);
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -239,6 +243,7 @@ export const DriverScheduleDashboard = () => {
             drivers={driversData?.drivers || []}
             deliveries={driversData?.allDeliveries || []}
             currentWeek={currentWeek}
+            onWeekChange={handleWeekChange}
           />
         </TabsContent>
 

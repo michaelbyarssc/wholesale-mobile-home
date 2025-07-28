@@ -1,10 +1,13 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Truck, MapPin, Clock, User } from 'lucide-react';
-import { format, startOfWeek, addDays, isSameDay, parseISO } from 'date-fns';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { Truck, MapPin, Clock, User, ChevronLeft, ChevronRight, CalendarIcon } from 'lucide-react';
+import { format, startOfWeek, addDays, isSameDay, parseISO, addWeeks, subWeeks } from 'date-fns';
 import { cn } from '@/lib/utils';
 
 interface Driver {
@@ -60,11 +63,13 @@ interface Props {
   drivers: Driver[];
   deliveries: Delivery[];
   currentWeek: Date;
+  onWeekChange: (date: Date) => void;
 }
 
-export const DriverScheduleCalendar: React.FC<Props> = ({ drivers, deliveries, currentWeek }) => {
+export const DriverScheduleCalendar: React.FC<Props> = ({ drivers, deliveries, currentWeek, onWeekChange }) => {
   const [selectedDelivery, setSelectedDelivery] = useState<any>(null);
   const [showDetails, setShowDetails] = useState(false);
+  const [showWeekPicker, setShowWeekPicker] = useState(false);
 
   const weekStart = startOfWeek(currentWeek);
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
@@ -110,14 +115,78 @@ export const DriverScheduleCalendar: React.FC<Props> = ({ drivers, deliveries, c
     setShowDetails(true);
   };
 
+  const navigateWeek = (direction: 'prev' | 'next') => {
+    const newDate = direction === 'next' ? addWeeks(currentWeek, 1) : subWeeks(currentWeek, 1);
+    onWeekChange(newDate);
+  };
+
+  const handleDateSelect = (date: Date | undefined) => {
+    if (date) {
+      const weekStartDate = startOfWeek(date);
+      onWeekChange(weekStartDate);
+      setShowWeekPicker(false);
+    }
+  };
+
+  const goToCurrentWeek = () => {
+    onWeekChange(new Date());
+  };
+
   return (
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Truck className="h-5 w-5" />
-            Driver Schedule Calendar
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <Truck className="h-5 w-5" />
+              Driver Schedule Calendar
+            </CardTitle>
+            
+            {/* Week Navigation Controls */}
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigateWeek('prev')}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              
+              <Popover open={showWeekPicker} onOpenChange={setShowWeekPicker}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className="min-w-[200px]">
+                    <CalendarIcon className="h-4 w-4 mr-2" />
+                    {format(weekStart, 'MMM d')} - {format(addDays(weekStart, 6), 'MMM d, yyyy')}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="end">
+                  <Calendar
+                    mode="single"
+                    selected={currentWeek}
+                    onSelect={handleDateSelect}
+                    initialFocus
+                    className="pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigateWeek('next')}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={goToCurrentWeek}
+              >
+                Current Week
+              </Button>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-8 gap-2">

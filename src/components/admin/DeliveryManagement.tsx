@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Truck, Calendar as CalendarIcon, CheckCircle, Clock, AlertCircle, MapPin, FileText, User, Phone, Home, Package, CalendarDays, Plus, Edit, UserPlus, Settings } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { NewDeliveryScheduling } from '@/components/delivery/NewDeliveryScheduling';
+import { DriverScheduleDashboard } from '@/components/delivery/DriverScheduleDashboard';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
@@ -1176,7 +1177,7 @@ export const DeliveryManagement = () => {
       </div>
 
       <Tabs defaultValue="scheduling" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="scheduling" className="flex items-center gap-2">
             <CalendarIcon className="h-4 w-4" />
             Scheduling
@@ -1413,6 +1414,10 @@ export const DeliveryManagement = () => {
               </Button>
             </div>
           )}
+        </TabsContent>
+
+        <TabsContent value="dashboard" className="space-y-4">
+          <DriverScheduleDashboard />
         </TabsContent>
       </Tabs>
       

@@ -8,6 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { UserPlus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { generateSecurePassword, sanitizeInput, validateEmail } from '@/utils/security';
+import { logger } from '@/utils/logger';
 
 interface UserFormProps {
   onUserCreated: () => void;
@@ -39,17 +41,19 @@ export const UserForm = ({ onUserCreated }: UserFormProps) => {
       const userIsSuperAdmin = roleData?.some(role => role.role === 'super_admin') || false;
       setIsSuperAdmin(userIsSuperAdmin);
     } catch (error) {
-      console.error('Error checking user role:', error);
+      logger.error('Error checking user role:', error);
     }
   };
 
   const createUserDirectly = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!newUserEmail) {
+    const sanitizedEmail = sanitizeInput(newUserEmail);
+    
+    if (!sanitizedEmail || !validateEmail(sanitizedEmail)) {
       toast({
         title: "Error",
-        description: "Please enter an email address",
+        description: "Please enter a valid email address",
         variant: "destructive",
       });
       return;
@@ -58,18 +62,19 @@ export const UserForm = ({ onUserCreated }: UserFormProps) => {
     try {
       setCreatingUser(true);
       
-      const tempPassword = 'Wholesale2025!';
+      // Generate secure random password
+      const tempPassword = generateSecurePassword();
 
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         throw new Error('Not authenticated');
       }
 
-      console.log('Creating user with created_by:', session.user.id);
+      logger.log('Creating user with admin session');
 
       const { data, error } = await supabase.functions.invoke('admin-create-user', {
         body: {
-          email: newUserEmail,
+          email: sanitizedEmail,
           password: tempPassword,
           role: newUserRole,
           markup_percentage: 30,
@@ -83,23 +88,30 @@ export const UserForm = ({ onUserCreated }: UserFormProps) => {
         throw new Error(data.error);
       }
 
-      console.log('User created successfully:', data);
+      logger.log('User created successfully');
 
       toast({
         title: "User created and approved",
-        description: `User ${newUserEmail} created with ${newUserRole} role and automatically approved. Password: Wholesale2025!`,
+        description: `User ${sanitizedEmail} created with ${newUserRole} role. A secure password has been generated.`,
       });
 
+      // Clear form
       setNewUserEmail('');
       setNewUserRole('user');
       
-      // Call the callback to refresh the user list
+      // Show password in a secure way - only once
+      toast({
+        title: "Temporary Password",
+        description: `Password: ${tempPassword} (Please share this securely with the user)`,
+        variant: "default",
+      });
+      
       onUserCreated();
     } catch (error: any) {
-      console.error('Error creating user:', error);
+      logger.error('Error creating user:', error);
       toast({
         title: "Error",
-        description: error.message || "Failed to create user",
+        description: "Failed to create user. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -145,9 +157,9 @@ export const UserForm = ({ onUserCreated }: UserFormProps) => {
             </div>
           </div>
           <div className="flex items-center justify-between">
-            <div className="text-sm text-gray-600">
-              <p><strong>Password:</strong> Wholesale2025!</p>
+            <div className="text-sm text-muted-foreground">
               <p className="text-green-600 font-medium">Users created by admins are automatically approved</p>
+              <p>A secure password will be generated and displayed once</p>
             </div>
             <Button type="submit" disabled={creatingUser}>
               {creatingUser ? "Creating..." : "Create User"}

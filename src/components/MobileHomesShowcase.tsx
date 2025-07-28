@@ -106,8 +106,8 @@ export const MobileHomesShowcase = ({
 
   const [isWishlistOpen, setIsWishlistOpen] = useState(false);
   
-  console.log('🔍 MobileHomesShowcase render - cart items from props:', cartItems.length);
-  console.log('🔍 MobileHomesShowcase - selectedHomeForServices:', selectedHomeForServices?.id);
+  logger.debug('MobileHomesShowcase render - cart items from props:', cartItems.length);
+  logger.debug('MobileHomesShowcase - selectedHomeForServices:', selectedHomeForServices?.id);
 
   const { data: mobileHomes = [], isLoading } = useQuery({
     queryKey: ['public-mobile-homes'],
@@ -125,8 +125,7 @@ export const MobileHomesShowcase = ({
         throw error;
       }
       
-      console.log('Mobile homes fetched:', data?.length || 0);
-      console.log('Active homes data:', data);
+      logger.log('Mobile homes fetched:', data?.length || 0);
       
       return data as MobileHome[];
     },

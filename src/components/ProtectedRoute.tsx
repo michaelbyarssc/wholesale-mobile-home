@@ -30,7 +30,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
     const checkAuthAndRoles = async () => {
       try {
-        console.log('ProtectedRoute: Starting auth check...');
+        logger.debug('ProtectedRoute: Starting auth check...');
         
         // Get current session
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();

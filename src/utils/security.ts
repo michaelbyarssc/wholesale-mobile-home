@@ -56,21 +56,68 @@ export const isPasswordStrengthResponse = (data: any): data is PasswordStrengthR
          Array.isArray(data.errors);
 };
 
+// Enhanced input sanitization with comprehensive XSS protection
 export const sanitizeInput = (input: string): string => {
-  // Remove potential XSS characters and trim whitespace
+  if (!input) return '';
+  
   return input
-    .replace(/[<>\"'&]/g, '')
-    .trim();
+    .replace(/[<>\"'&]/g, '') // Remove dangerous HTML chars
+    .replace(/javascript:/gi, '') // Remove javascript: protocol
+    .replace(/data:/gi, '') // Remove data: protocol
+    .replace(/on\w+=/gi, '') // Remove event handlers
+    .trim()
+    .slice(0, 1000); // Limit length to prevent DoS
 };
 
 export const sanitizeHtml = (html: string): string => {
-  // Basic HTML sanitization - in production, consider using a library like DOMPurify
+  if (!html) return '';
+  
   return html
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#x27;')
-    .replace(/\//g, '&#x2F;');
+    .replace(/\//g, '&#x2F;')
+    .replace(/=/g, '&#x3D;')
+    .replace(/`/g, '&#x60;')
+    .slice(0, 10000); // Limit length
+};
+
+// Additional security utilities
+export const generateSecurePassword = (): string => {
+  const charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=[]{}|;:,.<>?';
+  const array = new Uint8Array(16);
+  crypto.getRandomValues(array);
+  return Array.from(array, byte => charset[byte % charset.length]).join('');
+};
+
+export const hashPassword = async (password: string): Promise<string> => {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password);
+  const hash = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(hash), byte => byte.toString(16).padStart(2, '0')).join('');
+};
+
+// Rate limiting helper
+export const createRateLimiter = (maxAttempts: number, windowMs: number) => {
+  const attempts = new Map<string, { count: number; resetTime: number }>();
+  
+  return (key: string): boolean => {
+    const now = Date.now();
+    const record = attempts.get(key);
+    
+    if (!record || now > record.resetTime) {
+      attempts.set(key, { count: 1, resetTime: now + windowMs });
+      return true;
+    }
+    
+    if (record.count >= maxAttempts) {
+      return false;
+    }
+    
+    record.count++;
+    return true;
+  };
 };
 
 export const rateLimitKey = (userId: string, action: string): string => {

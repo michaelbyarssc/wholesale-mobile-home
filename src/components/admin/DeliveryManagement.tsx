@@ -1190,6 +1190,10 @@ export const DeliveryManagement = () => {
             <User className="h-4 w-4" />
             Drivers
           </TabsTrigger>
+          <TabsTrigger value="dashboard" className="flex items-center gap-2">
+            <CalendarDays className="h-4 w-4" />
+            Schedule Dashboard
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="scheduling" className="space-y-4">

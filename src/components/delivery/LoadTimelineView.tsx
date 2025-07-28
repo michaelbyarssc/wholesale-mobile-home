@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { BarChart3, Clock, Truck, MapPin, AlertTriangle, User } from 'lucide-react';
-import { format, parseISO, differenceInDays, isAfter, isBefore, addDays } from 'date-fns';
+import { format, differenceInDays, isBefore } from 'date-fns';
 import { cn } from '@/lib/utils';
 
 interface Driver {
@@ -86,6 +86,19 @@ export const LoadTimelineView: React.FC<Props> = ({ deliveries, drivers, current
     return new Date(aDate).getTime() - new Date(bDate).getTime();
   });
 
+  // Safe date parsing function that handles timezone abbreviations
+  const safeParseDateTz = (dateString: string | null): Date | null => {
+    if (!dateString) return null;
+    try {
+      // Use Date constructor which can handle timezone abbreviations like "EDT"
+      const date = new Date(dateString);
+      return isNaN(date.getTime()) ? null : date;
+    } catch (error) {
+      console.warn('Failed to parse date:', dateString, error);
+      return null;
+    }
+  };
+
   const getStatusColor = (status: string) => {
     const colors = {
       factory_pickup_scheduled: 'bg-yellow-100 text-yellow-800 border-yellow-200',
@@ -101,8 +114,8 @@ export const LoadTimelineView: React.FC<Props> = ({ deliveries, drivers, current
 
   const getUrgencyLevel = (delivery: Delivery) => {
     const now = new Date();
-    const pickupDate = delivery.scheduled_pickup_date_tz ? parseISO(delivery.scheduled_pickup_date_tz) : null;
-    const deliveryDate = delivery.scheduled_delivery_date_tz ? parseISO(delivery.scheduled_delivery_date_tz) : null;
+    const pickupDate = safeParseDateTz(delivery.scheduled_pickup_date_tz);
+    const deliveryDate = safeParseDateTz(delivery.scheduled_delivery_date_tz);
     
     // Check if overdue
     if (pickupDate && isBefore(pickupDate, now) && !['delivered', 'completed'].includes(delivery.status)) {
@@ -133,8 +146,11 @@ export const LoadTimelineView: React.FC<Props> = ({ deliveries, drivers, current
   const getTransitDuration = (delivery: Delivery) => {
     if (!delivery.scheduled_pickup_date_tz || !delivery.scheduled_delivery_date_tz) return null;
     
-    const pickup = parseISO(delivery.scheduled_pickup_date_tz);
-    const deliveryDate = parseISO(delivery.scheduled_delivery_date_tz);
+    const pickup = safeParseDateTz(delivery.scheduled_pickup_date_tz);
+    const deliveryDate = safeParseDateTz(delivery.scheduled_delivery_date_tz);
+    
+    if (!pickup || !deliveryDate) return null;
+    
     const days = differenceInDays(deliveryDate, pickup);
     
     return days;
@@ -239,33 +255,39 @@ export const LoadTimelineView: React.FC<Props> = ({ deliveries, drivers, current
 
                     {/* Timeline Dates */}
                     <div className="space-y-2">
-                      {delivery.scheduled_pickup_date_tz ? (
-                        <div className="flex items-center gap-2 text-sm">
-                          <Clock className="h-3 w-3 text-blue-500" />
-                          <span className="font-medium">Pickup:</span>
-                          <span>{format(parseISO(delivery.scheduled_pickup_date_tz), 'MMM d, h:mm a')}</span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Clock className="h-3 w-3" />
-                          <span className="font-medium">Pickup:</span>
-                          <span className="italic">Not scheduled</span>
-                        </div>
-                      )}
+                      {(() => {
+                        const pickupDate = safeParseDateTz(delivery.scheduled_pickup_date_tz);
+                        return pickupDate ? (
+                          <div className="flex items-center gap-2 text-sm">
+                            <Clock className="h-3 w-3 text-blue-500" />
+                            <span className="font-medium">Pickup:</span>
+                            <span>{format(pickupDate, 'MMM d, h:mm a')}</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Clock className="h-3 w-3" />
+                            <span className="font-medium">Pickup:</span>
+                            <span className="italic">Not scheduled</span>
+                          </div>
+                        );
+                      })()}
                       
-                      {delivery.scheduled_delivery_date_tz ? (
-                        <div className="flex items-center gap-2 text-sm">
-                          <Truck className="h-3 w-3 text-green-500" />
-                          <span className="font-medium">Delivery:</span>
-                          <span>{format(parseISO(delivery.scheduled_delivery_date_tz), 'MMM d, h:mm a')}</span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Truck className="h-3 w-3" />
-                          <span className="font-medium">Delivery:</span>
-                          <span className="italic">Not scheduled</span>
-                        </div>
-                      )}
+                      {(() => {
+                        const deliveryDate = safeParseDateTz(delivery.scheduled_delivery_date_tz);
+                        return deliveryDate ? (
+                          <div className="flex items-center gap-2 text-sm">
+                            <Truck className="h-3 w-3 text-green-500" />
+                            <span className="font-medium">Delivery:</span>
+                            <span>{format(deliveryDate, 'MMM d, h:mm a')}</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Truck className="h-3 w-3" />
+                            <span className="font-medium">Delivery:</span>
+                            <span className="italic">Not scheduled</span>
+                          </div>
+                        );
+                      })()}
                       
                       {transitDays !== null && (
                         <div className="text-xs text-muted-foreground">

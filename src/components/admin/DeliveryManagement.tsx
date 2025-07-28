@@ -303,7 +303,19 @@ export const DeliveryManagement = () => {
         .select(`
           *,
           invoices (
-            transaction_number
+            id,
+            transaction_number,
+            mobile_homes (
+              mobile_home_factories (
+                factories (
+                  name,
+                  street_address,
+                  city,
+                  state,
+                  zip_code
+                )
+              )
+            )
           ),
           mobile_homes (
             manufacturer,

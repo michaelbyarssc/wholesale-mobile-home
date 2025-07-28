@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { BarChart3, Clock, Truck, MapPin, AlertTriangle, User } from 'lucide-react';
 import { format, differenceInDays, isBefore } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { parseDateTimeFromStorage } from '@/lib/timezone-utils';
 
 interface Driver {
   id: string;
@@ -88,17 +89,12 @@ export const LoadTimelineView: React.FC<Props> = ({ deliveries, drivers, current
 
   // Safe date parsing function that handles timezone abbreviations
   const safeParseDateTz = (dateString: string | null): Date | null => {
-    console.log('Parsing date string:', dateString);
-    if (!dateString) {
-      console.log('Date string is null or empty');
-      return null;
-    }
+    if (!dateString) return null;
+    
     try {
-      // Use Date constructor which can handle timezone abbreviations like "EDT"
-      const date = new Date(dateString);
-      const isValid = !isNaN(date.getTime());
-      console.log('Parsed date:', date, 'isValid:', isValid);
-      return isValid ? date : null;
+      // Use the timezone-aware parser from our utility functions
+      const result = parseDateTimeFromStorage(dateString);
+      return result ? result.date : null;
     } catch (error) {
       console.warn('Failed to parse date:', dateString, error);
       return null;

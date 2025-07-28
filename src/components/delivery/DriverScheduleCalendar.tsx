@@ -160,8 +160,14 @@ export const DriverScheduleCalendar: React.FC<Props> = ({ drivers, deliveries, c
 
   // Helper function to get factory address from mobile home's assigned factory
   const getFactoryAddress = (delivery: any): string => {
-    // First, try to get factory address from the invoice's mobile home factory data
-    const factory = delivery.invoices?.mobile_homes?.mobile_home_factories?.[0]?.factories;
+    // First, try to get factory address from the direct mobile_homes relationship
+    let factory = delivery.mobile_homes?.mobile_home_factories?.[0]?.factories;
+    
+    // If not found, try from invoices -> mobile_homes relationship
+    if (!factory) {
+      factory = delivery.invoices?.mobile_homes?.mobile_home_factories?.[0]?.factories;
+    }
+    
     if (factory) {
       const parts = [
         factory.street_address,

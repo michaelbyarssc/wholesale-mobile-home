@@ -1,292 +1,193 @@
 import React, { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { BarChart3, CalendarClock, Clock, Truck, MapPin, AlertTriangle, User } from 'lucide-react';
+import { format, startOfWeek, endOfWeek, addDays, isWithinInterval, isSameDay } from 'date-fns';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Calendar, Truck, Clock, Users, BarChart3, MapPin } from 'lucide-react';
-import { DriverScheduleCalendar } from './DriverScheduleCalendar';
 import { LoadTimelineView } from './LoadTimelineView';
-import { DriverWorkloadDashboard } from './DriverWorkloadDashboard';
-import { DriverAvailabilityManager } from './DriverAvailabilityManager';
-import { format, startOfWeek, endOfWeek, addWeeks, subWeeks } from 'date-fns';
 
-export const DriverScheduleDashboard = () => {
-  const [currentWeek, setCurrentWeek] = useState(new Date());
-  const [selectedView, setSelectedView] = useState<'calendar' | 'timeline' | 'workload' | 'availability'>('calendar');
+interface Driver {
+  id: string;
+  first_name: string;
+  last_name: string;
+  status: string;
+}
 
-  // Fetch drivers with their assignments and availability
-  const { data: driversData, isLoading } = useQuery({
-    queryKey: ['drivers-with-assignments', currentWeek],
+interface Delivery {
+  id: string;
+  delivery_number: string;
+  customer_name: string;
+  delivery_address: string;
+  pickup_address: string;
+  status: string;
+  scheduled_pickup_date_tz: string | null;
+  scheduled_delivery_date_tz: string | null;
+  mobile_home_type: string;
+  total_delivery_cost: number;
+  mobile_homes: {
+    manufacturer: string;
+    model: string;
+  } | null;
+  delivery_assignments: Array<{
+    id: string;
+    driver_id: string;
+    drivers: {
+      first_name: string;
+      last_name: string;
+    };
+  }>;
+  invoices: {
+    id: string;
+    mobile_homes: {
+      mobile_home_factories: Array<{
+        factories: {
+          name: string;
+          street_address: string;
+          city: string;
+          state: string;
+          zip_code: string;
+        };
+      }>;
+    } | null;
+  } | null;
+}
+
+export const DriverScheduleDashboard: React.FC = () => {
+  const [currentWeek, setCurrentWeek] = useState<Date>(new Date());
+
+  const { data: deliveries, isLoading, error } = useQuery({
+    queryKey: ['deliveries'],
     queryFn: async () => {
-      const weekStart = startOfWeek(currentWeek);
-      const weekEnd = endOfWeek(currentWeek);
-
-      // Get drivers with their assignments
-      const { data: drivers, error: driversError } = await supabase
-        .from('drivers')
-        .select(`
-          *,
-          delivery_assignments!inner(
-            id,
-            delivery_id,
-            assigned_at,
-            role,
-            deliveries(
-              id,
-              delivery_number,
-              customer_name,
-              delivery_address,
-              status,
-              scheduled_pickup_date_tz,
-              scheduled_delivery_date_tz,
-              actual_pickup_date,
-              actual_delivery_date,
-              mobile_home_type,
-              total_delivery_cost,
-              mobile_homes(manufacturer, model)
-            )
-          )
-        `)
-        .eq('active', true)
-        .order('first_name');
-
-      if (driversError) throw driversError;
-
-      // Get all active deliveries (not filtering by dates since many have NULL scheduled dates)
-      const { data: allDeliveries, error: deliveriesError } = await supabase
+      const { data, error } = await supabase
         .from('deliveries')
         .select(`
           *,
-          mobile_homes(
-            manufacturer, 
-            model,
-            mobile_home_factories(
-              factories(
-                name,
-                street_address,
-                city,
-                state,
-                zip_code
-              )
-            )
-          ),
+          mobile_homes(manufacturer, model),
           delivery_assignments(
             id,
             driver_id,
-            drivers(first_name, last_name)
+            drivers(
+              first_name,
+              last_name
+            )
+          ),
+          invoices(
+            id,
+            mobile_homes(
+              mobile_home_factories(
+                factories(
+                  name,
+                  street_address,
+                  city,
+                  state,
+                  zip_code
+                )
+              )
+            )
           )
         `)
-        .in('status', ['scheduled', 'factory_pickup_scheduled', 'factory_pickup_in_progress', 'in_transit', 'delivery_in_progress'])
         .order('created_at', { ascending: false });
 
-      if (deliveriesError) throw deliveriesError;
-
-      return {
-        drivers: drivers || [],
-        allDeliveries: allDeliveries || []
-      };
+      if (error) throw error;
+      return data;
     },
   });
 
-  // Fetch driver statistics
-  const { data: driverStats } = useQuery({
-    queryKey: ['driver-stats-enhanced'],
+  const { data: drivers, isLoading: isDriversLoading, error: driversError } = useQuery({
+    queryKey: ['drivers'],
     queryFn: async () => {
-      const { data: drivers, error } = await supabase
+      const { data, error } = await supabase
         .from('drivers')
-        .select(`
-          *,
-          delivery_assignments(
-            id,
-            deliveries(status)
-          )
-        `)
-        .eq('active', true);
+        .select('*')
+        .order('first_name', { ascending: true });
 
       if (error) throw error;
-
-      const stats = {
-        totalDrivers: drivers.length,
-        availableDrivers: drivers.filter(d => d.status === 'available').length,
-        onDeliveryDrivers: drivers.filter(d => d.status === 'on_delivery').length,
-        offDutyDrivers: drivers.filter(d => d.status === 'off_duty').length,
-        activeAssignments: drivers.reduce((sum, driver) => 
-          sum + (driver.delivery_assignments?.filter(a => 
-            !['completed', 'delivered', 'cancelled'].includes(a.deliveries?.status)
-          ).length || 0), 0
-        )
-      };
-
-      return stats;
+      return data;
     },
   });
 
-  const getStatusColor = (status: string) => {
-    const colors = {
-      available: 'bg-green-500',
-      on_delivery: 'bg-blue-500',
-      off_duty: 'bg-gray-500',
-      inactive: 'bg-red-500'
-    };
-    return colors[status as keyof typeof colors] || 'bg-gray-500';
-  };
-
-  const navigateWeek = (direction: 'prev' | 'next') => {
-    setCurrentWeek(direction === 'next' ? addWeeks(currentWeek, 1) : subWeeks(currentWeek, 1));
-  };
-
-  const handleWeekChange = (date: Date) => {
-    setCurrentWeek(date);
-  };
-
-  const handleActiveLoadsClick = () => {
-    setSelectedView('timeline');
-  };
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <div className="text-center">
-          <Clock className="h-8 w-8 animate-spin mx-auto mb-4" />
-          <p>Loading driver schedules...</p>
-        </div>
-      </div>
-    );
+  if (isLoading || isDriversLoading) {
+    return <div>Loading...</div>;
   }
 
+  if (error || driversError) {
+    return <div>Error: {error?.message || driversError?.message}</div>;
+  }
+
+  const start = startOfWeek(currentWeek, { weekStartsOn: 0 });
+  const end = endOfWeek(currentWeek, { weekStartsOn: 0 });
+
+  const getDayLabels = (): string[] => {
+    const labels = [];
+    for (let i = 0; i < 7; i++) {
+      const day = addDays(start, i);
+      labels.push(format(day, 'EEE d'));
+    }
+    return labels;
+  };
+
+  const dayLabels = getDayLabels();
+
   return (
-    <div className="space-y-6">
-      {/* Header with Navigation */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold">Driver Schedule & Load Management</h2>
-          <p className="text-muted-foreground">
-            Week of {format(startOfWeek(currentWeek), 'MMM d')} - {format(endOfWeek(currentWeek), 'MMM d, yyyy')}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => navigateWeek('prev')}>
-            Previous Week
-          </Button>
-          <Button variant="outline" onClick={() => setCurrentWeek(new Date())}>
-            Current Week
-          </Button>
-          <Button variant="outline" onClick={() => navigateWeek('next')}>
-            Next Week
-          </Button>
-        </div>
-      </div>
+    <div className="container mx-auto py-10">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-2xl font-bold">Driver Schedule</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-8 gap-4">
+            {/* Calendar */}
+            <div className="col-span-2">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant={'outline'}
+                    className={
+                      'w-full justify-start text-left font-normal' +
+                      (currentWeek ? ' pl-3' : ' text-muted-foreground')
+                    }
+                  >
+                    <CalendarClock className="mr-2 h-4 w-4" />
+                    {currentWeek ? format(currentWeek, 'MMMM yyyy') : <span>Pick a week</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    defaultMonth={currentWeek}
+                    selected={currentWeek}
+                    onSelect={(date) => {
+                      if (date) {
+                        setCurrentWeek(date);
+                      }
+                    }}
+                    className="rounded-md border"
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Drivers</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{driverStats?.totalDrivers || 0}</div>
-          </CardContent>
-        </Card>
+            {/* Day Labels */}
+            {dayLabels.map((dayLabel, index) => (
+              <div key={index} className="font-semibold text-center">
+                {dayLabel}
+              </div>
+            ))}
+          </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Available</CardTitle>
-            <div className="h-2 w-2 rounded-full bg-green-500"></div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{driverStats?.availableDrivers || 0}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">On Delivery</CardTitle>
-            <div className="h-2 w-2 rounded-full bg-blue-500"></div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{driverStats?.onDeliveryDrivers || 0}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Off Duty</CardTitle>
-            <div className="h-2 w-2 rounded-full bg-gray-500"></div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{driverStats?.offDutyDrivers || 0}</div>
-          </CardContent>
-        </Card>
-
-        <Card 
-          className="cursor-pointer hover:bg-muted/50 transition-colors"
-          onClick={handleActiveLoadsClick}
-        >
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Loads</CardTitle>
-            <Truck className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{driverStats?.activeAssignments || 0}</div>
-            <p className="text-xs text-muted-foreground">Click to view details</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Main Content Tabs */}
-      <Tabs value={selectedView} onValueChange={(value) => setSelectedView(value as any)} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="calendar" className="flex items-center gap-2">
-            <Calendar className="h-4 w-4" />
-            Schedule Calendar
-          </TabsTrigger>
-          <TabsTrigger value="timeline" className="flex items-center gap-2">
-            <BarChart3 className="h-4 w-4" />
-            Load Timeline
-          </TabsTrigger>
-          <TabsTrigger value="workload" className="flex items-center gap-2">
-            <Users className="h-4 w-4" />
-            Workload Analysis
-          </TabsTrigger>
-          <TabsTrigger value="availability" className="flex items-center gap-2">
-            <Clock className="h-4 w-4" />
-            Availability
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="calendar" className="space-y-4">
-          <DriverScheduleCalendar 
-            drivers={driversData?.drivers || []}
-            deliveries={driversData?.allDeliveries || []}
-            currentWeek={currentWeek}
-            onWeekChange={handleWeekChange}
-          />
-        </TabsContent>
-
-        <TabsContent value="timeline" className="space-y-4">
-          <LoadTimelineView 
-            deliveries={driversData?.allDeliveries || []}
-            drivers={driversData?.drivers || []}
-            currentWeek={currentWeek}
-          />
-        </TabsContent>
-
-        <TabsContent value="workload" className="space-y-4">
-          <DriverWorkloadDashboard 
-            drivers={driversData?.drivers || []}
-            deliveries={driversData?.allDeliveries || []}
-          />
-        </TabsContent>
-
-        <TabsContent value="availability" className="space-y-4">
-          <DriverAvailabilityManager 
-            drivers={driversData?.drivers || []}
-          />
-        </TabsContent>
-      </Tabs>
+          {/* Load Timeline View */}
+          <div className="mt-4">
+            {deliveries && drivers && (
+              <LoadTimelineView deliveries={deliveries} drivers={drivers} currentWeek={currentWeek} />
+            )}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };

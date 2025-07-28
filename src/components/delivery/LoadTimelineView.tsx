@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -30,15 +29,20 @@ interface Delivery {
   mobile_homes: {
     manufacturer: string;
     model: string;
-    mobile_home_factories: Array<{
-      factories: {
-        name: string;
-        street_address: string;
-        city: string;
-        state: string;
-        zip_code: string;
-      };
-    }>;
+  } | null;
+  invoices: {
+    id: string;
+    mobile_homes: {
+      mobile_home_factories: Array<{
+        factories: {
+          name: string;
+          street_address: string;
+          city: string;
+          state: string;
+          zip_code: string;
+        };
+      }>;
+    } | null;
   } | null;
   delivery_assignments: Array<{
     id: string;
@@ -111,9 +115,9 @@ export const LoadTimelineView: React.FC<Props> = ({ deliveries, drivers, current
     }
   };
 
-  // Helper function to get factory address from delivery data
+  // Helper function to get factory address from invoice data
   const getFactoryAddress = (delivery: Delivery): string => {
-    const factory = delivery.mobile_homes?.mobile_home_factories?.[0]?.factories;
+    const factory = delivery.invoices?.mobile_homes?.mobile_home_factories?.[0]?.factories;
     if (!factory) return 'Factory Location TBD';
     
     const parts = [

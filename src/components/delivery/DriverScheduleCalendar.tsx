@@ -373,6 +373,29 @@ export const DriverScheduleCalendar: React.FC<Props> = ({ drivers, deliveries, c
               <div>
                 <p className="text-sm font-medium flex items-center gap-1">
                   <MapPin className="h-3 w-3" />
+                  Pickup Address (Factory)
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {(() => {
+                    // Get factory address from mobile home's assigned factory
+                    const factory = selectedDelivery.mobile_homes?.mobile_home_factories?.[0]?.factories;
+                    if (factory) {
+                      const parts = [
+                        factory.street_address,
+                        factory.city,
+                        factory.state,
+                        factory.zip_code
+                      ].filter(Boolean);
+                      return parts.join(', ') || 'Factory address not available';
+                    }
+                    return selectedDelivery.pickup_address || 'Factory address not available';
+                  })()}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-sm font-medium flex items-center gap-1">
+                  <MapPin className="h-3 w-3" />
                   Delivery Address
                 </p>
                 <p className="text-sm text-muted-foreground">{selectedDelivery.delivery_address}</p>
@@ -387,6 +410,23 @@ export const DriverScheduleCalendar: React.FC<Props> = ({ drivers, deliveries, c
                   {selectedDelivery.mobile_home_type?.replace(/_/g, ' ')}
                 </p>
               </div>
+
+              {(selectedDelivery.vin_number || selectedDelivery.mso_number) && (
+                <div className="grid grid-cols-2 gap-4">
+                  {selectedDelivery.vin_number && (
+                    <div>
+                      <p className="text-sm font-medium">VIN</p>
+                      <p className="text-sm text-muted-foreground font-mono">{selectedDelivery.vin_number}</p>
+                    </div>
+                  )}
+                  {selectedDelivery.mso_number && (
+                    <div>
+                      <p className="text-sm font-medium">MSO</p>
+                      <p className="text-sm text-muted-foreground font-mono">{selectedDelivery.mso_number}</p>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {selectedDelivery.scheduled_pickup_date_tz && (
                 <div>

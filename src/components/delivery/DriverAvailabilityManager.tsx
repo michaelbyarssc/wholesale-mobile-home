@@ -24,7 +24,7 @@ interface Driver {
     id: string;
     deliveries: {
       status: string;
-      scheduled_pickup_date: string | null;
+      scheduled_pickup_date_tz: string | null;
       delivery_number: string;
     };
   }>;
@@ -96,10 +96,10 @@ export const DriverAvailabilityManager: React.FC<Props> = ({ drivers }) => {
   const getNextScheduledDelivery = (driver: Driver) => {
     const activeAssignments = getActiveAssignments(driver);
     const upcoming = activeAssignments
-      .filter(assignment => assignment.deliveries?.scheduled_pickup_date)
+      .filter(assignment => assignment.deliveries?.scheduled_pickup_date_tz)
       .sort((a, b) => {
-        const dateA = new Date(a.deliveries.scheduled_pickup_date!);
-        const dateB = new Date(b.deliveries.scheduled_pickup_date!);
+        const dateA = new Date(a.deliveries.scheduled_pickup_date_tz!);
+        const dateB = new Date(b.deliveries.scheduled_pickup_date_tz!);
         return dateA.getTime() - dateB.getTime();
       });
 
@@ -176,9 +176,9 @@ export const DriverAvailabilityManager: React.FC<Props> = ({ drivers }) => {
                     <p className="text-sm font-medium">Next Delivery</p>
                     <div className="text-xs space-y-1">
                       <p className="font-medium">{nextDelivery.delivery_number}</p>
-                      {nextDelivery.scheduled_pickup_date && (
+                      {nextDelivery.scheduled_pickup_date_tz && (
                         <p className="text-muted-foreground">
-                          {format(parseISO(nextDelivery.scheduled_pickup_date), 'MMM d, h:mm a')}
+                          {format(parseISO(nextDelivery.scheduled_pickup_date_tz), 'MMM d, h:mm a')}
                         </p>
                       )}
                     </div>

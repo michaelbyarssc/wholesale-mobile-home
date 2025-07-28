@@ -21,8 +21,8 @@ interface Delivery {
   customer_name: string;
   delivery_address: string;
   status: string;
-  scheduled_pickup_date: string | null;
-  scheduled_delivery_date: string | null;
+  scheduled_pickup_date_tz: string | null;
+  scheduled_delivery_date_tz: string | null;
   mobile_home_type: string;
   total_delivery_cost: number;
   mobile_homes: {
@@ -76,8 +76,8 @@ export const LoadTimelineView: React.FC<Props> = ({ deliveries, drivers, current
 
   // Sort deliveries by pickup date, then delivery date
   const sortedDeliveries = [...filteredDeliveries].sort((a, b) => {
-    const aDate = a.scheduled_pickup_date || a.scheduled_delivery_date;
-    const bDate = b.scheduled_pickup_date || b.scheduled_delivery_date;
+    const aDate = a.scheduled_pickup_date_tz || a.scheduled_delivery_date_tz;
+    const bDate = b.scheduled_pickup_date_tz || b.scheduled_delivery_date_tz;
     
     if (!aDate && !bDate) return 0;
     if (!aDate) return 1;
@@ -101,8 +101,8 @@ export const LoadTimelineView: React.FC<Props> = ({ deliveries, drivers, current
 
   const getUrgencyLevel = (delivery: Delivery) => {
     const now = new Date();
-    const pickupDate = delivery.scheduled_pickup_date ? parseISO(delivery.scheduled_pickup_date) : null;
-    const deliveryDate = delivery.scheduled_delivery_date ? parseISO(delivery.scheduled_delivery_date) : null;
+    const pickupDate = delivery.scheduled_pickup_date_tz ? parseISO(delivery.scheduled_pickup_date_tz) : null;
+    const deliveryDate = delivery.scheduled_delivery_date_tz ? parseISO(delivery.scheduled_delivery_date_tz) : null;
     
     // Check if overdue
     if (pickupDate && isBefore(pickupDate, now) && !['delivered', 'completed'].includes(delivery.status)) {
@@ -131,10 +131,10 @@ export const LoadTimelineView: React.FC<Props> = ({ deliveries, drivers, current
   };
 
   const getTransitDuration = (delivery: Delivery) => {
-    if (!delivery.scheduled_pickup_date || !delivery.scheduled_delivery_date) return null;
+    if (!delivery.scheduled_pickup_date_tz || !delivery.scheduled_delivery_date_tz) return null;
     
-    const pickup = parseISO(delivery.scheduled_pickup_date);
-    const deliveryDate = parseISO(delivery.scheduled_delivery_date);
+    const pickup = parseISO(delivery.scheduled_pickup_date_tz);
+    const deliveryDate = parseISO(delivery.scheduled_delivery_date_tz);
     const days = differenceInDays(deliveryDate, pickup);
     
     return days;
@@ -239,11 +239,11 @@ export const LoadTimelineView: React.FC<Props> = ({ deliveries, drivers, current
 
                     {/* Timeline Dates */}
                     <div className="space-y-2">
-                      {delivery.scheduled_pickup_date ? (
+                      {delivery.scheduled_pickup_date_tz ? (
                         <div className="flex items-center gap-2 text-sm">
                           <Clock className="h-3 w-3 text-blue-500" />
                           <span className="font-medium">Pickup:</span>
-                          <span>{format(parseISO(delivery.scheduled_pickup_date), 'MMM d, h:mm a')}</span>
+                          <span>{format(parseISO(delivery.scheduled_pickup_date_tz), 'MMM d, h:mm a')}</span>
                         </div>
                       ) : (
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -253,11 +253,11 @@ export const LoadTimelineView: React.FC<Props> = ({ deliveries, drivers, current
                         </div>
                       )}
                       
-                      {delivery.scheduled_delivery_date ? (
+                      {delivery.scheduled_delivery_date_tz ? (
                         <div className="flex items-center gap-2 text-sm">
                           <Truck className="h-3 w-3 text-green-500" />
                           <span className="font-medium">Delivery:</span>
-                          <span>{format(parseISO(delivery.scheduled_delivery_date), 'MMM d, h:mm a')}</span>
+                          <span>{format(parseISO(delivery.scheduled_delivery_date_tz), 'MMM d, h:mm a')}</span>
                         </div>
                       ) : (
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">

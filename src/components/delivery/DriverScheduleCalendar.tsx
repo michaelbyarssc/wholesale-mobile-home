@@ -25,8 +25,8 @@ interface Driver {
       customer_name: string;
       delivery_address: string;
       status: string;
-      scheduled_pickup_date: string | null;
-      scheduled_delivery_date: string | null;
+      scheduled_pickup_date_tz: string | null;
+      scheduled_delivery_date_tz: string | null;
       mobile_home_type: string;
       mobile_homes: {
         manufacturer: string;
@@ -42,8 +42,8 @@ interface Delivery {
   customer_name: string;
   delivery_address: string;
   status: string;
-  scheduled_pickup_date: string | null;
-  scheduled_delivery_date: string | null;
+  scheduled_pickup_date_tz: string | null;
+  scheduled_delivery_date_tz: string | null;
   mobile_home_type: string;
   mobile_homes: {
     manufacturer: string;
@@ -80,8 +80,8 @@ export const DriverScheduleCalendar: React.FC<Props> = ({ drivers, deliveries, c
     return driverDeliveries.filter(delivery => {
       if (!delivery) return false;
       
-      const pickupDate = delivery.scheduled_pickup_date ? parseISO(delivery.scheduled_pickup_date) : null;
-      const deliveryDate = delivery.scheduled_delivery_date ? parseISO(delivery.scheduled_delivery_date) : null;
+      const pickupDate = delivery.scheduled_pickup_date_tz ? parseISO(delivery.scheduled_pickup_date_tz) : null;
+      const deliveryDate = delivery.scheduled_delivery_date_tz ? parseISO(delivery.scheduled_delivery_date_tz) : null;
       
       return (pickupDate && isSameDay(pickupDate, day)) || (deliveryDate && isSameDay(deliveryDate, day));
     });
@@ -95,7 +95,7 @@ export const DriverScheduleCalendar: React.FC<Props> = ({ drivers, deliveries, c
       if (!delivery) return false;
       
       // Show if it has no scheduled dates and is in an active status
-      const hasNoScheduledDates = !delivery.scheduled_pickup_date && !delivery.scheduled_delivery_date;
+      const hasNoScheduledDates = !delivery.scheduled_pickup_date_tz && !delivery.scheduled_delivery_date_tz;
       const isActive = ['scheduled', 'factory_pickup_scheduled', 'factory_pickup_in_progress', 'in_transit', 'delivery_in_progress'].includes(delivery.status);
       
       return hasNoScheduledDates && isActive;
@@ -355,26 +355,26 @@ export const DriverScheduleCalendar: React.FC<Props> = ({ drivers, deliveries, c
                 </p>
               </div>
 
-              {selectedDelivery.scheduled_pickup_date && (
+              {selectedDelivery.scheduled_pickup_date_tz && (
                 <div>
                   <p className="text-sm font-medium flex items-center gap-1">
                     <Clock className="h-3 w-3" />
                     Scheduled Pickup
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    {format(parseISO(selectedDelivery.scheduled_pickup_date), 'MMM d, yyyy h:mm a')}
+                    {format(parseISO(selectedDelivery.scheduled_pickup_date_tz), 'MMM d, yyyy h:mm a')}
                   </p>
                 </div>
               )}
 
-              {selectedDelivery.scheduled_delivery_date && (
+              {selectedDelivery.scheduled_delivery_date_tz && (
                 <div>
                   <p className="text-sm font-medium flex items-center gap-1">
                     <Clock className="h-3 w-3" />
                     Scheduled Delivery
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    {format(parseISO(selectedDelivery.scheduled_delivery_date), 'MMM d, yyyy h:mm a')}
+                    {format(parseISO(selectedDelivery.scheduled_delivery_date_tz), 'MMM d, yyyy h:mm a')}
                   </p>
                 </div>
               )}

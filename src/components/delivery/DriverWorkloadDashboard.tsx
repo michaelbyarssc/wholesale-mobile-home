@@ -15,15 +15,24 @@ interface Driver {
   delivery_assignments?: Array<{
     id: string;
     delivery_id: string;
+    assigned_at: string;
+    role: string;
     deliveries: {
       id: string;
       delivery_number: string;
       customer_name: string;
+      delivery_address: string;
       status: string;
-      scheduled_pickup_date: string | null;
-      scheduled_delivery_date: string | null;
-      total_delivery_cost: number;
+      scheduled_pickup_date_tz: string | null;
+      scheduled_delivery_date_tz: string | null;
+      actual_pickup_date: string | null;
+      actual_delivery_date: string | null;
       mobile_home_type: string;
+      total_delivery_cost: number;
+      mobile_homes: {
+        manufacturer: string;
+        model: string;
+      } | null;
     };
   }>;
 }
@@ -63,7 +72,7 @@ export const DriverWorkloadDashboard: React.FC<Props> = ({ drivers, deliveries }
       const delivery = assignment.deliveries;
       if (!delivery || ['delivered', 'completed', 'cancelled'].includes(delivery.status)) return false;
       
-      const pickupDate = delivery.scheduled_pickup_date ? parseISO(delivery.scheduled_pickup_date) : null;
+      const pickupDate = delivery.scheduled_pickup_date_tz ? parseISO(delivery.scheduled_pickup_date_tz) : null;
       return pickupDate && isBefore(pickupDate, new Date());
     });
 
@@ -71,7 +80,7 @@ export const DriverWorkloadDashboard: React.FC<Props> = ({ drivers, deliveries }
       const delivery = assignment.deliveries;
       if (!delivery || ['delivered', 'completed', 'cancelled'].includes(delivery.status)) return false;
       
-      const pickupDate = delivery.scheduled_pickup_date ? parseISO(delivery.scheduled_pickup_date) : null;
+      const pickupDate = delivery.scheduled_pickup_date_tz ? parseISO(delivery.scheduled_pickup_date_tz) : null;
       if (!pickupDate) return false;
       
       const daysUntil = differenceInDays(pickupDate, new Date());

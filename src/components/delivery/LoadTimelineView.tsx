@@ -88,11 +88,17 @@ export const LoadTimelineView: React.FC<Props> = ({ deliveries, drivers, current
 
   // Safe date parsing function that handles timezone abbreviations
   const safeParseDateTz = (dateString: string | null): Date | null => {
-    if (!dateString) return null;
+    console.log('Parsing date string:', dateString);
+    if (!dateString) {
+      console.log('Date string is null or empty');
+      return null;
+    }
     try {
       // Use Date constructor which can handle timezone abbreviations like "EDT"
       const date = new Date(dateString);
-      return isNaN(date.getTime()) ? null : date;
+      const isValid = !isNaN(date.getTime());
+      console.log('Parsed date:', date, 'isValid:', isValid);
+      return isValid ? date : null;
     } catch (error) {
       console.warn('Failed to parse date:', dateString, error);
       return null;

@@ -377,8 +377,8 @@ export const DriverScheduleCalendar: React.FC<Props> = ({ drivers, deliveries, c
                 </p>
                 <p className="text-sm text-muted-foreground">
                   {(() => {
-                    // Get factory address from mobile home's assigned factory
-                    const factory = selectedDelivery.mobile_homes?.mobile_home_factories?.[0]?.factories;
+                    // Get factory address from mobile home's assigned factory through invoices
+                    const factory = selectedDelivery.invoices?.mobile_homes?.mobile_home_factories?.[0]?.factories;
                     if (factory) {
                       const parts = [
                         factory.street_address,

@@ -158,6 +158,31 @@ export const DriverScheduleCalendar: React.FC<Props> = ({ drivers, deliveries, c
     return colors[status as keyof typeof colors] || 'bg-gray-100 text-gray-800';
   };
 
+  // Helper function to get factory address from mobile home's assigned factory
+  const getFactoryAddress = (delivery: any): string => {
+    // First, try to get factory address from the invoice's mobile home factory data
+    const factory = delivery.invoices?.mobile_homes?.mobile_home_factories?.[0]?.factories;
+    if (factory) {
+      const parts = [
+        factory.street_address,
+        factory.city,
+        factory.state,
+        factory.zip_code
+      ].filter(Boolean);
+      
+      if (parts.length > 0) {
+        return parts.join(', ');
+      }
+    }
+    
+    // Fallback to pickup_address if no factory data available
+    if (delivery.pickup_address && delivery.pickup_address.trim() !== '') {
+      return delivery.pickup_address;
+    }
+    
+    return 'Factory Location TBD';
+  };
+
   const handleDeliveryClick = (delivery: any) => {
     setSelectedDelivery(delivery);
     setShowDetails(true);
@@ -376,7 +401,7 @@ export const DriverScheduleCalendar: React.FC<Props> = ({ drivers, deliveries, c
                   Pickup Address
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  {selectedDelivery.pickup_address || 'Pickup address not available'}
+                  {getFactoryAddress(selectedDelivery)}
                 </p>
               </div>
 

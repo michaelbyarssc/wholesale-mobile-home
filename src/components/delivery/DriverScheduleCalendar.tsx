@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Truck, MapPin, Clock, User, ChevronLeft, ChevronRight, CalendarIcon } from 'lucide-react';
-import { format, startOfWeek, addDays, isSameDay, parseISO, addWeeks, subWeeks } from 'date-fns';
+import { format, startOfWeek, addDays, isSameDay, addWeeks, subWeeks } from 'date-fns';
 import { cn } from '@/lib/utils';
 
 interface Driver {
@@ -71,6 +71,18 @@ export const DriverScheduleCalendar: React.FC<Props> = ({ drivers, deliveries, c
   const [showDetails, setShowDetails] = useState(false);
   const [showWeekPicker, setShowWeekPicker] = useState(false);
 
+  // Safe date parsing function that handles timezone abbreviations
+  const safeParseDateTz = (dateString: string | null): Date | null => {
+    if (!dateString) return null;
+    try {
+      const date = new Date(dateString);
+      return isNaN(date.getTime()) ? null : date;
+    } catch (error) {
+      console.warn('Failed to parse date:', dateString, error);
+      return null;
+    }
+  };
+
   const weekStart = startOfWeek(currentWeek);
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
@@ -80,8 +92,8 @@ export const DriverScheduleCalendar: React.FC<Props> = ({ drivers, deliveries, c
     return driverDeliveries.filter(delivery => {
       if (!delivery) return false;
       
-      const pickupDate = delivery.scheduled_pickup_date_tz ? parseISO(delivery.scheduled_pickup_date_tz) : null;
-      const deliveryDate = delivery.scheduled_delivery_date_tz ? parseISO(delivery.scheduled_delivery_date_tz) : null;
+      const pickupDate = safeParseDateTz(delivery.scheduled_pickup_date_tz);
+      const deliveryDate = safeParseDateTz(delivery.scheduled_delivery_date_tz);
       
       return (pickupDate && isSameDay(pickupDate, day)) || (deliveryDate && isSameDay(deliveryDate, day));
     });
@@ -362,7 +374,10 @@ export const DriverScheduleCalendar: React.FC<Props> = ({ drivers, deliveries, c
                     Scheduled Pickup
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    {format(parseISO(selectedDelivery.scheduled_pickup_date_tz), 'MMM d, yyyy h:mm a')}
+                    {(() => {
+                      const pickupDate = safeParseDateTz(selectedDelivery.scheduled_pickup_date_tz);
+                      return pickupDate ? format(pickupDate, 'MMM d, yyyy h:mm a') : 'Not scheduled';
+                    })()}
                   </p>
                 </div>
               )}
@@ -374,7 +389,10 @@ export const DriverScheduleCalendar: React.FC<Props> = ({ drivers, deliveries, c
                     Scheduled Delivery
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    {format(parseISO(selectedDelivery.scheduled_delivery_date_tz), 'MMM d, yyyy h:mm a')}
+                    {(() => {
+                      const deliveryDate = safeParseDateTz(selectedDelivery.scheduled_delivery_date_tz);
+                      return deliveryDate ? format(deliveryDate, 'MMM d, yyyy h:mm a') : 'Not scheduled';
+                    })()}
                   </p>
                 </div>
               )}

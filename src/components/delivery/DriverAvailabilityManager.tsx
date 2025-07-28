@@ -11,7 +11,7 @@ import { Clock, User, Phone, Settings, Calendar, AlertCircle } from 'lucide-reac
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { format, parseISO } from 'date-fns';
+import { format } from 'date-fns';
 
 interface Driver {
   id: string;
@@ -76,6 +76,18 @@ export const DriverAvailabilityManager: React.FC<Props> = ({ drivers }) => {
       });
     }
   });
+
+  // Safe date parsing function that handles timezone abbreviations
+  const safeParseDateTz = (dateString: string | null): Date | null => {
+    if (!dateString) return null;
+    try {
+      const date = new Date(dateString);
+      return isNaN(date.getTime()) ? null : date;
+    } catch (error) {
+      console.warn('Failed to parse date:', dateString, error);
+      return null;
+    }
+  };
 
   const getStatusColor = (status: string) => {
     const colors = {
@@ -176,11 +188,14 @@ export const DriverAvailabilityManager: React.FC<Props> = ({ drivers }) => {
                     <p className="text-sm font-medium">Next Delivery</p>
                     <div className="text-xs space-y-1">
                       <p className="font-medium">{nextDelivery.delivery_number}</p>
-                      {nextDelivery.scheduled_pickup_date_tz && (
-                        <p className="text-muted-foreground">
-                          {format(parseISO(nextDelivery.scheduled_pickup_date_tz), 'MMM d, h:mm a')}
-                        </p>
-                      )}
+                      {nextDelivery.scheduled_pickup_date_tz && (() => {
+                        const pickupDate = safeParseDateTz(nextDelivery.scheduled_pickup_date_tz);
+                        return pickupDate ? (
+                          <p className="text-muted-foreground">
+                            {format(pickupDate, 'MMM d, h:mm a')}
+                          </p>
+                        ) : null;
+                      })()}
                     </div>
                   </div>
                 )}

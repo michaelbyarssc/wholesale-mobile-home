@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { Users, Truck, DollarSign, Clock, TrendingUp, AlertCircle } from 'lucide-react';
-import { format, parseISO, differenceInDays, isAfter, isBefore } from 'date-fns';
+import { format, differenceInDays, isAfter, isBefore } from 'date-fns';
 
 interface Driver {
   id: string;
@@ -57,6 +57,18 @@ interface Props {
 }
 
 export const DriverWorkloadDashboard: React.FC<Props> = ({ drivers, deliveries }) => {
+  // Safe date parsing function that handles timezone abbreviations
+  const safeParseDateTz = (dateString: string | null): Date | null => {
+    if (!dateString) return null;
+    try {
+      const date = new Date(dateString);
+      return isNaN(date.getTime()) ? null : date;
+    } catch (error) {
+      console.warn('Failed to parse date:', dateString, error);
+      return null;
+    }
+  };
+
   // Calculate driver workload metrics
   const driverMetrics = drivers.map(driver => {
     const assignments = driver.delivery_assignments || [];
@@ -72,7 +84,7 @@ export const DriverWorkloadDashboard: React.FC<Props> = ({ drivers, deliveries }
       const delivery = assignment.deliveries;
       if (!delivery || ['delivered', 'completed', 'cancelled'].includes(delivery.status)) return false;
       
-      const pickupDate = delivery.scheduled_pickup_date_tz ? parseISO(delivery.scheduled_pickup_date_tz) : null;
+      const pickupDate = safeParseDateTz(delivery.scheduled_pickup_date_tz);
       return pickupDate && isBefore(pickupDate, new Date());
     });
 
@@ -80,7 +92,7 @@ export const DriverWorkloadDashboard: React.FC<Props> = ({ drivers, deliveries }
       const delivery = assignment.deliveries;
       if (!delivery || ['delivered', 'completed', 'cancelled'].includes(delivery.status)) return false;
       
-      const pickupDate = delivery.scheduled_pickup_date_tz ? parseISO(delivery.scheduled_pickup_date_tz) : null;
+      const pickupDate = safeParseDateTz(delivery.scheduled_pickup_date_tz);
       if (!pickupDate) return false;
       
       const daysUntil = differenceInDays(pickupDate, new Date());

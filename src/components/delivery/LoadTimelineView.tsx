@@ -117,17 +117,25 @@ export const LoadTimelineView: React.FC<Props> = ({ deliveries, drivers, current
 
   // Helper function to get factory address from invoice data
   const getFactoryAddress = (delivery: Delivery): string => {
+    // Try to get factory address from pickup_address first (if available)
+    if (delivery.pickup_address && delivery.pickup_address.trim() !== '') {
+      return delivery.pickup_address;
+    }
+    
+    // Fallback: Try to get from invoice mobile_home_factories if available
     const factory = delivery.invoices?.mobile_homes?.mobile_home_factories?.[0]?.factories;
-    if (!factory) return 'Factory Location TBD';
+    if (factory) {
+      const parts = [
+        factory.street_address,
+        factory.city,
+        factory.state,
+        factory.zip_code
+      ].filter(Boolean);
+      
+      return parts.join(', ') || 'Factory Location TBD';
+    }
     
-    const parts = [
-      factory.street_address,
-      factory.city,
-      factory.state,
-      factory.zip_code
-    ].filter(Boolean);
-    
-    return parts.join(', ') || 'Factory Location TBD';
+    return 'Factory Location TBD';
   };
 
   const getStatusColor = (status: string) => {

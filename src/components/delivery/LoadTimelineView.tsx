@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -48,13 +49,34 @@ export const LoadTimelineView: React.FC<Props> = ({ deliveries, drivers, current
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [driverFilter, setDriverFilter] = useState<string>('all');
 
-  // Filter deliveries based on current filters
+  // Filter deliveries to show only future scheduled deliveries for assigned drivers
   const filteredDeliveries = deliveries.filter(delivery => {
+    // Only show deliveries that have driver assignments
+    if (!delivery.delivery_assignments || delivery.delivery_assignments.length === 0) {
+      return false;
+    }
+
+    // Only show deliveries scheduled for the future
+    const now = new Date();
+    const pickupDate = delivery.scheduled_pickup_date ? parseISO(delivery.scheduled_pickup_date) : null;
+    const deliveryDate = delivery.scheduled_delivery_date ? parseISO(delivery.scheduled_delivery_date) : null;
+    
+    const hasFuturePickup = pickupDate && isAfter(pickupDate, now);
+    const hasFutureDelivery = deliveryDate && isAfter(deliveryDate, now);
+    
+    if (!hasFuturePickup && !hasFutureDelivery) {
+      return false;
+    }
+
+    // Apply status filter
     if (statusFilter !== 'all' && delivery.status !== statusFilter) return false;
+    
+    // Apply driver filter
     if (driverFilter !== 'all') {
       const hasDriver = delivery.delivery_assignments.some(a => a.driver_id === driverFilter);
       if (!hasDriver) return false;
     }
+    
     return true;
   });
 
@@ -185,7 +207,7 @@ export const LoadTimelineView: React.FC<Props> = ({ deliveries, drivers, current
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <BarChart3 className="h-5 w-5" />
-            Load Timeline ({sortedDeliveries.length} loads)
+            Future Scheduled Deliveries ({sortedDeliveries.length} loads)
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -283,7 +305,7 @@ export const LoadTimelineView: React.FC<Props> = ({ deliveries, drivers, current
             {sortedDeliveries.length === 0 && (
               <div className="text-center py-8 text-muted-foreground">
                 <BarChart3 className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>No deliveries found matching your filters.</p>
+                <p>No future deliveries found for assigned drivers matching your filters.</p>
               </div>
             )}
           </div>

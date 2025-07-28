@@ -15,6 +15,7 @@ import { UserManagementTab } from '@/components/admin/UserManagementTab';
 import { SocialProofManager } from '@/components/admin/SocialProofManager';
 import { NotificationCenter } from '@/components/admin/NotificationCenter';
 import { FAQManagementTab } from '@/components/admin/FAQManagementTab';
+import { DeliveryManagement } from '@/components/admin/DeliveryManagement';
 
 import { Menu, X } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -130,6 +131,7 @@ const Admin = () => {
       'social-proof': 'Social Proof',
       'analytics': 'Analytics',
       'crm': 'CRM',
+      'delivery': 'Delivery',
       'settings': 'Settings'
     };
     return tabNames[tab] || tab;
@@ -169,6 +171,15 @@ const Admin = () => {
       >
         📊 CRM
       </Button>
+      {isSuperAdmin && (
+        <Button
+          variant={activeTab === 'delivery' ? 'default' : 'ghost'}
+          className={`${mobile ? 'justify-start w-full h-11 text-base font-medium' : ''} text-xs sm:text-sm`}
+          onClick={() => handleTabChange('delivery')}
+        >
+          🚚 Delivery
+        </Button>
+      )}
        {isSuperAdmin && (
         <>
            <Button
@@ -288,7 +299,7 @@ const Admin = () => {
           {/* Desktop Tab Navigation */}
           {!isMobile && isSuperAdmin && (
             <div className="border rounded-lg p-1 bg-muted/30 overflow-x-auto">
-              <TabsList className="grid w-full grid-cols-8 h-12 bg-transparent min-w-[700px]">
+              <TabsList className="grid w-full grid-cols-9 h-12 bg-transparent min-w-[800px]">
                 <TabsTrigger 
                   value="mobile-homes" 
                   className="text-xs sm:text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm px-2"
@@ -330,6 +341,12 @@ const Admin = () => {
                   className="text-xs sm:text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm px-2"
                 >
                   FAQ
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="delivery" 
+                  className="text-xs sm:text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm px-2"
+                >
+                  Delivery
                 </TabsTrigger>
                 <TabsTrigger 
                   value="settings" 
@@ -395,6 +412,10 @@ const Admin = () => {
               <>
                 <TabsContent value="analytics" className="p-3 sm:p-6 m-0">
                   <AdminAnalytics />
+                </TabsContent>
+
+                <TabsContent value="delivery" className="p-3 sm:p-6 m-0">
+                  <DeliveryManagement />
                 </TabsContent>
 
                 <TabsContent value="settings" className="p-3 sm:p-6 m-0">

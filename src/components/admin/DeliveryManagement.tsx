@@ -14,6 +14,9 @@ import { Truck, Calendar as CalendarIcon, CheckCircle, Clock, AlertCircle, MapPi
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { NewDeliveryScheduling } from '@/components/delivery/NewDeliveryScheduling';
 import { DriverScheduleDashboard } from '@/components/delivery/DriverScheduleDashboard';
+import { DriverScheduleCalendar } from '@/components/delivery/DriverScheduleCalendar';
+import { LoadTimelineView } from '@/components/delivery/LoadTimelineView';
+import { DriverWorkloadDashboard } from '@/components/delivery/DriverWorkloadDashboard';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
@@ -213,6 +216,20 @@ type Delivery = {
   invoices?: {
     transaction_number: string;
   } | null;
+  mobile_homes?: {
+    manufacturer: string;
+    model: string;
+  } | null;
+  delivery_assignments?: Array<{
+    id: string;
+    driver_id: string;
+    assigned_at: string;
+    role: string;
+    drivers: {
+      first_name: string;
+      last_name: string;
+    };
+  }>;
 };
 
 const statusColors: Record<string, string> = {
@@ -237,6 +254,10 @@ const getStatusBadge = (status: string) => {
 export const DeliveryManagement = () => {
   const [filter, setFilter] = useState<'all' | 'scheduled' | 'in_transit' | 'completed' | 'pending_payment' | 'factory_pickup_scheduled' | 'factory_pickup_in_progress' | 'factory_pickup_completed' | 'delivery_in_progress' | 'delivered' | 'cancelled' | 'delayed'>('all');
   const [selectedDelivery, setSelectedDelivery] = useState<Delivery | null>(null);
+  
+  // Dashboard sub-tab state
+  const [currentWeek, setCurrentWeek] = useState(new Date());
+  const [dashboardSubTab, setDashboardSubTab] = useState('deliveries');
   const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
   const [selectedPickupDate, setSelectedPickupDate] = useState<Date>();
   const [selectedPickupTime, setSelectedPickupTime] = useState<string>('');
@@ -283,6 +304,20 @@ export const DeliveryManagement = () => {
           *,
           invoices (
             transaction_number
+          ),
+          mobile_homes (
+            manufacturer,
+            model
+          ),
+          delivery_assignments (
+            id,
+            driver_id,
+            assigned_at,
+            role,
+            drivers (
+              first_name,
+              last_name
+            )
           )
         `);
       
@@ -302,7 +337,37 @@ export const DeliveryManagement = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('drivers')
-        .select('id, first_name, last_name, email, phone, status')
+        .select(`
+          id, 
+          first_name, 
+          last_name, 
+          email, 
+          phone, 
+          status,
+          delivery_assignments (
+            id,
+            delivery_id,
+            assigned_at,
+            role,
+            deliveries (
+              id,
+              delivery_number,
+              customer_name,
+              delivery_address,
+              status,
+              scheduled_pickup_date_tz,
+              scheduled_delivery_date_tz,
+              actual_pickup_date,
+              actual_delivery_date,
+              mobile_home_type,
+              total_delivery_cost,
+              mobile_homes (
+                manufacturer,
+                model
+              )
+            )
+          )
+        `)
         .eq('active', true)
         .order('first_name');
       
@@ -1421,7 +1486,60 @@ export const DeliveryManagement = () => {
         </TabsContent>
 
         <TabsContent value="dashboard" className="space-y-4">
-          <DriverScheduleDashboard />
+          <div className="space-y-4">
+            <Tabs value={dashboardSubTab} onValueChange={setDashboardSubTab} className="space-y-4">
+              <TabsList className="grid w-full grid-cols-4">
+                <TabsTrigger value="deliveries" className="flex items-center gap-2">
+                  <Truck className="h-4 w-4" />
+                  Deliveries
+                </TabsTrigger>
+                <TabsTrigger value="schedule-calendar" className="flex items-center gap-2">
+                  <CalendarIcon className="h-4 w-4" />
+                  Schedule Calendar
+                </TabsTrigger>
+                <TabsTrigger value="workload-analysis" className="flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  Workload Analysis
+                </TabsTrigger>
+                <TabsTrigger value="load-timeline" className="flex items-center gap-2">
+                  <Clock className="h-4 w-4" />
+                  Load Timeline
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="deliveries" className="space-y-4">
+                <LoadTimelineView 
+                  deliveries={deliveries as any || []} 
+                  drivers={drivers as any || []} 
+                  currentWeek={currentWeek} 
+                />
+              </TabsContent>
+
+              <TabsContent value="schedule-calendar" className="space-y-4">
+                <DriverScheduleCalendar 
+                  drivers={drivers as any || []} 
+                  deliveries={deliveries as any || []} 
+                  currentWeek={currentWeek}
+                  onWeekChange={setCurrentWeek}
+                />
+              </TabsContent>
+
+              <TabsContent value="workload-analysis" className="space-y-4">
+                <DriverWorkloadDashboard 
+                  drivers={drivers as any || []} 
+                  deliveries={deliveries as any || []} 
+                />
+              </TabsContent>
+
+              <TabsContent value="load-timeline" className="space-y-4">
+                <LoadTimelineView 
+                  deliveries={deliveries as any || []} 
+                  drivers={drivers as any || []} 
+                  currentWeek={currentWeek} 
+                />
+              </TabsContent>
+            </Tabs>
+          </div>
         </TabsContent>
       </Tabs>
       

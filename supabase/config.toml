@@ -15,7 +15,7 @@ port = 54323
 port = 54324
 
 [auth]
-site_url = "http://localhost:3000"
+site_url = "https://cfb3aeb9-c433-4af9-8989-f924e36d65bb.lovableproject.com"
 
 [storage]
 file_size_limit = "50MiB"

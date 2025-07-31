@@ -125,7 +125,7 @@ export const Footer = () => {
         
         <div className="border-t border-blue-800 mt-8 sm:mt-12 lg:mt-16 pt-6 sm:pt-8 text-center">
           <p className="text-blue-200 text-sm sm:text-base">
-            Copyright © 2025 WholesaleMobileHome.com. All rights reserved.
+            © 2025 WholesaleMobileHome.com. All rights reserved.
           </p>
         </div>
       </div>

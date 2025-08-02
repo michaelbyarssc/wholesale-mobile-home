@@ -22,6 +22,29 @@ interface CustomerTrackingMapProps {
 
 export const CustomerTrackingMap = ({ trackingToken }: CustomerTrackingMapProps) => {
   const [mapboxToken, setMapboxToken] = useState('');
+  const [isLoadingToken, setIsLoadingToken] = useState(true);
+
+  // Auto-fetch Mapbox token from Supabase secrets
+  useEffect(() => {
+    const fetchMapboxToken = async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('get-mapbox-token');
+        
+        if (error) {
+          console.error('Failed to fetch Mapbox token:', error);
+          toast.error('Failed to load map configuration');
+        } else if (data?.token) {
+          setMapboxToken(data.token);
+        }
+      } catch (error) {
+        console.error('Error fetching Mapbox token:', error);
+      } finally {
+        setIsLoadingToken(false);
+      }
+    };
+
+    fetchMapboxToken();
+  }, []);
 
   // Get tracking data
   const { data: trackingData, isLoading, error, refetch } = useQuery({
@@ -120,6 +143,17 @@ export const CustomerTrackingMap = ({ trackingToken }: CustomerTrackingMapProps)
     return colors[status as keyof typeof colors] || 'bg-gray-500';
   };
 
+  if (isLoadingToken) {
+    return (
+      <Card>
+        <CardContent className="p-8 text-center">
+          <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4" />
+          <p>Loading map configuration...</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
   if (!mapboxToken) {
     return (
       <Card>
@@ -130,38 +164,14 @@ export const CustomerTrackingMap = ({ trackingToken }: CustomerTrackingMapProps)
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            <div className="p-4 bg-amber-50 border border-amber-200 rounded">
-              <div className="flex items-center gap-2 text-amber-800">
-                <AlertCircle className="h-4 w-4" />
-                <span className="font-medium">Mapbox Token Required</span>
-              </div>
-              <p className="text-sm text-amber-700 mt-1">
-                To view the live tracking map, please enter your Mapbox public token below.
-              </p>
+          <div className="p-4 bg-amber-50 border border-amber-200 rounded">
+            <div className="flex items-center gap-2 text-amber-800">
+              <AlertCircle className="h-4 w-4" />
+              <span className="font-medium">Map Configuration Error</span>
             </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="mapbox-token">Mapbox Public Token</Label>
-              <Input
-                id="mapbox-token"
-                type="password"
-                placeholder="pk.eyJ1IjoieW91ciIsImEiOiJhYmMxMjMifQ..."
-                value={mapboxToken}
-                onChange={(e) => setMapboxToken(e.target.value)}
-              />
-              <p className="text-xs text-muted-foreground">
-                Get your token from{' '}
-                <a 
-                  href="https://mapbox.com/" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-blue-600 hover:underline"
-                >
-                  mapbox.com
-                </a>
-              </p>
-            </div>
+            <p className="text-sm text-amber-700 mt-1">
+              Unable to load map configuration. Please contact support if this issue persists.
+            </p>
           </div>
         </CardContent>
       </Card>

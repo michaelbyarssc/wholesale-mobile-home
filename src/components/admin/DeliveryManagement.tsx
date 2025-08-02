@@ -10,7 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
-import { Truck, Calendar as CalendarIcon, CheckCircle, Clock, AlertCircle, MapPin, FileText, User, Phone, Home, Package, CalendarDays, Plus, Edit, UserPlus, Settings, Key } from 'lucide-react';
+import { Truck, Calendar as CalendarIcon, CheckCircle, Clock, AlertCircle, MapPin, FileText, User, Phone, Home, Package, CalendarDays, Plus, Edit, UserPlus, Settings, Key, Link } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { NewDeliveryScheduling } from '@/components/delivery/NewDeliveryScheduling';
 import { DriverScheduleDashboard } from '@/components/delivery/DriverScheduleDashboard';
@@ -595,6 +595,64 @@ export const DeliveryManagement = () => {
       toast({
         title: "Password Reset Failed",
         description: error.message || "Failed to reset driver password.",
+        variant: "destructive"
+      });
+    }
+  });
+
+  // Link drivers to user accounts mutation
+  const linkDriversMutation = useMutation({
+    mutationFn: async (driver_id?: string) => {
+      const { data, error } = await supabase.functions.invoke('admin-link-existing-drivers', {
+        body: { driver_id }
+      });
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (result) => {
+      // Refetch drivers data to update the UI
+      queryClient.invalidateQueries({ queryKey: ['drivers'] });
+      
+      if (result.results && result.results.length > 0) {
+        const successfulLinks = result.results.filter((r: any) => r.success);
+        const failedLinks = result.results.filter((r: any) => !r.success);
+        
+        if (successfulLinks.length > 0) {
+          const passwords = successfulLinks.map((r: any) => 
+            `${r.driver_name}: ${r.temporary_password}`
+          ).join('\n');
+          
+          toast({
+            title: `${successfulLinks.length} Driver(s) Linked Successfully`,
+            description: `Temporary passwords:\n${passwords}\n\nPlease share these with the drivers.`,
+            duration: 15000, // Show for 15 seconds
+          });
+        }
+        
+        if (failedLinks.length > 0) {
+          const errors = failedLinks.map((r: any) => 
+            `${r.driver_name}: ${r.error}`
+          ).join('\n');
+          
+          toast({
+            title: `${failedLinks.length} Driver(s) Failed to Link`,
+            description: errors,
+            variant: "destructive",
+            duration: 10000,
+          });
+        }
+      } else {
+        toast({
+          title: "No Drivers to Link",
+          description: "All drivers already have user accounts.",
+        });
+      }
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Driver Linking Failed",
+        description: error.message || "Failed to link drivers to user accounts.",
         variant: "destructive"
       });
     }
@@ -1507,15 +1565,27 @@ export const DeliveryManagement = () => {
                             <Edit className="h-3 w-3 mr-1" />
                             Edit
                           </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => resetDriverPasswordMutation.mutate(driver)}
-                            disabled={resetDriverPasswordMutation.isPending || driver.status === 'inactive'}
-                            title={driver.user_id ? "Reset driver password" : "Driver has no user account"}
-                          >
-                            <Key className="h-3 w-3" />
-                          </Button>
+                          {driver.user_id ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => resetDriverPasswordMutation.mutate(driver)}
+                              disabled={resetDriverPasswordMutation.isPending || driver.status === 'inactive'}
+                              title="Reset driver password"
+                            >
+                              <Key className="h-3 w-3" />
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => linkDriversMutation.mutate(driver.id)}
+                              disabled={linkDriversMutation.isPending}
+                              title="Create user account for driver"
+                            >
+                              <Link className="h-3 w-3" />
+                            </Button>
+                          )}
                           <Select 
                             value={driver.status} 
                             onValueChange={(value) => handleDriverStatusChange(driver.id, value as 'available' | 'on_delivery' | 'off_duty' | 'inactive')}

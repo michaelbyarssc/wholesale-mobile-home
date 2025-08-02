@@ -91,13 +91,22 @@ const Admin = () => {
 
     checkUserRole();
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (!session?.user) {
+    // Listen for auth changes with safeguards to prevent test interference
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Admin: Auth state change detected:', { event, hasSession: !!session?.user });
+      
+      // Add delay to prevent race conditions during testing
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Only redirect if we're certain the session is gone and it's not a temporary state
+      if (!session?.user && event === 'SIGNED_OUT') {
+        console.log('Admin: User signed out, redirecting to auth');
         navigate('/auth');
-      } else {
+      } else if (session?.user && event === 'SIGNED_IN') {
+        console.log('Admin: User signed in, refreshing role check');
         checkUserRole();
       }
+      // Ignore other events like TOKEN_REFRESHED to prevent unnecessary redirects
     });
 
     return () => subscription.unsubscribe();

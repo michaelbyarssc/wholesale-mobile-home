@@ -53,7 +53,13 @@ export function ComprehensiveTestRunner() {
   const [progress, setProgress] = useState(0);
   const [phaseResults, setPhaseResults] = useState<PhaseResult[]>([]);
   const [overallStatus, setOverallStatus] = useState<'idle' | 'running' | 'completed' | 'failed'>('idle');
+  const [testingInProgress, setTestingInProgress] = useState(false);
   const { toast } = useToast();
+
+  // Add debug logging
+  const logDebug = (message: string, data?: any) => {
+    console.log(`[TestRunner] ${message}`, data);
+  };
 
   // Test Phase 1: Core User Journey Testing
   const runCoreUserJourneyTests = async (): Promise<TestResult[]> => {
@@ -218,19 +224,27 @@ export function ComprehensiveTestRunner() {
     return results;
   };
 
-  // Test Phase 3: Security Testing
+  // Test Phase 3: Security Testing (Improved to avoid auth interference)
   const runSecurityTests = async (): Promise<TestResult[]> => {
     const results: TestResult[] = [];
 
     // Test 1: RLS Policy Enforcement for Unauthenticated Users
     try {
       const start = Date.now();
+      logDebug('Starting security tests - testing RLS policies');
       
-      // Create a new supabase client without authentication to test anonymous access
+      // Use isolated client approach to avoid interfering with main auth state
       const { createClient } = await import('@supabase/supabase-js');
-      const anonClient = createClient(
+      const testClient = createClient(
         'https://vgdreuwmisludqxphsph.supabase.co',
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZnZHJldXdtaXNsdWRxeHBoc3BoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA3MDk2OTgsImV4cCI6MjA2NjI4NTY5OH0.gnJ83GgBWV4tb-cwWJXY0pPG2bGAyTK3T2IojP4llR8'
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZnZHJldXdtaXNsdWRxeHBoc3BoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA3MDk2OTgsImV4cCI6MjA2NjI4NTY5OH0.gnJ83GgBWV4tb-cwWJXY0pPG2bGAyTK3T2IojP4llR8',
+        {
+          auth: {
+            persistSession: false, // Don't persist session to avoid interfering with main auth
+            autoRefreshToken: false,
+            detectSessionInUrl: false
+          }
+        }
       );
 
       // Test multiple sensitive tables that should block anonymous access
@@ -245,22 +259,27 @@ export function ComprehensiveTestRunner() {
 
       for (const query of sensitiveQueries) {
         try {
-          const { data, error } = await anonClient.from(query.table).select('*').limit(1);
+          logDebug(`Testing RLS for table: ${query.table}`);
+          const { data, error } = await testClient.from(query.table).select('*').limit(1);
           
           if (!error && data && data.length > 0) {
             // Data returned without authentication - security issue
             allBlocked = false;
             testDetails.push(`❌ ${query.name}: Anonymous access allowed (${data.length} records returned)`);
+            logDebug(`RLS FAIL: ${query.table} allows anonymous access`);
           } else if (error) {
             // Error occurred - likely RLS blocking access (good)
             testDetails.push(`✅ ${query.name}: Properly blocked (${error.code}: ${error.message})`);
+            logDebug(`RLS PASS: ${query.table} properly blocked`);
           } else if (data && data.length === 0) {
             // Empty result - could be RLS working or just no data
             testDetails.push(`⚠️ ${query.name}: Empty result (could be no data or RLS working)`);
+            logDebug(`RLS UNKNOWN: ${query.table} returned empty result`);
           }
         } catch (err) {
           // Exception thrown - likely RLS blocking (good)
           testDetails.push(`✅ ${query.name}: Properly blocked with exception`);
+          logDebug(`RLS PASS: ${query.table} blocked with exception`);
         }
       }
 
@@ -383,6 +402,10 @@ export function ComprehensiveTestRunner() {
   };
 
   const runAllTests = async () => {
+    logDebug('Starting comprehensive test suite');
+    
+    // Set testing flag to prevent auth state interference
+    setTestingInProgress(true);
     setIsRunning(true);
     setOverallStatus('running');
     setProgress(0);
@@ -401,6 +424,7 @@ export function ComprehensiveTestRunner() {
     try {
       for (let i = 0; i < phases.length; i++) {
         const phase = phases[i];
+        logDebug(`Starting phase: ${phase.name}`);
         setCurrentPhase(phase.name);
         setProgress((i / phases.length) * 100);
 
@@ -421,6 +445,7 @@ export function ComprehensiveTestRunner() {
 
         phaseResults.push(phaseResult);
         setPhaseResults([...phaseResults]);
+        logDebug(`Completed phase: ${phase.name}`, { passed: phaseResult.passedTests, failed: phaseResult.failedTests });
       }
 
       setProgress(100);
@@ -431,6 +456,8 @@ export function ComprehensiveTestRunner() {
       const totalPassed = phaseResults.reduce((acc, phase) => acc + phase.passedTests, 0);
       const totalFailed = phaseResults.reduce((acc, phase) => acc + phase.failedTests, 0);
 
+      logDebug('Testing completed successfully', { totalTests, totalPassed, totalFailed });
+
       toast({
         title: "Testing Complete",
         description: `${totalPassed}/${totalTests} tests passed. ${totalFailed} failed.`,
@@ -438,6 +465,7 @@ export function ComprehensiveTestRunner() {
       });
 
     } catch (error) {
+      logDebug('Testing failed with error', error);
       setOverallStatus('failed');
       toast({
         title: "Testing Failed",
@@ -445,9 +473,12 @@ export function ComprehensiveTestRunner() {
         variant: "destructive"
       });
     } finally {
+      // Clear testing flag and reset state
+      setTestingInProgress(false);
       setIsRunning(false);
       setCurrentPhase('');
       setCurrentTest('');
+      logDebug('Test suite cleanup completed');
     }
   };
 
@@ -476,6 +507,16 @@ export function ComprehensiveTestRunner() {
 
   return (
     <div className="space-y-6">
+      {/* Testing Status Indicator */}
+      {testingInProgress && (
+        <Alert className="border-blue-200 bg-blue-50">
+          <Bug className="h-4 w-4" />
+          <AlertDescription>
+            Testing in progress - avoid navigation during test execution to prevent interference.
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -487,7 +528,7 @@ export function ComprehensiveTestRunner() {
         </div>
         <Button 
           onClick={runAllTests}
-          disabled={isRunning}
+          disabled={isRunning || testingInProgress}
           className="flex items-center gap-2"
           size="lg"
         >

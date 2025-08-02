@@ -1,4 +1,4 @@
-// Enhanced performance monitoring dashboard component
+// Simplified performance monitoring dashboard
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,62 +6,65 @@ import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { 
   TrendingUp, 
-  Clock, 
-  Database, 
-  Zap, 
   MapPin,
   Camera,
   Signal,
-  Battery
+  Truck
 } from 'lucide-react';
 
-interface PerformanceMetrics {
-  delivery_id: string;
+interface DeliveryMetrics {
+  id: string;
   status: string;
-  total_gps_points: number;
-  avg_gps_accuracy: number;
-  accurate_gps_points: number;
-  total_photos: number;
-  pickup_photos: number;
-  delivery_photos: number;
-  tracking_duration_hours: number;
-  last_gps_update: string;
+  created_at: string;
+  gps_count: number;
+  photo_count: number;
 }
 
 export const DeliveryPerformanceDashboard = () => {
-  const { data: metrics, isLoading } = useQuery({
-    queryKey: ['delivery-performance-metrics'],
+  const { data: deliveries, isLoading } = useQuery({
+    queryKey: ['delivery-metrics'],
     queryFn: async () => {
-      // Fetch delivery data with GPS and photo counts
       const { data, error } = await supabase
         .from('deliveries')
         .select(`
           id,
           status,
-          created_at,
-          delivery_gps_tracking(count),
-          delivery_photos(count)
+          created_at
         `)
         .order('created_at', { ascending: false })
         .limit(10);
       
       if (error) throw error;
-      
-      // Transform the data to match our interface
-      return (data || []).map(delivery => ({
-        delivery_id: delivery.id,
-        status: delivery.status || 'unknown',
-        total_gps_points: (delivery as any).delivery_gps_tracking?.[0]?.count || 0,
-        avg_gps_accuracy: 25, // Default value
-        accurate_gps_points: Math.floor(((delivery as any).delivery_gps_tracking?.[0]?.count || 0) * 0.8),
-        total_photos: (delivery as any).delivery_photos?.[0]?.count || 0,
-        pickup_photos: Math.floor(((delivery as any).delivery_photos?.[0]?.count || 0) * 0.5),
-        delivery_photos: Math.floor(((delivery as any).delivery_photos?.[0]?.count || 0) * 0.5),
-        tracking_duration_hours: 2.5, // Default value
-        last_gps_update: new Date().toISOString()
-      })) as PerformanceMetrics[];
+      return data as DeliveryMetrics[];
     },
-    refetchInterval: 30000 // Refresh every 30 seconds
+    refetchInterval: 30000
+  });
+
+  const { data: gpsStats } = useQuery({
+    queryKey: ['gps-stats'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('delivery_gps_tracking')
+        .select('delivery_id, accuracy_meters, meets_accuracy_requirement')
+        .eq('is_active', true);
+      
+      if (error) throw error;
+      return data;
+    },
+    refetchInterval: 60000
+  });
+
+  const { data: photoStats } = useQuery({
+    queryKey: ['photo-stats'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('delivery_photos')
+        .select('delivery_id, photo_category');
+      
+      if (error) throw error;
+      return data;
+    },
+    refetchInterval: 60000
   });
 
   if (isLoading) {
@@ -75,11 +78,11 @@ export const DeliveryPerformanceDashboard = () => {
     );
   }
 
-  const getAccuracyColor = (accuracy: number) => {
-    if (accuracy <= 10) return 'text-green-600';
-    if (accuracy <= 30) return 'text-yellow-600';
-    return 'text-red-600';
-  };
+  const activeDeliveries = deliveries?.filter(d => d.status !== 'delivered').length || 0;
+  const totalGpsPoints = gpsStats?.length || 0;
+  const avgAccuracy = gpsStats?.length ? 
+    Math.round(gpsStats.reduce((acc, g) => acc + (g.accuracy_meters || 0), 0) / gpsStats.length) : 0;
+  const totalPhotos = photoStats?.length || 0;
 
   const getStatusColor = (status: string) => {
     const colors = {
@@ -98,7 +101,7 @@ export const DeliveryPerformanceDashboard = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <TrendingUp className="h-5 w-5" />
-            Delivery Performance Dashboard
+            Delivery Performance Overview
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -109,11 +112,9 @@ export const DeliveryPerformanceDashboard = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Active Deliveries</p>
-                    <p className="text-2xl font-bold">
-                      {metrics?.filter(m => m.status !== 'delivered').length || 0}
-                    </p>
+                    <p className="text-2xl font-bold">{activeDeliveries}</p>
                   </div>
-                  <MapPin className="h-8 w-8 text-blue-500" />
+                  <Truck className="h-8 w-8 text-blue-500" />
                 </div>
               </CardContent>
             </Card>
@@ -122,14 +123,10 @@ export const DeliveryPerformanceDashboard = () => {
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-muted-foreground">Avg GPS Accuracy</p>
-                    <p className="text-2xl font-bold">
-                      {metrics?.length ? 
-                        Math.round(metrics.reduce((acc, m) => acc + m.avg_gps_accuracy, 0) / metrics.length) : 0
-                      }m
-                    </p>
+                    <p className="text-sm font-medium text-muted-foreground">GPS Points</p>
+                    <p className="text-2xl font-bold">{totalGpsPoints}</p>
                   </div>
-                  <Signal className="h-8 w-8 text-green-500" />
+                  <MapPin className="h-8 w-8 text-green-500" />
                 </div>
               </CardContent>
             </Card>
@@ -138,12 +135,10 @@ export const DeliveryPerformanceDashboard = () => {
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-muted-foreground">Total GPS Points</p>
-                    <p className="text-2xl font-bold">
-                      {metrics?.reduce((acc, m) => acc + m.total_gps_points, 0) || 0}
-                    </p>
+                    <p className="text-sm font-medium text-muted-foreground">Avg Accuracy</p>
+                    <p className="text-2xl font-bold">{avgAccuracy}m</p>
                   </div>
-                  <Database className="h-8 w-8 text-purple-500" />
+                  <Signal className="h-8 w-8 text-purple-500" />
                 </div>
               </CardContent>
             </Card>
@@ -152,10 +147,8 @@ export const DeliveryPerformanceDashboard = () => {
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-muted-foreground">Total Photos</p>
-                    <p className="text-2xl font-bold">
-                      {metrics?.reduce((acc, m) => acc + m.total_photos, 0) || 0}
-                    </p>
+                    <p className="text-sm font-medium text-muted-foreground">Photos</p>
+                    <p className="text-2xl font-bold">{totalPhotos}</p>
                   </div>
                   <Camera className="h-8 w-8 text-orange-500" />
                 </div>
@@ -165,73 +158,28 @@ export const DeliveryPerformanceDashboard = () => {
         </CardContent>
       </Card>
 
-      {/* Detailed Metrics Table */}
+      {/* Recent Deliveries */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Recent Delivery Metrics</CardTitle>
+          <CardTitle className="text-lg">Recent Deliveries</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b">
-                  <th className="text-left p-2">Delivery ID</th>
-                  <th className="text-left p-2">Status</th>
-                  <th className="text-left p-2">GPS Points</th>
-                  <th className="text-left p-2">Accuracy</th>
-                  <th className="text-left p-2">Photos</th>
-                  <th className="text-left p-2">Duration</th>
-                  <th className="text-left p-2">Last Update</th>
-                </tr>
-              </thead>
-              <tbody>
-                {metrics?.map((metric) => (
-                  <tr key={metric.delivery_id} className="border-b">
-                    <td className="p-2">
-                      <code className="text-xs">{metric.delivery_id.slice(0, 8)}...</code>
-                    </td>
-                    <td className="p-2">
-                      <Badge variant={getStatusColor(metric.status) as any}>
-                        {metric.status.replace(/_/g, ' ')}
-                      </Badge>
-                    </td>
-                    <td className="p-2">
-                      <div className="flex items-center gap-2">
-                        <span>{metric.total_gps_points}</span>
-                        <span className="text-xs text-green-600">
-                          ({metric.accurate_gps_points} accurate)
-                        </span>
-                      </div>
-                    </td>
-                    <td className="p-2">
-                      <span className={getAccuracyColor(metric.avg_gps_accuracy)}>
-                        ±{Math.round(metric.avg_gps_accuracy)}m
-                      </span>
-                    </td>
-                    <td className="p-2">
-                      <div className="flex items-center gap-1">
-                        <span>{metric.total_photos}</span>
-                        <span className="text-xs text-muted-foreground">
-                          ({metric.pickup_photos}p + {metric.delivery_photos}d)
-                        </span>
-                      </div>
-                    </td>
-                    <td className="p-2">
-                      {metric.tracking_duration_hours ? 
-                        `${metric.tracking_duration_hours.toFixed(1)}h` : 
-                        'N/A'
-                      }
-                    </td>
-                    <td className="p-2 text-xs text-muted-foreground">
-                      {metric.last_gps_update ? 
-                        new Date(metric.last_gps_update).toLocaleTimeString() : 
-                        'No updates'
-                      }
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="space-y-3">
+            {deliveries?.map((delivery) => (
+              <div key={delivery.id} className="flex items-center justify-between p-3 border rounded">
+                <div className="flex items-center gap-3">
+                  <Badge variant={getStatusColor(delivery.status) as any}>
+                    {delivery.status.replace(/_/g, ' ')}
+                  </Badge>
+                  <code className="text-xs text-muted-foreground">
+                    {delivery.id.slice(0, 8)}...
+                  </code>
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  {new Date(delivery.created_at).toLocaleDateString()}
+                </div>
+              </div>
+            ))}
           </div>
         </CardContent>
       </Card>

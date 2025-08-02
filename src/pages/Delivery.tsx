@@ -17,6 +17,7 @@ import { GPSTracking } from "@/components/delivery/GPSTracking";
 import { DriverPortal } from "@/components/delivery/DriverPortal";
 import { DriverMobileApp } from "@/components/delivery/DriverMobileApp";
 import { CustomerTrackingMap } from "@/components/delivery/CustomerTrackingMap";
+import { DeliveryPerformanceDashboard } from "@/components/delivery/DeliveryPerformanceDashboard";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { LoadingSpinner } from "@/components/layout/LoadingSpinner";
@@ -600,7 +601,7 @@ const Delivery = () => {
             </div>
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className={`grid w-full ${isSuperAdmin ? 'grid-cols-6' : 'grid-cols-4'}`}>
+              <TabsList className={`grid w-full ${isSuperAdmin ? 'grid-cols-7' : 'grid-cols-5'}`}>
                 <TabsTrigger value="dashboard" className="flex items-center gap-2">
                   <BarChart3 className="h-4 w-4" />
                   Dashboard
@@ -628,6 +629,10 @@ const Delivery = () => {
                 <TabsTrigger value="tracking" className="flex items-center gap-2">
                   <MapPin className="h-4 w-4" />
                   GPS Tracking
+                </TabsTrigger>
+                <TabsTrigger value="performance" className="flex items-center gap-2">
+                  <BarChart3 className="h-4 w-4" />
+                  Performance
                 </TabsTrigger>
               </TabsList>
 
@@ -657,6 +662,10 @@ const Delivery = () => {
 
               <TabsContent value="tracking" className="mt-6">
                 <GPSTracking />
+              </TabsContent>
+
+              <TabsContent value="performance" className="mt-6">
+                <DeliveryPerformanceDashboard />
               </TabsContent>
             </Tabs>
           </div>

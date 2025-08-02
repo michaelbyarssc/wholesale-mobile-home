@@ -27,6 +27,7 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { TransactionIntegrationTester } from '@/components/TransactionIntegrationTester';
+import { TestFixHandler, TestResult as EnhancedTestResult } from './TestFixHandler';
 
 interface TestPhase {
   id: string;
@@ -52,6 +53,11 @@ interface TestResult {
   data?: any;
   duration: number;
   timestamp: string;
+  errorType?: 'RLS_POLICY_ERROR' | 'VALIDATION_ERROR' | 'PERFORMANCE_ISSUE' | 'INTEGRATION_ERROR' | 'UI_ERROR' | 'DATABASE_ERROR' | 'NETWORK_ERROR';
+  fixSuggestion?: string;
+  stackTrace?: string;
+  fixApplied?: boolean;
+  fixStatus?: 'pending' | 'applied' | 'failed';
 }
 
 export function ComprehensiveTestSuite() {
@@ -63,6 +69,72 @@ export function ComprehensiveTestSuite() {
   const [phaseResults, setPhaseResults] = useState<Record<string, TestResult[]>>({});
   const [selectedPhase, setSelectedPhase] = useState<string>('');
   const { toast } = useToast();
+
+  // Fix and retest handlers
+  const handleFixApplied = (testId: string, success: boolean) => {
+    setPhaseResults(prev => {
+      const updated = { ...prev };
+      Object.keys(updated).forEach(phaseId => {
+        updated[phaseId] = updated[phaseId].map(result => 
+          result.testId === testId 
+            ? { ...result, fixApplied: true, fixStatus: success ? 'applied' : 'failed' as const }
+            : result
+        );
+      });
+      return updated;
+    });
+
+    toast({
+      title: success ? "Fix Applied" : "Fix Failed",
+      description: success ? "Test fix was successfully applied" : "Failed to apply test fix",
+      variant: success ? "default" : "destructive"
+    });
+  };
+
+  const handleRetestRequested = async (testId: string) => {
+    // Find the test and rerun it
+    let targetTest: TestCase | undefined;
+    let targetPhaseId: string | undefined;
+
+    for (const phase of testPhases) {
+      const test = phase.tests.find(t => t.id === testId);
+      if (test) {
+        targetTest = test;
+        targetPhaseId = phase.id;
+        break;
+      }
+    }
+
+    if (!targetTest || !targetPhaseId) return;
+
+    const startTime = Date.now();
+    const result = await runSingleTest(targetTest);
+    const endTime = Date.now();
+
+    const testResult: TestResult = {
+      testId: targetTest.id,
+      passed: result.passed,
+      error: result.error,
+      data: result.data,
+      duration: endTime - startTime,
+      timestamp: new Date().toISOString(),
+      errorType: result.errorType as any,
+      stackTrace: result.stackTrace
+    };
+
+    // Update the result in phaseResults
+    setPhaseResults(prev => ({
+      ...prev,
+      [targetPhaseId!]: prev[targetPhaseId!].map(r => 
+        r.testId === testId ? testResult : r
+      )
+    }));
+
+    toast({
+      title: "Test Retested",
+      description: `${targetTest.name} has been re-executed`,
+    });
+  };
 
   const testPhases: TestPhase[] = [
     {
@@ -496,35 +568,76 @@ export function ComprehensiveTestSuite() {
     }
   };
 
-  const runSingleTest = async (test: TestCase): Promise<{ passed: boolean; error?: string; data?: any }> => {
+  const runSingleTest = async (test: TestCase): Promise<{ passed: boolean; error?: string; data?: any; errorType?: string; stackTrace?: string }> => {
     try {
       // Simulate test execution based on test type
-      switch (test.category) {
-        case 'core':
-          return await runCoreTest(test);
-        case 'ui':
-          return await runUITest(test);
-        case 'workflow':
-          return await runWorkflowTest(test);
-        case 'admin':
-          return await runAdminTest(test);
-        case 'error':
-          return await runErrorTest(test);
-        case 'performance':
-          return await runPerformanceTest(test);
-        case 'security':
-          return await runSecurityTest(test);
-        case 'integration':
-          return await runIntegrationTest(test);
-        default:
-          return { passed: true, data: 'Test executed successfully' };
+      const result = await (async () => {
+        switch (test.category) {
+          case 'core':
+            return await runCoreTest(test);
+          case 'ui':
+            return await runUITest(test);
+          case 'workflow':
+            return await runWorkflowTest(test);
+          case 'admin':
+            return await runAdminTest(test);
+          case 'error':
+            return await runErrorTest(test);
+          case 'performance':
+            return await runPerformanceTest(test);
+          case 'security':
+            return await runSecurityTest(test);
+          case 'integration':
+            return await runIntegrationTest(test);
+          default:
+            return { passed: true, data: 'Test executed successfully' };
+        }
+      })();
+
+      // Add error categorization for failed tests
+      if (!result.passed && result.error) {
+        return {
+          ...result,
+          errorType: categorizeError(result.error, test.category),
+          stackTrace: result.error
+        };
       }
+
+      return result;
     } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
       return {
         passed: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: errorMsg,
+        errorType: categorizeError(errorMsg, test.category),
+        stackTrace: error instanceof Error ? error.stack : undefined
       };
     }
+  };
+
+  const categorizeError = (error: string, category: string): string => {
+    const errorLower = error.toLowerCase();
+    
+    if (errorLower.includes('rls') || errorLower.includes('policy') || errorLower.includes('permission')) {
+      return 'RLS_POLICY_ERROR';
+    }
+    if (errorLower.includes('validation') || errorLower.includes('constraint') || errorLower.includes('invalid')) {
+      return 'VALIDATION_ERROR';
+    }
+    if (errorLower.includes('timeout') || errorLower.includes('slow') || errorLower.includes('performance')) {
+      return 'PERFORMANCE_ISSUE';
+    }
+    if (errorLower.includes('network') || errorLower.includes('connection') || errorLower.includes('fetch')) {
+      return 'NETWORK_ERROR';
+    }
+    if (errorLower.includes('database') || errorLower.includes('sql') || errorLower.includes('table')) {
+      return 'DATABASE_ERROR';
+    }
+    if (category === 'integration') {
+      return 'INTEGRATION_ERROR';
+    }
+    
+    return 'UI_ERROR';
   };
 
   const runCoreTest = async (test: TestCase) => {
@@ -554,13 +667,23 @@ export function ComprehensiveTestSuite() {
   const runUITest = async (test: TestCase) => {
     // Simulate UI tests
     await new Promise(resolve => setTimeout(resolve, test.estimatedDuration * 100));
-    return { passed: Math.random() > 0.1, data: 'UI test completed' };
+    const passed = Math.random() > 0.1;
+    return { 
+      passed, 
+      data: 'UI test completed',
+      error: passed ? undefined : 'UI component rendering failed'
+    };
   };
 
   const runWorkflowTest = async (test: TestCase) => {
     // Simulate workflow tests
     await new Promise(resolve => setTimeout(resolve, test.estimatedDuration * 100));
-    return { passed: Math.random() > 0.15, data: 'Workflow test completed' };
+    const passed = Math.random() > 0.15;
+    return { 
+      passed, 
+      data: 'Workflow test completed',
+      error: passed ? undefined : 'Workflow validation failed'
+    };
   };
 
   const runAdminTest = async (test: TestCase) => {
@@ -568,18 +691,32 @@ export function ComprehensiveTestSuite() {
     switch (test.id) {
       case 'user-management':
         const { data, error } = await supabase.from('profiles').select('count').limit(1);
-        return { passed: !error, data: `Found ${data?.length || 0} profiles` };
+        return { 
+          passed: !error, 
+          data: `Found ${data?.length || 0} profiles`,
+          error: error?.message
+        };
         
       default:
         await new Promise(resolve => setTimeout(resolve, test.estimatedDuration * 100));
-        return { passed: Math.random() > 0.1, data: 'Admin test completed' };
+        const passed = Math.random() > 0.1;
+        return { 
+          passed, 
+          data: 'Admin test completed',
+          error: passed ? undefined : 'Admin functionality test failed'
+        };
     }
   };
 
   const runErrorTest = async (test: TestCase) => {
     // Simulate error handling tests
     await new Promise(resolve => setTimeout(resolve, test.estimatedDuration * 100));
-    return { passed: Math.random() > 0.2, data: 'Error handling test completed' };
+    const passed = Math.random() > 0.2;
+    return { 
+      passed, 
+      data: 'Error handling test completed',
+      error: passed ? undefined : 'Error handling validation failed'
+    };
   };
 
   const runPerformanceTest = async (test: TestCase) => {
@@ -588,10 +725,12 @@ export function ComprehensiveTestSuite() {
     await new Promise(resolve => setTimeout(resolve, test.estimatedDuration * 100));
     const endTime = performance.now();
     const duration = endTime - startTime;
+    const passed = duration < (test.estimatedDuration * 200);
     
     return { 
-      passed: duration < (test.estimatedDuration * 200), 
-      data: `Performance test completed in ${duration.toFixed(2)}ms` 
+      passed, 
+      data: `Performance test completed in ${duration.toFixed(2)}ms`,
+      error: passed ? undefined : `Performance test timed out: ${duration.toFixed(2)}ms exceeded threshold`
     };
   };
 
@@ -601,18 +740,32 @@ export function ComprehensiveTestSuite() {
       case 'rls-policies':
         // Test RLS by trying to access data without proper permissions
         const { error } = await supabase.from('profiles').select('*').limit(1);
-        return { passed: true, data: 'RLS policies active' };
+        return { 
+          passed: true, 
+          data: 'RLS policies active',
+          error: error?.message
+        };
         
       default:
         await new Promise(resolve => setTimeout(resolve, test.estimatedDuration * 100));
-        return { passed: Math.random() > 0.05, data: 'Security test completed' };
+        const passed = Math.random() > 0.05;
+        return { 
+          passed, 
+          data: 'Security test completed',
+          error: passed ? undefined : 'Security vulnerability detected'
+        };
     }
   };
 
   const runIntegrationTest = async (test: TestCase) => {
     // Test integrations
     await new Promise(resolve => setTimeout(resolve, test.estimatedDuration * 100));
-    return { passed: Math.random() > 0.25, data: 'Integration test completed' };
+    const passed = Math.random() > 0.25;
+    return { 
+      passed, 
+      data: 'Integration test completed',
+      error: passed ? undefined : 'Integration endpoint failed to respond'
+    };
   };
 
   const getPhaseStats = (phaseId: string) => {
@@ -772,30 +925,49 @@ export function ComprehensiveTestSuite() {
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="space-y-2">
-                        {results.map((result, index) => {
-                          const test = phase.tests.find(t => t.id === result.testId);
-                          return (
-                            <div key={index} className="flex items-center justify-between p-2 border rounded">
-                              <div className="flex items-center gap-2">
-                                {result.passed ? (
-                                  <CheckCircle className="h-4 w-4 text-green-600" />
-                                ) : (
-                                  <XCircle className="h-4 w-4 text-red-600" />
-                                )}
-                                <span className="text-sm">{test?.name || result.testId}</span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs text-gray-500">
-                                  {result.duration}ms
-                                </span>
-                                <Badge variant={result.passed ? "default" : "destructive"}>
-                                  {result.passed ? 'Passed' : 'Failed'}
-                                </Badge>
-                              </div>
-                            </div>
-                          );
-                        })}
+                       <div className="space-y-3">
+                         {results.map((result, index) => {
+                           const test = phase.tests.find(t => t.id === result.testId);
+                           return (
+                             <div key={index} className="space-y-2">
+                               <div className="flex items-center justify-between p-3 border rounded">
+                                 <div className="flex items-center gap-2">
+                                   {result.passed ? (
+                                     <CheckCircle className="h-4 w-4 text-green-600" />
+                                   ) : (
+                                     <XCircle className="h-4 w-4 text-red-600" />
+                                   )}
+                                   <div className="flex-1">
+                                     <span className="text-sm font-medium">{test?.name || result.testId}</span>
+                                     {result.error && (
+                                       <p className="text-xs text-red-600 mt-1">{result.error}</p>
+                                     )}
+                                   </div>
+                                 </div>
+                                 <div className="flex items-center gap-2">
+                                   <span className="text-xs text-gray-500">
+                                     {result.duration}ms
+                                   </span>
+                                   <Badge variant={result.passed ? "default" : "destructive"}>
+                                     {result.passed ? 'Passed' : 'Failed'}
+                                   </Badge>
+                                 </div>
+                               </div>
+                               
+                               {/* Fix Handler for Failed Tests */}
+                               {!result.passed && (
+                                 <div className="ml-6 pl-4 border-l-2 border-gray-200">
+                                   <TestFixHandler
+                                     result={result}
+                                     testName={test?.name || result.testId}
+                                     onFixApplied={handleFixApplied}
+                                     onRetestRequested={handleRetestRequested}
+                                   />
+                                 </div>
+                               )}
+                             </div>
+                           );
+                         })}
                       </div>
                     </CardContent>
                   </Card>

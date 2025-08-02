@@ -358,7 +358,6 @@ const Delivery = () => {
                 
                 <CustomerTrackingMap 
                   trackingToken={urlTrackingToken}
-                  height="600px"
                 />
                 
                 <div className="text-center">

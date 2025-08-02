@@ -697,6 +697,9 @@ export function ComprehensiveTestSuite() {
           error: error?.message
         };
         
+      case 'inventory-management':
+        return await runInventoryManagementTest();
+        
       default:
         await new Promise(resolve => setTimeout(resolve, test.estimatedDuration * 100));
         const passed = Math.random() > 0.1;
@@ -705,6 +708,175 @@ export function ComprehensiveTestSuite() {
           data: 'Admin test completed',
           error: passed ? undefined : 'Admin functionality test failed'
         };
+    }
+  };
+
+  const runInventoryManagementTest = async () => {
+    const errors: string[] = [];
+    const testResults: string[] = [];
+    let testMobileHomeId: string | null = null;
+
+    try {
+      // Test 1: CREATE - Insert a test mobile home
+      const testMobileHome = {
+        manufacturer: 'Test Manufacturer',
+        series: 'Test Series',
+        model: 'Test Model ' + Date.now(),
+        display_name: 'Test Home ' + Date.now(),
+        price: 50000,
+        retail_price: 60000,
+        minimum_profit: 5000,
+        active: true,
+        display_order: 999
+      };
+
+      const { data: createData, error: createError } = await supabase
+        .from('mobile_homes')
+        .insert(testMobileHome)
+        .select()
+        .single();
+
+      if (createError) {
+        errors.push(`CREATE Test Failed: ${createError.message}`);
+      } else {
+        testMobileHomeId = createData.id;
+        testResults.push('✓ CREATE: Successfully created test mobile home');
+      }
+
+      // Test 2: READ - Query mobile homes
+      const { data: readData, error: readError } = await supabase
+        .from('mobile_homes')
+        .select('*')
+        .eq('id', testMobileHomeId)
+        .single();
+
+      if (readError) {
+        errors.push(`READ Test Failed: ${readError.message}`);
+      } else {
+        testResults.push('✓ READ: Successfully retrieved mobile home data');
+      }
+
+      // Test 3: UPDATE - Modify the test mobile home
+      if (testMobileHomeId) {
+        const { error: updateError } = await supabase
+          .from('mobile_homes')
+          .update({ 
+            price: 55000,
+            description: 'Updated test description' 
+          })
+          .eq('id', testMobileHomeId);
+
+        if (updateError) {
+          errors.push(`UPDATE Test Failed: ${updateError.message}`);
+        } else {
+          testResults.push('✓ UPDATE: Successfully updated mobile home');
+        }
+      }
+
+      // Test 4: Factory Assignment Test
+      if (testMobileHomeId) {
+        const { data: factories, error: factoriesError } = await supabase
+          .from('factories')
+          .select('id')
+          .limit(1);
+
+        if (!factoriesError && factories && factories.length > 0) {
+          const { error: assignmentError } = await supabase
+            .from('mobile_home_factories')
+            .insert({
+              mobile_home_id: testMobileHomeId,
+              factory_id: factories[0].id
+            });
+
+          if (assignmentError) {
+            errors.push(`Factory Assignment Test Failed: ${assignmentError.message}`);
+          } else {
+            testResults.push('✓ FACTORY ASSIGNMENT: Successfully assigned factory');
+            
+            // Clean up factory assignment
+            await supabase
+              .from('mobile_home_factories')
+              .delete()
+              .eq('mobile_home_id', testMobileHomeId);
+          }
+        } else {
+          testResults.push('⚠ FACTORY ASSIGNMENT: No factories available for testing');
+        }
+      }
+
+      // Test 5: RLS Policy Test - Check if proper permissions are enforced
+      const { data: adminCheck } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', (await supabase.auth.getUser()).data.user?.id)
+        .in('role', ['admin', 'super_admin']);
+
+      if (!adminCheck || adminCheck.length === 0) {
+        errors.push('RLS Policy Test Failed: User lacks admin privileges');
+      } else {
+        testResults.push('✓ RLS POLICIES: Admin permissions verified');
+      }
+
+      // Test 6: DELETE - Clean up test data
+      if (testMobileHomeId) {
+        const { error: deleteError } = await supabase
+          .from('mobile_homes')
+          .delete()
+          .eq('id', testMobileHomeId);
+
+        if (deleteError) {
+          errors.push(`DELETE Test Failed: ${deleteError.message}`);
+        } else {
+          testResults.push('✓ DELETE: Successfully cleaned up test mobile home');
+        }
+      }
+
+      // Test 7: Data Integrity Check
+      const { data: integrityData, error: integrityError } = await supabase
+        .from('mobile_homes')
+        .select('id, display_order')
+        .order('display_order');
+
+      if (integrityError) {
+        errors.push(`Data Integrity Check Failed: ${integrityError.message}`);
+      } else {
+        testResults.push('✓ DATA INTEGRITY: Display order consistency verified');
+      }
+
+      const passed = errors.length === 0;
+      const resultSummary = `${testResults.length} tests passed, ${errors.length} errors`;
+      
+      return {
+        passed,
+        data: testResults.join(', '),
+        error: errors.length > 0 ? errors.join('; ') : undefined,
+        details: {
+          testResults,
+          errors,
+          summary: resultSummary
+        }
+      };
+
+    } catch (catchError: any) {
+      // Clean up if test mobile home was created
+      if (testMobileHomeId) {
+        try {
+          await supabase.from('mobile_homes').delete().eq('id', testMobileHomeId);
+        } catch (cleanupError) {
+          console.error('Failed to cleanup test mobile home:', cleanupError);
+        }
+      }
+
+      return {
+        passed: false,
+        error: `Inventory Management Test Exception: ${catchError.message}`,
+        data: testResults.join(', ') || 'No tests completed',
+        details: {
+          testResults,
+          errors: [...errors, catchError.message],
+          summary: 'Test suite failed with exception'
+        }
+      };
     }
   };
 

@@ -64,16 +64,21 @@ const Admin = () => {
           setIsSuperAdmin(isSuperAdminUser);
           console.log('Admin: User roles:', roleData?.map(r => r.role));
           console.log('Admin: Is super admin:', isSuperAdminUser);
-          console.log('Admin: Setting isSuperAdmin state to:', isSuperAdminUser);
-          
-          // Set default tab based on role
-          if (isSuperAdminUser) {
-            setActiveTab('mobile-homes');
-            console.log('Admin: Super admin detected, setting tab to mobile-homes');
-          } else {
-            setActiveTab('sales');
-            console.log('Admin: Regular admin detected, setting tab to sales');
-          }
+        console.log('Admin: Setting isSuperAdmin state to:', isSuperAdminUser);
+        
+        // Set default tab based on role
+        if (isSuperAdminUser) {
+          setActiveTab('mobile-homes');
+          console.log('Admin: Super admin detected, setting tab to mobile-homes');
+        } else {
+          setActiveTab('sales');
+          console.log('Admin: Regular admin detected, setting tab to sales');
+        }
+        
+        // Debug the final state
+        console.log('Admin: Final state check - isSuperAdmin will be:', isSuperAdminUser);
+        console.log('Admin: Desktop tabs should show for super admin on desktop:', !isMobile && isSuperAdminUser);
+        console.log('Admin: isMobile:', isMobile);
         }
         
       } catch (error) {
@@ -234,6 +239,10 @@ const Admin = () => {
     </div>
   );
 
+  // Debug final render state
+  console.log('Admin: RENDER - isSuperAdmin:', isSuperAdmin, 'isMobile:', isMobile, 'activeTab:', activeTab);
+  console.log('Admin: RENDER - user:', user?.email);
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -316,6 +325,11 @@ const Admin = () => {
       <main className="container mx-auto px-2 sm:px-4 py-4 sm:py-6 lg:py-8">
         <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4 sm:space-y-6">
           {/* Desktop Tab Navigation */}
+          {(() => {
+            console.log('Admin: Rendering tabs check - isMobile:', isMobile, 'isSuperAdmin:', isSuperAdmin);
+            console.log('Admin: Should show tabs:', !isMobile && isSuperAdmin);
+            return null;
+          })()}
           {!isMobile && isSuperAdmin && (
             <div className="border rounded-lg p-1 bg-muted/30 overflow-x-auto">
               <TabsList className="grid w-full grid-cols-10 h-12 bg-transparent min-w-[900px]">

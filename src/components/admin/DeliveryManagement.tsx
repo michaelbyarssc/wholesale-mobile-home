@@ -10,7 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
-import { Truck, Calendar as CalendarIcon, CheckCircle, Clock, AlertCircle, MapPin, FileText, User, Phone, Home, Package, CalendarDays, Plus, Edit, UserPlus, Settings } from 'lucide-react';
+import { Truck, Calendar as CalendarIcon, CheckCircle, Clock, AlertCircle, MapPin, FileText, User, Phone, Home, Package, CalendarDays, Plus, Edit, UserPlus, Settings, Key } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { NewDeliveryScheduling } from '@/components/delivery/NewDeliveryScheduling';
 import { DriverScheduleDashboard } from '@/components/delivery/DriverScheduleDashboard';
@@ -190,6 +190,7 @@ type Driver = {
   email: string;
   phone: string;
   status: 'available' | 'on_delivery' | 'off_duty' | 'inactive';
+  user_id?: string;
 };
 
 type Delivery = {
@@ -365,6 +366,7 @@ export const DeliveryManagement = () => {
           email, 
           phone, 
           status,
+          user_id,
           delivery_assignments (
             id,
             delivery_id,
@@ -565,6 +567,38 @@ export const DeliveryManagement = () => {
     }
   });
 
+  // Reset password mutation for drivers
+  const resetDriverPasswordMutation = useMutation({
+    mutationFn: async (driver: any) => {
+      if (!driver.user_id) {
+        throw new Error("Driver does not have an associated user account. Please contact support.");
+      }
+
+      const { data, error } = await supabase.functions.invoke('admin-reset-password-secure', {
+        body: {
+          user_id: driver.user_id,
+          new_password: 'Wholesale2025!'
+        }
+      });
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (result, driver) => {
+      toast({
+        title: "Password Reset Successful",
+        description: `Driver password has been reset to: Wholesale2025! Please share this temporary password with ${driver.first_name} ${driver.last_name}.`,
+        duration: 10000, // Show for 10 seconds for drivers
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Password Reset Failed",
+        description: error.message || "Failed to reset driver password.",
+        variant: "destructive"
+      });
+    }
+  });
   const updateMsoVinMutation = useMutation({
     mutationFn: async ({ deliveryId, msoVinSection1, msoVinSection2 }: { 
       deliveryId: string; 
@@ -1472,6 +1506,15 @@ export const DeliveryManagement = () => {
                           >
                             <Edit className="h-3 w-3 mr-1" />
                             Edit
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => resetDriverPasswordMutation.mutate(driver)}
+                            disabled={resetDriverPasswordMutation.isPending || driver.status === 'inactive'}
+                            title={driver.user_id ? "Reset driver password" : "Driver has no user account"}
+                          >
+                            <Key className="h-3 w-3" />
                           </Button>
                           <Select 
                             value={driver.status} 

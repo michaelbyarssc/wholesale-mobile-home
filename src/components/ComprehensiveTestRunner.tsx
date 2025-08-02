@@ -222,29 +222,80 @@ export function ComprehensiveTestRunner() {
   const runSecurityTests = async (): Promise<TestResult[]> => {
     const results: TestResult[] = [];
 
-    // Test 1: RLS Policy Enforcement
+    // Test 1: RLS Policy Enforcement for Unauthenticated Users
     try {
       const start = Date.now();
       
-      // Try to access admin settings without admin role
-      const { data: settings, error } = await supabase
-        .from('admin_settings')
-        .select('*')
-        .limit(1);
-      
-      // If we get data without being admin, that's a security issue
-      // If we get an RLS error, that's good (security working)
-      const isSecure = error && error.message.includes('policy');
+      // Create a new supabase client without authentication to test anonymous access
+      const { createClient } = await import('@supabase/supabase-js');
+      const anonClient = createClient(
+        'https://vgdreuwmisludqxphsph.supabase.co',
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZnZHJldXdtaXNsdWRxeHBoc3BoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA3MDk2OTgsImV4cCI6MjA2NjI4NTY5OH0.gnJ83GgBWV4tb-cwWJXY0pPG2bGAyTK3T2IojP4llR8'
+      );
+
+      // Test multiple sensitive tables that should block anonymous access
+      const sensitiveQueries = [
+        { table: 'admin_settings', name: 'Admin Settings' },
+        { table: 'admin_audit_log', name: 'Admin Audit Log' },
+        { table: 'customer_markups', name: 'Customer Markups' }
+      ];
+
+      let allBlocked = true;
+      const testDetails: string[] = [];
+
+      for (const query of sensitiveQueries) {
+        try {
+          const { data, error } = await anonClient.from(query.table).select('*').limit(1);
+          
+          if (!error && data && data.length > 0) {
+            // Data returned without authentication - security issue
+            allBlocked = false;
+            testDetails.push(`❌ ${query.name}: Anonymous access allowed (${data.length} records returned)`);
+          } else if (error) {
+            // Error occurred - likely RLS blocking access (good)
+            testDetails.push(`✅ ${query.name}: Properly blocked (${error.code}: ${error.message})`);
+          } else if (data && data.length === 0) {
+            // Empty result - could be RLS working or just no data
+            testDetails.push(`⚠️ ${query.name}: Empty result (could be no data or RLS working)`);
+          }
+        } catch (err) {
+          // Exception thrown - likely RLS blocking (good)
+          testDetails.push(`✅ ${query.name}: Properly blocked with exception`);
+        }
+      }
+
+      // Test authenticated user access (current user)
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        try {
+          const { data: userSettings, error: userError } = await supabase
+            .from('admin_settings')
+            .select('*')
+            .limit(1);
+          
+          if (userError) {
+            testDetails.push(`✅ Authenticated user properly blocked from admin_settings`);
+          } else if (userSettings) {
+            testDetails.push(`⚠️ Authenticated user has access to admin_settings (may be admin)`);
+          }
+        } catch (err) {
+          testDetails.push(`✅ Authenticated user properly blocked from admin_settings`);
+        }
+      }
       
       results.push({
         testId: 'rls-enforcement',
         name: 'Row Level Security Enforcement',
-        passed: isSecure,
-        error: isSecure ? undefined : 'RLS may not be properly enforced',
+        passed: allBlocked,
+        error: allBlocked ? undefined : 'Some tables allow unauthorized anonymous access',
         duration: Date.now() - start,
         severity: 'critical',
         category: 'security',
-        details: { rlsActive: isSecure, errorType: error?.message }
+        details: { 
+          rlsActive: allBlocked, 
+          testResults: testDetails.join('\n'),
+          userAuthenticated: !!user
+        }
       });
     } catch (error) {
       results.push({

@@ -8,6 +8,7 @@ import { usePageTracking } from '@/hooks/usePageTracking';
 import { usePerformanceMetrics } from '@/hooks/usePerformanceMetrics';
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { LoadingSpinner } from "@/components/layout/LoadingSpinner";
+import { SecurityEnhancements } from "@/components/SecurityEnhancements";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 // Lazy load components with proper error handling
@@ -139,17 +140,19 @@ function AppRoutes() {
 const App = () => {
   return (
     <React.StrictMode>
-      <ErrorBoundary>
-        <QueryClientProvider client={queryClient}>
-          <BrowserRouter>
-            <TooltipProvider>
-              <AppRoutes />
-              <Toaster />
-              <Sonner />
-            </TooltipProvider>
-          </BrowserRouter>
-        </QueryClientProvider>
-      </ErrorBoundary>
+      <SecurityEnhancements>
+        <ErrorBoundary>
+          <QueryClientProvider client={queryClient}>
+            <BrowserRouter>
+              <TooltipProvider>
+                <AppRoutes />
+                <Toaster />
+                <Sonner />
+              </TooltipProvider>
+            </BrowserRouter>
+          </QueryClientProvider>
+        </ErrorBoundary>
+      </SecurityEnhancements>
     </React.StrictMode>
   );
 };

@@ -76,10 +76,31 @@ export const UserForm = ({ onUserCreated }: UserFormProps) => {
       return;
     }
 
+    // Enhanced client-side validation
+    const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+    if (!emailRegex.test(newUserEmail)) {
+      toast({
+        title: "Error",
+        description: "Please enter a valid email address",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const phoneRegex = /^[\d\s\-\(\)\+\.]{10,}$/;
+    if (!phoneRegex.test(newUserPhoneNumber)) {
+      toast({
+        title: "Error", 
+        description: "Please enter a valid phone number",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       setCreatingUser(true);
       
-      const tempPassword = 'Wholesale2025!';
+      // Remove default password - let the backend generate a secure one
 
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
@@ -93,7 +114,7 @@ export const UserForm = ({ onUserCreated }: UserFormProps) => {
       const { data, error } = await supabase.functions.invoke('admin-create-user', {
         body: {
           email: newUserEmail,
-          password: tempPassword,
+          // No password - let backend generate secure one
           first_name: newUserFirstName,
           last_name: newUserLastName,
           phone_number: newUserPhoneNumber,
@@ -122,9 +143,11 @@ export const UserForm = ({ onUserCreated }: UserFormProps) => {
 
       console.log('User created successfully:', data);
 
+      const tempPassword = data?.tempPassword || 'Generated securely';
+      
       toast({
         title: "User created and approved",
-        description: `User ${newUserFirstName} ${newUserLastName} (${newUserEmail}) created with ${newUserRole} role and automatically approved. Password: Wholesale2025!`,
+        description: `User ${newUserFirstName} ${newUserLastName} (${newUserEmail}) created with ${newUserRole} role and automatically approved. Secure password: ${tempPassword}`,
       });
 
       setNewUserEmail('');
@@ -231,7 +254,7 @@ export const UserForm = ({ onUserCreated }: UserFormProps) => {
           </div>
           <div className="flex items-center justify-between">
             <div className="text-sm text-gray-600">
-              <p><strong>Password:</strong> Wholesale2025!</p>
+              <p><strong>Password:</strong> Auto-generated secure password</p>
               <p className="text-green-600 font-medium">Users created by admins are automatically approved</p>
               {isSuperAdmin && (
                 <p className="text-blue-600 font-medium">As Super Admin, you can create both Admin and User accounts</p>

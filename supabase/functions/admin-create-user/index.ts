@@ -108,8 +108,21 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Generate password if not provided (for driver creation)
-    const userPassword = password || `Temp${Math.random().toString(36).slice(-8)}${Math.random().toString(36).slice(-3).toUpperCase()}!`;
+    // Generate secure password if not provided
+    let userPassword = password;
+    if (!userPassword) {
+      const { data: generatedPassword, error: passwordError } = await supabaseAdmin
+        .rpc('generate_secure_random_password');
+      
+      if (passwordError) {
+        console.error('Error generating secure password:', passwordError);
+        return new Response(
+          JSON.stringify({ error: 'Failed to generate secure password' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      userPassword = generatedPassword;
+    }
 
     // Prevent regular admins from creating other admins
     if (role === 'admin' && !isSuperAdmin) {

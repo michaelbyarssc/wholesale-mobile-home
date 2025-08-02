@@ -117,6 +117,22 @@ serve(async (req) => {
 
     const { user_id, new_password } = requestBody;
 
+    // Generate secure password if none provided
+    let finalPassword = new_password;
+    if (!finalPassword) {
+      const { data: generatedPassword, error: passwordError } = await supabaseAdmin
+        .rpc('generate_secure_random_password');
+      
+      if (passwordError) {
+        console.error('Error generating secure password:', passwordError);
+        return new Response(
+          JSON.stringify({ error: 'Failed to generate secure password' }),
+          { status: 500, headers: corsHeaders }
+        );
+      }
+      finalPassword = generatedPassword;
+    }
+
     // Verify target user exists
     const { data: targetUser, error: userError } = await supabaseAdmin.auth.admin.getUserById(user_id);
     
@@ -127,9 +143,9 @@ serve(async (req) => {
       });
     }
 
-    // Update password
+    // Update password with enhanced security
     const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(user_id, {
-      password: new_password
+      password: finalPassword
     });
 
     if (updateError) {
@@ -140,12 +156,25 @@ serve(async (req) => {
       });
     }
 
+    // Log security event
+    await supabaseAdmin.rpc('log_security_event', {
+      p_action: 'password_reset',
+      p_resource_type: 'user',
+      p_resource_id: user_id,
+      p_details: { 
+        action: 'Admin password reset performed',
+        admin_id: user.id,
+        generated_password: !new_password
+      },
+      p_success: true
+    });
+
     // Log admin action (without sensitive data)
     await supabaseAdmin.from('admin_audit_log').insert({
       admin_id: user.id,
       action: 'password_reset',
       target_user_id: user_id,
-      details: { action: 'Admin password reset performed' },
+      details: { action: 'Admin password reset performed', generated_password: !new_password },
       ip_address: req.headers.get('x-forwarded-for') || 'unknown'
     });
 

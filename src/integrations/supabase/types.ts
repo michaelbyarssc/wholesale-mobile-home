@@ -4328,6 +4328,33 @@ export type Database = {
         }
         Relationships: []
       }
+      rate_limits: {
+        Row: {
+          action: string
+          attempts: number
+          created_at: string
+          id: string
+          identifier: string
+          window_start: string
+        }
+        Insert: {
+          action: string
+          attempts?: number
+          created_at?: string
+          id?: string
+          identifier: string
+          window_start?: string
+        }
+        Update: {
+          action?: string
+          attempts?: number
+          created_at?: string
+          id?: string
+          identifier?: string
+          window_start?: string
+        }
+        Relationships: []
+      }
       recent_purchases: {
         Row: {
           active: boolean
@@ -4644,6 +4671,45 @@ export type Database = {
           id?: string
           result_count?: number
           search_query?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      security_audit_log: {
+        Row: {
+          action: string
+          created_at: string
+          details: Json | null
+          id: string
+          ip_address: unknown | null
+          resource_id: string | null
+          resource_type: string | null
+          success: boolean
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          ip_address?: unknown | null
+          resource_id?: string | null
+          resource_type?: string | null
+          success?: boolean
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          ip_address?: unknown | null
+          resource_id?: string | null
+          resource_type?: string | null
+          success?: boolean
+          user_agent?: string | null
           user_id?: string | null
         }
         Relationships: []
@@ -5447,6 +5513,15 @@ export type Database = {
         Args: { password: string }
         Returns: Json
       }
+      check_rate_limit: {
+        Args: {
+          p_identifier: string
+          p_action: string
+          p_max_attempts?: number
+          p_window_minutes?: number
+        }
+        Returns: boolean
+      }
       cleanup_expired_notifications: {
         Args: Record<PropertyKey, never>
         Returns: number
@@ -5545,6 +5620,10 @@ export type Database = {
         Returns: string
       }
       generate_order_number: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      generate_secure_random_password: {
         Args: Record<PropertyKey, never>
         Returns: string
       }
@@ -5648,6 +5727,16 @@ export type Database = {
         Args: { user_id?: string }
         Returns: boolean
       }
+      log_security_event: {
+        Args: {
+          p_action: string
+          p_resource_type?: string
+          p_resource_id?: string
+          p_details?: Json
+          p_success?: boolean
+        }
+        Returns: undefined
+      }
       migrate_existing_estimates_to_transactions: {
         Args: Record<PropertyKey, never>
         Returns: Json
@@ -5716,11 +5805,19 @@ export type Database = {
         Args: { email: string }
         Returns: boolean
       }
+      validate_email_format: {
+        Args: { email: string }
+        Returns: boolean
+      }
       validate_password_complexity: {
         Args: { password: string }
         Returns: boolean
       }
       validate_phone: {
+        Args: { phone: string }
+        Returns: boolean
+      }
+      validate_phone_format: {
         Args: { phone: string }
         Returns: boolean
       }

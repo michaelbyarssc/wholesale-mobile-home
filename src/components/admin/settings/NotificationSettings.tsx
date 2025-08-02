@@ -163,42 +163,73 @@ export const NotificationSettings = () => {
     setSaving(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        toast({
+          title: 'Authentication Error',
+          description: 'You must be logged in to save preferences',
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      // Validate phone number if SMS is enabled
+      if (preferences.sms_notifications && preferences.phone_number) {
+        if (!isValidPhoneNumber(preferences.phone_number)) {
+          toast({
+            title: 'Invalid Phone Number',
+            description: 'Please enter a valid 10-digit phone number',
+            variant: 'destructive'
+          });
+          return;
+        }
+      }
 
       // Format phone number before saving
       const formattedPhone = formatPhoneNumber(preferences.phone_number);
       
       const { error } = await supabase
         .from('notification_preferences')
-        .upsert({
-          user_id: user.id,
-          email_notifications: preferences.email_notifications,
-          push_notifications: preferences.push_notifications,
-          sms_notifications: preferences.sms_notifications,
-          system_notifications: preferences.system_notifications,
-          notification_frequency: preferences.notification_frequency,
-          inventory_updates: preferences.inventory_updates,
-          price_updates: preferences.price_updates,
-          estimate_updates: preferences.estimate_updates,
-          customer_activity_notifications: preferences.customer_activity_notifications,
-          phone_number: formattedPhone,
-          updated_at: new Date().toISOString()
-        });
+        .upsert(
+          {
+            user_id: user.id,
+            email_notifications: preferences.email_notifications,
+            push_notifications: preferences.push_notifications,
+            sms_notifications: preferences.sms_notifications,
+            system_notifications: preferences.system_notifications,
+            notification_frequency: preferences.notification_frequency,
+            inventory_updates: preferences.inventory_updates,
+            price_updates: preferences.price_updates,
+            estimate_updates: preferences.estimate_updates,
+            customer_activity_notifications: preferences.customer_activity_notifications,
+            phone_number: formattedPhone,
+            updated_at: new Date().toISOString()
+          },
+          {
+            onConflict: 'user_id'
+          }
+        );
+      
+      if (error) {
+        console.error('Supabase error details:', error);
+        if (error.code === '23505') {
+          throw new Error('A unique constraint violation occurred. Please try again.');
+        }
+        throw error;
+      }
       
       // Update local state with formatted phone
       setPreferences(prev => ({ ...prev, phone_number: formattedPhone }));
-
-      if (error) throw error;
 
       toast({
         title: 'Success',
         description: 'Notification preferences saved successfully'
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving notification preferences:', error);
+      const errorMessage = error.message || 'Failed to save notification preferences';
       toast({
         title: 'Error',
-        description: 'Failed to save notification preferences',
+        description: errorMessage,
         variant: 'destructive'
       });
     } finally {

@@ -8,7 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Camera, Upload, CheckCircle, AlertCircle } from "lucide-react";
+import { Camera, Upload, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
+import { optimizeDeliveryPhoto, type OptimizedImage } from "@/utils/imageOptimization";
 
 interface DeliveryPhotoCaptureProps {
   deliveryId: string;
@@ -63,41 +64,55 @@ export const DeliveryPhotoCapture = ({ deliveryId, driverId, currentPhase }: Del
     }
   });
 
-  // Upload photo mutation
+  // Upload photo mutation with optimization
   const uploadPhotoMutation = useMutation({
     mutationFn: async ({ file, category, caption }: { file: File; category: string; caption: string }) => {
       setIsUploading(true);
       
-      // Get current location
-      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, {
-          enableHighAccuracy: true,
-          timeout: 10000
+      try {
+        // Optimize image before upload
+        const optimizedImage = await optimizeDeliveryPhoto(file);
+        
+        toast.success(`Image optimized: ${optimizedImage.compressionRatio}% reduction`);
+        
+        // Get current location
+        const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: true,
+            timeout: 10000
+          });
         });
-      });
 
-      // Convert file to base64
-      const base64 = await new Promise<string>((resolve) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.readAsDataURL(file);
-      });
+        // Convert optimized file to base64
+        const base64 = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.readAsDataURL(optimizedImage.file);
+        });
 
-      // Upload via edge function
-      const { data, error } = await supabase.functions.invoke('upload-delivery-photo', {
-        body: {
-          deliveryId,
-          driverId,
-          photoType: category,
-          photoData: base64,
-          caption,
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude
-        }
-      });
+        // Upload via edge function
+        const { data, error } = await supabase.functions.invoke('upload-delivery-photo', {
+          body: {
+            deliveryId,
+            driverId,
+            photoType: category,
+            photoData: base64,
+            caption,
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+            originalSize: optimizedImage.originalSize,
+            optimizedSize: optimizedImage.optimizedSize,
+            compressionRatio: optimizedImage.compressionRatio
+          }
+        });
 
-      if (error) throw error;
-      return data;
+        if (error) throw error;
+        return data;
+        
+      } catch (error) {
+        console.error('Photo optimization or upload failed:', error);
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["delivery-photos"] });
@@ -158,10 +173,14 @@ export const DeliveryPhotoCapture = ({ deliveryId, driverId, currentPhase }: Del
     }
   };
 
-  // Handle file upload
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  // Handle file upload with optimization
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file && selectedCategory) {
+      // Show file size info
+      const sizeInMB = (file.size / (1024 * 1024)).toFixed(2);
+      toast.info(`Processing ${file.name} (${sizeInMB}MB)...`);
+      
       uploadPhotoMutation.mutate({ file, category: selectedCategory, caption });
     }
   };

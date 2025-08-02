@@ -143,3 +143,59 @@ export const prefersReducedMotion = (): boolean => {
 export const getDevicePixelRatio = (): number => {
   return window.devicePixelRatio || 1;
 };
+
+// Network quality detection for adaptive functionality
+export const detectNetworkQuality = (): Promise<string> => {
+  return new Promise((resolve) => {
+    if ('connection' in navigator) {
+      const connection = (navigator as any).connection;
+      const downlink = connection.downlink || 0;
+      
+      if (downlink >= 10) resolve('fast');
+      else if (downlink >= 1.5) resolve('good'); 
+      else if (downlink >= 0.5) resolve('slow');
+      else resolve('very-slow');
+    } else {
+      // Fallback: measure ping to determine quality
+      const start = performance.now();
+      fetch('/favicon.ico', { method: 'HEAD', cache: 'no-cache' })
+        .then(() => {
+          const ping = performance.now() - start;
+          if (ping < 100) resolve('fast');
+          else if (ping < 300) resolve('good');
+          else if (ping < 1000) resolve('slow');
+          else resolve('very-slow');
+        })
+        .catch(() => resolve('offline'));
+    }
+  });
+};
+
+// Adaptive image loading based on network and device
+export const getAdaptiveImageSettings = async () => {
+  const networkQuality = await detectNetworkQuality();
+  const devicePixelRatio = getDevicePixelRatio();
+  
+  const settings = {
+    fast: { quality: 90, maxWidth: 1920 * devicePixelRatio },
+    good: { quality: 80, maxWidth: 1440 * devicePixelRatio },
+    slow: { quality: 70, maxWidth: 1080 },
+    'very-slow': { quality: 60, maxWidth: 720 },
+    offline: { quality: 50, maxWidth: 480 }
+  };
+  
+  return settings[networkQuality as keyof typeof settings] || settings.good;
+};
+
+// Battery-aware processing
+export const isBatteryOptimizationNeeded = async (): Promise<boolean> => {
+  try {
+    if ('getBattery' in navigator) {
+      const battery: any = await (navigator as any).getBattery();
+      return battery.level < 0.2 || !battery.charging;
+    }
+  } catch (error) {
+    console.log('Battery API not available');
+  }
+  return false;
+};

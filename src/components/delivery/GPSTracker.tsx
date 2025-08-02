@@ -13,8 +13,10 @@ import {
   MapPin, 
   AlertTriangle,
   Play,
-  Pause
+  Pause,
+  TrendingUp
 } from "lucide-react";
+import GPSOptimizer, { GPSPerformanceMonitor, type GPSPoint } from "@/utils/gpsOptimization";
 
 interface GPSTrackerProps {
   deliveryId: string;
@@ -33,17 +35,29 @@ interface GPSData {
 
 export const GPSTracker = ({ deliveryId, driverId, isActive }: GPSTrackerProps) => {
   const [isTracking, setIsTracking] = useState(false);
-  const [currentLocation, setCurrentLocation] = useState<GPSData | null>(null);
+  const [currentLocation, setCurrentLocation] = useState<GPSPoint | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [batteryLevel, setBatteryLevel] = useState<number | null>(null);
   const [trackingInterval, setTrackingInterval] = useState<number>(60000); // 60 seconds default
   const watchIdRef = useRef<number | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const offlineQueueRef = useRef<GPSData[]>([]);
+  const gpsOptimizerRef = useRef<GPSOptimizer | null>(null);
+  const performanceMonitorRef = useRef<GPSPerformanceMonitor>(new GPSPerformanceMonitor());
+  const offlineQueueRef = useRef<GPSPoint[]>([]);
 
-  // GPS logging mutation
+  // GPS logging mutation with optimization
   const logGPSMutation = useMutation({
-    mutationFn: async (gpsData: GPSData) => {
+    mutationFn: async (gpsData: GPSPoint) => {
+      // Use GPS optimizer if available
+      if (gpsOptimizerRef.current) {
+        const wasSignificant = gpsOptimizerRef.current.addGPSPoint(gpsData);
+        performanceMonitorRef.current.recordGPSPoint(gpsData, !wasSignificant);
+        
+        if (!wasSignificant) {
+          return; // Point was filtered out
+        }
+      }
+
       const { error } = await supabase
         .from('delivery_gps_tracking')
         .insert({
@@ -55,10 +69,13 @@ export const GPSTracker = ({ deliveryId, driverId, isActive }: GPSTrackerProps) 
           speed_mph: gpsData.speed,
           heading: gpsData.heading,
           timestamp: gpsData.timestamp.toISOString(),
-          meets_accuracy_requirement: gpsData.accuracy <= 50
+          meets_accuracy_requirement: gpsData.accuracy <= 50,
+          battery_level: gpsData.batteryLevel
         });
 
       if (error) throw error;
+      
+      performanceMonitorRef.current.recordNetworkRequest();
     },
     onError: (error) => {
       // If online logging fails, queue for offline sync
@@ -69,16 +86,18 @@ export const GPSTracker = ({ deliveryId, driverId, isActive }: GPSTrackerProps) 
     }
   });
 
-  // Sync offline data
+  // Sync offline data using optimized batch processing
   const syncOfflineData = async () => {
     if (offlineQueueRef.current.length > 0) {
       console.log(`Syncing ${offlineQueueRef.current.length} GPS points`);
       
-      const { error } = await supabase.functions.invoke('sync-offline-delivery-data', {
+      const { error } = await supabase.functions.invoke('process-gps-batch', {
         body: {
+          points: offlineQueueRef.current,
           deliveryId,
           driverId,
-          gpsData: offlineQueueRef.current
+          batchStartTime: offlineQueueRef.current[0]?.timestamp || new Date(),
+          batchEndTime: offlineQueueRef.current[offlineQueueRef.current.length - 1]?.timestamp || new Date()
         }
       });
 
@@ -101,7 +120,7 @@ export const GPSTracker = ({ deliveryId, driverId, isActive }: GPSTrackerProps) 
     }
   };
 
-  // Start GPS tracking
+  // Start GPS tracking with optimization
   const startTracking = () => {
     if (!navigator.geolocation) {
       toast.error('Geolocation is not supported');
@@ -111,20 +130,28 @@ export const GPSTracker = ({ deliveryId, driverId, isActive }: GPSTrackerProps) 
     setIsTracking(true);
     getBatteryLevel();
 
-    // Adjust interval based on delivery phase
-    const currentInterval = isActive ? 60000 : 120000; // 60s active, 120s idle
-    setTrackingInterval(currentInterval);
+    // Initialize GPS optimizer
+    gpsOptimizerRef.current = new GPSOptimizer(deliveryId, driverId);
+
+    // Get adaptive interval based on context
+    const adaptiveInterval = gpsOptimizerRef.current.getAdaptiveInterval(
+      isActive,
+      batteryLevel || undefined,
+      currentLocation?.accuracy
+    );
+    setTrackingInterval(adaptiveInterval);
 
     // Start position watching
     watchIdRef.current = navigator.geolocation.watchPosition(
       (position) => {
-        const gpsData: GPSData = {
+        const gpsData: GPSPoint = {
           latitude: position.coords.latitude,
           longitude: position.coords.longitude,
           accuracy: position.coords.accuracy,
           speed: position.coords.speed || undefined,
           heading: position.coords.heading || undefined,
-          timestamp: new Date()
+          timestamp: new Date(),
+          batteryLevel: batteryLevel || undefined
         };
 
         setCurrentLocation(gpsData);
@@ -146,12 +173,12 @@ export const GPSTracker = ({ deliveryId, driverId, isActive }: GPSTrackerProps) 
       }
     );
 
-    // Set up periodic logging
+    // Set up periodic logging with adaptive interval
     intervalRef.current = setInterval(() => {
       if (currentLocation) {
         logGPSMutation.mutate(currentLocation);
       }
-    }, currentInterval);
+    }, adaptiveInterval);
 
     // Set up offline sync check
     const syncInterval = setInterval(syncOfflineData, 300000); // Every 5 minutes
@@ -160,7 +187,7 @@ export const GPSTracker = ({ deliveryId, driverId, isActive }: GPSTrackerProps) 
     return () => clearInterval(syncInterval);
   };
 
-  // Stop GPS tracking
+  // Stop GPS tracking with cleanup
   const stopTracking = () => {
     setIsTracking(false);
     
@@ -174,7 +201,11 @@ export const GPSTracker = ({ deliveryId, driverId, isActive }: GPSTrackerProps) 
       intervalRef.current = null;
     }
 
-    // Final sync of any remaining offline data
+    // Final sync and cleanup
+    if (gpsOptimizerRef.current) {
+      gpsOptimizerRef.current.cleanup();
+    }
+    
     syncOfflineData();
   };
 

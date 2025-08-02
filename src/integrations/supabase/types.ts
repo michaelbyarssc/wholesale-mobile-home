@@ -5823,6 +5823,22 @@ export type Database = {
         Args: { page_path: string }
         Returns: string
       }
+      get_delivery_performance_metrics: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          delivery_id: string
+          status: string
+          delivery_start: string
+          total_gps_points: number
+          avg_gps_accuracy: number
+          accurate_gps_points: number
+          total_photos: number
+          pickup_photos: number
+          delivery_photos: number
+          tracking_duration_hours: number
+          last_gps_update: string
+        }[]
+      }
       get_popular_mobile_homes: {
         Args: { days_back?: number; limit_count?: number }
         Returns: {

@@ -1817,56 +1817,77 @@ export type Database = {
       }
       delivery_assignments: {
         Row: {
+          accepted_at: string | null
           active: boolean
           assigned_at: string
           assigned_at_tz: string | null
           assigned_by: string | null
+          assignment_status: string | null
           completed_at: string | null
           created_at: string
+          declined_at: string | null
           delivery_id: string | null
           driver_id: string | null
+          ending_mileage: number | null
+          expenses: Json | null
           hours_logged: number | null
           id: string
           mileage_logged: number | null
           notes: string | null
+          phase_times: Json | null
           role: string
           started_at: string | null
+          starting_mileage: number | null
           updated_at: string
           updated_at_tz: string | null
         }
         Insert: {
+          accepted_at?: string | null
           active?: boolean
           assigned_at?: string
           assigned_at_tz?: string | null
           assigned_by?: string | null
+          assignment_status?: string | null
           completed_at?: string | null
           created_at?: string
+          declined_at?: string | null
           delivery_id?: string | null
           driver_id?: string | null
+          ending_mileage?: number | null
+          expenses?: Json | null
           hours_logged?: number | null
           id?: string
           mileage_logged?: number | null
           notes?: string | null
+          phase_times?: Json | null
           role?: string
           started_at?: string | null
+          starting_mileage?: number | null
           updated_at?: string
           updated_at_tz?: string | null
         }
         Update: {
+          accepted_at?: string | null
           active?: boolean
           assigned_at?: string
           assigned_at_tz?: string | null
           assigned_by?: string | null
+          assignment_status?: string | null
           completed_at?: string | null
           created_at?: string
+          declined_at?: string | null
           delivery_id?: string | null
           driver_id?: string | null
+          ending_mileage?: number | null
+          expenses?: Json | null
           hours_logged?: number | null
           id?: string
           mileage_logged?: number | null
           notes?: string | null
+          phase_times?: Json | null
           role?: string
           started_at?: string | null
+          starting_mileage?: number | null
           updated_at?: string
           updated_at_tz?: string | null
         }
@@ -2042,6 +2063,7 @@ export type Database = {
           is_active: boolean
           latitude: number
           longitude: number
+          meets_accuracy_requirement: boolean | null
           speed_mph: number | null
           timestamp: string
         }
@@ -2056,6 +2078,7 @@ export type Database = {
           is_active?: boolean
           latitude: number
           longitude: number
+          meets_accuracy_requirement?: boolean | null
           speed_mph?: number | null
           timestamp?: string
         }
@@ -2070,6 +2093,7 @@ export type Database = {
           is_active?: boolean
           latitude?: number
           longitude?: number
+          meets_accuracy_requirement?: boolean | null
           speed_mph?: number | null
           timestamp?: string
         }
@@ -2083,6 +2107,79 @@ export type Database = {
           },
           {
             foreignKeyName: "delivery_gps_tracking_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      delivery_issues: {
+        Row: {
+          assignment_id: string | null
+          created_by: string | null
+          delivery_id: string | null
+          description: string
+          driver_id: string | null
+          id: string
+          issue_type: string
+          location_lat: number | null
+          location_lng: number | null
+          photos: Json | null
+          reported_at: string | null
+          resolution_notes: string | null
+          resolved_at: string | null
+          severity: string | null
+        }
+        Insert: {
+          assignment_id?: string | null
+          created_by?: string | null
+          delivery_id?: string | null
+          description: string
+          driver_id?: string | null
+          id?: string
+          issue_type: string
+          location_lat?: number | null
+          location_lng?: number | null
+          photos?: Json | null
+          reported_at?: string | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          severity?: string | null
+        }
+        Update: {
+          assignment_id?: string | null
+          created_by?: string | null
+          delivery_id?: string | null
+          description?: string
+          driver_id?: string | null
+          id?: string
+          issue_type?: string
+          location_lat?: number | null
+          location_lng?: number | null
+          photos?: Json | null
+          reported_at?: string | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          severity?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delivery_issues_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_issues_delivery_id_fkey"
+            columns: ["delivery_id"]
+            isOneToOne: false
+            referencedRelation: "deliveries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_issues_driver_id_fkey"
             columns: ["driver_id"]
             isOneToOne: false
             referencedRelation: "drivers"
@@ -2141,8 +2238,10 @@ export type Database = {
           delivery_id: string | null
           driver_id: string | null
           id: string
+          is_required: boolean | null
           latitude: number | null
           longitude: number | null
+          photo_category: Database["public"]["Enums"]["photo_category"] | null
           photo_type: string
           photo_url: string
           taken_at: string
@@ -2153,8 +2252,10 @@ export type Database = {
           delivery_id?: string | null
           driver_id?: string | null
           id?: string
+          is_required?: boolean | null
           latitude?: number | null
           longitude?: number | null
+          photo_category?: Database["public"]["Enums"]["photo_category"] | null
           photo_type: string
           photo_url: string
           taken_at?: string
@@ -2165,8 +2266,10 @@ export type Database = {
           delivery_id?: string | null
           driver_id?: string | null
           id?: string
+          is_required?: boolean | null
           latitude?: number | null
           longitude?: number | null
+          photo_category?: Database["public"]["Enums"]["photo_category"] | null
           photo_type?: string
           photo_url?: string
           taken_at?: string
@@ -2374,21 +2477,29 @@ export type Database = {
       }
       delivery_status_history: {
         Row: {
+          accuracy_meters: number | null
           changed_by: string | null
           created_at: string
           created_at_tz: string | null
           delivery_id: string | null
+          driver_id: string | null
           id: string
+          location_lat: number | null
+          location_lng: number | null
           new_status: Database["public"]["Enums"]["delivery_status"]
           notes: string | null
           previous_status: Database["public"]["Enums"]["delivery_status"] | null
         }
         Insert: {
+          accuracy_meters?: number | null
           changed_by?: string | null
           created_at?: string
           created_at_tz?: string | null
           delivery_id?: string | null
+          driver_id?: string | null
           id?: string
+          location_lat?: number | null
+          location_lng?: number | null
           new_status: Database["public"]["Enums"]["delivery_status"]
           notes?: string | null
           previous_status?:
@@ -2396,11 +2507,15 @@ export type Database = {
             | null
         }
         Update: {
+          accuracy_meters?: number | null
           changed_by?: string | null
           created_at?: string
           created_at_tz?: string | null
           delivery_id?: string | null
+          driver_id?: string | null
           id?: string
+          location_lat?: number | null
+          location_lng?: number | null
           new_status?: Database["public"]["Enums"]["delivery_status"]
           notes?: string | null
           previous_status?:
@@ -2413,6 +2528,13 @@ export type Database = {
             columns: ["delivery_id"]
             isOneToOne: false
             referencedRelation: "deliveries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_status_history_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
             referencedColumns: ["id"]
           },
         ]
@@ -5849,6 +5971,19 @@ export type Database = {
         | "needs_scheduled"
       driver_status: "available" | "on_delivery" | "off_duty" | "inactive"
       mobile_home_type: "single_wide" | "double_wide" | "triple_wide"
+      photo_category:
+        | "pickup_front"
+        | "pickup_back"
+        | "pickup_left"
+        | "pickup_right"
+        | "delivery_front"
+        | "delivery_back"
+        | "delivery_left"
+        | "delivery_right"
+        | "issue"
+        | "signature"
+        | "damage"
+        | "special_condition"
       transaction_priority: "low" | "medium" | "high" | "urgent"
       transaction_status:
         | "draft"
@@ -6019,6 +6154,20 @@ export const Constants = {
       ],
       driver_status: ["available", "on_delivery", "off_duty", "inactive"],
       mobile_home_type: ["single_wide", "double_wide", "triple_wide"],
+      photo_category: [
+        "pickup_front",
+        "pickup_back",
+        "pickup_left",
+        "pickup_right",
+        "delivery_front",
+        "delivery_back",
+        "delivery_left",
+        "delivery_right",
+        "issue",
+        "signature",
+        "damage",
+        "special_condition",
+      ],
       transaction_priority: ["low", "medium", "high", "urgent"],
       transaction_status: [
         "draft",

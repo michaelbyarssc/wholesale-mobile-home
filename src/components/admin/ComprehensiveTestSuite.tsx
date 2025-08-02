@@ -570,6 +570,19 @@ export function ComprehensiveTestSuite() {
 
   const runSingleTest = async (test: TestCase): Promise<{ passed: boolean; error?: string; data?: any; errorType?: string; stackTrace?: string }> => {
     try {
+      // Pre-flight checks for admin tests
+      if (test.category === 'admin') {
+        const authCheck = await checkAuthenticationStatus();
+        if (!authCheck.passed) {
+          return {
+            passed: false,
+            error: authCheck.error,
+            errorType: 'AUTHENTICATION_ERROR',
+            stackTrace: undefined
+          };
+        }
+      }
+
       // Simulate test execution based on test type
       const result = await (async () => {
         switch (test.category) {
@@ -615,24 +628,70 @@ export function ComprehensiveTestSuite() {
     }
   };
 
+  // Authentication status checker
+  const checkAuthenticationStatus = async (): Promise<{ passed: boolean; error?: string }> => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        return { passed: false, error: 'User not authenticated' };
+      }
+
+      // Check if user has admin role
+      const { data: roles, error } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id);
+
+      if (error) {
+        return { passed: false, error: `Role check failed: ${error.message}` };
+      }
+
+      const hasAdminRole = roles?.some(r => r.role === 'admin' || r.role === 'super_admin');
+      if (!hasAdminRole) {
+        return { passed: false, error: 'User does not have admin privileges' };
+      }
+
+      return { passed: true };
+    } catch (error) {
+      return { passed: false, error: `Authentication check failed: ${error instanceof Error ? error.message : 'Unknown error'}` };
+    }
+  };
+
   const categorizeError = (error: string, category: string): string => {
     const errorLower = error.toLowerCase();
     
-    if (errorLower.includes('rls') || errorLower.includes('policy') || errorLower.includes('permission')) {
+    // Authentication and authorization errors
+    if (errorLower.includes('not authenticated') || errorLower.includes('not logged in')) {
+      return 'AUTHENTICATION_ERROR';
+    }
+    if (errorLower.includes('admin') && (errorLower.includes('privilege') || errorLower.includes('role'))) {
+      return 'AUTHENTICATION_ERROR';
+    }
+    if (errorLower.includes('rls') || errorLower.includes('policy') || errorLower.includes('permission') || errorLower.includes('unauthorized')) {
       return 'RLS_POLICY_ERROR';
     }
-    if (errorLower.includes('validation') || errorLower.includes('constraint') || errorLower.includes('invalid')) {
+    
+    // Data validation errors
+    if (errorLower.includes('validation') || errorLower.includes('constraint') || errorLower.includes('invalid') || errorLower.includes('required')) {
       return 'VALIDATION_ERROR';
     }
+    
+    // Performance errors
     if (errorLower.includes('timeout') || errorLower.includes('slow') || errorLower.includes('performance')) {
       return 'PERFORMANCE_ISSUE';
     }
-    if (errorLower.includes('network') || errorLower.includes('connection') || errorLower.includes('fetch')) {
-      return 'NETWORK_ERROR';
-    }
-    if (errorLower.includes('database') || errorLower.includes('sql') || errorLower.includes('table')) {
+    
+    // Database errors
+    if (errorLower.includes('database') || errorLower.includes('sql') || errorLower.includes('table') || errorLower.includes('supabase')) {
       return 'DATABASE_ERROR';
     }
+    
+    // Network errors
+    if (errorLower.includes('network') || errorLower.includes('connection') || errorLower.includes('fetch') || errorLower.includes('http')) {
+      return 'NETWORK_ERROR';
+    }
+    
+    // Category-specific error types
     if (category === 'integration') {
       return 'INTEGRATION_ERROR';
     }

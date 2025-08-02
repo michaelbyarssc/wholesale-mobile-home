@@ -73,8 +73,25 @@ export function TestFixHandler({ result, testName, onFixApplied, onRetestRequest
   const analyzeError = (result: TestResult) => {
     const error = result.error?.toLowerCase() || '';
     
-    // Categorize error based on error message
-    if (error.includes('rls') || error.includes('row level security') || error.includes('policy')) {
+    // Authentication errors
+    if (error.includes('not authenticated') || error.includes('not logged in')) {
+      return {
+        errorType: 'AUTHENTICATION_ERROR' as const,
+        fixSuggestion: 'Please log in with an admin account to run this test',
+        fixTemplate: 'authentication-fix'
+      };
+    }
+    
+    if (error.includes('admin') && (error.includes('privilege') || error.includes('role'))) {
+      return {
+        errorType: 'AUTHENTICATION_ERROR' as const,
+        fixSuggestion: 'This test requires admin privileges. Please contact an administrator.',
+        fixTemplate: 'admin-role-fix'
+      };
+    }
+    
+    // RLS and permission errors
+    if (error.includes('rls') || error.includes('row level security') || error.includes('policy') || error.includes('unauthorized')) {
       return {
         errorType: 'RLS_POLICY_ERROR' as const,
         fixSuggestion: 'Check RLS policies for the affected table and ensure proper user permissions',
@@ -82,7 +99,8 @@ export function TestFixHandler({ result, testName, onFixApplied, onRetestRequest
       };
     }
     
-    if (error.includes('validation') || error.includes('constraint') || error.includes('invalid')) {
+    // Validation errors
+    if (error.includes('validation') || error.includes('constraint') || error.includes('invalid') || error.includes('required')) {
       return {
         errorType: 'VALIDATION_ERROR' as const,
         fixSuggestion: 'Review input validation rules and form constraints',
@@ -90,6 +108,7 @@ export function TestFixHandler({ result, testName, onFixApplied, onRetestRequest
       };
     }
     
+    // Performance errors
     if (error.includes('timeout') || error.includes('slow') || error.includes('performance')) {
       return {
         errorType: 'PERFORMANCE_ISSUE' as const,
@@ -98,6 +117,7 @@ export function TestFixHandler({ result, testName, onFixApplied, onRetestRequest
       };
     }
     
+    // Network errors
     if (error.includes('network') || error.includes('connection') || error.includes('fetch')) {
       return {
         errorType: 'NETWORK_ERROR' as const,
@@ -106,7 +126,8 @@ export function TestFixHandler({ result, testName, onFixApplied, onRetestRequest
       };
     }
     
-    if (error.includes('database') || error.includes('sql') || error.includes('table')) {
+    // Database errors
+    if (error.includes('database') || error.includes('sql') || error.includes('table') || error.includes('supabase')) {
       return {
         errorType: 'DATABASE_ERROR' as const,
         fixSuggestion: 'Review database schema and query syntax',
@@ -155,6 +176,10 @@ export function TestFixHandler({ result, testName, onFixApplied, onRetestRequest
 
   const applyFixTemplate = async (template: string, result: TestResult): Promise<boolean> => {
     switch (template) {
+      case 'authentication-fix':
+        return await fixAuthentication(result);
+      case 'admin-role-fix':
+        return await fixAdminRole(result);
       case 'rls-policy-fix':
         return await fixRLSPolicy(result);
       case 'validation-fix':
@@ -172,27 +197,77 @@ export function TestFixHandler({ result, testName, onFixApplied, onRetestRequest
     }
   };
 
+  const fixAuthentication = async (result: TestResult): Promise<boolean> => {
+    setFixDetails('Checking authentication status...');
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setFixDetails('Authentication failed - please log in to continue.');
+        return false;
+      }
+      setFixDetails('Authentication verified successfully.');
+      return true;
+    } catch (error) {
+      setFixDetails('Authentication check failed - please refresh and try again.');
+      return false;
+    }
+  };
+
+  const fixAdminRole = async (result: TestResult): Promise<boolean> => {
+    setFixDetails('Checking admin role permissions...');
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setFixDetails('Please log in first.');
+        return false;
+      }
+
+      const { data: roles } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id);
+
+      const hasAdminRole = roles?.some(r => r.role === 'admin' || r.role === 'super_admin');
+      if (!hasAdminRole) {
+        setFixDetails('This account does not have admin privileges. Please contact an administrator.');
+        return false;
+      }
+
+      setFixDetails('Admin role verified successfully.');
+      return true;
+    } catch (error) {
+      setFixDetails('Role verification failed - please contact support.');
+      return false;
+    }
+  };
+
   const fixRLSPolicy = async (result: TestResult): Promise<boolean> => {
     try {
       // Example: Check if user has proper profile setup
       const { data: profile } = await supabase
         .from('profiles')
         .select('*')
-        .eq('id', (await supabase.auth.getUser()).data.user?.id)
-        .single();
+        .eq('user_id', (await supabase.auth.getUser()).data.user?.id)
+        .maybeSingle();
       
       if (!profile) {
         // Create missing profile
-        await supabase.from('profiles').insert({
-          user_id: (await supabase.auth.getUser()).data.user?.id || '',
-          display_name: 'Test User'
-        });
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          await supabase.from('profiles').insert({
+            user_id: user.id,
+            first_name: 'Test',
+            last_name: 'User'
+          });
+          setFixDetails('Created missing user profile for RLS policy validation');
+        }
+      } else {
+        setFixDetails('User profile exists - RLS policies should work correctly');
       }
       
-      setFixDetails('Created missing user profile for RLS policy validation');
       return true;
     } catch (error) {
-      setFixDetails(`RLS fix failed: ${error}`);
+      setFixDetails(`RLS fix failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
       return false;
     }
   };

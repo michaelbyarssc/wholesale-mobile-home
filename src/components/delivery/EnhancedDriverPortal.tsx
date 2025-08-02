@@ -28,6 +28,7 @@ import {
 import { DeliveryPhotoCapture } from "./DeliveryPhotoCapture";
 import { DeliveryIssueReporter } from "./DeliveryIssueReporter";
 import { GPSTracker } from "./GPSTracker";
+import { QualityControl } from "./QualityControl";
 
 interface EnhancedDriverPortalProps {
   driverProfile: any;
@@ -543,6 +544,13 @@ export const EnhancedDriverPortal = ({ driverProfile }: EnhancedDriverPortalProp
                   isActive={true}
                 />
               )}
+
+              {/* Quality Control */}
+              <QualityControl 
+                deliveryId={assignment.deliveries.id}
+                assignmentId={assignment.id}
+                currentStatus={assignment.deliveries.status}
+              />
 
               {/* Status Update Buttons */}
               <div className="flex flex-wrap gap-2">

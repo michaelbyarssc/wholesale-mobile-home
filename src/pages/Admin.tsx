@@ -17,6 +17,7 @@ import { NotificationCenter } from '@/components/admin/NotificationCenter';
 import { FAQManagementTab } from '@/components/admin/FAQManagementTab';
 import { DeliveryManagement } from '@/components/admin/DeliveryManagement';
 import { ComprehensiveTestSuite } from '@/components/admin/ComprehensiveTestSuite';
+import { ComprehensiveTestRunner } from '@/components/ComprehensiveTestRunner';
 
 import { Menu, X } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -446,7 +447,7 @@ const Admin = () => {
                 </TabsContent>
 
                 <TabsContent value="testing" className="p-3 sm:p-6 m-0">
-                  <ComprehensiveTestSuite />
+                  <ComprehensiveTestRunner />
                 </TabsContent>
 
                 <TabsContent value="reviews" className="p-3 sm:p-6 m-0">

@@ -729,7 +729,7 @@ export function ComprehensiveTestSuite() {
         // Test actual mobile home component functionality
         const { data: mobileHomes, error } = await supabase
           .from('mobile_homes')
-          .select('id, title, price, images, active')
+          .select('id, display_name, manufacturer, series, model, price, active')
           .eq('active', true)
           .limit(10);
         
@@ -741,7 +741,7 @@ export function ComprehensiveTestSuite() {
         // Test filtering functionality
         const { data: filteredHomes, error: filterError } = await supabase
           .from('mobile_homes')
-          .select('id, title, price')
+          .select('id, display_name, manufacturer, series, model, price')
           .gte('price', 50000)
           .eq('active', true)
           .limit(5);

@@ -551,7 +551,15 @@ const Delivery = () => {
                 </Button>
               </form>
               
-              <div className="mt-6 text-center">
+              <div className="mt-6 text-center space-y-2">
+                <Button 
+                  variant="link" 
+                  className="text-sm text-blue-600 hover:text-blue-800"
+                  onClick={() => navigate('/auth?forgot=true&driver=true')}
+                >
+                  Forgot your password?
+                </Button>
+                
                 <p className="text-sm text-muted-foreground">
                   Need help? Contact your administrator
                 </p>

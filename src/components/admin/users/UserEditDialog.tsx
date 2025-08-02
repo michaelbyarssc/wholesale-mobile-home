@@ -22,6 +22,7 @@ export interface UserProfile {
   approved: boolean;
   approved_at: string | null;
   created_by?: string | null;
+  is_driver?: boolean;
 }
 
 interface UserEditDialogProps {

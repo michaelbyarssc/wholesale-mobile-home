@@ -33,6 +33,18 @@ const Auth = () => {
       setShowPasswordChange(true);
     }
 
+    // Check if this is a forgot password flow
+    const forgot = searchParams.get('forgot');
+    if (forgot === 'true') {
+      setIsForgotPassword(true);
+    }
+
+    // Driver context for better UX
+    const driver = searchParams.get('driver');
+    if (driver === 'true') {
+      console.log('Driver context detected for password reset');
+    }
+
     // Check if current user is admin and get their profile
     const checkAdminStatus = async () => {
       const { data: { user } } = await supabase.auth.getUser();

@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Shield, ShieldCheck, ShieldOff } from 'lucide-react';
+import { Shield, ShieldCheck, ShieldOff, Truck } from 'lucide-react';
 import { UserProfile } from './UserEditDialog';
 import { UserEditDialog } from './UserEditDialog';
 import { UserActions } from './UserActions';
@@ -141,7 +141,15 @@ export const UserTableRow = ({ profile, onUserUpdated, mobileView = false }: Use
     <TableRow key={profile.user_id}>
       <TableCell>
         <div>
-          <div className="font-medium text-sm">{getDisplayName(profile)}</div>
+          <div className="flex items-center gap-2">
+            <div className="font-medium text-sm">{getDisplayName(profile)}</div>
+            {profile.is_driver && (
+              <Badge variant="outline" className="text-xs text-blue-600 border-blue-200">
+                <Truck className="h-3 w-3 mr-1" />
+                Driver
+              </Badge>
+            )}
+          </div>
           <div className="text-xs text-muted-foreground truncate max-w-[200px]">{profile.email}</div>
         </div>
       </TableCell>

@@ -23,12 +23,15 @@ import {
   Home,
   Factory,
   AlertCircle,
-  Timer
+  Timer,
+  Settings,
+  KeyRound
 } from "lucide-react";
 import { DeliveryPhotoCapture } from "./DeliveryPhotoCapture";
 import { DeliveryIssueReporter } from "./DeliveryIssueReporter";
 import { GPSTracker } from "./GPSTracker";
 import { QualityControl } from "./QualityControl";
+import { PasswordChangeDialog } from "@/components/auth/PasswordChangeDialog";
 
 interface EnhancedDriverPortalProps {
   driverProfile: any;
@@ -40,6 +43,8 @@ export const EnhancedDriverPortal = ({ driverProfile }: EnhancedDriverPortalProp
   const [startingMileage, setStartingMileage] = useState<number | null>(null);
   const [endingMileage, setEndingMileage] = useState<number | null>(null);
   const [gpsAccuracy, setGpsAccuracy] = useState<number | null>(null);
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const queryClient = useQueryClient();
 
   // Get pending and active assignments
@@ -293,23 +298,34 @@ export const EnhancedDriverPortal = ({ driverProfile }: EnhancedDriverPortalProp
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            <div className="flex gap-4 flex-wrap">
-              <Button onClick={getCurrentLocation} variant="outline">
-                <MapPin className="h-4 w-4 mr-2" />
-                Get Location
+            <div className="flex gap-4 flex-wrap justify-between">
+              <div className="flex gap-4 flex-wrap">
+                <Button onClick={getCurrentLocation} variant="outline">
+                  <MapPin className="h-4 w-4 mr-2" />
+                  Get Location
+                </Button>
+                
+                {currentLocation && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <Signal className="h-4 w-4" />
+                    <span className={isGPSAccurate ? "text-green-600" : "text-amber-600"}>
+                      GPS: ±{gpsAccuracy?.toFixed(0)}m
+                    </span>
+                    {!isGPSAccurate && (
+                      <span className="text-xs text-amber-600">(Accuracy required: ≤50m)</span>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <Button 
+                onClick={() => setShowSettings(!showSettings)} 
+                variant="outline"
+                size="sm"
+              >
+                <Settings className="h-4 w-4 mr-2" />
+                Settings
               </Button>
-              
-              {currentLocation && (
-                <div className="flex items-center gap-2 text-sm">
-                  <Signal className="h-4 w-4" />
-                  <span className={isGPSAccurate ? "text-green-600" : "text-amber-600"}>
-                    GPS: ±{gpsAccuracy?.toFixed(0)}m
-                  </span>
-                  {!isGPSAccurate && (
-                    <span className="text-xs text-amber-600">(Accuracy required: ≤50m)</span>
-                  )}
-                </div>
-              )}
             </div>
             
             {locationError && (
@@ -330,6 +346,59 @@ export const EnhancedDriverPortal = ({ driverProfile }: EnhancedDriverPortalProp
           </div>
         </CardContent>
       </Card>
+
+      {/* Driver Settings Panel */}
+      {showSettings && (
+        <Card className="border-blue-200 bg-blue-50/30">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Settings className="h-5 w-5" />
+              Driver Settings
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <h4 className="font-medium">Account Settings</h4>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowPasswordDialog(true)}
+                  className="w-full justify-start"
+                >
+                  <KeyRound className="h-4 w-4 mr-2" />
+                  Change Password
+                </Button>
+              </div>
+              
+              <div className="space-y-2">
+                <h4 className="font-medium">Profile Information</h4>
+                <div className="text-sm space-y-1">
+                  <p><strong>Name:</strong> {driverProfile.first_name} {driverProfile.last_name}</p>
+                  <p><strong>Employee ID:</strong> {driverProfile.employee_id}</p>
+                  <p><strong>License:</strong> {driverProfile.license_number}</p>
+                  <p><strong>Phone:</strong> {driverProfile.phone}</p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="pt-4 border-t">
+              <Button 
+                variant="ghost" 
+                onClick={() => setShowSettings(false)}
+                size="sm"
+              >
+                Close Settings
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Password Change Dialog */}
+      <PasswordChangeDialog 
+        isOpen={showPasswordDialog}
+        onClose={() => setShowPasswordDialog(false)}
+      />
 
       {/* Pending Assignments */}
       {pendingAssignments.length > 0 && (

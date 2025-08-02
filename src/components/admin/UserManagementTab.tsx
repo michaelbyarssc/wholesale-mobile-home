@@ -144,6 +144,7 @@ export const UserManagementTab = () => {
       const approvedUserIds = approvedUsers.map(profile => profile.user_id);
       let roleData = [];
       let markupData = [];
+      let driverResult = [];
 
       if (approvedUserIds.length > 0) {
         const { data: roleResult, error: roleError } = await supabase
@@ -168,12 +169,26 @@ export const UserManagementTab = () => {
         } else {
           markupData = markupResult || [];
         }
+
+        // Fetch driver profiles for approved users
+        const { data: driverQueryResult, error: driverError } = await supabase
+          .from('drivers')
+          .select('user_id, id')
+          .in('user_id', approvedUserIds);
+
+        if (driverError) {
+          console.error('Error fetching driver profiles:', driverError);
+        } else {
+          driverResult = driverQueryResult || [];
+          console.log('Found drivers:', driverResult.map(d => d.user_id));
+        }
       }
 
-      // Process approved users with role and markup info
+      // Process approved users with role, markup, and driver info
       const combinedApprovedData: UserProfile[] = approvedUsers.map(profile => {
         const role = roleData?.find(r => r.user_id === profile.user_id);
         const markup = markupData?.find(m => m.user_id === profile.user_id);
+        const isDriver = driverResult?.some(d => d.user_id === profile.user_id) || false;
         
         return {
           user_id: profile.user_id,
@@ -187,7 +202,8 @@ export const UserManagementTab = () => {
           minimum_profit_per_home: markup?.minimum_profit_per_home || 0,
           approved: profile.approved,
           approved_at: profile.approved_at,
-          created_by: profile.created_by
+          created_by: profile.created_by,
+          is_driver: isDriver
         };
       });
 

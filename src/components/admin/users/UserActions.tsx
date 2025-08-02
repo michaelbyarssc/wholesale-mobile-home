@@ -90,10 +90,11 @@ export const UserActions = ({ profile, onUserUpdated }: UserActionsProps) => {
         throw new Error(data.error);
       }
 
+      const isDriverAccount = profile.is_driver ? " (Driver Account)" : "";
       toast({
         title: "Password reset successful",
-        description: `Password for ${userEmail} has been reset to: ${data.temporaryPassword}`,
-        duration: 10000, // Show for 10 seconds so user can copy the password
+        description: `Password for ${userEmail}${isDriverAccount} has been reset to: ${data.temporaryPassword}`,
+        duration: 15000, // Show for 15 seconds for driver accounts
       });
 
     } catch (error: any) {
@@ -230,7 +231,7 @@ export const UserActions = ({ profile, onUserUpdated }: UserActionsProps) => {
         variant="outline"
         onClick={() => resetUserPassword(profile.user_id, profile.email)}
         disabled={resettingPassword === profile.user_id}
-        title="Reset password to Wholesale2025!"
+        title={`Reset password${profile.is_driver ? ' for driver account' : ''} to default`}
       >
         {resettingPassword === profile.user_id ? (
           <div className="h-3 w-3 animate-spin rounded-full border-b-2 border-current" />

@@ -429,6 +429,60 @@ serve(async (req) => {
       }
     }
 
+    // Send SMS notification to assigned admin if configured
+    if (assignedAdminId) {
+      try {
+        // Check if admin has SMS notifications enabled
+        const { data: notificationPrefs, error: prefsError } = await supabase
+          .from('notification_preferences')
+          .select('sms_enabled, phone_number')
+          .eq('user_id', assignedAdminId)
+          .maybeSingle()
+
+        if (notificationPrefs && !prefsError && notificationPrefs.sms_enabled && notificationPrefs.phone_number) {
+          // Get SMS template from admin settings
+          const { data: smsSettings, error: smsError } = await supabase
+            .from('admin_settings')
+            .select('setting_value')
+            .eq('setting_key', 'sms_template_estimate_request')
+            .maybeSingle()
+
+          let smsMessage = `New estimate request from ${customerInfo.name} for $${Math.floor(finalTotal).toLocaleString()}. Mobile: ${customerInfo.phone}`
+          
+          if (smsSettings && !smsError && smsSettings.setting_value) {
+            // Replace template variables
+            smsMessage = smsSettings.setting_value
+              .replace('{{customer_name}}', customerInfo.name)
+              .replace('{{mobile_home_model}}', cart_items[0]?.mobileHome?.model || 'N/A')
+              .replace('{{total_amount}}', `$${Math.floor(finalTotal).toLocaleString()}`)
+              .replace('{{customer_phone}}', customerInfo.phone)
+          }
+
+          console.log('🔍 send-estimate-to-sales-rep: Sending SMS to admin phone:', notificationPrefs.phone_number)
+
+          // Send SMS notification
+          const { data: smsData, error: smsError2 } = await supabase.functions.invoke('send-sms-notification', {
+            body: {
+              to: notificationPrefs.phone_number,
+              message: smsMessage
+            }
+          })
+
+          if (smsError2) {
+            console.error('🔍 send-estimate-to-sales-rep: SMS notification failed:', smsError2)
+            // Don't fail the entire process if SMS fails
+          } else {
+            console.log('🔍 send-estimate-to-sales-rep: SMS notification sent successfully:', smsData)
+          }
+        } else {
+          console.log('🔍 send-estimate-to-sales-rep: Admin SMS not enabled or phone number missing')
+        }
+      } catch (smsError) {
+        console.error('🔍 send-estimate-to-sales-rep: Error sending SMS notification:', smsError)
+        // Don't fail the entire process if SMS fails
+      }
+    }
+
     // Create estimate record in database
     const estimateData = {
       customer_name: customerInfo.name,

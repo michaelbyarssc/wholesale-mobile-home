@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Truck, Edit, Trash2, Phone, Mail, Calendar, MapPin } from 'lucide-react';
+import { Plus, Truck, Edit, Trash2, Phone, Mail, Calendar, MapPin, Key } from 'lucide-react';
 
 const DriversTab = () => {
   const { toast } = useToast();
@@ -148,6 +148,39 @@ const DriversTab = () => {
       toast({
         title: "Driver Deactivated",
         description: "Driver has been deactivated successfully.",
+      });
+    }
+  });
+
+  // Reset password mutation
+  const resetPasswordMutation = useMutation({
+    mutationFn: async (driver: any) => {
+      if (!driver.user_id) {
+        throw new Error("Driver does not have an associated user account. Please contact support.");
+      }
+
+      const { data, error } = await supabase.functions.invoke('admin-reset-password-secure', {
+        body: {
+          user_id: driver.user_id,
+          new_password: 'Wholesale2025!'
+        }
+      });
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (result, driver) => {
+      toast({
+        title: "Password Reset Successful",
+        description: `Driver password has been reset to: Wholesale2025! Please share this temporary password with ${driver.first_name} ${driver.last_name}.`,
+        duration: 10000, // Show for 10 seconds for drivers
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Password Reset Failed",
+        description: error.message || "Failed to reset driver password.",
+        variant: "destructive"
       });
     }
   });
@@ -457,6 +490,15 @@ const DriversTab = () => {
                               }}
                             >
                               <Edit className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => resetPasswordMutation.mutate(driver)}
+                              disabled={resetPasswordMutation.isPending || driver.status === 'inactive'}
+                              title={driver.user_id ? "Reset driver password" : "Driver has no user account"}
+                            >
+                              <Key className="h-3 w-3" />
                             </Button>
                             <Button
                               size="sm"

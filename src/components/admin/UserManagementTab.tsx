@@ -31,16 +31,7 @@ export const UserManagementTab = () => {
       setLoading(true);
       console.log(`[SECURITY] Fetching user profiles for user: ${currentUserId}, isSuperAdmin: ${userIsSuperAdmin}`);
       
-      // First, let's get all auth users to see what we're working with
-      const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
-      console.log('Auth users found:', authUsers?.users?.length || 0);
-      
-      if (authError) {
-        console.error('Error fetching auth users:', authError);
-        throw authError;
-      }
-
-      // Get all profiles from the profiles table
+      // Get profiles from the profiles table
       let profilesQuery = supabase
         .from('profiles')
         .select('*');
@@ -62,7 +53,7 @@ export const UserManagementTab = () => {
 
       console.log('Profiles found:', profiles?.length || 0);
 
-      // SECURITY: Use centralized role fetching to ensure consistency
+      // Get all user roles separately
       const { data: allRoles, error: rolesError } = await supabase
         .from('user_roles')
         .select('*');
@@ -71,21 +62,11 @@ export const UserManagementTab = () => {
         console.error('[SECURITY] Error fetching roles:', rolesError);
       }
 
-      // Default markup values
-      const allMarkups = profiles?.map(p => ({ 
-        user_id: p.user_id, 
-        markup_percentage: 0 
-      })) || [];
-
-      // Skip driver assignments for now to avoid type issues
-      console.log('Skipping driver assignments to avoid type conflicts');
-
-      // Combine profiles with auth users data and roles
+      // Transform profiles data into UserProfile format
       const combinedProfiles: UserProfile[] = profiles?.map(profile => {
-        const authUser = authUsers?.users?.find((u: any) => u.id === profile.user_id);
+        // Get user roles for this specific user
         const userRoles = allRoles?.filter(role => role.user_id === profile.user_id) || [];
-        const userMarkup = allMarkups?.find(markup => markup.user_id === profile.user_id);
-
+        
         // Determine primary role for display
         let primaryRole = 'user';
         if (userRoles.some(r => r.role === 'super_admin')) {
@@ -98,12 +79,12 @@ export const UserManagementTab = () => {
 
         return {
           user_id: profile.user_id,
-          email: authUser?.email || 'No email',
+          email: profile.email || 'No email',
           first_name: profile.first_name || '',
           last_name: profile.last_name || '',
           phone_number: profile.phone_number || '',
           role: primaryRole,
-          markup_percentage: userMarkup?.markup_percentage || 0,
+          markup_percentage: 0, // Default markup
           minimum_profit_per_home: 0,
           approved_at: profile.approved_at || null,
           approved: profile.approved || false,
@@ -111,7 +92,7 @@ export const UserManagementTab = () => {
           updated_at: profile.updated_at,
           assigned_admin_id: profile.assigned_admin_id,
           created_by: profile.created_by || currentUserId,
-          is_driver: false, // Simplified for now
+          is_driver: userRoles.some(r => r.role === 'driver'),
           can_delete: userIsSuperAdmin
         };
       }) || [];

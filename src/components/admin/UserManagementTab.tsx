@@ -1,10 +1,12 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useUserRoles } from '@/hooks/useUserRoles';
 import { useAuthUser } from '@/hooks/useAuthUser';
+import { useSearchDebounce } from '@/hooks/useSearchDebounce';
+import { GlobalSearchBar } from '@/components/search/GlobalSearchBar';
 import { UserForm } from './users/UserForm';
 import { UserTable } from './users/UserTable';
 import { PendingApprovalsCard } from './users/PendingApprovalsCard';
@@ -15,9 +17,12 @@ export const UserManagementTab = () => {
   const [userProfiles, setUserProfiles] = useState<UserProfile[]>([]);
   const [pendingApprovals, setPendingApprovals] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
   const { user: currentUser } = useAuthUser();
   const { isSuperAdmin, isLoading: rolesLoading } = useUserRoles();
   const { toast } = useToast();
+  
+  const debouncedSearchQuery = useSearchDebounce(searchQuery, 300);
 
   useEffect(() => {
     // SECURITY: Use centralized role management
@@ -133,6 +138,24 @@ export const UserManagementTab = () => {
     }
   };
 
+  // Filter users based on search query
+  const filteredUserProfiles = useMemo(() => {
+    if (!debouncedSearchQuery.trim()) {
+      return userProfiles;
+    }
+    
+    const query = debouncedSearchQuery.toLowerCase();
+    return userProfiles.filter(profile => {
+      const fullName = `${profile.first_name} ${profile.last_name}`.toLowerCase();
+      const email = profile.email?.toLowerCase() || '';
+      const phone = profile.phone_number?.toLowerCase() || '';
+      
+      return fullName.includes(query) || 
+             email.includes(query) || 
+             phone.includes(query);
+    });
+  }, [userProfiles, debouncedSearchQuery]);
+
   const handleUserUpdated = () => {
     console.log('[SECURITY] User updated, refreshing profiles');
     if (currentUser) {
@@ -171,8 +194,18 @@ export const UserManagementTab = () => {
             </button>
           </div>
           
+          <div className="mb-4">
+            <GlobalSearchBar
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
+              resultCount={filteredUserProfiles.length}
+              placeholder="Search users by name, email, or phone..."
+              className="w-full max-w-md"
+            />
+          </div>
+          
           <UserTable 
-            userProfiles={userProfiles}
+            userProfiles={filteredUserProfiles}
             onUserUpdated={handleUserUpdated}
           />
         </CardContent>

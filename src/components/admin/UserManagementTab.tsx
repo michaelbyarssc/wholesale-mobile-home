@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
@@ -99,7 +100,7 @@ export const UserManagementTab = () => {
 
       // Filter based on approval status for different views
       const approvedUsers = combinedProfiles.filter(profile => profile.approved === true);
-      const pendingUsers = combinedProfiles.filter(profile => profile.approved !== true);
+      const pendingUsers = combinedProfiles.filter(profile => profile.approved === false || profile.approved === null);
 
       console.log('Approved users:', approvedUsers.length);
       console.log('Pending users:', pendingUsers.length);
@@ -139,10 +140,10 @@ export const UserManagementTab = () => {
   return (
     <div className="space-y-6">
       {pendingApprovals.length > 0 && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-          <h3 className="font-medium text-yellow-800 mb-2">Pending Approvals ({pendingApprovals.length})</h3>
-          <p className="text-sm text-yellow-700">Users awaiting approval by administrators.</p>
-        </div>
+        <PendingApprovalsCard 
+          pendingUsers={pendingApprovals}
+          onUserApproved={handleUserUpdated}
+        />
       )}
       
       <UserForm onUserCreated={handleUserUpdated} />

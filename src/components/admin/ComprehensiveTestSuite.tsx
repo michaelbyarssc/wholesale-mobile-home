@@ -26,6 +26,8 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useUserRoles } from '@/hooks/useUserRoles';
+import { useSecureRoles } from '@/hooks/useSecureRoles';
 import { TransactionIntegrationTester } from '@/components/TransactionIntegrationTester';
 import { TestFixHandler, TestResult as EnhancedTestResult } from './TestFixHandler';
 
@@ -61,6 +63,10 @@ interface TestResult {
 }
 
 export function ComprehensiveTestSuite() {
+  // SECURITY: Use centralized role management
+  const { isAdmin, verifyAdminAccess } = useUserRoles();
+  const { isSecureAdmin, verifySecureRoles } = useSecureRoles();
+
   // Helper function to create default admin settings
   const ensureAdminSetting = async (key: string, defaultValue: string, description: string) => {
     try {
@@ -94,6 +100,11 @@ export function ComprehensiveTestSuite() {
   const [phaseResults, setPhaseResults] = useState<Record<string, TestResult[]>>({});
   const [selectedPhase, setSelectedPhase] = useState<string>('');
   const { toast } = useToast();
+
+  // SECURITY: Log centralized role usage
+  useEffect(() => {
+    console.log(`[SECURITY] ComprehensiveTestSuite: isAdmin=${isAdmin}, isSecureAdmin=${isSecureAdmin}`);
+  }, [isAdmin, isSecureAdmin]);
 
   // Fix and retest handlers
   const handleFixApplied = (testId: string, success: boolean) => {
@@ -661,18 +672,9 @@ export function ComprehensiveTestSuite() {
         return { passed: false, error: 'User not authenticated' };
       }
 
-      // Check if user has admin role
-      const { data: roles, error } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', user.id);
-
-      if (error) {
-        return { passed: false, error: `Role check failed: ${error.message}` };
-      }
-
-      const hasAdminRole = roles?.some(r => r.role === 'admin' || r.role === 'super_admin');
-      if (!hasAdminRole) {
+      // SECURITY: Use centralized admin verification
+      const hasAdminAccess = await verifyAdminAccess();
+      if (!hasAdminAccess) {
         return { passed: false, error: 'User does not have admin privileges' };
       }
 
@@ -1061,26 +1063,13 @@ export function ComprehensiveTestSuite() {
             };
           }
 
-          // Verify admin role
-          const { data: roles, error: rolesError } = await supabase
-            .from('user_roles')
-            .select('role')
-            .eq('user_id', userData.user.id);
-
-          if (rolesError) {
-            return {
-              passed: false,
-              data: 'Role verification failed',
-              error: rolesError.message
-            };
-          }
-
-          const hasAdminRole = roles?.some(r => r.role === 'admin' || r.role === 'super_admin');
+          // SECURITY: Use centralized admin verification
+          const hasAdminAccess = await verifyAdminAccess();
           
           return {
-            passed: hasAdminRole,
-            data: hasAdminRole ? 'Admin permissions verified' : 'No admin role found',
-            error: hasAdminRole ? undefined : 'User lacks admin privileges'
+            passed: hasAdminAccess,
+            data: hasAdminAccess ? 'Admin permissions verified via centralized hook' : 'No admin role found',
+            error: hasAdminAccess ? undefined : 'User lacks admin privileges'
           };
         } catch (error: any) {
           return {
@@ -1185,17 +1174,12 @@ export function ComprehensiveTestSuite() {
         }
       }
 
-      // Test 5: RLS Policy Test - Check if proper permissions are enforced
-      const { data: adminCheck } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', (await supabase.auth.getUser()).data.user?.id)
-        .in('role', ['admin', 'super_admin']);
-
-      if (!adminCheck || adminCheck.length === 0) {
-        errors.push('RLS Policy Test Failed: User lacks admin privileges');
+      // SECURITY: Test 5: RLS Policy Test - Use centralized verification
+      const hasAdminAccess = await verifyAdminAccess();
+      if (!hasAdminAccess) {
+        errors.push('RLS Policy Test Failed: User lacks admin privileges via centralized verification');
       } else {
-        testResults.push('✓ RLS POLICIES: Admin permissions verified');
+        testResults.push('✓ RLS POLICIES: Admin permissions verified via centralized hook');
       }
 
       // Test 6: DELETE - Clean up test data

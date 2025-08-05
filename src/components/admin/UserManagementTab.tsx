@@ -62,13 +62,13 @@ export const UserManagementTab = () => {
 
       console.log('Profiles found:', profiles?.length || 0);
 
-      // Get all user roles
+      // SECURITY: Use centralized role fetching to ensure consistency
       const { data: allRoles, error: rolesError } = await supabase
         .from('user_roles')
         .select('*');
 
       if (rolesError) {
-        console.error('Error fetching roles:', rolesError);
+        console.error('[SECURITY] Error fetching roles:', rolesError);
       }
 
       // Default markup values

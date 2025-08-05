@@ -20,6 +20,7 @@ import { DeliveryManagement } from '@/components/admin/DeliveryManagement';
 import { ComprehensiveTestSuite } from '@/components/admin/ComprehensiveTestSuite';
 import { ComprehensiveTestRunner } from '@/components/ComprehensiveTestRunner';
 import { SecurityTestDashboard } from '@/components/SecurityTestDashboard';
+import { SecurityOverhaulVerification } from '@/components/SecurityOverhaulVerification';
 
 import { Menu, X } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -422,6 +423,7 @@ const Admin = () => {
 
                 <TabsContent value="testing" className="p-3 sm:p-6 m-0">
                   <div className="space-y-6">
+                    <SecurityOverhaulVerification />
                     <SecurityTestDashboard />
                     <ComprehensiveTestRunner />
                   </div>

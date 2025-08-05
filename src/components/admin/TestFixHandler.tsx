@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { CheckCircle, XCircle, AlertTriangle, Wrench, RefreshCw, FileCode, Database, Shield } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useUserRoles } from '@/hooks/useUserRoles';
 import { supabase } from '@/integrations/supabase/client';
 
 export interface TestResult {
@@ -35,6 +36,9 @@ export function TestFixHandler({ result, testName, onFixApplied, onRetestRequest
   const [showFixDialog, setShowFixDialog] = useState(false);
   const [fixDetails, setFixDetails] = useState<string>('');
   const { toast } = useToast();
+  
+  // SECURITY: Use centralized role management
+  const { verifyAdminAccess } = useUserRoles();
 
   const getErrorTypeIcon = (errorType?: string) => {
     switch (errorType) {
@@ -218,24 +222,14 @@ export function TestFixHandler({ result, testName, onFixApplied, onRetestRequest
   const fixAdminRole = async (result: TestResult): Promise<boolean> => {
     setFixDetails('Checking admin role permissions...');
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        setFixDetails('Please log in first.');
-        return false;
-      }
-
-      const { data: roles } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', user.id);
-
-      const hasAdminRole = roles?.some(r => r.role === 'admin' || r.role === 'super_admin');
-      if (!hasAdminRole) {
+      // SECURITY: Use centralized admin verification
+      const hasAdminAccess = await verifyAdminAccess();
+      if (!hasAdminAccess) {
         setFixDetails('This account does not have admin privileges. Please contact an administrator.');
         return false;
       }
 
-      setFixDetails('Admin role verified successfully.');
+      setFixDetails('Admin role verified successfully via centralized verification.');
       return true;
     } catch (error) {
       setFixDetails('Role verification failed - please contact support.');

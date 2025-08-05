@@ -53,7 +53,12 @@ export const CartTotal = ({
     
     switch (stateCode) {
       case 'sc':
-        return 500; // Fixed $5 for SC
+        return 500; // Fixed $500 for SC
+      case 'nc':
+        const ncTaxableAmount = subtotal; // NC tax on subtotal only, not shipping
+        const ncTax = (ncTaxableAmount / 2) * 0.0475; // Divide by 2, then multiply by 4.75%
+        console.log('🔍 NC tax calculation:', { taxableAmount: ncTaxableAmount, percentage: 0.0475, result: ncTax });
+        return ncTax;
       case 'ga':
         const taxableAmountGA = subtotal + shipping;
         const gaTax = taxableAmountGA * 0.08; // 8% of subtotal + shipping

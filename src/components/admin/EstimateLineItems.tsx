@@ -266,6 +266,15 @@ export const EstimateLineItems = ({ estimateId, isEditable = false }: EstimateLi
     console.log('🔍 Sales tax calculation:', { state: stateCode, subtotal, shipping });
     
     switch (stateCode) {
+      case 'SC':
+        const scTax = 500; // Flat $500 sales tax for South Carolina
+        console.log('🏛️ SC tax calculation (flat rate):', { tax: scTax });
+        return scTax;
+      case 'NC':
+        const ncTaxableAmount = subtotal; // NC tax on subtotal only, not shipping
+        const ncTax = (ncTaxableAmount / 2) * 0.0475; // Divide by 2, then multiply by 4.75%
+        console.log('🏛️ NC tax calculation:', { taxableAmount: ncTaxableAmount, tax: ncTax });
+        return ncTax;
       case 'GA':
         const taxableAmountGA = subtotal + shipping;
         const gaTax = taxableAmountGA * 0.08; // 8% of subtotal + shipping
@@ -281,10 +290,6 @@ export const EstimateLineItems = ({ estimateId, isEditable = false }: EstimateLi
         const flTax = taxableAmountFL * 0.03; // 3% of subtotal + shipping
         console.log('🏛️ FL tax calculation:', { taxableAmount: taxableAmountFL, tax: flTax });
         return flTax;
-      case 'SC':
-        const scTax = 500; // Flat $500 sales tax for South Carolina
-        console.log('🏛️ SC tax calculation (flat rate):', { tax: scTax });
-        return scTax;
       default:
         console.log('🏛️ No tax for state:', stateCode);
         return 0;

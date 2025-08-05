@@ -148,7 +148,10 @@ serve(async (req) => {
       
       switch (stateCode) {
         case 'sc':
-          return 500 // Fixed $5 for SC
+          return 500 // Fixed $500 for SC
+        case 'nc':
+          const ncTaxableAmount = subtotal // NC tax on subtotal only, not shipping
+          return (ncTaxableAmount / 2) * 0.0475 // Divide by 2, then multiply by 4.75%
         case 'ga':
           return (subtotal + shipping) * 0.08 // 8% of subtotal + shipping
         case 'al':

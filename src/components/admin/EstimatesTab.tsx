@@ -239,6 +239,9 @@ export const EstimatesTab = () => {
       switch (stateCode) {
         case 'SC':
           return 500; // Flat $500 sales tax for South Carolina
+        case 'NC':
+          const ncTaxableAmount = subtotal; // NC tax on subtotal only, not shipping
+          return (ncTaxableAmount / 2) * 0.0475; // Divide by 2, then multiply by 4.75%
         case 'GA':
           return (subtotal + shipping) * 0.08;
         case 'AL':

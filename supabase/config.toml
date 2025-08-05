@@ -22,6 +22,9 @@ file_size_limit = "50MiB"
 
 # Edge functions configuration
 [functions]
+[functions.admin-link-existing-drivers]
+verify_jwt = true
+
 [functions.send-delivery-tracking]
 verify_jwt = true
 

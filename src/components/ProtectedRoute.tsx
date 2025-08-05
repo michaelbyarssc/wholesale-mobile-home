@@ -27,7 +27,9 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     // SECURITY: Enhanced auth check with centralized role management
     const checkAuthAndRoles = async () => {
       try {
-        logger.debug('[SECURITY] ProtectedRoute: Starting auth check...');
+        console.log(`[SECURITY] ProtectedRoute: Starting auth check for ${requireAuth ? 'authenticated' : 'public'} route`);
+        console.log(`[SECURITY] ProtectedRoute: adminOnly=${adminOnly}, superAdminOnly=${superAdminOnly}`);
+        console.log(`[SECURITY] ProtectedRoute: user=${user?.id}, isAdmin=${isAdmin}, isSuperAdmin=${isSuperAdmin}`);
         
         if (!user) {
           if (requireAuth) {
@@ -40,35 +42,22 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
         console.log(`[SECURITY] ProtectedRoute: User found: ${user.id} (${user.email})`);
 
-        // For critical operations, verify with secure database function
-        if (superAdminOnly || adminOnly) {
-          console.log(`[SECURITY] ProtectedRoute: Verifying roles for user ${user.id}`);
-          
-          // Double-check critical access with database function
-          const dbAdminStatus = await verifyAdminAccess();
-          
-          if (superAdminOnly && !isSuperAdmin) {
-            console.warn(`[SECURITY WARNING] Super admin required but user ${user.id} is not super admin (hook=${isSuperAdmin}, db=${dbAdminStatus})`);
-            navigate('/');
-            return;
-          }
-          
-          if (adminOnly && !isAdmin) {
-            console.warn(`[SECURITY WARNING] Admin required but user ${user.id} is not admin (hook=${isAdmin}, db=${dbAdminStatus})`);
-            navigate('/');
-            return;
-          }
-
-          // Critical security check: verify database and hook results match
-          if ((adminOnly || superAdminOnly) && !dbAdminStatus) {
-            console.error(`[SECURITY ERROR] Database verification failed for user ${user.id} - denying access`);
-            navigate('/');
-            return;
-          }
-
-          console.log(`[SECURITY] ProtectedRoute: Access granted for user ${user.id}`);
+        // Check admin access based on hook results first
+        if (superAdminOnly && !isSuperAdmin) {
+          console.warn(`[SECURITY WARNING] Super admin required but user ${user.id} is not super admin`);
+          navigate('/');
+          setAuthChecked(true);
+          return;
         }
         
+        if (adminOnly && !isAdmin) {
+          console.warn(`[SECURITY WARNING] Admin required but user ${user.id} is not admin`);
+          navigate('/');
+          setAuthChecked(true);
+          return;
+        }
+
+        console.log(`[SECURITY] ProtectedRoute: Access granted for user ${user.id}`);
         setAuthChecked(true);
       } catch (error) {
         console.error('[SECURITY] ProtectedRoute: Error in auth check:', error);
@@ -81,9 +70,12 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
     // Only run check when auth and roles are loaded
     if (!authLoading && !rolesLoading) {
+      console.log(`[SECURITY] ProtectedRoute: Running auth check - authLoading=${authLoading}, rolesLoading=${rolesLoading}`);
       checkAuthAndRoles();
+    } else {
+      console.log(`[SECURITY] ProtectedRoute: Waiting for auth/roles - authLoading=${authLoading}, rolesLoading=${rolesLoading}`);
     }
-  }, [user, isAdmin, isSuperAdmin, authLoading, rolesLoading, requireAuth, adminOnly, superAdminOnly, navigate, verifyAdminAccess]);
+  }, [user, isAdmin, isSuperAdmin, authLoading, rolesLoading, requireAuth, adminOnly, superAdminOnly, navigate]);
 
   // Show loading while checking auth and roles
   if (authLoading || rolesLoading || !authChecked) {

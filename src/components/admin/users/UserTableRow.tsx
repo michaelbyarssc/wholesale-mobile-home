@@ -7,25 +7,21 @@ import { UserProfile } from './UserEditDialog';
 import { UserEditDialog } from './UserEditDialog';
 import { UserActions } from './UserActions';
 import { MarkupEditor } from './MarkupEditor';
-import { useUserRoles } from '@/hooks/useUserRoles';
 import { supabase } from '@/integrations/supabase/client';
 
 interface UserTableRowProps {
   profile: UserProfile;
   onUserUpdated: () => void;
   mobileView?: boolean;
+  isSuperAdmin: boolean;
 }
 
-export const UserTableRow = ({ profile, onUserUpdated, mobileView = false }: UserTableRowProps) => {
+export const UserTableRow = ({ profile, onUserUpdated, mobileView = false, isSuperAdmin }: UserTableRowProps) => {
   const [createdByName, setCreatedByName] = useState<string>('');
-  
-  // SECURITY: Use centralized role management
-  const { isSuperAdmin } = useUserRoles();
 
   useEffect(() => {
     fetchCreatedByName();
-    console.log(`[SECURITY] UserTableRow: User isSuperAdmin: ${isSuperAdmin}`);
-  }, [isSuperAdmin]);
+  }, [profile.created_by]);
 
   const fetchCreatedByName = async () => {
     if (!profile.created_by) {

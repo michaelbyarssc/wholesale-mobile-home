@@ -1,26 +1,20 @@
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { UserProfile } from './UserEditDialog';
 import { UserTableRow } from './UserTableRow';
 import { CreatedByDisplay } from './CreatedByDisplay';
-import { useUserRoles } from '@/hooks/useUserRoles';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 interface UserTableProps {
   userProfiles: UserProfile[];
   onUserUpdated: () => void;
+  isSuperAdmin: boolean;
 }
 
-export const UserTable = ({ userProfiles, onUserUpdated }: UserTableProps) => {
-  const { isSuperAdmin } = useUserRoles();
+export const UserTable = ({ userProfiles, onUserUpdated, isSuperAdmin }: UserTableProps) => {
   const isMobile = useIsMobile();
-
-  // SECURITY: Role information now comes from centralized hook
-  useEffect(() => {
-    console.log(`[SECURITY] UserTable: User isSuperAdmin: ${isSuperAdmin}`);
-  }, [isSuperAdmin]);
 
   if (isMobile) {
     return (
@@ -73,12 +67,13 @@ export const UserTable = ({ userProfiles, onUserUpdated }: UserTableProps) => {
                  )}
                 
                  <div className="pt-2 border-t border-border">
-                   <UserTableRow 
-                     key={profile.user_id} 
-                     profile={profile} 
-                     onUserUpdated={onUserUpdated}
-                     mobileView={true}
-                   />
+                    <UserTableRow 
+                      key={profile.user_id} 
+                      profile={profile} 
+                      onUserUpdated={onUserUpdated}
+                      mobileView={true}
+                      isSuperAdmin={isSuperAdmin}
+                    />
                  </div>
               </div>
             ))
@@ -121,6 +116,7 @@ export const UserTable = ({ userProfiles, onUserUpdated }: UserTableProps) => {
                       key={profile.user_id} 
                       profile={profile} 
                       onUserUpdated={onUserUpdated}
+                      isSuperAdmin={isSuperAdmin}
                     />
                   ))
                 )}

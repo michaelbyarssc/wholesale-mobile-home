@@ -12,11 +12,13 @@ import { UserTable } from './users/UserTable';
 import { PendingApprovalsCard } from './users/PendingApprovalsCard';
 import { FixProfilesButton } from './users/FixProfilesButton';
 import { UserProfile } from './users/UserEditDialog';
+import { LoadingSpinner } from '@/components/loading/LoadingSpinner';
 
 export const UserManagementTab = () => {
   const [userProfiles, setUserProfiles] = useState<UserProfile[]>([]);
   const [pendingApprovals, setPendingApprovals] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isDataReady, setIsDataReady] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const { user: currentUser } = useAuthUser();
   const { isSuperAdmin, isLoading: rolesLoading } = useUserRoles();
@@ -35,9 +37,10 @@ export const UserManagementTab = () => {
   const fetchUserProfiles = async (currentUserId?: string, userIsSuperAdmin?: boolean) => {
     try {
       setLoading(true);
+      setIsDataReady(false);
       console.log(`[SECURITY] Fetching user profiles for user: ${currentUserId}, isSuperAdmin: ${userIsSuperAdmin}`);
       
-      // Get profiles data
+      // Get profiles data with proper filtering
       let profilesQuery = supabase
         .from('profiles')
         .select('*');
@@ -50,34 +53,31 @@ export const UserManagementTab = () => {
         console.log('[SECURITY] Super admin accessing all profiles');
       }
 
-      const { data: profiles, error: profileError } = await profilesQuery;
+      // Fetch all data simultaneously using Promise.all for better performance
+      const [
+        { data: profiles, error: profileError },
+        { data: customerMarkups, error: markupsError },
+        { data: allRoles, error: rolesError }
+      ] = await Promise.all([
+        profilesQuery,
+        supabase.from('customer_markups').select('*'),
+        supabase.from('user_roles').select('*')
+      ]);
       
       if (profileError) {
         console.error('Error fetching profiles:', profileError);
         throw profileError;
       }
 
-      console.log('Profiles found:', profiles?.length || 0);
-
-      // Get customer markups data separately
-      const { data: customerMarkups, error: markupsError } = await supabase
-        .from('customer_markups')
-        .select('*');
-
       if (markupsError) {
         console.error('Error fetching customer markups:', markupsError);
       }
 
-      console.log('Customer markups found:', customerMarkups?.length || 0);
-
-      // Get all user roles separately
-      const { data: allRoles, error: rolesError } = await supabase
-        .from('user_roles')
-        .select('*');
-
       if (rolesError) {
         console.error('[SECURITY] Error fetching roles:', rolesError);
       }
+
+      console.log('Data fetched - Profiles:', profiles?.length || 0, 'Markups:', customerMarkups?.length || 0, 'Roles:', allRoles?.length || 0);
 
       // Transform profiles data into UserProfile format
       const combinedProfiles: UserProfile[] = profiles?.map(profile => {
@@ -126,6 +126,9 @@ export const UserManagementTab = () => {
 
       setUserProfiles(approvedUsers);
       setPendingApprovals(pendingUsers);
+      
+      // Mark data as ready after all processing is complete
+      setIsDataReady(true);
     } catch (error) {
       console.error('[SECURITY] Error fetching user profiles:', error);
       toast({
@@ -163,13 +166,15 @@ export const UserManagementTab = () => {
     }
   };
 
-  if (loading || rolesLoading) {
+  // Show loading state until all data is ready
+  if (loading || rolesLoading || !isDataReady) {
     return (
       <div className="flex items-center justify-center p-8">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-2 text-muted-foreground">Loading user management...</p>
-        </div>
+        <LoadingSpinner 
+          size="lg" 
+          text="Loading user management..." 
+          variant="spinner"
+        />
       </div>
     );
   }
@@ -207,6 +212,7 @@ export const UserManagementTab = () => {
           <UserTable 
             userProfiles={filteredUserProfiles}
             onUserUpdated={handleUserUpdated}
+            isSuperAdmin={isSuperAdmin}
           />
         </CardContent>
       </Card>

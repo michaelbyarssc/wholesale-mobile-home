@@ -28,6 +28,8 @@ const Auth = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    console.log('AUTH: useEffect running - rolesLoading:', rolesLoading, 'isAdmin:', isAdmin);
+    
     // Check if this is a password reset flow
     const type = searchParams.get('type');
     if (type === 'recovery') {
@@ -50,9 +52,13 @@ const Auth = () => {
 
     // Check if current user is admin and get their profile
     const checkAdminStatus = async () => {
+      console.log('AUTH: Checking admin status...');
       const { data: { user } } = await supabase.auth.getUser();
+      
       if (user) {
+        console.log('AUTH: User found:', user.id);
         setCurrentUser(user);
+        
         // Get user profile
         const { data: profileData } = await supabase
           .from('profiles')
@@ -64,17 +70,27 @@ const Auth = () => {
           setUserProfile(profileData);
         }
 
-        // If user is authenticated and roles are loaded, redirect
+        // CRITICAL: Only redirect if roles are fully loaded
+        console.log('AUTH: Roles loading status:', rolesLoading, 'isAdmin:', isAdmin);
         if (!rolesLoading) {
+          console.log('AUTH: Roles loaded, redirecting...');
           if (isAdmin) {
+            console.log('AUTH: Redirecting admin to /admin');
             navigate('/admin');
+            return;
           } else {
+            console.log('AUTH: Redirecting regular user to /');
             navigate('/');
+            return;
           }
+        } else {
+          console.log('AUTH: Roles still loading, waiting...');
         }
+      } else {
+        console.log('AUTH: No user found');
       }
       
-      // Always set checking status to false once we've checked
+      // Set checking status to false
       setCheckingAdminStatus(false);
     };
 
@@ -82,10 +98,15 @@ const Auth = () => {
 
     // Listen for auth changes and redirect appropriately
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('AUTH: Auth state changed:', event, 'rolesLoading:', rolesLoading, 'isAdmin:', isAdmin);
+      
       if (session?.user && !rolesLoading) {
+        console.log('AUTH: User authenticated and roles loaded, redirecting...');
         if (isAdmin) {
+          console.log('AUTH: Auth change - redirecting admin to /admin');
           navigate('/admin');
         } else {
+          console.log('AUTH: Auth change - redirecting regular user to /');
           navigate('/');
         }
       }

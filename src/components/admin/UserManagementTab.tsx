@@ -32,10 +32,16 @@ export const UserManagementTab = () => {
       setLoading(true);
       console.log(`[SECURITY] Fetching user profiles for user: ${currentUserId}, isSuperAdmin: ${userIsSuperAdmin}`);
       
-      // Get profiles from the profiles table
+      // Get profiles with markup data in a single optimized query
       let profilesQuery = supabase
         .from('profiles')
-        .select('*');
+        .select(`
+          *,
+          customer_markups (
+            markup_percentage,
+            minimum_profit_per_home
+          )
+        `);
 
       // SECURITY: Filter based on user role - super admins see all, others see only their created users
       if (!userIsSuperAdmin && currentUserId) {
@@ -78,6 +84,9 @@ export const UserManagementTab = () => {
           primaryRole = 'driver';
         }
 
+        // Extract markup data from the joined table
+        const markupData = (profile as any).customer_markups?.[0];
+        
         return {
           user_id: profile.user_id,
           email: profile.email || 'No email',
@@ -85,8 +94,8 @@ export const UserManagementTab = () => {
           last_name: profile.last_name || '',
           phone_number: profile.phone_number || '',
           role: primaryRole,
-          markup_percentage: 0, // Default markup
-          minimum_profit_per_home: 0,
+          markup_percentage: markupData?.markup_percentage || 0,
+          minimum_profit_per_home: markupData?.minimum_profit_per_home || 0,
           approved_at: profile.approved_at || null,
           approved: profile.approved || false,
           created_at: profile.created_at,

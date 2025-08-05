@@ -32,16 +32,10 @@ export const UserManagementTab = () => {
       setLoading(true);
       console.log(`[SECURITY] Fetching user profiles for user: ${currentUserId}, isSuperAdmin: ${userIsSuperAdmin}`);
       
-      // Get profiles with markup data in a single optimized query
+      // Get profiles data
       let profilesQuery = supabase
         .from('profiles')
-        .select(`
-          *,
-          customer_markups (
-            markup_percentage,
-            minimum_profit_per_home
-          )
-        `);
+        .select('*');
 
       // SECURITY: Filter based on user role - super admins see all, others see only their created users
       if (!userIsSuperAdmin && currentUserId) {
@@ -59,6 +53,17 @@ export const UserManagementTab = () => {
       }
 
       console.log('Profiles found:', profiles?.length || 0);
+
+      // Get customer markups data separately
+      const { data: customerMarkups, error: markupsError } = await supabase
+        .from('customer_markups')
+        .select('*');
+
+      if (markupsError) {
+        console.error('Error fetching customer markups:', markupsError);
+      }
+
+      console.log('Customer markups found:', customerMarkups?.length || 0);
 
       // Get all user roles separately
       const { data: allRoles, error: rolesError } = await supabase
@@ -84,8 +89,8 @@ export const UserManagementTab = () => {
           primaryRole = 'driver';
         }
 
-        // Extract markup data from the joined table
-        const markupData = (profile as any).customer_markups?.[0];
+        // Find markup data for this user
+        const markupData = customerMarkups?.find(markup => markup.user_id === profile.user_id);
         
         return {
           user_id: profile.user_id,

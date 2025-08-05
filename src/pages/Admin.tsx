@@ -289,8 +289,21 @@ const Admin = () => {
               </div>
             </div>
 
-            {/* User Actions */}
+            {/* User Info & Actions */}
             <div className="flex items-center gap-2 shrink-0">
+              {/* User Info - Desktop */}
+              <div className="hidden lg:flex flex-col items-end text-right min-w-0">
+                <p className="text-sm font-medium text-foreground truncate max-w-[200px]">
+                  {user?.email}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {isSuperAdmin ? 'Super Admin' : 'Admin'}
+                </p>
+              </div>
+              
+              {/* Separator */}
+              <div className="hidden lg:block h-8 w-px bg-border" />
+              
               <NotificationCenter />
               <Button 
                 variant="outline" 
@@ -325,12 +338,7 @@ const Admin = () => {
       <main className="container mx-auto px-2 sm:px-4 py-4 sm:py-6 lg:py-8">
         <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4 sm:space-y-6">
           {/* Desktop Tab Navigation */}
-          {(() => {
-            console.log('Admin: Rendering tabs check - isMobile:', isMobile, 'isSuperAdmin:', isSuperAdmin);
-            console.log('Admin: Should show tabs:', !isMobile && isSuperAdmin);
-            return null;
-          })()}
-          {!isMobile && isSuperAdmin && (
+          {!isMobile && (
             <div className="border rounded-lg p-1 bg-muted/30 overflow-x-auto">
               <TabsList className="grid w-full grid-cols-10 h-12 bg-transparent min-w-[900px]">
                 <TabsTrigger 

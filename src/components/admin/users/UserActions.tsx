@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
+import { useUserRoles } from '@/hooks/useUserRoles';
 import { supabase } from '@/integrations/supabase/client';
 import { KeyRound, Trash2 } from 'lucide-react';
 import { UserProfile } from './UserEditDialog';
@@ -15,36 +16,13 @@ interface UserActionsProps {
 export const UserActions = ({ profile, onUserUpdated }: UserActionsProps) => {
   const [resettingPassword, setResettingPassword] = useState<string | null>(null);
   const [deletingUser, setDeletingUser] = useState<string | null>(null);
-  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const { isSuperAdmin } = useUserRoles();
   const { toast } = useToast();
 
+  // SECURITY: Role information now comes from centralized hook
   useEffect(() => {
-    checkCurrentUserRole();
-  }, []);
-
-  const checkCurrentUserRole = async () => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) return;
-
-      // Check if user is super admin - get all roles for the user
-      const { data: roleData, error: roleError } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', session.user.id);
-
-      if (roleError) {
-        console.error('Error fetching user roles:', roleError);
-        return;
-      }
-
-      // Check if user has super_admin role
-      const userIsSuperAdmin = roleData?.some(r => r.role === 'super_admin') || false;
-      setIsSuperAdmin(userIsSuperAdmin);
-    } catch (error) {
-      console.error('Error checking user role:', error);
-    }
-  };
+    console.log(`[SECURITY] UserActions: User isSuperAdmin: ${isSuperAdmin}`);
+  }, [isSuperAdmin]);
 
   const resetUserPassword = async (userId: string, userEmail: string) => {
     try {

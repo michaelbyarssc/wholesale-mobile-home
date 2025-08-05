@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
+import { useUserRoles } from '@/hooks/useUserRoles';
 import { supabase } from '@/integrations/supabase/client';
 import { Edit } from 'lucide-react';
 
@@ -33,7 +34,7 @@ interface UserEditDialogProps {
 export const UserEditDialog = ({ profile, onUserUpdated }: UserEditDialogProps) => {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const { isSuperAdmin } = useUserRoles();
   const [formData, setFormData] = useState({
     first_name: profile.first_name || '',
     last_name: profile.last_name || '',
@@ -42,29 +43,10 @@ export const UserEditDialog = ({ profile, onUserUpdated }: UserEditDialogProps) 
   });
   const { toast } = useToast();
 
+  // SECURITY: Role information now comes from centralized hook
   useEffect(() => {
-    checkCurrentUserRole();
-  }, []);
-
-  const checkCurrentUserRole = async () => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) return;
-
-      // Check if user is super admin - fix the role checking logic
-      const { data: roleData } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', session.user.id);
-
-      // Check if ANY of the user's roles is 'super_admin'
-      const userIsSuperAdmin = roleData?.some(role => role.role === 'super_admin') || false;
-      setIsSuperAdmin(userIsSuperAdmin);
-      console.log('UserEditDialog: User is super admin:', userIsSuperAdmin);
-    } catch (error) {
-      console.error('Error checking user role:', error);
-    }
-  };
+    console.log(`[SECURITY] UserEditDialog: User isSuperAdmin: ${isSuperAdmin}`);
+  }, [isSuperAdmin]);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));

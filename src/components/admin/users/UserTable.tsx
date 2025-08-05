@@ -5,7 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { UserProfile } from './UserEditDialog';
 import { UserTableRow } from './UserTableRow';
 import { CreatedByDisplay } from './CreatedByDisplay';
-import { supabase } from '@/integrations/supabase/client';
+import { useUserRoles } from '@/hooks/useUserRoles';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 interface UserTableProps {
@@ -14,36 +14,13 @@ interface UserTableProps {
 }
 
 export const UserTable = ({ userProfiles, onUserUpdated }: UserTableProps) => {
-  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const { isSuperAdmin } = useUserRoles();
   const isMobile = useIsMobile();
 
+  // SECURITY: Role information now comes from centralized hook
   useEffect(() => {
-    checkCurrentUserRole();
-  }, []);
-
-  const checkCurrentUserRole = async () => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) return;
-
-      // Check if user is super admin - fix the role checking logic
-      const { data: roleData, error: roleError } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', session.user.id);
-
-      if (roleError) {
-        console.error('Error fetching user roles:', roleError);
-        return;
-      }
-
-      // Check if ANY of the user's roles is 'super_admin'
-      const userIsSuperAdmin = roleData?.some(role => role.role === 'super_admin') || false;
-      setIsSuperAdmin(userIsSuperAdmin);
-    } catch (error) {
-      console.error('Error checking user role:', error);
-    }
-  };
+    console.log(`[SECURITY] UserTable: User isSuperAdmin: ${isSuperAdmin}`);
+  }, [isSuperAdmin]);
 
   if (isMobile) {
     return (

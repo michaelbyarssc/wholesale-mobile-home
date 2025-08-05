@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { useUserRoles } from '@/hooks/useUserRoles';
 import { 
   FileText, 
   DollarSign, 
@@ -51,6 +52,7 @@ export const InvoiceManagement = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
+  const { isAdmin, verifyAdminAccess } = useUserRoles();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [activeTab, setActiveTab] = useState('overview');
@@ -408,20 +410,10 @@ export const InvoiceManagement = () => {
 
       const user = sessionData.session.user;
 
-      // Check if user is admin
-      const { data: userRoles, error: rolesError } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', user.id);
-      
-      if (rolesError) {
-        console.error('Error fetching user roles:', rolesError);
-        throw new Error('Failed to verify user permissions.');
-      }
-
-      const isAdmin = userRoles?.some(r => r.role === 'admin' || r.role === 'super_admin');
-      if (!isAdmin) {
-        console.error('User is not admin. Roles:', userRoles);
+      // Verify admin access using secure method
+      const hasAdminAccess = await verifyAdminAccess();
+      if (!hasAdminAccess) {
+        console.error('User does not have admin access');
         throw new Error('Admin privileges required to record payments.');
       }
 

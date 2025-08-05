@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import { useAuthUser } from "@/hooks/useAuthUser";
+import { useUserRoles } from "@/hooks/useUserRoles";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -30,6 +31,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 const Delivery = () => {
   const { user, userProfile, handleLogout } = useAuthUser();
+  const { isAdmin, isSuperAdmin, isLoading: rolesLoading } = useUserRoles();
   const { cartItems } = useShoppingCart();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -74,30 +76,11 @@ const Delivery = () => {
     enabled: !!user?.id,
   });
 
-  // Check if user is admin
-  const { data: userRoles, isLoading: isLoadingRoles } = useQuery({
-    queryKey: ["user-roles", user?.id],
-    queryFn: async () => {
-      if (!user?.id) return [];
-      
-      const { data, error } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", user.id);
-      
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!user?.id,
-  });
-
-  const isAdmin = userRoles?.some(role => ['admin', 'super_admin'].includes(role.role));
-  const isSuperAdmin = userRoles?.some(role => role.role === 'super_admin');
   const isDriver = !!driverProfile;
 
   // Determine what view to show based on context and emulation
   useEffect(() => {
-    if (isLoadingDriver || isLoadingRoles) {
+    if (isLoadingDriver || rolesLoading) {
       setCurrentView("loading");
       return;
     }
@@ -153,7 +136,7 @@ const Delivery = () => {
 
     // Default: show customer tracking interface
     setCurrentView("customer_tracking");
-  }, [user, isAdmin, isDriver, isLoadingDriver, isLoadingRoles, urlTrackingToken, mode, searchParams, isSuperAdmin, emulationMode]);
+  }, [user, isAdmin, isDriver, isLoadingDriver, rolesLoading, urlTrackingToken, mode, searchParams, isSuperAdmin, emulationMode]);
 
   // Handle driver login
   const handleDriverLogin = async (e: React.FormEvent) => {

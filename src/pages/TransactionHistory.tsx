@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { useUserRoles } from '@/hooks/useUserRoles';
 import { Search, Download, FileText, Receipt, Truck, DollarSign, Calendar, User, ChevronDown, ChevronUp } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -74,7 +75,7 @@ export const TransactionHistory = () => {
   const [activeTab, setActiveTab] = useState('all');
   const [selectedCustomer, setSelectedCustomer] = useState<string>('all');
   const [expandedCustomers, setExpandedCustomers] = useState<Set<string>>(new Set());
-  const [userRoles, setUserRoles] = useState<string[]>([]);
+  const { isAdmin, isSuperAdmin, userRoles } = useUserRoles();
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -104,17 +105,7 @@ export const TransactionHistory = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      // Check if user is admin or super admin
-      const { data: userRoles } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', user.id);
-
-      const isAdmin = userRoles?.some(r => r.role === 'admin');
-      const isSuperAdmin = userRoles?.some(r => r.role === 'super_admin');
-
-      // Set user roles state
-      setUserRoles(userRoles?.map(r => r.role) || []);
+      // Admin status is handled by useUserRoles hook
 
       const records: UnifiedRecord[] = [];
 

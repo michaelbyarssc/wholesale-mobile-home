@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useUserRoles } from '@/hooks/useUserRoles';
 import { PasswordChangeDialog } from '@/components/auth/PasswordChangeDialog';
 import { AuthForm } from '@/components/auth/AuthForm';
 import { ForgotPasswordForm } from '@/components/auth/ForgotPasswordForm';
@@ -18,7 +19,7 @@ const Auth = () => {
   const [lastName, setLastName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [loading, setLoading] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const { isAdmin, isLoading: rolesLoading } = useUserRoles();
   const [checkingAdminStatus, setCheckingAdminStatus] = useState(true);
   const [userProfile, setUserProfile] = useState<{first_name: string, last_name: string} | null>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -60,18 +61,12 @@ const Auth = () => {
         if (profileData) {
           setUserProfile(profileData);
         }
-
-        // Check admin role
-        const { data: roleData } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', user.id)
-          .eq('role', 'admin')
-          .single();
-
-        setIsAdmin(!!roleData);
       }
-      setCheckingAdminStatus(false);
+      
+      // Wait for roles loading to complete
+      if (!rolesLoading) {
+        setCheckingAdminStatus(false);
+      }
     };
 
     checkAdminStatus();
@@ -80,16 +75,8 @@ const Auth = () => {
     if (type !== 'recovery') {
       const checkUser = async () => {
         const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          // Check if user is admin
-          const { data: roleData } = await supabase
-            .from('user_roles')
-            .select('role')
-            .eq('user_id', user.id)
-            .eq('role', 'admin')
-            .single();
-
-          if (roleData) {
+        if (user && !rolesLoading) {
+          if (isAdmin) {
             navigate('/admin');
           } else {
             navigate('/');
@@ -101,16 +88,8 @@ const Auth = () => {
 
     // Listen for auth changes and redirect appropriately
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (session?.user) {
-        // Check if user is admin
-        const { data: roleData } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', session.user.id)
-          .eq('role', 'admin')
-          .single();
-
-        if (roleData) {
+      if (session?.user && !rolesLoading) {
+        if (isAdmin) {
           navigate('/admin');
         } else {
           navigate('/');

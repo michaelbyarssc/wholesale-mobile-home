@@ -10,10 +10,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Search, User, Phone, Mail } from "lucide-react";
+import { useUserRoles } from "@/hooks/useUserRoles";
 
 export const DriverManagement = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { isSuperAdmin, verifyAdminAccess } = useUserRoles();
   const [searchTerm, setSearchTerm] = useState("");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
@@ -34,6 +36,12 @@ export const DriverManagement = () => {
   const { data: drivers, isLoading } = useQuery({
     queryKey: ["drivers"],
     queryFn: async () => {
+      // Verify admin access
+      const hasAccess = await verifyAdminAccess();
+      if (!hasAccess) {
+        throw new Error('Admin access required');
+      }
+
       const { data, error } = await supabase
         .from("drivers")
         .select(`
@@ -55,6 +63,12 @@ export const DriverManagement = () => {
   // Create driver mutation
   const createDriverMutation = useMutation({
     mutationFn: async (driverData: typeof formData) => {
+      // Verify admin access
+      const hasAccess = await verifyAdminAccess();
+      if (!hasAccess) {
+        throw new Error('Admin access required to create drivers');
+      }
+
       // First create auth user
       const tempPassword = `Driver${Math.random().toString(36).slice(-8)}`;
       

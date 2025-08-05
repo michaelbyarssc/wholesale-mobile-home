@@ -9,6 +9,7 @@ import { CalendarSettings } from '@/components/calendar/CalendarSettings';
 import { CalendarView } from './CalendarView';
 import { CalendarAutomationWrapper } from '../automation/CalendarAutomationWrapper';
 import { supabase } from '@/integrations/supabase/client';
+import { useUserRoles } from '@/hooks/useUserRoles';
 
 interface AdminUser {
   id: string;
@@ -26,9 +27,16 @@ export function AdminCalendarDashboard({ userRole, currentUserId }: AdminCalenda
   const [selectedAdminId, setSelectedAdminId] = useState<string>(currentUserId);
   const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
+  const { verifyAdminAccess } = useUserRoles();
 
   const fetchAdminUsers = async () => {
     try {
+      // Verify admin access first
+      const hasAccess = await verifyAdminAccess();
+      if (!hasAccess) {
+        throw new Error('Admin access required');
+      }
+
       // First get admin user IDs
       const { data: adminRoles, error: rolesError } = await supabase
         .from('user_roles')

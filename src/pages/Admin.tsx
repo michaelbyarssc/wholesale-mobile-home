@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
+import { useUserRoles } from '@/hooks/useUserRoles';
+import { useAuthUser } from '@/hooks/useAuthUser';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { MobileHomesTab } from '@/components/admin/MobileHomesTab';
 import { SalesTab } from '@/components/admin/SalesTab';
@@ -18,107 +19,49 @@ import { FAQManagementTab } from '@/components/admin/FAQManagementTab';
 import { DeliveryManagement } from '@/components/admin/DeliveryManagement';
 import { ComprehensiveTestSuite } from '@/components/admin/ComprehensiveTestSuite';
 import { ComprehensiveTestRunner } from '@/components/ComprehensiveTestRunner';
+import { SecurityTestDashboard } from '@/components/SecurityTestDashboard';
 
 import { Menu, X } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 const Admin = () => {
-  const [user, setUser] = useState<any>(null);
-  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const { user, isLoading: authLoading, handleLogout } = useAuthUser();
+  const { isAdmin, isSuperAdmin, isLoading: rolesLoading } = useUserRoles();
   const [activeTab, setActiveTab] = useState('users');
-  const [roleLoading, setRoleLoading] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
 
+  // Security: Admin access control
   useEffect(() => {
-    const checkUserRole = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (!session?.user) {
-          console.log('Admin: No session, redirecting to auth');
-          navigate('/auth');
-          return;
-        }
-
-        setUser(session.user);
-        console.log('Admin: User authenticated:', session.user.id);
-
-        // Check if user is super admin - fix the role checking logic
-        const { data: roleData, error: roleError } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', session.user.id);
-
-        console.log('Admin: Role check result:', { roleData, roleError });
-        
-        if (roleError) {
-          console.error('Admin: Error checking user role:', roleError);
-          setIsSuperAdmin(false);
-        } else {
-          // Check if ANY of the user's roles is 'super_admin'
-          const isSuperAdminUser = roleData?.some(role => role.role === 'super_admin') || false;
-          setIsSuperAdmin(isSuperAdminUser);
-          console.log('Admin: User roles:', roleData?.map(r => r.role));
-          console.log('Admin: Is super admin:', isSuperAdminUser);
-        console.log('Admin: Setting isSuperAdmin state to:', isSuperAdminUser);
-        
-        // Set default tab based on role
-        if (isSuperAdminUser) {
-          setActiveTab('mobile-homes');
-          console.log('Admin: Super admin detected, setting tab to mobile-homes');
-        } else {
-          setActiveTab('sales');
-          console.log('Admin: Regular admin detected, setting tab to sales');
-        }
-        
-        // Debug the final state
-        console.log('Admin: Final state check - isSuperAdmin will be:', isSuperAdminUser);
-        console.log('Admin: Desktop tabs should show for super admin on desktop:', !isMobile && isSuperAdminUser);
-        console.log('Admin: isMobile:', isMobile);
-        }
-        
-      } catch (error) {
-        console.error('Admin: Error in role check:', error);
-        setIsSuperAdmin(false);
-        toast({
-          title: "Error",
-          description: "Failed to load admin dashboard",
-          variant: "destructive",
-        });
-      } finally {
-        setRoleLoading(false);
-      }
-    };
-
-    checkUserRole();
-
-    // Listen for auth changes with safeguards to prevent test interference
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Admin: Auth state change detected:', { event, hasSession: !!session?.user });
-      
-      // Add delay to prevent race conditions during testing
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      // Only redirect if we're certain the session is gone and it's not a temporary state
-      if (!session?.user && event === 'SIGNED_OUT') {
-        console.log('Admin: User signed out, redirecting to auth');
+    if (!authLoading && !rolesLoading) {
+      if (!user) {
+        console.log('Admin: No user, redirecting to auth');
         navigate('/auth');
-      } else if (session?.user && event === 'SIGNED_IN') {
-        console.log('Admin: User signed in, refreshing role check');
-        checkUserRole();
+        return;
       }
-      // Ignore other events like TOKEN_REFRESHED to prevent unnecessary redirects
-    });
 
-    return () => subscription.unsubscribe();
-  }, [navigate, toast]);
+      if (!isAdmin) {
+        console.log('Admin: User is not admin, redirecting to home');
+        navigate('/');
+        return;
+      }
+
+      // Set default tab based on role
+      if (isSuperAdmin) {
+        setActiveTab('mobile-homes');
+        console.log('Admin: Super admin detected, setting tab to mobile-homes');
+      } else {
+        setActiveTab('sales');
+        console.log('Admin: Regular admin detected, setting tab to sales');
+      }
+    }
+  }, [user, isAdmin, isSuperAdmin, authLoading, rolesLoading, navigate]);
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
+    await handleLogout();
     navigate('/');
   };
 
@@ -127,7 +70,7 @@ const Admin = () => {
     setMobileMenuOpen(false); // Close mobile menu when tab changes
   };
 
-  if (roleLoading) {
+  if (authLoading || rolesLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center space-y-4">
@@ -478,7 +421,10 @@ const Admin = () => {
                 </TabsContent>
 
                 <TabsContent value="testing" className="p-3 sm:p-6 m-0">
-                  <ComprehensiveTestRunner />
+                  <div className="space-y-6">
+                    <SecurityTestDashboard />
+                    <ComprehensiveTestRunner />
+                  </div>
                 </TabsContent>
 
                 <TabsContent value="reviews" className="p-3 sm:p-6 m-0">

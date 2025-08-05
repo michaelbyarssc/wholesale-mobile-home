@@ -35,21 +35,9 @@ const Admin = () => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
 
-  // Security: Admin access control
+  // Initialize default tab based on role (ProtectedRoute already handles auth)
   useEffect(() => {
-    if (!authLoading && !rolesLoading) {
-      if (!user) {
-        console.log('Admin: No user, redirecting to auth');
-        navigate('/auth');
-        return;
-      }
-
-      if (!isAdmin) {
-        console.log('Admin: User is not admin, redirecting to home');
-        navigate('/');
-        return;
-      }
-
+    if (!authLoading && !rolesLoading && user) {
       // Set default tab based on role
       if (isSuperAdmin) {
         setActiveTab('mobile-homes');
@@ -59,7 +47,7 @@ const Admin = () => {
         console.log('Admin: Regular admin detected, setting tab to sales');
       }
     }
-  }, [user, isAdmin, isSuperAdmin, authLoading, rolesLoading, navigate]);
+  }, [isSuperAdmin, authLoading, rolesLoading, user]);
 
   const handleSignOut = async () => {
     await handleLogout();

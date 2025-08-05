@@ -280,23 +280,6 @@ const Index = () => {
         onProfileUpdated={handleProfileUpdated}
       />
 
-      {/* Admin Access Fallback - appears if user is admin but ended up on homepage */}
-      {user && isAdmin && (
-        <div className="bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-4 mx-4 mt-4 rounded">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-semibold">Admin Access Available</p>
-              <p className="text-sm">You have admin privileges. Click below to access the admin dashboard.</p>
-            </div>
-            <Button 
-              onClick={() => navigate('/admin')} 
-              className="ml-4 bg-blue-600 hover:bg-blue-700 text-white"
-            >
-              Go to Admin Dashboard
-            </Button>
-          </div>
-        </div>
-      )}
 
 
       {/* Top competitive pricing message */}

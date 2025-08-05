@@ -1,9 +1,8 @@
-
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
-import { User } from '@supabase/supabase-js';
 import { LoadingSpinner } from '@/components/layout/LoadingSpinner';
+import { useUserRoles } from '@/hooks/useUserRoles';
+import { useAuthUser } from '@/hooks/useAuthUser';
 import { logger } from '@/utils/logger';
 
 interface ProtectedRouteProps {
@@ -19,179 +18,89 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   adminOnly = false,
   superAdminOnly = false
 }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
-  const [authChecked, setAuthChecked] = useState(false);
   const navigate = useNavigate();
+  const { user, isLoading: authLoading } = useAuthUser();
+  const { isAdmin, isSuperAdmin, isLoading: rolesLoading, verifyAdminAccess } = useUserRoles();
+  const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
-    let mounted = true;
-
+    // SECURITY: Enhanced auth check with centralized role management
     const checkAuthAndRoles = async () => {
       try {
-        logger.debug('ProtectedRoute: Starting auth check...');
+        logger.debug('[SECURITY] ProtectedRoute: Starting auth check...');
         
-        // Get current session
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        
-        if (sessionError) {
-          console.error('ProtectedRoute: Session error:', sessionError);
-          if (mounted) {
-            setLoading(false);
-            setAuthChecked(true);
-            if (requireAuth) navigate('/auth');
-          }
-          return;
-        }
-
-        console.log('ProtectedRoute: Session check complete, user:', session?.user?.id);
-
-        if (!mounted) return;
-
-        // Handle no session case
-        if (!session?.user) {
-          console.log('ProtectedRoute: No session found');
-          setUser(null);
-          setLoading(false);
-          setAuthChecked(true);
+        if (!user) {
           if (requireAuth) {
+            console.log('[SECURITY] ProtectedRoute: No user, redirecting to /auth');
             navigate('/auth');
           }
-          return;
-        }
-
-        // Set user
-        setUser(session.user);
-        console.log('ProtectedRoute: User set:', session.user.id);
-
-        // If no role checking needed, we're done
-        if (!adminOnly && !superAdminOnly) {
-          console.log('ProtectedRoute: No role checking needed, access granted');
-          if (mounted) {
-            setLoading(false);
-            setAuthChecked(true);
-          }
-          return;
-        }
-
-        // Check user roles - fix the role checking logic
-        console.log('ProtectedRoute: Checking user roles for:', session.user.id);
-        const { data: roleData, error: roleError } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', session.user.id);
-
-        console.log('ProtectedRoute: Role query result:', { roleData, roleError });
-
-        if (!mounted) return;
-
-        if (roleError) {
-          console.error('ProtectedRoute: Role check error:', roleError);
-          setIsAdmin(false);
-          setIsSuperAdmin(false);
-          setLoading(false);
           setAuthChecked(true);
+          return;
+        }
+
+        console.log(`[SECURITY] ProtectedRoute: User found: ${user.id} (${user.email})`);
+
+        // For critical operations, verify with secure database function
+        if (superAdminOnly || adminOnly) {
+          console.log(`[SECURITY] ProtectedRoute: Verifying roles for user ${user.id}`);
           
-          if (adminOnly || superAdminOnly) {
-            console.log('ProtectedRoute: Role check failed, redirecting to home');
+          // Double-check critical access with database function
+          const dbAdminStatus = await verifyAdminAccess();
+          
+          if (superAdminOnly && !isSuperAdmin) {
+            console.warn(`[SECURITY WARNING] Super admin required but user ${user.id} is not super admin (hook=${isSuperAdmin}, db=${dbAdminStatus})`);
             navigate('/');
+            return;
           }
-          return;
-        }
+          
+          if (adminOnly && !isAdmin) {
+            console.warn(`[SECURITY WARNING] Admin required but user ${user.id} is not admin (hook=${isAdmin}, db=${dbAdminStatus})`);
+            navigate('/');
+            return;
+          }
 
-        // Check if ANY of the user's roles is 'super_admin' or 'admin'
-        const userIsSuperAdmin = roleData?.some(role => role.role === 'super_admin') || false;
-        const userIsAdmin = roleData?.some(role => role.role === 'admin' || role.role === 'super_admin') || false;
-        
-        setIsSuperAdmin(userIsSuperAdmin);
-        setIsAdmin(userIsAdmin);
-        
-        console.log('ProtectedRoute: User roles found:', roleData?.map(r => r.role));
-        console.log('ProtectedRoute: Is super admin:', userIsSuperAdmin);
-        console.log('ProtectedRoute: Is admin:', userIsAdmin);
-        
-        // Check access permissions
-        if (superAdminOnly && !userIsSuperAdmin) {
-          console.log('ProtectedRoute: User is not super admin, redirecting to home');
-          setLoading(false);
-          setAuthChecked(true);
-          navigate('/');
-          return;
-        } else if (adminOnly && !userIsAdmin) {
-          console.log('ProtectedRoute: User is not admin/super admin, redirecting to home');
-          setLoading(false);
-          setAuthChecked(true);
-          navigate('/');
-          return;
-        } else {
-          console.log('ProtectedRoute: Access granted');
-        }
+          // Critical security check: verify database and hook results match
+          if ((adminOnly || superAdminOnly) && !dbAdminStatus) {
+            console.error(`[SECURITY ERROR] Database verification failed for user ${user.id} - denying access`);
+            navigate('/');
+            return;
+          }
 
+          console.log(`[SECURITY] ProtectedRoute: Access granted for user ${user.id}`);
+        }
+        
+        setAuthChecked(true);
       } catch (error) {
-        console.error('ProtectedRoute: Unexpected error:', error);
-        if (mounted) {
-          setLoading(false);
-          setAuthChecked(true);
-          if (requireAuth) {
-            navigate('/auth');
-          }
+        console.error('[SECURITY] ProtectedRoute: Error in auth check:', error);
+        if (requireAuth) {
+          navigate('/auth');
         }
-      } finally {
-        if (mounted) {
-          setLoading(false);
-          setAuthChecked(true);
-        }
+        setAuthChecked(true);
       }
     };
 
-    // Initial check
-    checkAuthAndRoles();
+    // Only run check when auth and roles are loaded
+    if (!authLoading && !rolesLoading) {
+      checkAuthAndRoles();
+    }
+  }, [user, isAdmin, isSuperAdmin, authLoading, rolesLoading, requireAuth, adminOnly, superAdminOnly, navigate, verifyAdminAccess]);
 
-    // Auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        if (!mounted) return;
-        
-        console.log('ProtectedRoute: Auth state changed:', event, session?.user?.id);
-        
-        if (event === 'SIGNED_OUT' || !session?.user) {
-          setUser(null);
-          setIsAdmin(false);
-          setIsSuperAdmin(false);
-          setAuthChecked(true);
-          if (requireAuth) {
-            navigate('/auth');
-          }
-        } else if (event === 'SIGNED_IN') {
-          // Re-run the full auth check
-          setAuthChecked(false);
-          checkAuthAndRoles();
-        }
-      }
-    );
-
-    return () => {
-      mounted = false;
-      subscription.unsubscribe();
-    };
-  }, [navigate, requireAuth, adminOnly, superAdminOnly]);
-
-  if (loading || !authChecked) {
+  // Show loading while checking auth and roles
+  if (authLoading || rolesLoading || !authChecked) {
     return <LoadingSpinner />;
   }
 
+  // Access control checks
   if (requireAuth && !user) {
-    return null; // Will redirect to auth
+    return null; // Redirect handled in useEffect
   }
 
   if (superAdminOnly && !isSuperAdmin) {
-    return null; // Will redirect to home
+    return null; // Redirect handled in useEffect
   }
 
   if (adminOnly && !isAdmin) {
-    return null; // Will redirect to home
+    return null; // Redirect handled in useEffect
   }
 
   return <>{children}</>;

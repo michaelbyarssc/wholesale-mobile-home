@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { UserPlus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useUserRoles } from '@/hooks/useUserRoles';
 import { supabase } from '@/integrations/supabase/client';
 
 interface UserFormProps {
@@ -20,49 +20,13 @@ export const UserForm = ({ onUserCreated }: UserFormProps) => {
   const [newUserPhoneNumber, setNewUserPhoneNumber] = useState('');
   const [newUserRole, setNewUserRole] = useState<'admin' | 'user'>('user');
   const [creatingUser, setCreatingUser] = useState(false);
-  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
-  const [currentUserRole, setCurrentUserRole] = useState<string>('');
+  const { isSuperAdmin } = useUserRoles();
   const { toast } = useToast();
 
+  // SECURITY: Role information now comes from centralized hook
   useEffect(() => {
-    checkCurrentUserRole();
-  }, []);
-
-  const checkCurrentUserRole = async () => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) return;
-
-      // Check if user is super admin - get all roles for the user
-      const { data: roleData, error: roleError } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', session.user.id);
-
-      console.log('Current user role data:', roleData);
-      
-      if (roleError) {
-        console.error('Error fetching user roles:', roleError);
-        return;
-      }
-
-      // Check if user has super_admin role
-      const userIsSuperAdmin = roleData?.some(r => r.role === 'super_admin') || false;
-      const userRole = roleData?.[0]?.role || '';
-      
-      setIsSuperAdmin(userIsSuperAdmin);
-      setCurrentUserRole(userRole);
-      
-      console.log('User role check:', {
-        userId: session.user.id,
-        role: userRole,
-        isSuperAdmin: userIsSuperAdmin,
-        allRoles: roleData?.map(r => r.role)
-      });
-    } catch (error) {
-      console.error('Error checking user role:', error);
-    }
-  };
+    console.log(`[SECURITY] UserForm: User isSuperAdmin: ${isSuperAdmin}`);
+  }, [isSuperAdmin]);
 
   const createUserDirectly = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -100,21 +64,17 @@ export const UserForm = ({ onUserCreated }: UserFormProps) => {
     try {
       setCreatingUser(true);
       
-      // Remove default password - let the backend generate a secure one
-
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         throw new Error('Not authenticated');
       }
 
-      console.log('Creating user with role:', newUserRole, 'by user:', session.user.id);
-      console.log('Current user is super admin:', isSuperAdmin);
-      console.log('Current user role:', currentUserRole);
+      console.log(`[SECURITY] Creating user with role: ${newUserRole} by user: ${session.user.id}`);
+      console.log(`[SECURITY] Current user is super admin: ${isSuperAdmin}`);
 
       const { data, error } = await supabase.functions.invoke('admin-create-user', {
         body: {
           email: newUserEmail,
-          // No password - let backend generate secure one
           first_name: newUserFirstName,
           last_name: newUserLastName,
           phone_number: newUserPhoneNumber,
@@ -141,7 +101,7 @@ export const UserForm = ({ onUserCreated }: UserFormProps) => {
         throw new Error('User creation failed - no success response');
       }
 
-      console.log('User created successfully:', data);
+      console.log('[SECURITY] User created successfully:', data);
 
       const tempPassword = data?.tempPassword || 'Generated securely';
       
@@ -156,10 +116,9 @@ export const UserForm = ({ onUserCreated }: UserFormProps) => {
       setNewUserPhoneNumber('');
       setNewUserRole('user');
       
-      // Call the callback to refresh the user list
       onUserCreated();
     } catch (error: any) {
-      console.error('Error creating user:', error);
+      console.error('[SECURITY] Error creating user:', error);
       
       let errorMessage = 'Failed to create user';
       if (error.message.includes('Function error:')) {

@@ -32,6 +32,8 @@ const Auth = () => {
     const type = searchParams.get('type');
     if (type === 'recovery') {
       setShowPasswordChange(true);
+      setCheckingAdminStatus(false);
+      return;
     }
 
     // Check if this is a forgot password flow
@@ -61,30 +63,22 @@ const Auth = () => {
         if (profileData) {
           setUserProfile(profileData);
         }
-      }
-      
-      // Wait for roles loading to complete
-      if (!rolesLoading) {
-        setCheckingAdminStatus(false);
-      }
-    };
 
-    checkAdminStatus();
-
-    // Only redirect if not coming from a password reset
-    if (type !== 'recovery') {
-      const checkUser = async () => {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user && !rolesLoading) {
+        // If user is authenticated and roles are loaded, redirect
+        if (!rolesLoading) {
           if (isAdmin) {
             navigate('/admin');
           } else {
             navigate('/');
           }
         }
-      };
-      checkUser();
-    }
+      }
+      
+      // Always set checking status to false once we've checked
+      setCheckingAdminStatus(false);
+    };
+
+    checkAdminStatus();
 
     // Listen for auth changes and redirect appropriately
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -98,7 +92,7 @@ const Auth = () => {
     });
 
     return () => subscription.unsubscribe();
-  }, [navigate, searchParams]);
+  }, [navigate, searchParams, isAdmin, rolesLoading]);
 
   const resetForm = () => {
     setEmail('');

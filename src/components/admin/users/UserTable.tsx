@@ -25,20 +25,20 @@ export const UserTable = ({ userProfiles, onUserUpdated }: UserTableProps) => {
   if (isMobile) {
     return (
       <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base sm:text-lg">Users ({userProfiles.length})</CardTitle>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm sm:text-base">Users ({userProfiles.length})</CardTitle>
         </CardHeader>
-        <CardContent className="px-3 space-y-3">
+        <CardContent className="px-2 space-y-2">
           {userProfiles.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <p>No registered users found</p>
+            <div className="text-center py-6 text-muted-foreground">
+              <p className="text-sm">No registered users found</p>
             </div>
           ) : (
             userProfiles.map((profile) => (
-              <div key={profile.user_id} className="bg-muted/50 rounded-lg p-4 space-y-3">
-                <div className="flex justify-between items-start">
+              <div key={profile.user_id} className="bg-muted/50 rounded-md p-3 space-y-2">
+                <div className="flex justify-between items-start gap-2">
                   <div className="space-y-1 flex-1 min-w-0">
-                    <div className="font-medium text-sm text-foreground truncate">
+                    <div className="font-medium text-xs text-foreground truncate">
                       {profile.first_name || profile.last_name 
                         ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim()
                         : profile.email === 'No email' ? 'Unknown User' : profile.email || 'Unknown User'}
@@ -48,7 +48,7 @@ export const UserTable = ({ userProfiles, onUserUpdated }: UserTableProps) => {
                       <div className="text-xs text-muted-foreground">{profile.phone_number}</div>
                     )}
                   </div>
-                   <div className="text-xs text-muted-foreground">
+                   <div className="text-xs text-muted-foreground shrink-0">
                      {new Date(profile.created_at).toLocaleDateString()}
                    </div>
                  </div>
@@ -90,28 +90,28 @@ export const UserTable = ({ userProfiles, onUserUpdated }: UserTableProps) => {
 
   return (
     <Card>
-      <CardHeader className="pb-4">
-        <CardTitle className="text-lg xl:text-xl">Registered Users ({userProfiles.length})</CardTitle>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base lg:text-lg">Registered Users ({userProfiles.length})</CardTitle>
       </CardHeader>
-      <CardContent className="px-2 sm:px-6">
+      <CardContent className="px-1 sm:px-3">
         <div className="rounded-md border overflow-hidden">
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead className="min-w-[200px] lg:min-w-0">User</TableHead>
-                  <TableHead className="hidden sm:table-cell">Phone</TableHead>
-                  {isSuperAdmin && <TableHead className="hidden lg:table-cell">Role</TableHead>}
-                  <TableHead className="hidden md:table-cell">Markup %</TableHead>
-                  {isSuperAdmin && <TableHead className="hidden xl:table-cell">Created By</TableHead>}
-                  <TableHead className="hidden md:table-cell">Registered</TableHead>
-                  <TableHead className="text-right min-w-[120px]">Actions</TableHead>
+                <TableRow className="text-xs">
+                  <TableHead className="min-w-[160px] lg:min-w-0 py-2 px-2">User</TableHead>
+                  <TableHead className="hidden sm:table-cell py-2 px-2">Phone</TableHead>
+                  {isSuperAdmin && <TableHead className="hidden lg:table-cell py-2 px-2">Role</TableHead>}
+                  <TableHead className="hidden md:table-cell py-2 px-2">Markup %</TableHead>
+                  {isSuperAdmin && <TableHead className="hidden xl:table-cell py-2 px-2">Created By</TableHead>}
+                  <TableHead className="hidden md:table-cell py-2 px-2">Registered</TableHead>
+                  <TableHead className="text-right min-w-[100px] py-2 px-2">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {userProfiles.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={7} className="text-center py-6 text-muted-foreground text-sm">
                       No registered users found
                     </TableCell>
                   </TableRow>

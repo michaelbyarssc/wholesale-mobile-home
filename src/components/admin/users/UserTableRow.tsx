@@ -68,8 +68,8 @@ export const UserTableRow = ({ profile, onUserUpdated, mobileView = false }: Use
   const getRoleBadge = (role: string | null) => {
     if (!role) {
       return (
-        <Badge variant="outline" className="text-gray-500">
-          <ShieldOff className="h-3 w-3 mr-1" />
+        <Badge variant="outline" className="text-gray-500 text-xs py-0 px-1">
+          <ShieldOff className="h-2.5 w-2.5 mr-0.5" />
           No Role
         </Badge>
       );
@@ -78,22 +78,22 @@ export const UserTableRow = ({ profile, onUserUpdated, mobileView = false }: Use
     switch (role) {
       case 'super_admin':
         return (
-          <Badge variant="default" className="bg-green-600 hover:bg-green-700">
-            <ShieldCheck className="h-3 w-3 mr-1" />
+          <Badge variant="default" className="bg-green-600 hover:bg-green-700 text-xs py-0 px-1">
+            <ShieldCheck className="h-2.5 w-2.5 mr-0.5" />
             Super Admin
           </Badge>
         );
       case 'admin':
         return (
-          <Badge variant="default">
-            <Shield className="h-3 w-3 mr-1" />
+          <Badge variant="default" className="text-xs py-0 px-1">
+            <Shield className="h-2.5 w-2.5 mr-0.5" />
             Admin
           </Badge>
         );
       default:
         return (
-          <Badge variant="secondary">
-            <ShieldOff className="h-3 w-3 mr-1" />
+          <Badge variant="secondary" className="text-xs py-0 px-1">
+            <ShieldOff className="h-2.5 w-2.5 mr-0.5" />
             User
           </Badge>
         );
@@ -102,13 +102,13 @@ export const UserTableRow = ({ profile, onUserUpdated, mobileView = false }: Use
 
   if (mobileView) {
     return (
-      <div className="flex items-center justify-between w-full">
+      <div className="flex items-center justify-between w-full gap-2">
         <MarkupEditor
           userId={profile.user_id}
           currentMarkup={profile.markup_percentage || 0}
           onMarkupUpdated={onUserUpdated}
         />
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
           <UserEditDialog profile={profile} onUserUpdated={onUserUpdated} />
           <UserActions profile={profile} onUserUpdated={onUserUpdated} />
         </div>
@@ -117,32 +117,32 @@ export const UserTableRow = ({ profile, onUserUpdated, mobileView = false }: Use
   }
 
   return (
-    <TableRow key={profile.user_id}>
-      <TableCell>
-        <div>
-          <div className="flex items-center gap-2">
-            <div className="font-medium text-sm">{getDisplayName(profile)}</div>
+    <TableRow key={profile.user_id} className="text-xs">
+      <TableCell className="py-2 px-2">
+        <div className="space-y-0.5">
+          <div className="flex items-center gap-1">
+            <div className="font-medium text-xs truncate max-w-[140px]">{getDisplayName(profile)}</div>
             {profile.is_driver && (
-              <Badge variant="outline" className="text-xs text-blue-600 border-blue-200">
-                <Truck className="h-3 w-3 mr-1" />
+              <Badge variant="outline" className="text-xs text-blue-600 border-blue-200 py-0 px-1">
+                <Truck className="h-2.5 w-2.5 mr-0.5" />
                 Driver
               </Badge>
             )}
           </div>
-          <div className="text-xs text-muted-foreground truncate max-w-[200px]">{profile.email}</div>
+          <div className="text-xs text-muted-foreground truncate max-w-[140px]">{profile.email}</div>
         </div>
       </TableCell>
-      <TableCell className="hidden sm:table-cell">
-        <div className="text-sm">
+      <TableCell className="hidden sm:table-cell py-2 px-2">
+        <div className="text-xs truncate">
           {profile.phone_number || 'No phone'}
         </div>
       </TableCell>
       {isSuperAdmin && (
-        <TableCell className="hidden lg:table-cell">
+        <TableCell className="hidden lg:table-cell py-2 px-2">
           {getRoleBadge(profile.role)}
         </TableCell>
       )}
-      <TableCell className="hidden md:table-cell">
+      <TableCell className="hidden md:table-cell py-2 px-2">
         <MarkupEditor
           userId={profile.user_id}
           currentMarkup={profile.markup_percentage || 0}
@@ -150,17 +150,17 @@ export const UserTableRow = ({ profile, onUserUpdated, mobileView = false }: Use
         />
       </TableCell>
       {isSuperAdmin && (
-        <TableCell className="hidden xl:table-cell">
-          <div className="text-sm text-muted-foreground">
+        <TableCell className="hidden xl:table-cell py-2 px-2">
+          <div className="text-xs text-muted-foreground truncate max-w-[100px]">
             {createdByName}
           </div>
         </TableCell>
       )}
-      <TableCell className="hidden md:table-cell">
-        <div className="text-sm">{new Date(profile.created_at).toLocaleDateString()}</div>
+      <TableCell className="hidden md:table-cell py-2 px-2">
+        <div className="text-xs">{new Date(profile.created_at).toLocaleDateString()}</div>
       </TableCell>
-      <TableCell className="text-right">
-        <div className="flex items-center justify-end gap-1 sm:gap-2">
+      <TableCell className="text-right py-2 px-2">
+        <div className="flex items-center justify-end gap-0.5">
           <UserEditDialog profile={profile} onUserUpdated={onUserUpdated} />
           <UserActions profile={profile} onUserUpdated={onUserUpdated} />
         </div>

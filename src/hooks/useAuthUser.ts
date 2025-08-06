@@ -13,86 +13,45 @@ export const useAuthUser = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [sessionFingerprint, setSessionFingerprint] = useState<string | null>(null);
 
-  // EMERGENCY: Generate unique session fingerprint for contamination detection
-  const generateSessionFingerprint = () => {
-    return `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  };
-
-  // EMERGENCY: Force clear all browser storage and state
-  const emergencyClearSession = async (reason: string) => {
-    console.error('🚨 EMERGENCY SESSION CLEAR:', reason);
+  // Simplified session security - only clear on actual data contamination
+  const clearUserSession = async (reason: string) => {
+    console.log('🔐 Clearing session:', reason);
     
-    // Clear all state immediately
+    // Clear state
     setUser(null);
     setSession(null);
     setUserProfile(null);
     setSessionFingerprint(null);
     setIsLoading(false);
     
-    // Force clear all browser storage
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.clear();
-        sessionStorage.clear();
-        
-        // Clear all cookies
-        document.cookie.split(";").forEach((c) => {
-          const eqPos = c.indexOf("=");
-          const name = eqPos > -1 ? c.substr(0, eqPos) : c;
-          document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";
-        });
-      } catch (error) {
-        console.error('Error clearing storage:', error);
-      }
-    }
-    
-    // Force sign out from Supabase
     try {
       await supabase.auth.signOut();
     } catch (error) {
       console.error('Error signing out:', error);
     }
-    
-    // Force redirect to auth page
-    window.location.href = '/auth';
   };
 
-  // SECURITY: Enhanced debug logging for session tracking
+  // Simplified debug logging
   console.log('🔐 useAuthUser: Current state', {
     userId: user?.id,
     userEmail: user?.email,
-    sessionUserId: session?.user?.id,
-    sessionUserEmail: session?.user?.email,
-    sessionFingerprint,
     isLoading,
     timestamp: new Date().toISOString()
   });
 
-  // CRITICAL SECURITY: Immediate mismatch detection and emergency clearing
+  // Only check for critical mismatches, not fingerprints
   React.useEffect(() => {
-    if (user && session) {
-      // Check for user/session mismatch
-      if (user.id !== session.user.id || user.email !== session.user.email) {
-        emergencyClearSession(`User/Session mismatch: User(${user.email}) vs Session(${session.user.email})`);
-        return;
-      }
-      
-      // Check for session fingerprint contamination
-      if (sessionFingerprint && session.access_token) {
-        const currentFingerprint = session.access_token.slice(-10);
-        if (sessionFingerprint !== currentFingerprint) {
-          emergencyClearSession(`Session fingerprint mismatch: ${sessionFingerprint} vs ${currentFingerprint}`);
-          return;
-        }
-      }
+    if (user && session && user.id !== session.user.id) {
+      console.error('🚨 Critical user/session mismatch detected');
+      clearUserSession(`User/Session ID mismatch: User(${user.email}) vs Session(${session.user.email})`);
     }
-  }, [user, session, sessionFingerprint]);
+  }, [user, session]);
 
   useEffect(() => {
     let mounted = true;
     let initialCheckDone = false;
 
-    // EMERGENCY: Enhanced auth state change handler with strict validation
+    // Simplified auth state change handler
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, newSession) => {
         if (!mounted) return;
@@ -107,75 +66,24 @@ export const useAuthUser = () => {
         switch (event) {
           case 'SIGNED_IN':
             if (newSession?.user) {
-              // EMERGENCY: Complete state isolation for new session
-              console.log('🔐 EMERGENCY: Starting fresh session isolation');
-              
-              // Force clear ALL existing state
-              setUser(null);
-              setSession(null);
-              setUserProfile(null);
-              setSessionFingerprint(null);
-              
-              // Clear browser storage to prevent contamination
-              if (typeof window !== 'undefined') {
-                try {
-                  localStorage.clear();
-                  sessionStorage.clear();
-                } catch (error) {
-                  console.error('Error clearing storage on sign in:', error);
-                }
-              }
-              
-              // Generate new session fingerprint
-              const newFingerprint = generateSessionFingerprint();
-              setSessionFingerprint(newFingerprint);
-              
-              // Set new user state with fresh data
+              console.log('🔐 Setting new session');
               setUser(newSession.user);
               setSession(newSession);
-              
-              console.log('🔐 Fresh session established:', {
-                userId: newSession.user.id,
-                userEmail: newSession.user.email,
-                fingerprint: newFingerprint
-              });
+              setSessionFingerprint(`session_${Date.now()}`);
             }
             break;
             
           case 'SIGNED_OUT':
-            console.log('🔐 EMERGENCY: Complete state clearing on sign out');
-            // EMERGENCY: Force clear all state and storage
+            console.log('🔐 Clearing session on sign out');
             setUser(null);
             setSession(null);
             setUserProfile(null);
             setSessionFingerprint(null);
-            
-            if (typeof window !== 'undefined') {
-              try {
-                localStorage.clear();
-                sessionStorage.clear();
-              } catch (error) {
-                console.error('Error clearing storage on sign out:', error);
-              }
-            }
             break;
             
           case 'TOKEN_REFRESHED':
             if (newSession?.user) {
-              // CRITICAL: Validate user hasn't changed during refresh
-              if (user && user.id !== newSession.user.id) {
-                console.error('🚨 EMERGENCY: User changed during token refresh!');
-                await emergencyClearSession('User changed during token refresh');
-                return;
-              }
-              
-              // Validate session integrity
-              if (user && user.email !== newSession.user.email) {
-                console.error('🚨 EMERGENCY: Email changed during token refresh!');
-                await emergencyClearSession('Email changed during token refresh');
-                return;
-              }
-              
+              // Only update session, don't validate aggressively
               setSession(newSession);
             }
             break;
@@ -189,20 +97,14 @@ export const useAuthUser = () => {
 
     const checkAuth = async () => {
       try {
-        console.log('🔐 EMERGENCY: Starting fresh auth check with complete isolation');
-        
-        // EMERGENCY: Clear all state before checking auth
-        setUser(null);
-        setSession(null);
-        setUserProfile(null);
-        setSessionFingerprint(null);
+        console.log('🔐 Starting auth check');
         
         const { data: { session: initialSession }, error } = await supabase.auth.getSession();
         
         if (error) {
-          console.error('🚨 Auth initialization error:', error);
+          console.error('Auth initialization error:', error);
           if (mounted) {
-            await emergencyClearSession('Auth initialization error');
+            setIsLoading(false);
           }
           return;
         }
@@ -210,27 +112,16 @@ export const useAuthUser = () => {
         if (!mounted) return;
         
         if (initialSession?.user) {
-          // EMERGENCY: Validate session integrity with strict checks
-          const sessionUser = initialSession.user;
-          
-          console.log('🔐 EMERGENCY: Validating initial session:', {
-            userId: sessionUser.id,
-            userEmail: sessionUser.email,
-            sessionId: initialSession.access_token.slice(-10),
-            timestamp: new Date().toISOString()
+          console.log('🔐 Initial session found:', {
+            userId: initialSession.user.id,
+            userEmail: initialSession.user.email
           });
           
-          // Generate fresh session fingerprint
-          const newFingerprint = generateSessionFingerprint();
-          setSessionFingerprint(newFingerprint);
-          
-          // Set validated session data
-          setUser(sessionUser);
+          setUser(initialSession.user);
           setSession(initialSession);
-          
-          console.log('🔐 Initial session validated and isolated successfully');
+          setSessionFingerprint(`session_${Date.now()}`);
         } else {
-          console.log('🔐 No initial session found - state cleared');
+          console.log('🔐 No initial session found');
           setUser(null);
           setSession(null);
           setUserProfile(null);
@@ -240,9 +131,8 @@ export const useAuthUser = () => {
         initialCheckDone = true;
         setIsLoading(false);
       } catch (error) {
-        console.error('🚨 Auth initialization failed:', error);
+        console.error('Auth initialization failed:', error);
         if (mounted) {
-          await emergencyClearSession('Auth initialization failed');
           initialCheckDone = true;
           setIsLoading(false);
         }
@@ -264,30 +154,7 @@ export const useAuthUser = () => {
     }
 
     try {
-      // EMERGENCY: Double verification before profile fetch
-      const { data: { session: currentSession } } = await supabase.auth.getSession();
-      
-      if (!currentSession || currentSession.user.id !== userId) {
-        console.error('🚨 EMERGENCY: Profile fetch attempted for different user!', {
-          requestedUserId: userId,
-          sessionUserId: currentSession?.user.id,
-          sessionEmail: currentSession?.user.email
-        });
-        await emergencyClearSession('Profile fetch user mismatch');
-        return;
-      }
-
-      // Additional validation: ensure current user state matches
-      if (user && user.id !== userId) {
-        console.error('🚨 EMERGENCY: Profile fetch user ID mismatch with current user!');
-        await emergencyClearSession('Profile user ID mismatch');
-        return;
-      }
-
-      console.log('🔐 Fetching profile for validated user:', {
-        userId,
-        userEmail: currentSession.user.email
-      });
+      console.log('🔐 Fetching profile for user:', userId);
 
       const { data, error } = await supabase
         .from('profiles')
@@ -301,13 +168,13 @@ export const useAuthUser = () => {
         return;
       }
       
-      console.log('🔐 Profile fetched successfully:', data);
+      console.log('🔐 Profile fetched:', data);
       setUserProfile(data);
     } catch (error) {
-      console.error('🚨 Error fetching user profile:', error);
+      console.error('Error fetching user profile:', error);
       setUserProfile(null);
     }
-  }, [user]);
+  }, []);
 
   useEffect(() => {
     if (!user) {
@@ -320,9 +187,8 @@ export const useAuthUser = () => {
 
   const handleLogout = async () => {
     try {
-      console.log('🔐 EMERGENCY: Starting complete logout and session clearing...');
+      console.log('🔐 Starting logout...');
       
-      // EMERGENCY: Immediate state clearing
       setUser(null);
       setSession(null);
       setUserProfile(null);
@@ -336,29 +202,9 @@ export const useAuthUser = () => {
         console.log('🔐 Logout successful');
       }
       
-      // EMERGENCY: Complete browser storage clearing
-      if (typeof window !== 'undefined') {
-        try {
-          localStorage.clear();
-          sessionStorage.clear();
-          
-          // Clear all cookies
-          document.cookie.split(";").forEach((c) => {
-            const eqPos = c.indexOf("=");
-            const name = eqPos > -1 ? c.substr(0, eqPos) : c;
-            document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";
-          });
-        } catch (error) {
-          console.error('Error clearing storage during logout:', error);
-        }
-      }
-      
-      // Force redirect to prevent any caching issues
-      window.location.href = '/';
+      navigate('/');
     } catch (error) {
-      console.error('🚨 Error during logout:', error);
-      // EMERGENCY: Even if logout fails, force clear everything
-      await emergencyClearSession('Logout failed - emergency clear');
+      console.error('Error during logout:', error);
     }
   };
 
@@ -369,17 +215,16 @@ export const useAuthUser = () => {
     }
   }, [user, fetchUserProfile]);
 
-  // Force refresh auth state - useful for clearing cache issues
+  // Simplified auth refresh
   const forceRefreshAuth = useCallback(async () => {
     try {
-      console.log('🔐 Force refreshing auth state...');
+      console.log('🔐 Refreshing auth state...');
       setIsLoading(true);
       
-      // SECURITY: Get fresh session and validate
       const { data: { session: freshSession }, error } = await supabase.auth.getSession();
       
       if (error) {
-        console.error('🚨 Error refreshing auth:', error);
+        console.error('Error refreshing auth:', error);
         setUser(null);
         setSession(null);
         setUserProfile(null);
@@ -388,18 +233,7 @@ export const useAuthUser = () => {
       }
       
       if (freshSession?.user) {
-        // SECURITY: Check if user changed
-        if (user && user.id !== freshSession.user.id) {
-          console.error('🚨 SECURITY: Different user detected during refresh!');
-          await handleLogout();
-          return;
-        }
-        
-        console.log('🔐 Auth refresh successful:', {
-          userId: freshSession.user.id,
-          userEmail: freshSession.user.email
-        });
-        
+        console.log('🔐 Auth refresh successful');
         setUser(freshSession.user);
         setSession(freshSession);
         await fetchUserProfile(freshSession.user.id);
@@ -411,13 +245,13 @@ export const useAuthUser = () => {
       }
       setIsLoading(false);
     } catch (error) {
-      console.error('🚨 Error in forceRefreshAuth:', error);
+      console.error('Error in forceRefreshAuth:', error);
       setUser(null);
       setSession(null);
       setUserProfile(null);
       setIsLoading(false);
     }
-  }, [user, fetchUserProfile]);
+  }, [fetchUserProfile]);
 
   return {
     user,
@@ -427,7 +261,6 @@ export const useAuthUser = () => {
     handleLogout,
     handleProfileUpdated,
     forceRefreshAuth,
-    emergencyClearSession,
     sessionFingerprint
   };
 };

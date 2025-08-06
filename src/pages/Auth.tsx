@@ -50,123 +50,91 @@ const Auth = () => {
       console.log('Driver context detected for password reset');
     }
 
-    // EMERGENCY: Session validation with strict user checking
-    const emergencySessionCheck = async () => {
-      console.log('🚨 AUTH PAGE: Starting emergency session validation...');
+    // Simplified session check
+    const checkCurrentUser = async () => {
+      console.log('🔐 AUTH PAGE: Checking current user...');
       
       try {
         const { data: { user }, error } = await supabase.auth.getUser();
         
         if (error) {
-          console.error('🚨 AUTH PAGE: Error getting user:', error);
+          console.error('AUTH PAGE: Error getting user:', error);
           setCheckingAdminStatus(false);
           return;
         }
         
         if (user) {
-          console.log('🚨 AUTH PAGE: User found:', {
+          console.log('🔐 AUTH PAGE: User found:', {
             id: user.id,
-            email: user.email,
-            timestamp: new Date().toISOString()
+            email: user.email
           });
           setCurrentUser(user);
           
-          // EMERGENCY: Double-check session integrity
-          const { data: { session } } = await supabase.auth.getSession();
-          if (session?.user && session.user.id !== user.id) {
-            console.error('🚨 AUTH PAGE: CRITICAL SESSION MISMATCH!', {
-              getUserId: user.id,
-              getUserEmail: user.email,
-              sessionUserId: session.user.id,
-              sessionUserEmail: session.user.email
-            });
-            
-            // Force complete logout and clear
-            await supabase.auth.signOut();
-            localStorage.clear();
-            sessionStorage.clear();
-            window.location.href = '/auth';
-            return;
-          }
-          
-          // Get user profile with validation
+          // Get user profile
           const { data: profileData, error: profileError } = await supabase
             .from('profiles')
             .select('first_name, last_name')
             .eq('user_id', user.id)
             .single();
 
-          if (profileError) {
-            console.error('🚨 AUTH PAGE: Profile fetch error:', profileError);
-          } else if (profileData) {
-            console.log('🚨 AUTH PAGE: Profile loaded:', {
-              firstName: profileData.first_name,
-              lastName: profileData.last_name,
-              userId: user.id
-            });
+          if (profileData) {
+            console.log('🔐 AUTH PAGE: Profile loaded:', profileData);
             setUserProfile(profileData);
           }
 
-          // CRITICAL: Only redirect if roles are fully loaded AND no session mismatch
-          console.log('🚨 AUTH PAGE: Role check - rolesLoading:', rolesLoading, 'isAdmin:', isAdmin);
+          // Only redirect after roles are loaded
           if (!rolesLoading) {
-            console.log('🚨 AUTH PAGE: Roles loaded, safe to redirect...');
+            console.log('🔐 AUTH PAGE: Roles loaded, redirecting...');
             
-            // Add small delay to prevent redirect loop
             setTimeout(() => {
               if (isAdmin) {
-                console.log('🚨 AUTH PAGE: Redirecting admin to /admin');
+                console.log('🔐 AUTH PAGE: Redirecting admin to /admin');
                 navigate('/admin');
               } else {
-                console.log('🚨 AUTH PAGE: Redirecting regular user to /');
+                console.log('🔐 AUTH PAGE: Redirecting user to /');
                 navigate('/');
               }
             }, 100);
             return;
-          } else {
-            console.log('🚨 AUTH PAGE: Roles still loading, waiting...');
           }
         } else {
-          console.log('🚨 AUTH PAGE: No user found - staying on auth page');
+          console.log('🔐 AUTH PAGE: No user found');
         }
         
         setCheckingAdminStatus(false);
       } catch (error) {
-        console.error('🚨 AUTH PAGE: Emergency session check failed:', error);
+        console.error('AUTH PAGE: Check failed:', error);
         setCheckingAdminStatus(false);
       }
     };
 
-    emergencySessionCheck();
+    checkCurrentUser();
 
-    // EMERGENCY: Enhanced auth state listener with strict validation
+    // Simplified auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('🚨 AUTH PAGE: Auth state changed:', {
+      console.log('🔐 AUTH PAGE: Auth state changed:', {
         event,
         hasSession: !!session,
         userId: session?.user?.id,
-        userEmail: session?.user?.email,
-        rolesLoading,
-        isAdmin,
-        timestamp: new Date().toISOString()
+        userEmail: session?.user?.email
       });
       
-      // Prevent redirect loops by only redirecting on successful sign in
+      // Only redirect on successful sign in
       if (event === 'SIGNED_IN' && session?.user && !rolesLoading) {
-        console.log('🚨 AUTH PAGE: User authenticated and roles loaded, safe to redirect...');
+        console.log('🔐 AUTH PAGE: User authenticated, redirecting...');
         
-        // Add delay to prevent redirect loop
+        // Small delay to prevent redirect race conditions
         setTimeout(() => {
           if (isAdmin) {
-            console.log('🚨 AUTH PAGE: Auth change - redirecting admin to /admin');
+            console.log('🔐 AUTH PAGE: Redirecting admin to /admin');
             navigate('/admin');
           } else {
-            console.log('🚨 AUTH PAGE: Auth change - redirecting regular user to /');
+            console.log('🔐 AUTH PAGE: Redirecting user to /');
             navigate('/');
           }
-        }, 100);
+        }, 200);
       } else if (event === 'SIGNED_OUT') {
-        console.log('🚨 AUTH PAGE: User signed out - staying on auth page');
+        console.log('🔐 AUTH PAGE: User signed out');
         setCurrentUser(null);
         setUserProfile(null);
         setCheckingAdminStatus(false);

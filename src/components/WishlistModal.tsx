@@ -8,8 +8,8 @@ import { Separator } from '@/components/ui/separator';
 import { X, Heart, ShoppingCart, Scale, Bed, Bath, Maximize, Ruler } from 'lucide-react';
 import { MobileHomeImageCarousel } from './MobileHomeImageCarousel';
 import { useCustomerPricing } from '@/hooks/useCustomerPricing';
+import { useMultiUserAuth } from '@/hooks/useMultiUserAuth';
 import { formatPrice } from '@/lib/utils';
-import { User } from '@supabase/supabase-js';
 import type { Database } from '@/integrations/supabase/types';
 
 type MobileHome = Database['public']['Tables']['mobile_homes']['Row'];
@@ -31,7 +31,6 @@ interface WishlistModalProps {
   onRemoveHome: (homeId: string) => void;
   onClearAll: () => void;
   homeImages: MobileHomeImage[];
-  user?: User | null;
   onAddToCart?: (home: MobileHome) => void;
   onAddToComparison?: (home: MobileHome) => void;
   isInComparison?: (homeId: string) => boolean;
@@ -44,12 +43,12 @@ export const WishlistModal: React.FC<WishlistModalProps> = ({
   onRemoveHome,
   onClearAll,
   homeImages,
-  user,
   onAddToCart,
   onAddToComparison,
   isInComparison
 }) => {
   const navigate = useNavigate();
+  const { user } = useMultiUserAuth();
   const { calculateMobileHomePrice, loading: pricingLoading } = useCustomerPricing(user);
 
   const getHomeImages = (homeId: string) => {

@@ -860,7 +860,6 @@ export const MobileHomesShowcase = ({
           onRemoveHome={removeFromWishlist}
           onClearAll={clearWishlist}
           homeImages={homeImages}
-          user={user}
           onAddToCart={handleAddToCart}
           onAddToComparison={addToComparison}
           isInComparison={isInComparison}

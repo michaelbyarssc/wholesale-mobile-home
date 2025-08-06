@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
+import { useMultiUserAuth } from '@/hooks/useMultiUserAuth';
 import { supabase } from '@/integrations/supabase/client';
 
 interface AuthFormProps {
@@ -20,6 +21,7 @@ interface AuthFormProps {
   setPhoneNumber: (phoneNumber: string) => void;
   loading: boolean;
   setLoading: (loading: boolean) => void;
+  isAddUserMode?: boolean;
 }
 
 export const AuthForm = ({
@@ -36,8 +38,10 @@ export const AuthForm = ({
   setPhoneNumber,
   loading,
   setLoading,
+  isAddUserMode = false,
 }: AuthFormProps) => {
   const { toast } = useToast();
+  const { signIn, signUp } = useMultiUserAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -80,27 +84,14 @@ export const AuthForm = ({
           return;
         }
 
-        // Proceed with normal signup process
-        console.log('Proceeding with signup...');
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/`,
-            data: {
-              first_name: firstName,
-              last_name: lastName,
-              phone_number: phoneNumber,
-            },
-          },
+        // Proceed with signup
+        const { error } = await signUp(email, password, {
+          first_name: firstName,
+          last_name: lastName,
+          phone_number: phoneNumber,
         });
 
-        if (error) {
-          console.error('Sign up error:', error);
-          throw error;
-        }
-
-        console.log('Sign up successful:', data);
+        if (error) throw error;
 
         // Send notification to admin about new user registration
         try {
@@ -115,52 +106,28 @@ export const AuthForm = ({
 
           if (notificationError) {
             console.error('Notification error:', notificationError);
-            // Don't throw here as the signup was successful
           }
         } catch (notificationError) {
           console.error('Failed to send admin notification:', notificationError);
-          // Continue with success message even if notification fails
         }
 
         toast({
           title: "Account Created Successfully",
-          description: "Your account has been created and is pending admin approval. You will receive an email once approved.",
+          description: isAddUserMode 
+            ? "New user account created and is pending admin approval."
+            : "Your account has been created and is pending admin approval. You will receive an email once approved.",
         });
       } else {
-        // Sign in process
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
+        // Sign in process using multi-user auth
+        const { error } = await signIn(email, password);
 
         if (error) throw error;
 
-        // Check if user is approved
-        if (data.user) {
-          const { data: profileData, error: profileError } = await supabase
-            .from('profiles')
-            .select('approved')
-            .eq('user_id', data.user.id)
-            .single();
-
-          if (profileError) {
-            console.error('Error checking approval status:', profileError);
-          } else if (profileData && !profileData.approved) {
-            // Sign out the user immediately
-            await supabase.auth.signOut();
-            toast({
-              title: "Account Pending Approval",
-              description: "Your account is still pending admin approval. Please wait for approval before signing in.",
-              variant: "destructive",
-            });
-            setLoading(false);
-            return;
-          }
-        }
-
         toast({
-          title: "Welcome back!",
-          description: "You have successfully signed in.",
+          title: isAddUserMode ? "User Added Successfully!" : "Welcome back!",
+          description: isAddUserMode 
+            ? "The new user has been added to this browser session."
+            : "You have successfully signed in.",
         });
       }
     } catch (error: any) {

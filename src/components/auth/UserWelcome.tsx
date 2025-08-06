@@ -2,7 +2,7 @@
 import React from 'react';
 
 interface UserWelcomeProps {
-  userProfile: {first_name: string, last_name: string} | null;
+  userProfile: {first_name?: string, last_name?: string} | null;
 }
 
 export const UserWelcome: React.FC<UserWelcomeProps> = ({ userProfile }) => {

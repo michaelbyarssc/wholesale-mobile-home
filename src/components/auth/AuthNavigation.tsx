@@ -11,6 +11,7 @@ interface AuthNavigationProps {
   currentUser: any;
   isAdmin: boolean;
   onShowPasswordChange: () => void;
+  isAddUserMode?: boolean;
 }
 
 export const AuthNavigation: React.FC<AuthNavigationProps> = ({

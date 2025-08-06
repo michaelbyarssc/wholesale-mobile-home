@@ -54,7 +54,7 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
           const recreatedSessions = sessionData.map((sessionInfo: any) => {
             const client = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
               auth: {
-                storageKey: `wmh_session_${sessionInfo.id}`,
+                storageKey: `wmh_user_${sessionInfo.user.id}`, // Use user ID for consistency
                 storage: window.localStorage
               }
             });
@@ -70,10 +70,12 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
           setActiveSessionId(storedActiveId);
         }
       } catch (error) {
-        console.error('Error loading sessions from localStorage:', error);
+        console.error('🔐 Storage corruption detected during load:', error);
         // Clear corrupted data
         localStorage.removeItem('wmh_sessions');
         localStorage.removeItem('wmh_active_session');
+        setSessions([]);
+        setActiveSessionId(null);
       }
     };
 
@@ -107,23 +109,78 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
   useEffect(() => {
     const handleStorageChange = (event: StorageEvent) => {
       if (event.key === 'wmh_sessions' || event.key === 'wmh_active_session') {
-        // Reload sessions from storage when changed in another tab
-        window.location.reload();
+        // Sync sessions from storage without forcing reload
+        const storedSessions = localStorage.getItem('wmh_sessions');
+        const storedActiveId = localStorage.getItem('wmh_active_session');
+        
+        if (storedSessions) {
+          try {
+            const sessionData = JSON.parse(storedSessions);
+            const recreatedSessions = sessionData.map((sessionInfo: any) => {
+              const client = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+                auth: {
+                  storageKey: `wmh_user_${sessionInfo.user.id}`,
+                  storage: window.localStorage
+                }
+              });
+              
+              return {
+                ...sessionInfo,
+                supabaseClient: client,
+                createdAt: new Date(sessionInfo.createdAt)
+              };
+            });
+            
+            setSessions(recreatedSessions);
+            setActiveSessionId(storedActiveId);
+          } catch (error) {
+            console.error('Error syncing sessions from storage:', error);
+          }
+        }
       }
     };
 
     const channel = new BroadcastChannel('wmh_session_sync');
-    channel.addEventListener('message', (event) => {
+    const handleBroadcastMessage = (event: MessageEvent) => {
       if (event.data.type === 'session_change') {
-        // Reload page to sync session changes across tabs
-        window.location.reload();
+        // Sync state without forcing reload
+        const storedSessions = localStorage.getItem('wmh_sessions');
+        const storedActiveId = localStorage.getItem('wmh_active_session');
+        
+        if (storedSessions) {
+          try {
+            const sessionData = JSON.parse(storedSessions);
+            const recreatedSessions = sessionData.map((sessionInfo: any) => {
+              const client = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+                auth: {
+                  storageKey: `wmh_user_${sessionInfo.user.id}`,
+                  storage: window.localStorage
+                }
+              });
+              
+              return {
+                ...sessionInfo,
+                supabaseClient: client,
+                createdAt: new Date(sessionInfo.createdAt)
+              };
+            });
+            
+            setSessions(recreatedSessions);
+            setActiveSessionId(storedActiveId);
+          } catch (error) {
+            console.error('Error syncing sessions from broadcast:', error);
+          }
+        }
       }
-    });
+    };
+    
+    channel.addEventListener('message', handleBroadcastMessage);
 
     window.addEventListener('storage', handleStorageChange);
 
     return () => {
       window.removeEventListener('storage', handleStorageChange);
+      channel.removeEventListener('message', handleBroadcastMessage);
       channel.close();
     };
   }, []);
@@ -141,10 +198,10 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
   const addSession = useCallback(async (user: User, session: Session): Promise<string> => {
     const sessionId = `session_${user.id}_${Date.now()}`;
     
-    // Create session-specific Supabase client
+    // Create session-specific Supabase client with USER ID as storage key for proper isolation
     const client = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
       auth: {
-        storageKey: `wmh_session_${sessionId}`,
+        storageKey: `wmh_user_${user.id}`, // Use user ID instead of session ID
         storage: window.localStorage
       }
     });
@@ -194,8 +251,8 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
     setSessions(prev => {
       const session = prev.find(s => s.id === sessionId);
       if (session) {
-        // Clean up session storage
-        localStorage.removeItem(`wmh_session_${sessionId}`);
+        // Clean up user-specific storage
+        localStorage.removeItem(`wmh_user_${session.user.id}`);
         console.log('🔐 Removed session:', sessionId, 'for user:', session.user.email);
       }
       return prev.filter(s => s.id !== sessionId);
@@ -228,7 +285,7 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
 
   const clearAllSessions = useCallback(() => {
     sessions.forEach(session => {
-      localStorage.removeItem(`wmh_session_${session.id}`);
+      localStorage.removeItem(`wmh_user_${session.user.id}`);
     });
     setSessions([]);
     setActiveSessionId(null);

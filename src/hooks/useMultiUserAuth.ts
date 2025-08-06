@@ -3,6 +3,7 @@ import { User, Session } from '@supabase/supabase-js';
 import { useSessionManager } from '@/contexts/SessionManagerContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
+import { useSessionValidation } from '@/hooks/useSessionValidation';
 
 export const useMultiUserAuth = () => {
   const {
@@ -19,16 +20,24 @@ export const useMultiUserAuth = () => {
   
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
+  const { validateSession } = useSessionValidation();
 
-  // Initialize by checking for existing session
+  // Initialize by checking for existing session with proper sequencing
   useEffect(() => {
     const initializeAuth = async () => {
       try {
+        // Wait for session manager to load first
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
         // If no active session, try to get session from default client
         if (!activeSession) {
           const { data: { session } } = await supabase.auth.getSession();
           if (session?.user) {
-            await addSession(session.user, session);
+            // Check if this user already has a session to prevent duplicates
+            const existingSession = sessions.find(s => s.user.id === session.user.id);
+            if (!existingSession) {
+              await addSession(session.user, session);
+            }
           }
         }
       } catch (error) {
@@ -39,7 +48,7 @@ export const useMultiUserAuth = () => {
     };
 
     initializeAuth();
-  }, [activeSession, addSession]);
+  }, [activeSession, addSession, sessions]);
 
   const signIn = useCallback(async (email: string, password: string) => {
     setIsLoading(true);
@@ -127,6 +136,14 @@ export const useMultiUserAuth = () => {
     }
   }, [sessions, clearAllSessions, navigate]);
 
+  const switchToSessionSafe = useCallback(async (sessionId: string) => {
+    // Validate session before switching
+    const isValid = await validateSession(sessionId);
+    if (isValid) {
+      switchToSession(sessionId);
+    }
+  }, [validateSession, switchToSession]);
+
   const fetchUserProfile = useCallback(async (sessionId?: string) => {
     const targetSessionId = sessionId || activeSessionId;
     if (!targetSessionId) return null;
@@ -173,7 +190,7 @@ export const useMultiUserAuth = () => {
     sessions,
     activeSession,
     activeSessionId,
-    switchToSession,
+    switchToSession: switchToSessionSafe,
     
     // Current session data
     user: getCurrentUser(),

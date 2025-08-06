@@ -28,6 +28,8 @@ import { FaqHomeSection } from '@/components/FaqHomeSection';
 import { SEO } from '@/components/SEO';
 import { SocialProofBanner } from '@/components/SocialProofBanner';
 import { useUserRoles } from '@/hooks/useUserRoles';
+import { MultiUserDebugPanel } from '@/components/debug/MultiUserDebugPanel';
+import { MultiUserSessionTest } from '@/components/test/MultiUserSessionTest';
 
 const Index = () => {
   console.log('Index component: Starting to render');
@@ -240,6 +242,17 @@ const Index = () => {
 
       {/* Chat Widget */}
       <ChatWidget userId={user?.id} />
+
+      {/* Debug Panel for Development */}
+      <MultiUserDebugPanel />
+
+      {/* Testing Panel for Development */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="p-8 bg-yellow-50 border-t">
+          <h2 className="text-xl font-bold mb-4 text-center">Multi-User Session Testing</h2>
+          <MultiUserSessionTest />
+        </div>
+      )}
 
       <Footer />
     </div>

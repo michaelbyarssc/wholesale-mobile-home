@@ -30,6 +30,7 @@ import {
   validateTimezoneAwareDate 
 } from '@/lib/timezone-utils';
 import { useUserRoles } from '@/hooks/useUserRoles';
+import { useAuthUser } from '@/hooks/useAuthUser';
 
 // Function to determine timezone based on delivery address
 const getTimezoneFromAddress = (address: string): string => {
@@ -255,21 +256,35 @@ const getStatusBadge = (status: string) => {
 
 export const DeliveryManagement = () => {
   const { isSuperAdmin, isAdmin, userRoles, forceRefreshRoles } = useUserRoles();
+  const { user: authUser, session, forceRefreshAuth } = useAuthUser();
   
-  // Force refresh roles on mount to prevent caching issues
+  // SECURITY: Force complete auth and role refresh on mount to prevent caching issues
   React.useEffect(() => {
-    forceRefreshRoles();
-  }, [forceRefreshRoles]);
+    const forceRefresh = async () => {
+      console.log('🔧 DeliveryManagement: Forcing auth and role refresh...');
+      await forceRefreshAuth();
+      await forceRefreshRoles();
+    };
+    forceRefresh();
+  }, [forceRefreshAuth, forceRefreshRoles]);
   
-  // Enhanced debug logging
+  // Enhanced debug logging with session info
   React.useEffect(() => {
     console.log('🔧 DeliveryManagement Debug:', { 
+      userEmail: authUser?.email,
+      sessionEmail: session?.user?.email,
+      userId: authUser?.id,
+      sessionUserId: session?.user?.id,
       isSuperAdmin, 
       isAdmin, 
       userRoles: userRoles.map(r => r.role),
+      sessionMatch: authUser?.id === session?.user?.id,
       timestamp: new Date().toISOString()
     });
-  }, [isSuperAdmin, isAdmin, userRoles]);
+  }, [isSuperAdmin, isAdmin, userRoles, authUser, session]);
+  
+  // SECURITY: Only super admins with valid session can manage drivers
+  const canManageDrivers = isSuperAdmin && authUser && session && authUser.id === session.user.id;
   
   const [filter, setFilter] = useState<'all' | 'scheduled' | 'in_transit' | 'completed' | 'pending_payment' | 'factory_pickup_scheduled' | 'factory_pickup_in_progress' | 'factory_pickup_completed' | 'delivery_in_progress' | 'delivered' | 'cancelled' | 'delayed'>('all');
   const [selectedDelivery, setSelectedDelivery] = useState<Delivery | null>(null);

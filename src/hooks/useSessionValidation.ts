@@ -1,52 +1,100 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import { useSessionManager } from '@/contexts/SessionManagerContext';
 
 export const useSessionValidation = () => {
   const { sessions, activeSessionId, removeSession } = useSessionManager();
 
-  // Validate session integrity
-  const validateSession = useCallback(async (sessionId: string) => {
-    const session = sessions.find(s => s.id === sessionId);
-    if (!session) return false;
+  // Validation state to prevent race conditions
+  const validationInProgress = useRef<Set<string>>(new Set());
 
+  // Validate session integrity with conflict prevention
+  const validateSession = useCallback(async (sessionId: string) => {
+    // Prevent concurrent validation of same session
+    if (validationInProgress.current.has(sessionId)) {
+      console.log('🔐 Session validation already in progress:', sessionId);
+      return true; // Assume valid during concurrent validation
+    }
+
+    const session = sessions.find(s => s.id === sessionId);
+    if (!session) {
+      console.warn('🔐 Session not found for validation:', sessionId);
+      return false;
+    }
+
+    // Mark as being validated
+    validationInProgress.current.add(sessionId);
+    
     try {
-      // Check if the session is still valid
-      const { data: { user }, error } = await session.supabaseClient.auth.getUser();
+      // Quick timeout to prevent hanging validation
+      const validationPromise = session.supabaseClient.auth.getUser();
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Validation timeout')), 3000)
+      );
+      
+      const { data: { user }, error } = await Promise.race([
+        validationPromise, 
+        timeoutPromise
+      ]) as any;
       
       if (error || !user) {
-        console.warn('🔐 Invalid session detected, removing:', sessionId);
-        removeSession(sessionId);
+        console.warn('🔐 Invalid session detected, scheduling removal:', sessionId);
+        // Schedule removal to avoid race conditions during validation
+        setTimeout(() => removeSession(sessionId), 100);
         return false;
       }
       
+      console.log('🔐 Session validation successful:', sessionId);
       return true;
     } catch (error) {
       console.error('🔐 Error validating session:', error);
-      removeSession(sessionId);
+      // Schedule removal on error
+      setTimeout(() => removeSession(sessionId), 100);
       return false;
+    } finally {
+      // Always clean up validation state
+      validationInProgress.current.delete(sessionId);
     }
   }, [sessions, removeSession]);
 
-  // Add periodic validation for critical scenarios - less aggressive
+  // Smart periodic validation - less aggressive, more efficient
   useEffect(() => {
-    const validateCriticalSessions = async () => {
-      // Only validate if we have active sessions and one is currently active
-      if (sessions.length > 0 && activeSessionId) {
-        // Validate just the active session periodically
-        await validateSession(activeSessionId);
+    let validationTimer: NodeJS.Timeout | null = null;
+    let lastValidationTime = 0;
+    
+    const smartValidation = async () => {
+      const now = Date.now();
+      
+      // Only validate if enough time has passed and we have an active session
+      if (sessions.length > 0 && activeSessionId && (now - lastValidationTime) > 300000) { // 5 minutes
+        try {
+          const isValid = await validateSession(activeSessionId);
+          lastValidationTime = now;
+          
+          if (!isValid) {
+            console.warn('🔐 Active session invalid, sessions may need refresh');
+          } else {
+            console.log('🔐 Active session validation passed');
+          }
+        } catch (error) {
+          console.error('🔐 Smart validation error:', error);
+        }
       }
     };
 
-    // Validate active session every 5 minutes (reasonable for active use)
-    const interval = setInterval(validateCriticalSessions, 5 * 60 * 1000);
-    
-    // Validate on mount if we have an active session
-    if (activeSessionId) {
-      validateCriticalSessions();
+    // Initial validation on mount (if session exists and hasn't been validated recently)
+    if (activeSessionId && sessions.length > 0) {
+      setTimeout(smartValidation, 1000); // Delay initial validation by 1 second
     }
 
-    return () => clearInterval(interval);
-  }, [activeSessionId, validateSession]); // Depend on active session only
+    // Set up periodic validation with longer intervals
+    validationTimer = setInterval(smartValidation, 10 * 60 * 1000); // Every 10 minutes
+    
+    return () => {
+      if (validationTimer) {
+        clearInterval(validationTimer);
+      }
+    };
+  }, [activeSessionId, sessions.length, validateSession]); // Minimal dependencies
   
   // Validate all sessions on demand only
   const validateAllSessions = useCallback(async () => {

@@ -166,22 +166,37 @@ export const useMultiUserAuth = () => {
   }, [sessions, clearAllSessions, navigate]);
 
   const switchToSessionSafe = useCallback(async (sessionId: string) => {
-    // Switch immediately for better UX, validate in background
+    // Enhanced session switching with better validation
     const session = sessions.find(s => s.id === sessionId);
-    if (session) {
-      switchToSession(sessionId);
+    if (!session) {
+      console.warn('🔐 Cannot switch to non-existent session:', sessionId);
+      return;
+    }
+
+    console.log('🔐 Switching to session:', sessionId, 'for user:', session.user.email);
+    
+    // Switch immediately for better UX
+    switchToSession(sessionId);
+    
+    // Validate in background with debouncing to prevent excessive calls
+    const validationKey = `validation_${sessionId}`;
+    if (!(window as any)[validationKey]) {
+      (window as any)[validationKey] = true;
       
-      // Validate in background - non-blocking
       setTimeout(async () => {
         try {
           const isValid = await validateSession(sessionId);
           if (!isValid) {
             console.warn('🔐 Session validation failed after switch:', sessionId);
+          } else {
+            console.log('🔐 Session switch validation successful:', sessionId);
           }
         } catch (error) {
           console.error('🔐 Session validation error:', error);
+        } finally {
+          delete (window as any)[validationKey];
         }
-      }, 0);
+      }, 500); // 500ms delay for validation
     }
   }, [sessions, switchToSession, validateSession]);
 

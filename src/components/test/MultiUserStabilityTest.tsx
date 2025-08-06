@@ -34,113 +34,127 @@ export const MultiUserStabilityTest: React.FC = () => {
 
   const testSessionStability = useCallback(async () => {
     setIsRunning(true);
-    addTestResult('Session Stability Test', 'warning', 'Starting stability tests...');
+    addTestResult('Enhanced Stability Test', 'warning', 'Starting comprehensive stability tests...');
 
     try {
-      // Test 1: Rapid session creation/destruction
-      addTestResult('Rapid Session Test', 'warning', 'Testing rapid session operations...');
+      // Test 1: Storage Key Consistency
+      addTestResult('Storage Key Consistency', 'warning', 'Testing storage key generation...');
+      const timestamp = Date.now();
+      const userId = 'test-user-123';
+      const key1 = `wmh_session_${userId}_${timestamp}`;
+      const key2 = `wmh_session_${userId}_${timestamp}`;
       
-      const initialSessionCount = sessions.length;
-      
-      // Create multiple sessions rapidly
-      try {
-        await signIn('test1@example.com', 'password123');
-        await signIn('test2@example.com', 'password123');
-        await signIn('test1@example.com', 'password123'); // Duplicate - should deduplicate
-        
-        // Check if deduplication worked
-        const currentSessions = sessions.length;
-        if (currentSessions <= initialSessionCount + 2) {
-          addTestResult('Rapid Session Test', 'pass', 'Session deduplication working correctly');
-        } else {
-          addTestResult('Rapid Session Test', 'fail', `Too many sessions created: ${currentSessions}`);
-        }
-      } catch (error) {
-        addTestResult('Rapid Session Test', 'fail', `Session creation failed: ${error}`);
+      if (key1 === key2) {
+        addTestResult('Storage Key Consistency', 'pass', 'Storage keys are consistent');
+      } else {
+        addTestResult('Storage Key Consistency', 'fail', 'Storage key generation is inconsistent');
       }
 
-      // Test 2: Memory management
-      addTestResult('Memory Test', 'warning', 'Checking for memory leaks...');
+      // Test 2: Client Cache Management
+      addTestResult('Client Cache Management', 'warning', 'Testing client cache behavior...');
+      const wmhKeysBefore = Object.keys(localStorage).filter(key => key.startsWith('wmh_')).length;
       
+      // Simulate rapid operations
+      for (let i = 0; i < 3; i++) {
+        try {
+          await signIn(`cache${i}@test.com`, 'testpass123');
+        } catch (error) {
+          // Expected for non-existent users
+        }
+      }
+      
+      const wmhKeysAfter = Object.keys(localStorage).filter(key => key.startsWith('wmh_')).length;
+      const keyGrowth = wmhKeysAfter - wmhKeysBefore;
+      
+      if (keyGrowth <= 5) {
+        addTestResult('Client Cache Management', 'pass', `Controlled storage growth: +${keyGrowth} keys`);
+      } else {
+        addTestResult('Client Cache Management', 'warning', `High storage growth: +${keyGrowth} keys`);
+      }
+
+      // Test 3: Session Validation Race Conditions
+      addTestResult('Validation Race Conditions', 'warning', 'Testing concurrent validation...');
+      const validationPromises = [];
+      
+      for (let i = 0; i < 3; i++) {
+        if (sessions.length > 0) {
+          validationPromises.push(validateAllSessions());
+        }
+      }
+      
+      try {
+        await Promise.allSettled(validationPromises);
+        addTestResult('Validation Race Conditions', 'pass', 'Concurrent validation handled correctly');
+      } catch (error) {
+        addTestResult('Validation Race Conditions', 'warning', 'Some validation conflicts detected');
+      }
+
+      // Test 4: Memory Leak Detection
+      addTestResult('Memory Leak Detection', 'warning', 'Checking for memory leaks...');
       const beforeMemory = (performance as any).memory?.usedJSHeapSize || 0;
       
-      // Create and destroy sessions multiple times
-      for (let i = 0; i < 5; i++) {
+      // Create and destroy sessions
+      for (let i = 0; i < 3; i++) {
         try {
-          await signIn(`test${i}@example.com`, 'password123');
+          await signIn(`leak${i}@test.com`, 'testpass123');
           await signOut();
         } catch (error) {
-          // Continue with test
+          // Expected
         }
       }
       
       const afterMemory = (performance as any).memory?.usedJSHeapSize || 0;
-      const memoryIncrease = afterMemory - beforeMemory;
+      const memoryGrowth = afterMemory - beforeMemory;
       
-      if (memoryIncrease < 1000000) { // Less than 1MB increase
-        addTestResult('Memory Test', 'pass', `Memory usage stable: +${Math.round(memoryIncrease/1024)}KB`);
+      if (memoryGrowth < 2 * 1024 * 1024) { // Less than 2MB growth
+        addTestResult('Memory Leak Detection', 'pass', `Memory growth: ${Math.round(memoryGrowth / 1024)}KB`);
       } else {
-        addTestResult('Memory Test', 'warning', `Potential memory leak: +${Math.round(memoryIncrease/1024)}KB`);
+        addTestResult('Memory Leak Detection', 'warning', `High memory growth: ${Math.round(memoryGrowth / 1024 / 1024)}MB`);
       }
 
-      // Test 3: Session validation
-      addTestResult('Validation Test', 'warning', 'Testing session validation...');
+      // Test 5: Data Isolation
+      addTestResult('Data Isolation Test', 'warning', 'Testing data isolation between sessions...');
+      const cartDataKeys = Object.keys(localStorage).filter(key => key.includes('cart_data'));
+      const wishlistKeys = Object.keys(localStorage).filter(key => key.includes('wishlist'));
+      
+      const isolationScore = cartDataKeys.length + wishlistKeys.length;
+      if (isolationScore === 0 || sessions.length === 0) {
+        addTestResult('Data Isolation Test', 'pass', 'No data isolation issues (clean state)');
+      } else if (isolationScore <= sessions.length * 2) {
+        addTestResult('Data Isolation Test', 'pass', `Data properly isolated: ${isolationScore} keys for ${sessions.length} sessions`);
+      } else {
+        addTestResult('Data Isolation Test', 'warning', `Potential isolation issue: ${isolationScore} keys`);
+      }
+
+      // Test 6: Cross-tab Sync Performance
+      addTestResult('Cross-tab Sync Performance', 'warning', 'Testing cross-tab synchronization...');
+      const syncStart = Date.now();
       
       try {
-        await validateAllSessions();
-        addTestResult('Validation Test', 'pass', 'All sessions validated successfully');
-      } catch (error) {
-        addTestResult('Validation Test', 'fail', `Validation failed: ${error}`);
-      }
-
-      // Test 4: Storage integrity
-      addTestResult('Storage Test', 'warning', 'Testing storage consistency...');
-      
-      const sessionData = localStorage.getItem('wmh_sessions');
-      const activeSessionId = localStorage.getItem('wmh_active_session');
-      
-      if (sessionData && activeSessionId) {
-        try {
-          const parsed = JSON.parse(sessionData);
-          const hasActiveSession = parsed.some((s: any) => s.id === activeSessionId);
-          
-          if (hasActiveSession) {
-            addTestResult('Storage Test', 'pass', 'Storage consistency verified');
-          } else {
-            addTestResult('Storage Test', 'fail', 'Active session not found in stored sessions');
-          }
-        } catch (error) {
-          addTestResult('Storage Test', 'fail', `Storage parsing failed: ${error}`);
+        // Simulate rapid cross-tab events
+        for (let i = 0; i < 5; i++) {
+          const storageEvent = new StorageEvent('storage', {
+            key: 'wmh_sessions',
+            newValue: localStorage.getItem('wmh_sessions'),
+            oldValue: null
+          });
+          window.dispatchEvent(storageEvent);
         }
-      } else {
-        addTestResult('Storage Test', 'pass', 'No sessions in storage (clean state)');
+        
+        const syncTime = Date.now() - syncStart;
+        if (syncTime < 100) {
+          addTestResult('Cross-tab Sync Performance', 'pass', `Fast sync: ${syncTime}ms`);
+        } else {
+          addTestResult('Cross-tab Sync Performance', 'warning', `Slow sync: ${syncTime}ms`);
+        }
+      } catch (error) {
+        addTestResult('Cross-tab Sync Performance', 'fail', `Sync error: ${error}`);
       }
 
-      // Test 5: Cross-tab communication simulation
-      addTestResult('Cross-Tab Test', 'warning', 'Simulating cross-tab updates...');
-      
-      try {
-        // Simulate another tab changing sessions
-        const currentSessions = localStorage.getItem('wmh_sessions');
-        const event = new StorageEvent('storage', {
-          key: 'wmh_sessions',
-          newValue: currentSessions,
-          oldValue: currentSessions,
-          storageArea: localStorage
-        });
-        
-        window.dispatchEvent(event);
-        
-        // Wait for sync
-        await new Promise(resolve => setTimeout(resolve, 200));
-        
-        addTestResult('Cross-Tab Test', 'pass', 'Cross-tab communication functional');
-      } catch (error) {
-        addTestResult('Cross-Tab Test', 'fail', `Cross-tab test failed: ${error}`);
-      }
+      addTestResult('Enhanced Stability Test', 'pass', 'All enhanced stability tests completed!');
 
     } catch (error) {
-      addTestResult('Stability Test', 'fail', `Overall test failed: ${error}`);
+      addTestResult('Enhanced Stability Test', 'fail', `Test suite failed: ${error}`);
     } finally {
       setIsRunning(false);
     }

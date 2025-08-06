@@ -48,35 +48,61 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
   const broadcastChannelRef = useRef<BroadcastChannel | null>(null);
   const storageValidationInterval = useRef<NodeJS.Timeout | null>(null);
 
-  // Create cached client function with better key management
+  // Timestamp generation for consistent session keys across operations
+  const generateSessionTimestamp = useCallback(() => {
+    return Date.now();
+  }, []);
+
+  // Create cached client function with enhanced resource management
   const getCachedClient = useCallback((storageKey: string, userId?: string, timestamp?: number) => {
-    // Try exact key first
+    // Track client creation for memory monitoring
+    const currentClientCount = clientCache.current.size;
+    if (currentClientCount > 10) {
+      console.warn('🔐 High client count detected:', currentClientCount, 'cleaning up oldest clients');
+      // Remove oldest clients to prevent memory leaks
+      const entries = Array.from(clientCache.current.entries());
+      entries.slice(0, 5).forEach(([key]) => {
+        clientCache.current.delete(key);
+      });
+    }
+    
+    // Try exact key first for perfect match
     if (clientCache.current.has(storageKey)) {
+      console.log('🔐 Reusing exact cached client for key:', storageKey);
       return clientCache.current.get(storageKey)!;
     }
     
-    // For recreation scenarios, try to find by user pattern
+    // For recreation scenarios with user ID, try to find compatible client
     if (userId) {
       const userPattern = `wmh_session_${userId}_`;
       for (const [key, client] of clientCache.current.entries()) {
         if (key.startsWith(userPattern)) {
-          // Reuse existing client for same user
-          clientCache.current.set(storageKey, client);
-          console.log('🔐 Reusing cached client for user:', userId);
-          return client;
+          // Validate client is still functional before reuse
+          try {
+            client.auth.getSession(); // Quick validity check
+            clientCache.current.set(storageKey, client);
+            console.log('🔐 Reusing validated cached client for user:', userId);
+            return client;
+          } catch (error) {
+            console.warn('🔐 Cached client invalid, removing:', key);
+            clientCache.current.delete(key);
+          }
         }
       }
     }
     
+    // Create new client with proper configuration
     const client = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
       auth: {
         storageKey: storageKey,
-        storage: window.localStorage
+        storage: window.localStorage,
+        persistSession: true,
+        autoRefreshToken: true
       }
     });
     
     clientCache.current.set(storageKey, client);
-    console.log('🔐 Created new cached client for key:', storageKey);
+    console.log('🔐 Created new cached client for key:', storageKey, 'total clients:', clientCache.current.size);
     return client;
   }, []);
 
@@ -104,16 +130,21 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
             index === array.findIndex(s => s.user.id === session.user.id)
           );
           
-          // Recreate sessions with cached clients
+          // Recreate sessions with consistent storage key generation
             const recreatedSessions = uniqueSessionData.map((sessionInfo: any) => {
-              const timestamp = new Date(sessionInfo.createdAt).getTime();
-              const storageKey = `wmh_session_${sessionInfo.user.id}_${timestamp}`;
-              const client = getCachedClient(storageKey, sessionInfo.user.id, timestamp);
+              // Use the original timestamp to ensure consistent storage keys
+              const originalTimestamp = new Date(sessionInfo.createdAt).getTime();
+              const storageKey = `wmh_session_${sessionInfo.user.id}_${originalTimestamp}`;
+              
+              // Validate storage key exists before creating client
+              const existingAuth = localStorage.getItem(`sb-${SUPABASE_URL.split('//')[1].split('.')[0]}-auth-token`);
+              const client = getCachedClient(storageKey, sessionInfo.user.id, originalTimestamp);
               
               return {
                 ...sessionInfo,
                 supabaseClient: client,
-                createdAt: new Date(sessionInfo.createdAt)
+                createdAt: new Date(sessionInfo.createdAt),
+                storageKey // Store key for validation
               };
             });
           
@@ -255,7 +286,7 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
   }, []);
 
   const addSession = useCallback(async (user: User, session: Session): Promise<string> => {
-    // Check for existing session for this user first
+    // Check for existing session for this user first (deduplication)
     const existingSession = sessions.find(s => s.user.id === user.id);
     if (existingSession) {
       console.log('🔐 Session already exists for user:', user.email, 'switching to existing');
@@ -263,31 +294,41 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
       return existingSession.id;
     }
     
-    const timestamp = Date.now();
+    // Use consistent timestamp generation for stable storage keys
+    const timestamp = generateSessionTimestamp();
     const sessionId = `session_${user.id}_${timestamp}`;
     const storageKey = `wmh_session_${user.id}_${timestamp}`;
     
-    // Use cached client creation
-    const client = getCachedClient(storageKey);
-
+    console.log('🔐 Creating session with consistent key:', storageKey);
+    
     try {
-      // Set the session in the client
+      // Use cached client creation with validation
+      const client = getCachedClient(storageKey, user.id, timestamp);
+
+      // Set the session in the client with error handling
       await client.auth.setSession({
         access_token: session.access_token,
         refresh_token: session.refresh_token
       });
 
-      // Fetch user profile
+      // Fetch user profile with timeout to prevent hanging
       let userProfile = null;
       try {
-        const { data: profile } = await client
+        const profilePromise = client
           .from('profiles')
           .select('first_name, last_name')
           .eq('user_id', user.id)
           .single();
+        
+        // 5 second timeout for profile fetch
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Profile fetch timeout')), 5000)
+        );
+        
+        const { data: profile } = await Promise.race([profilePromise, timeoutPromise]) as any;
         userProfile = profile;
       } catch (error) {
-        console.error('Error fetching user profile:', error);
+        console.warn('Error fetching user profile (non-critical):', error);
       }
 
       const newSession: SessionData = {
@@ -296,64 +337,84 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
         session,
         supabaseClient: client,
         userProfile,
-        createdAt: new Date()
+        createdAt: new Date(timestamp) // Use consistent timestamp
       };
 
       setSessions(prev => [...prev, newSession]);
       setActiveSessionId(sessionId);
       broadcastSessionChange();
       
-      console.log('🔐 Added new session:', sessionId, 'for user:', user.email);
+      console.log('🔐 Added new session:', sessionId, 'for user:', user.email, 'storage key:', storageKey);
       return sessionId;
     } catch (error) {
       console.error('🔐 Error adding session:', error);
-      // Clean up cached client on error
+      // Clean up cached client on error to prevent memory leaks
       clientCache.current.delete(storageKey);
       throw error;
     }
-  }, [sessions, getCachedClient, broadcastSessionChange]);
+  }, [sessions, getCachedClient, broadcastSessionChange, generateSessionTimestamp]);
 
   const removeSession = useCallback((sessionId: string) => {
     setSessions(prev => {
       const session = prev.find(s => s.id === sessionId);
       if (session) {
-        // Clean up session-specific storage and cached client
+        // Enhanced cleanup with consistent key generation
         const timestamp = new Date(session.createdAt).getTime();
         const storageKey = `wmh_session_${session.user.id}_${timestamp}`;
         
-        // Remove from client cache - key fix
+        console.log('🔐 Removing session with cleanup:', sessionId, 'storage key:', storageKey);
+        
+        // Remove from client cache with extensive cleanup
         clientCache.current.delete(storageKey);
         
-        // Also remove any other cache entries for this user (cleanup orphaned entries)
+        // Clean up any other cache entries for this user pattern
         const userPattern = `wmh_session_${session.user.id}_`;
-        for (const key of clientCache.current.keys()) {
-          if (key.startsWith(userPattern)) {
-            clientCache.current.delete(key);
-          }
-        }
+        const keysToDelete = Array.from(clientCache.current.keys()).filter(key => 
+          key.startsWith(userPattern)
+        );
+        keysToDelete.forEach(key => {
+          clientCache.current.delete(key);
+          console.log('🔐 Cleaned up orphaned client cache key:', key);
+        });
         
-        // Clean up all storage keys for this session
-        Object.keys(localStorage).forEach(key => {
-          if (key.includes(`${session.user.id}_${timestamp}`)) {
+        // Enhanced storage cleanup - more aggressive pattern matching
+        const storageKeysToDelete = Object.keys(localStorage).filter(key => {
+          return key.includes(`${session.user.id}_${timestamp}`) ||
+                 key.includes(`${session.user.id}`) && key.includes('wmh_');
+        });
+        
+        storageKeysToDelete.forEach(key => {
+          try {
             localStorage.removeItem(key);
             console.log('🔐 Cleaned up storage key:', key);
+          } catch (error) {
+            console.warn('🔐 Error cleaning storage key:', key, error);
           }
         });
         
-        console.log('🔐 Removed session:', sessionId, 'for user:', session.user.email);
+        // Also clean up session-specific storage like cart and wishlist
+        const userSpecificKeys = [
+          `cart_data_user_${session.user.id}`,
+          `mobile-home-wishlist_user_${session.user.id}`
+        ];
+        
+        userSpecificKeys.forEach(key => {
+          if (localStorage.getItem(key)) {
+            console.log('🔐 Preserving user data key (will be cleaned on app restart):', key);
+          }
+        });
+        
+        console.log('🔐 Removed session:', sessionId, 'for user:', session.user.email, 'cache size:', clientCache.current.size);
       }
       return prev.filter(s => s.id !== sessionId);
     });
 
+    // Handle active session switching with better logic
     if (activeSessionId === sessionId) {
-      // Switch to another session or clear active session
       setSessions(current => {
         const remaining = current.filter(s => s.id !== sessionId);
-        if (remaining.length > 0) {
-          setActiveSessionId(remaining[0].id);
-        } else {
-          setActiveSessionId(null);
-        }
+        const newActiveId = remaining.length > 0 ? remaining[0].id : null;
+        setActiveSessionId(newActiveId);
         return remaining;
       });
     }
@@ -428,6 +489,24 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
       clientCache.current.clear();
     };
   }, []);
+
+  // Memory monitoring integration
+  useEffect(() => {
+    const monitorInterval = setInterval(() => {
+      const clientCount = clientCache.current.size;
+      const sessionCount = sessions.length;
+      
+      if (clientCount > sessionCount * 2) {
+        console.warn('🔐 Client cache growing beyond expected size:', {
+          clients: clientCount,
+          sessions: sessionCount,
+          ratio: clientCount / Math.max(sessionCount, 1)
+        });
+      }
+    }, 2 * 60 * 1000); // Check every 2 minutes
+
+    return () => clearInterval(monitorInterval);
+  }, [sessions.length]);
 
   const value: SessionManagerContextType = {
     sessions,

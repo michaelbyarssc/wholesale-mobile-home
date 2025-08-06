@@ -22,36 +22,47 @@ export const useMultiUserAuth = () => {
   const navigate = useNavigate();
   const { validateSession } = useSessionValidation();
 
-  // Initialize by checking for existing session - event-driven approach
+  // Initialize by checking for existing session - stable approach
   useEffect(() => {
     let initialized = false;
+    let authSubscription: any = null;
     
     const initializeAuth = async () => {
       if (initialized) return;
       initialized = true;
       
       try {
-        // Set up auth state listener first
+        // Set up auth state listener first - stable callback without dependencies
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
           async (event, session) => {
             if (event === 'SIGNED_IN' && session?.user) {
-              const existingSession = sessions.find(s => s.user.id === session.user.id);
-              if (!existingSession) {
+              // Use a separate check to avoid dependency on sessions array
+              const storedSessions = localStorage.getItem('wmh_sessions');
+              const existingSessions = storedSessions ? JSON.parse(storedSessions) : [];
+              const hasExistingSession = existingSessions.some((s: any) => s.user.id === session.user.id);
+              
+              if (!hasExistingSession) {
                 console.log('🔐 Auth state change: adding new session for user:', session.user.email);
                 await addSession(session.user, session);
               }
             }
           }
         );
+        
+        authSubscription = subscription;
 
         // Then check for existing session
         const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user && sessions.length === 0) {
-          console.log('🔐 Initializing auth with existing session for user:', session.user.email);
-          await addSession(session.user, session);
+        if (session?.user) {
+          const storedSessions = localStorage.getItem('wmh_sessions');
+          const existingSessions = storedSessions ? JSON.parse(storedSessions) : [];
+          
+          if (existingSessions.length === 0) {
+            console.log('🔐 Initializing auth with existing session for user:', session.user.email);
+            await addSession(session.user, session);
+          }
         }
         
-        return () => subscription.unsubscribe();
       } catch (error) {
         console.error('Error initializing auth:', error);
       } finally {
@@ -60,7 +71,13 @@ export const useMultiUserAuth = () => {
     };
 
     initializeAuth();
-  }, []); // Only run once on mount
+    
+    return () => {
+      if (authSubscription) {
+        authSubscription.unsubscribe();
+      }
+    };
+  }, [addSession]); // Only depend on addSession
 
   const signIn = useCallback(async (email: string, password: string) => {
     setIsLoading(true);

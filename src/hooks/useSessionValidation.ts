@@ -27,7 +27,28 @@ export const useSessionValidation = () => {
     }
   }, [sessions, removeSession]);
 
-  // Validate sessions on demand only - remove aggressive periodic validation
+  // Add periodic validation for critical scenarios - less aggressive
+  useEffect(() => {
+    const validateCriticalSessions = async () => {
+      // Only validate if we have active sessions and one is currently active
+      if (sessions.length > 0 && activeSessionId) {
+        // Validate just the active session periodically
+        await validateSession(activeSessionId);
+      }
+    };
+
+    // Validate active session every 5 minutes (reasonable for active use)
+    const interval = setInterval(validateCriticalSessions, 5 * 60 * 1000);
+    
+    // Validate on mount if we have an active session
+    if (activeSessionId) {
+      validateCriticalSessions();
+    }
+
+    return () => clearInterval(interval);
+  }, [activeSessionId, validateSession]); // Depend on active session only
+  
+  // Validate all sessions on demand only
   const validateAllSessions = useCallback(async () => {
     const validationPromises = sessions.map(session => validateSession(session.id));
     await Promise.allSettled(validationPromises);

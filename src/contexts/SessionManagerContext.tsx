@@ -48,10 +48,24 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
   const broadcastChannelRef = useRef<BroadcastChannel | null>(null);
   const storageValidationInterval = useRef<NodeJS.Timeout | null>(null);
 
-  // Create cached client function
-  const getCachedClient = useCallback((storageKey: string, sessionData?: any) => {
+  // Create cached client function with better key management
+  const getCachedClient = useCallback((storageKey: string, userId?: string, timestamp?: number) => {
+    // Try exact key first
     if (clientCache.current.has(storageKey)) {
       return clientCache.current.get(storageKey)!;
+    }
+    
+    // For recreation scenarios, try to find by user pattern
+    if (userId) {
+      const userPattern = `wmh_session_${userId}_`;
+      for (const [key, client] of clientCache.current.entries()) {
+        if (key.startsWith(userPattern)) {
+          // Reuse existing client for same user
+          clientCache.current.set(storageKey, client);
+          console.log('🔐 Reusing cached client for user:', userId);
+          return client;
+        }
+      }
     }
     
     const client = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
@@ -91,17 +105,17 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
           );
           
           // Recreate sessions with cached clients
-          const recreatedSessions = uniqueSessionData.map((sessionInfo: any) => {
-            const timestamp = new Date(sessionInfo.createdAt).getTime();
-            const storageKey = `wmh_session_${sessionInfo.user.id}_${timestamp}`;
-            const client = getCachedClient(storageKey);
-            
-            return {
-              ...sessionInfo,
-              supabaseClient: client,
-              createdAt: new Date(sessionInfo.createdAt)
-            };
-          });
+            const recreatedSessions = uniqueSessionData.map((sessionInfo: any) => {
+              const timestamp = new Date(sessionInfo.createdAt).getTime();
+              const storageKey = `wmh_session_${sessionInfo.user.id}_${timestamp}`;
+              const client = getCachedClient(storageKey, sessionInfo.user.id, timestamp);
+              
+              return {
+                ...sessionInfo,
+                supabaseClient: client,
+                createdAt: new Date(sessionInfo.createdAt)
+              };
+            });
           
           setSessions(recreatedSessions);
           
@@ -307,8 +321,16 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
         const timestamp = new Date(session.createdAt).getTime();
         const storageKey = `wmh_session_${session.user.id}_${timestamp}`;
         
-        // Remove from client cache
+        // Remove from client cache - key fix
         clientCache.current.delete(storageKey);
+        
+        // Also remove any other cache entries for this user (cleanup orphaned entries)
+        const userPattern = `wmh_session_${session.user.id}_`;
+        for (const key of clientCache.current.keys()) {
+          if (key.startsWith(userPattern)) {
+            clientCache.current.delete(key);
+          }
+        }
         
         // Clean up all storage keys for this session
         Object.keys(localStorage).forEach(key => {

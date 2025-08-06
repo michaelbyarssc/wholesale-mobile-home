@@ -30,7 +30,7 @@ import { SocialProofBanner } from '@/components/SocialProofBanner';
 import { useUserRoles } from '@/hooks/useUserRoles';
 import { MultiUserDebugPanel } from '@/components/debug/MultiUserDebugPanel';
 import { MultiUserSessionTest } from '@/components/test/MultiUserSessionTest';
-import { MultiUserInfrastructureTest } from '@/components/test/MultiUserInfrastructureTest';
+import { MultiUserStabilityTest } from '@/components/test/MultiUserStabilityTest';
 
 const Index = () => {
   console.log('Index component: Starting to render');
@@ -245,7 +245,7 @@ const Index = () => {
       <ChatWidget userId={user?.id} />
 
       {/* Development debugging panels */}
-      <MultiUserInfrastructureTest />
+      <MultiUserStabilityTest />
       <MultiUserDebugPanel />
       <MultiUserSessionTest />
 

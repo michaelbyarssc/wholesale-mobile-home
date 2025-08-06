@@ -29,6 +29,7 @@ import {
   formatDateTimeForUIDisplay,
   validateTimezoneAwareDate 
 } from '@/lib/timezone-utils';
+import { useUserRoles } from '@/hooks/useUserRoles';
 
 // Function to determine timezone based on delivery address
 const getTimezoneFromAddress = (address: string): string => {
@@ -253,6 +254,7 @@ const getStatusBadge = (status: string) => {
 };
 
 export const DeliveryManagement = () => {
+  const { isSuperAdmin } = useUserRoles();
   const [filter, setFilter] = useState<'all' | 'scheduled' | 'in_transit' | 'completed' | 'pending_payment' | 'factory_pickup_scheduled' | 'factory_pickup_in_progress' | 'factory_pickup_completed' | 'delivery_in_progress' | 'delivered' | 'cancelled' | 'delayed'>('all');
   const [selectedDelivery, setSelectedDelivery] = useState<Delivery | null>(null);
   
@@ -1355,7 +1357,7 @@ export const DeliveryManagement = () => {
       </div>
 
       <Tabs defaultValue="scheduling" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className={`grid w-full ${isSuperAdmin ? 'grid-cols-4' : 'grid-cols-3'}`}>
           <TabsTrigger value="scheduling" className="flex items-center gap-2">
             <CalendarIcon className="h-4 w-4" />
             Scheduling
@@ -1364,10 +1366,12 @@ export const DeliveryManagement = () => {
             <Truck className="h-4 w-4" />
             All Deliveries
           </TabsTrigger>
-          <TabsTrigger value="drivers" className="flex items-center gap-2">
-            <User className="h-4 w-4" />
-            Drivers
-          </TabsTrigger>
+          {isSuperAdmin && (
+            <TabsTrigger value="drivers" className="flex items-center gap-2">
+              <User className="h-4 w-4" />
+              Drivers
+            </TabsTrigger>
+          )}
           <TabsTrigger value="dashboard" className="flex items-center gap-2">
             <CalendarDays className="h-4 w-4" />
             Schedule Dashboard
@@ -1505,7 +1509,8 @@ export const DeliveryManagement = () => {
           </div>
         </TabsContent>
 
-        <TabsContent value="drivers" className="space-y-4">
+        {isSuperAdmin && (
+          <TabsContent value="drivers" className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
               <h4 className="text-md font-medium">Driver Management</h4>
@@ -1618,6 +1623,7 @@ export const DeliveryManagement = () => {
             </div>
           )}
         </TabsContent>
+        )}
 
         <TabsContent value="dashboard" className="space-y-4">
           <div className="space-y-4">

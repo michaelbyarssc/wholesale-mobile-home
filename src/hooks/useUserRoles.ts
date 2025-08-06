@@ -50,6 +50,18 @@ export const useUserRoles = (): RoleCheck => {
     setError(null);
 
     try {
+      // SECURITY: Validate current session matches requested user
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      if (!currentSession || currentSession.user.id !== userId) {
+        console.error('🚨 SECURITY: Role fetch attempted for different user', {
+          requestedUserId: userId,
+          sessionUserId: currentSession?.user?.id
+        });
+        setUserRoles([]);
+        setError('Session validation failed');
+        return;
+      }
+
       // SECURITY: Always fetch fresh role data - no caching as requested
       const { data: roleData, error: roleError } = await supabase
         .from('user_roles')
@@ -63,8 +75,12 @@ export const useUserRoles = (): RoleCheck => {
         return;
       }
 
-      // SECURITY: Log role fetch for audit trail
-      console.log(`[SECURITY] Role fetch for user ${userId}:`, roleData?.map(r => r.role) || []);
+      // SECURITY: Log role fetch for audit trail with session validation
+      console.log(`🔐 [SECURITY] Role fetch for user ${userId}:`, {
+        roles: roleData?.map(r => r.role) || [],
+        sessionEmail: currentSession.user.email,
+        sessionId: currentSession.access_token.slice(-10)
+      });
       
       setUserRoles(roleData || []);
     } catch (err) {

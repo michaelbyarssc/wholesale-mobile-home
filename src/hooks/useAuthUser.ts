@@ -12,27 +12,76 @@ export const useAuthUser = () => {
   const [userProfile, setUserProfile] = useState<{ first_name?: string } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Debug logging for auth state
-  console.log('useAuthUser: Current state', { 
-    userEmail: user?.email, 
-    sessionExists: !!session, 
-    profileExists: !!userProfile, 
-    isLoading 
+  // SECURITY: Enhanced debug logging for session tracking
+  console.log('🔐 useAuthUser: Current state', {
+    userId: user?.id,
+    userEmail: user?.email,
+    sessionUserId: session?.user?.id,
+    sessionUserEmail: session?.user?.email,
+    isLoading,
+    timestamp: new Date().toISOString()
   });
+
+  // SECURITY: Check for session user mismatch
+  if (user && session && user.id !== session.user.id) {
+    console.error('🚨 SECURITY ALERT: User ID mismatch detected!', {
+      userId: user.id,
+      sessionUserId: session.user.id,
+      userEmail: user.email,
+      sessionUserEmail: session.user.email
+    });
+    // Force logout on session mismatch
+    supabase.auth.signOut();
+  }
 
   useEffect(() => {
     let mounted = true;
     let initialCheckDone = false;
 
+    // SECURITY: Enhanced auth state change handler with validation
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      async (event, newSession) => {
         if (!mounted) return;
         
-        setSession(session);
-        setUser(session?.user ?? null);
-        
-        if (event === 'SIGNED_OUT') {
-          setUserProfile(null);
+        console.log('🔐 Auth state change:', {
+          event,
+          userId: newSession?.user?.id,
+          userEmail: newSession?.user?.email,
+          timestamp: new Date().toISOString()
+        });
+
+        switch (event) {
+          case 'SIGNED_IN':
+            if (newSession?.user) {
+              // SECURITY: Clear any existing state before setting new user
+              setUser(null);
+              setSession(null);
+              setUserProfile(null);
+              
+              // Set new user state
+              setUser(newSession.user);
+              setSession(newSession);
+            }
+            break;
+            
+          case 'SIGNED_OUT':
+            // SECURITY: Force clear all state
+            setUser(null);
+            setSession(null);
+            setUserProfile(null);
+            break;
+            
+          case 'TOKEN_REFRESHED':
+            if (newSession?.user) {
+              // SECURITY: Validate user hasn't changed during refresh
+              if (user && user.id !== newSession.user.id) {
+                console.error('🚨 SECURITY: User changed during token refresh!');
+                await supabase.auth.signOut();
+                return;
+              }
+              setSession(newSession);
+            }
+            break;
         }
         
         if (initialCheckDone) {
@@ -43,24 +92,46 @@ export const useAuthUser = () => {
 
     const checkAuth = async () => {
       try {
-        const { data: { session }, error } = await supabase.auth.getSession();
+        const { data: { session: initialSession }, error } = await supabase.auth.getSession();
         
         if (error) {
-          console.error('Error getting session:', error);
+          console.error('🚨 Auth initialization error:', error);
+          if (mounted) {
+            setUser(null);
+            setSession(null);
+            setUserProfile(null);
+            setIsLoading(false);
+          }
+          return;
         }
         
         if (!mounted) return;
         
-        setSession(session);
-        setUser(session?.user ?? null);
+        if (initialSession?.user) {
+          // SECURITY: Validate session integrity
+          const sessionUser = initialSession.user;
+          console.log('🔐 Setting initial auth state:', {
+            userId: sessionUser.id,
+            userEmail: sessionUser.email,
+            sessionId: initialSession.access_token.slice(-10)
+          });
+          
+          setUser(sessionUser);
+          setSession(initialSession);
+        } else {
+          setUser(null);
+          setSession(null);
+          setUserProfile(null);
+        }
         
         initialCheckDone = true;
         setIsLoading(false);
       } catch (error) {
-        console.error('Auth check error:', error);
+        console.error('🚨 Auth initialization failed:', error);
         if (mounted) {
-          setSession(null);
           setUser(null);
+          setSession(null);
+          setUserProfile(null);
           initialCheckDone = true;
           setIsLoading(false);
         }
@@ -76,8 +147,20 @@ export const useAuthUser = () => {
   }, []);
 
   const fetchUserProfile = useCallback(async (userId: string) => {
-    // Always fetch fresh profile data - no caching for security
+    if (!userId) {
+      setUserProfile(null);
+      return;
+    }
+
     try {
+      // SECURITY: Always verify user matches session
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      if (!currentSession || currentSession.user.id !== userId) {
+        console.error('🚨 SECURITY: Profile fetch attempted for different user');
+        setUserProfile(null);
+        return;
+      }
+
       const { data, error } = await supabase
         .from('profiles')
         .select('first_name')
@@ -108,6 +191,9 @@ export const useAuthUser = () => {
 
   const handleLogout = async () => {
     try {
+      console.log('🔐 Starting logout process...');
+      
+      // SECURITY: Force clear all local state immediately
       setUser(null);
       setSession(null);
       setUserProfile(null);
@@ -116,11 +202,22 @@ export const useAuthUser = () => {
       
       if (error) {
         console.error('Logout error:', error);
+      } else {
+        console.log('🔐 Logout successful');
+      }
+      
+      // SECURITY: Clear any cached data and force page refresh
+      if (typeof window !== 'undefined') {
+        // Clear localStorage
+        localStorage.clear();
+        // Clear sessionStorage
+        sessionStorage.clear();
       }
       
       navigate('/');
     } catch (error) {
       console.error('Error during logout:', error);
+      // Even if logout fails, clear local state and redirect
       setUser(null);
       setSession(null);
       setUserProfile(null);
@@ -137,24 +234,53 @@ export const useAuthUser = () => {
 
   // Force refresh auth state - useful for clearing cache issues
   const forceRefreshAuth = useCallback(async () => {
-    console.log('useAuthUser: Force refreshing auth state...');
     try {
-      const { data: { session }, error } = await supabase.auth.getSession();
+      console.log('🔐 Force refreshing auth state...');
+      setIsLoading(true);
+      
+      // SECURITY: Get fresh session and validate
+      const { data: { session: freshSession }, error } = await supabase.auth.getSession();
+      
       if (error) {
-        console.error('Error force refreshing session:', error);
+        console.error('🚨 Error refreshing auth:', error);
+        setUser(null);
+        setSession(null);
+        setUserProfile(null);
+        setIsLoading(false);
         return;
       }
       
-      setSession(session);
-      setUser(session?.user ?? null);
-      
-      if (session?.user) {
-        await fetchUserProfile(session.user.id);
+      if (freshSession?.user) {
+        // SECURITY: Check if user changed
+        if (user && user.id !== freshSession.user.id) {
+          console.error('🚨 SECURITY: Different user detected during refresh!');
+          await handleLogout();
+          return;
+        }
+        
+        console.log('🔐 Auth refresh successful:', {
+          userId: freshSession.user.id,
+          userEmail: freshSession.user.email
+        });
+        
+        setUser(freshSession.user);
+        setSession(freshSession);
+        await fetchUserProfile(freshSession.user.id);
+      } else {
+        console.log('🔐 No session found during refresh');
+        setUser(null);
+        setSession(null);
+        setUserProfile(null);
       }
+      setIsLoading(false);
     } catch (error) {
-      console.error('Error in forceRefreshAuth:', error);
+      console.error('🚨 Error in forceRefreshAuth:', error);
+      setUser(null);
+      setSession(null);
+      setUserProfile(null);
+      setIsLoading(false);
     }
-  }, [fetchUserProfile]);
+  }, [user, fetchUserProfile]);
 
   return {
     user,

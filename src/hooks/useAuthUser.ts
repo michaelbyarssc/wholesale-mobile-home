@@ -12,6 +12,14 @@ export const useAuthUser = () => {
   const [userProfile, setUserProfile] = useState<{ first_name?: string } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Debug logging for auth state
+  console.log('useAuthUser: Current state', { 
+    userEmail: user?.email, 
+    sessionExists: !!session, 
+    profileExists: !!userProfile, 
+    isLoading 
+  });
+
   useEffect(() => {
     let mounted = true;
     let initialCheckDone = false;
@@ -127,12 +135,34 @@ export const useAuthUser = () => {
     }
   }, [user, fetchUserProfile]);
 
+  // Force refresh auth state - useful for clearing cache issues
+  const forceRefreshAuth = useCallback(async () => {
+    console.log('useAuthUser: Force refreshing auth state...');
+    try {
+      const { data: { session }, error } = await supabase.auth.getSession();
+      if (error) {
+        console.error('Error force refreshing session:', error);
+        return;
+      }
+      
+      setSession(session);
+      setUser(session?.user ?? null);
+      
+      if (session?.user) {
+        await fetchUserProfile(session.user.id);
+      }
+    } catch (error) {
+      console.error('Error in forceRefreshAuth:', error);
+    }
+  }, [fetchUserProfile]);
+
   return {
     user,
     session,
     userProfile,
     isLoading,
     handleLogout,
-    handleProfileUpdated
+    handleProfileUpdated,
+    forceRefreshAuth
   };
 };

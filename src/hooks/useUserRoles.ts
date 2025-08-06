@@ -16,6 +16,7 @@ export interface RoleCheck {
   isLoading: boolean;
   error: string | null;
   verifyAdminAccess: () => Promise<boolean>;
+  forceRefreshRoles: () => Promise<void>;
 }
 
 /**
@@ -28,6 +29,15 @@ export const useUserRoles = (): RoleCheck => {
   const [userRoles, setUserRoles] = useState<UserRole[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Debug logging for role state
+  console.log('useUserRoles: Current state', { 
+    userEmail: user?.email, 
+    userRoles: userRoles.map(r => r.role), 
+    authLoading, 
+    isLoading, 
+    error 
+  });
 
   const fetchUserRoles = useCallback(async (userId: string) => {
     if (!userId) {
@@ -113,6 +123,13 @@ export const useUserRoles = (): RoleCheck => {
     }
   }, [user, isAdmin]);
 
+  // Force refresh roles - useful for clearing cache issues
+  const forceRefreshRoles = useCallback(async () => {
+    if (!user) return;
+    console.log('useUserRoles: Force refreshing roles...');
+    await fetchUserRoles(user.id);
+  }, [user, fetchUserRoles]);
+
   return {
     isAdmin,
     isSuperAdmin,
@@ -120,7 +137,8 @@ export const useUserRoles = (): RoleCheck => {
     userRoles,
     isLoading: authLoading || isLoading,
     error,
-    verifyAdminAccess
+    verifyAdminAccess,
+    forceRefreshRoles
   };
 };
 

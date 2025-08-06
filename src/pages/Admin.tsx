@@ -27,13 +27,34 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 const Admin = () => {
-  const { user, session, isLoading: authLoading, handleLogout } = useAuthUser();
-  const { isAdmin, isSuperAdmin, isLoading: rolesLoading } = useUserRoles();
+  const { user, session, isLoading: authLoading, handleLogout, forceRefreshAuth } = useAuthUser();
+  const { isAdmin, isSuperAdmin, isLoading: rolesLoading, userRoles, forceRefreshRoles } = useUserRoles();
   const [activeTab, setActiveTab] = useState('users');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+
+  // Enhanced debug logging for Admin component
+  console.log('Admin: Auth & Role State', {
+    userEmail: user?.email,
+    sessionEmail: session?.user?.email,
+    isAdmin,
+    isSuperAdmin,
+    userRoles: userRoles.map(r => r.role),
+    authLoading,
+    rolesLoading,
+    activeTab
+  });
+
+  // Force refresh auth and roles on mount to handle cache issues
+  useEffect(() => {
+    if (!authLoading && !rolesLoading && user) {
+      console.log('Admin: Forcing refresh to clear any cache issues...');
+      forceRefreshAuth();
+      forceRefreshRoles();
+    }
+  }, []); // Only run once on mount
 
   // Initialize default tab based on role (ProtectedRoute already handles auth)
   useEffect(() => {
@@ -237,6 +258,25 @@ const Admin = () => {
               <div className="hidden lg:block h-8 w-px bg-border" />
               
               <NotificationCenter />
+              
+              {/* Debug: Force Refresh Button */}
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={async () => {
+                  console.log('Manual refresh triggered');
+                  await forceRefreshAuth();
+                  await forceRefreshRoles();
+                  toast({
+                    title: "Refreshed",
+                    description: "Auth and roles have been refreshed. Check console for debug info.",
+                  });
+                }}
+                className="hidden sm:flex text-xs"
+              >
+                🔄 Refresh
+              </Button>
+              
               <Button 
                 variant="outline" 
                 size="sm"

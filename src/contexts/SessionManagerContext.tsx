@@ -281,16 +281,28 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
         broadcastChannelRef.current.postMessage({ type: 'session_change' });
       }
     } catch (error) {
-      console.error('Error broadcasting session change:', error);
+      // Silently handle closed broadcast channel errors
+      if (error instanceof Error && error.name !== 'InvalidStateError') {
+        console.error('Error broadcasting session change:', error);
+      }
     }
   }, []);
 
   const addSession = useCallback(async (user: User, session: Session): Promise<string> => {
-    // Check for existing session for this user first (deduplication)
+    // Enhanced session deduplication with storage key consistency
     const existingSession = sessions.find(s => s.user.id === user.id);
     if (existingSession) {
-      console.log('🔐 Session already exists for user:', user.email, 'switching to existing');
+      console.log('🔐 Session already exists for user:', user.email, 'updating existing session');
+      
+      // Update the existing session with fresh auth data
+      const updatedSessions = sessions.map(s => 
+        s.id === existingSession.id 
+          ? { ...s, session, user }
+          : s
+      );
+      setSessions(updatedSessions);
       setActiveSessionId(existingSession.id);
+      broadcastSessionChange();
       return existingSession.id;
     }
     

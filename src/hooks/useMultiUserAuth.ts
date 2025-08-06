@@ -32,20 +32,23 @@ export const useMultiUserAuth = () => {
       initialized = true;
       
       try {
-        // Set up auth state listener first - stable callback without dependencies
+        // Set up auth state listener with debouncing to prevent conflicts
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
-          async (event, session) => {
-            if (event === 'SIGNED_IN' && session?.user) {
-              // Use a separate check to avoid dependency on sessions array
-              const storedSessions = localStorage.getItem('wmh_sessions');
-              const existingSessions = storedSessions ? JSON.parse(storedSessions) : [];
-              const hasExistingSession = existingSessions.some((s: any) => s.user.id === session.user.id);
-              
-              if (!hasExistingSession) {
-                console.log('🔐 Auth state change: adding new session for user:', session.user.email);
-                await addSession(session.user, session);
+          (event, session) => {
+            console.log('🔐 Auth state change:', event, session?.user?.email);
+            
+            // Debounce auth events to prevent rapid session creation
+            setTimeout(async () => {
+              if (event === 'SIGNED_IN' && session?.user) {
+                try {
+                  await addSession(session.user, session);
+                } catch (error) {
+                  console.error('🔐 Error adding session on auth change:', error);
+                }
+              } else if (event === 'SIGNED_OUT') {
+                console.log('🔐 User signed out via auth change');
               }
-            }
+            }, 500); // 500ms debounce
           }
         );
         

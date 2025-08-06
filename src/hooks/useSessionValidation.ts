@@ -7,7 +7,7 @@ export const useSessionValidation = () => {
   // Validation state to prevent race conditions
   const validationInProgress = useRef<Set<string>>(new Set());
 
-  // Validate session integrity with conflict prevention
+  // Enhanced session validation with graceful error handling
   const validateSession = useCallback(async (sessionId: string) => {
     // Prevent concurrent validation of same session
     if (validationInProgress.current.has(sessionId)) {
@@ -25,10 +25,10 @@ export const useSessionValidation = () => {
     validationInProgress.current.add(sessionId);
     
     try {
-      // Quick timeout to prevent hanging validation
+      // Shorter timeout to prevent hanging and faster recovery
       const validationPromise = session.supabaseClient.auth.getUser();
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Validation timeout')), 3000)
+        setTimeout(() => reject(new Error('Validation timeout')), 1500)
       );
       
       const { data: { user }, error } = await Promise.race([
@@ -37,18 +37,20 @@ export const useSessionValidation = () => {
       ]) as any;
       
       if (error || !user) {
-        console.warn('🔐 Invalid session detected, scheduling removal:', sessionId);
-        // Schedule removal to avoid race conditions during validation
-        setTimeout(() => removeSession(sessionId), 100);
+        // Don't remove session immediately, just log the issue
+        console.warn('🔐 Session validation failed, user may need to re-login:', sessionId);
         return false;
       }
       
       console.log('🔐 Session validation successful:', sessionId);
       return true;
     } catch (error) {
+      // Handle timeout errors more gracefully
+      if (error instanceof Error && error.message === 'Validation timeout') {
+        console.warn('🔐 Session validation timeout (network issue):', sessionId);
+        return true; // Assume valid on timeout to prevent logout loops
+      }
       console.error('🔐 Error validating session:', error);
-      // Schedule removal on error
-      setTimeout(() => removeSession(sessionId), 100);
       return false;
     } finally {
       // Always clean up validation state
@@ -56,7 +58,7 @@ export const useSessionValidation = () => {
     }
   }, [sessions, removeSession]);
 
-  // Smart periodic validation - less aggressive, more efficient
+  // Optimized periodic validation - much less aggressive
   useEffect(() => {
     let validationTimer: NodeJS.Timeout | null = null;
     let lastValidationTime = 0;
@@ -65,13 +67,13 @@ export const useSessionValidation = () => {
       const now = Date.now();
       
       // Only validate if enough time has passed and we have an active session
-      if (sessions.length > 0 && activeSessionId && (now - lastValidationTime) > 300000) { // 5 minutes
+      if (sessions.length > 0 && activeSessionId && (now - lastValidationTime) > 900000) { // 15 minutes
         try {
           const isValid = await validateSession(activeSessionId);
           lastValidationTime = now;
           
           if (!isValid) {
-            console.warn('🔐 Active session invalid, sessions may need refresh');
+            console.warn('🔐 Active session may need refresh');
           } else {
             console.log('🔐 Active session validation passed');
           }
@@ -81,13 +83,9 @@ export const useSessionValidation = () => {
       }
     };
 
-    // Initial validation on mount (if session exists and hasn't been validated recently)
-    if (activeSessionId && sessions.length > 0) {
-      setTimeout(smartValidation, 1000); // Delay initial validation by 1 second
-    }
-
-    // Set up periodic validation with longer intervals
-    validationTimer = setInterval(smartValidation, 10 * 60 * 1000); // Every 10 minutes
+    // No initial validation on mount - wait for first interval
+    // Set up periodic validation with much longer intervals
+    validationTimer = setInterval(smartValidation, 15 * 60 * 1000); // Every 15 minutes
     
     return () => {
       if (validationTimer) {

@@ -32,7 +32,11 @@ export const useSessionAwareShoppingCart = () => {
 
   // Helper function to get session-specific localStorage keys
   const getStorageKey = (baseKey: string) => {
-    return activeSession ? `${baseKey}_session_${activeSession.id}` : `${baseKey}_guest`;
+    if (activeSession) {
+      // Use user ID for consistent cart storage across sessions
+      return `${baseKey}_user_${activeSession.user.id}`;
+    }
+    return `${baseKey}_guest`;
   };
 
   // Load cart data from localStorage on session change

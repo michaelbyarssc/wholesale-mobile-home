@@ -1,6 +1,32 @@
 import { useCallback } from 'react';
 
 export const useStorageCorruptionRecovery = () => {
+  
+  // Clean up orphaned storage keys
+  const cleanupOrphanedStorage = useCallback(() => {
+    try {
+      const wmhKeys = Object.keys(localStorage).filter(key => key.startsWith('wmh_'));
+      const sessionsData = localStorage.getItem('wmh_sessions');
+      
+      if (sessionsData) {
+        const sessions = JSON.parse(sessionsData);
+        const validUserIds = sessions.map((s: any) => s.user.id);
+        
+        // Remove storage keys for users not in current sessions
+        wmhKeys.forEach(key => {
+          if (key.startsWith('wmh_session_') || key.startsWith('wmh_user_')) {
+            const userId = key.split('_')[2];
+            if (userId && !validUserIds.includes(userId)) {
+              localStorage.removeItem(key);
+              console.log('🔐 Cleaned up orphaned storage key:', key);
+            }
+          }
+        });
+      }
+    } catch (error) {
+      console.error('🔐 Error cleaning up orphaned storage:', error);
+    }
+  }, []);
 
   // Check for and recover from storage corruption
   const checkStorageIntegrity = useCallback(() => {
@@ -44,5 +70,8 @@ export const useStorageCorruptionRecovery = () => {
   }, []);
 
 
-  return { checkStorageIntegrity };
+  return { 
+    checkStorageIntegrity,
+    cleanupOrphanedStorage 
+  };
 };

@@ -13,7 +13,11 @@ export const useSessionAwareWishlist = () => {
 
   // Helper function to get session-specific localStorage keys
   const getStorageKey = (baseKey: string) => {
-    return activeSession ? `${baseKey}_session_${activeSession.id}` : `${baseKey}_guest`;
+    if (activeSession) {
+      // Use user ID for consistent wishlist storage across sessions
+      return `${baseKey}_user_${activeSession.user.id}`;
+    }
+    return `${baseKey}_guest`;
   };
 
   // Load wishlist on session change

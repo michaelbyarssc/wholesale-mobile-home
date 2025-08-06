@@ -35,8 +35,8 @@ export const useSessionValidation = () => {
       }
     };
 
-    // Validate sessions every 5 minutes
-    const interval = setInterval(validateAllSessions, 5 * 60 * 1000);
+  // Validate sessions every 10 minutes (less aggressive)
+    const interval = setInterval(validateAllSessions, 10 * 60 * 1000);
     
     // Validate on mount
     validateAllSessions();

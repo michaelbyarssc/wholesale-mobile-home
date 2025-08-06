@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { User, Session } from '@supabase/supabase-js';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/integrations/supabase/types';
+import { useStorageCorruptionRecovery } from '@/hooks/useStorageCorruptionRecovery';
 
 const SUPABASE_URL = "https://vgdreuwmisludqxphsph.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZnZHJldXdtaXNsdWRxeHBoc3BoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA3MDk2OTgsImV4cCI6MjA2NjI4NTY5OH0.gnJ83GgBWV4tb-cwWJXY0pPG2bGAyTK3T2IojP4llR8";
@@ -40,10 +41,21 @@ export const useSessionManager = () => {
 export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [sessions, setSessions] = useState<SessionData[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const { checkStorageIntegrity, cleanupOrphanedStorage } = useStorageCorruptionRecovery();
 
   // Initialize from localStorage on mount
   useEffect(() => {
     const loadSessions = () => {
+      // Check storage integrity first
+      const isIntegrityOk = checkStorageIntegrity();
+      if (!isIntegrityOk) {
+        console.log('🔐 Storage corruption detected during initialization');
+        return;
+      }
+
+      // Clean up orphaned storage
+      cleanupOrphanedStorage();
+
       try {
         const storedSessions = localStorage.getItem('wmh_sessions');
         const storedActiveId = localStorage.getItem('wmh_active_session');
@@ -52,9 +64,13 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
           const sessionData = JSON.parse(storedSessions);
           // Recreate sessions with fresh Supabase clients
           const recreatedSessions = sessionData.map((sessionInfo: any) => {
+            // Generate proper storage key for recreated session
+            const timestamp = new Date(sessionInfo.createdAt).getTime();
+            const storageKey = `wmh_session_${sessionInfo.user.id}_${timestamp}`;
+            
             const client = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
               auth: {
-                storageKey: `wmh_user_${sessionInfo.user.id}`, // Use user ID for consistency
+                storageKey: storageKey,
                 storage: window.localStorage
               }
             });
@@ -117,9 +133,13 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
           try {
             const sessionData = JSON.parse(storedSessions);
             const recreatedSessions = sessionData.map((sessionInfo: any) => {
+              // Generate proper storage key for synced session
+              const timestamp = new Date(sessionInfo.createdAt).getTime();
+              const storageKey = `wmh_session_${sessionInfo.user.id}_${timestamp}`;
+              
               const client = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
                 auth: {
-                  storageKey: `wmh_user_${sessionInfo.user.id}`,
+                  storageKey: storageKey,
                   storage: window.localStorage
                 }
               });
@@ -151,9 +171,13 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
           try {
             const sessionData = JSON.parse(storedSessions);
             const recreatedSessions = sessionData.map((sessionInfo: any) => {
+              // Generate proper storage key for broadcast synced session
+              const timestamp = new Date(sessionInfo.createdAt).getTime();
+              const storageKey = `wmh_session_${sessionInfo.user.id}_${timestamp}`;
+              
               const client = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
                 auth: {
-                  storageKey: `wmh_user_${sessionInfo.user.id}`,
+                  storageKey: storageKey,
                   storage: window.localStorage
                 }
               });
@@ -196,12 +220,16 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
   }, []);
 
   const addSession = useCallback(async (user: User, session: Session): Promise<string> => {
-    const sessionId = `session_${user.id}_${Date.now()}`;
+    const timestamp = Date.now();
+    const sessionId = `session_${user.id}_${timestamp}`;
     
-    // Create session-specific Supabase client with USER ID as storage key for proper isolation
+    // Use unique storage key combining user ID and timestamp for proper isolation
+    const storageKey = `wmh_session_${user.id}_${timestamp}`;
+    
+    // Create session-specific Supabase client with unique storage key
     const client = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
       auth: {
-        storageKey: `wmh_user_${user.id}`, // Use user ID instead of session ID
+        storageKey: storageKey,
         storage: window.localStorage
       }
     });
@@ -235,9 +263,14 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
     };
 
     setSessions(prev => {
-      // Remove existing session for same user if exists
-      const filtered = prev.filter(s => s.user.id !== user.id);
-      return [...filtered, newSession];
+      // Check if session already exists to prevent duplicates
+      const existingSession = prev.find(s => s.user.id === user.id);
+      if (existingSession) {
+        console.log('🔐 Session already exists for user:', user.email, 'switching to existing');
+        setActiveSessionId(existingSession.id);
+        return prev;
+      }
+      return [...prev, newSession];
     });
 
     setActiveSessionId(sessionId);
@@ -251,8 +284,20 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
     setSessions(prev => {
       const session = prev.find(s => s.id === sessionId);
       if (session) {
-        // Clean up user-specific storage
-        localStorage.removeItem(`wmh_user_${session.user.id}`);
+        // Clean up session-specific storage using the correct key format
+        const storageKeyPrefix = `wmh_session_${session.user.id}_`;
+        
+        // Find and remove all storage keys for this session
+        Object.keys(localStorage).forEach(key => {
+          if (key.startsWith(storageKeyPrefix)) {
+            const sessionIdFromKey = key.split('_')[3];
+            if (sessionId.includes(sessionIdFromKey)) {
+              localStorage.removeItem(key);
+              console.log('🔐 Cleaned up storage key:', key);
+            }
+          }
+        });
+        
         console.log('🔐 Removed session:', sessionId, 'for user:', session.user.email);
       }
       return prev.filter(s => s.id !== sessionId);
@@ -285,14 +330,20 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
 
   const clearAllSessions = useCallback(() => {
     sessions.forEach(session => {
-      localStorage.removeItem(`wmh_user_${session.user.id}`);
+      // Clean up all session-specific storage
+      const storageKeyPrefix = `wmh_session_${session.user.id}_`;
+      Object.keys(localStorage).forEach(key => {
+        if (key.startsWith(storageKeyPrefix)) {
+          localStorage.removeItem(key);
+        }
+      });
     });
     setSessions([]);
     setActiveSessionId(null);
     localStorage.removeItem('wmh_sessions');
     localStorage.removeItem('wmh_active_session');
     broadcastSessionChange();
-    console.log('🔐 Cleared all sessions');
+    console.log('🔐 Cleared all sessions and storage');
   }, [sessions, broadcastSessionChange]);
 
   const getSessionClient = useCallback((sessionId?: string): SupabaseClient<Database> | null => {

@@ -26,18 +26,12 @@ export const useMultiUserAuth = () => {
   useEffect(() => {
     const initializeAuth = async () => {
       try {
-        // Wait for session manager to load first
-        await new Promise(resolve => setTimeout(resolve, 100));
-        
-        // If no active session, try to get session from default client
-        if (!activeSession) {
+        // Only initialize once when sessions array is stable
+        if (sessions.length === 0 && !activeSession) {
           const { data: { session } } = await supabase.auth.getSession();
           if (session?.user) {
-            // Check if this user already has a session to prevent duplicates
-            const existingSession = sessions.find(s => s.user.id === session.user.id);
-            if (!existingSession) {
-              await addSession(session.user, session);
-            }
+            console.log('🔐 Initializing auth with existing session for user:', session.user.email);
+            await addSession(session.user, session);
           }
         }
       } catch (error) {
@@ -47,8 +41,10 @@ export const useMultiUserAuth = () => {
       }
     };
 
-    initializeAuth();
-  }, [activeSession, addSession, sessions]);
+    // Debounce initialization to prevent race conditions
+    const timer = setTimeout(initializeAuth, 50);
+    return () => clearTimeout(timer);
+  }, []); // Only run once on mount
 
   const signIn = useCallback(async (email: string, password: string) => {
     setIsLoading(true);

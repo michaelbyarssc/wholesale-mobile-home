@@ -28,7 +28,7 @@ const Auth = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    console.log('AUTH: useEffect running - rolesLoading:', rolesLoading, 'isAdmin:', isAdmin);
+    console.log('🚨 AUTH PAGE: Emergency session isolation check - rolesLoading:', rolesLoading, 'isAdmin:', isAdmin);
     
     // Check if this is a password reset flow
     const type = searchParams.get('type');
@@ -50,65 +50,126 @@ const Auth = () => {
       console.log('Driver context detected for password reset');
     }
 
-    // Check if current user is admin and get their profile
-    const checkAdminStatus = async () => {
-      console.log('AUTH: Checking admin status...');
-      const { data: { user } } = await supabase.auth.getUser();
+    // EMERGENCY: Session validation with strict user checking
+    const emergencySessionCheck = async () => {
+      console.log('🚨 AUTH PAGE: Starting emergency session validation...');
       
-      if (user) {
-        console.log('AUTH: User found:', user.id);
-        setCurrentUser(user);
+      try {
+        const { data: { user }, error } = await supabase.auth.getUser();
         
-        // Get user profile
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('first_name, last_name')
-          .eq('user_id', user.id)
-          .single();
-
-        if (profileData) {
-          setUserProfile(profileData);
+        if (error) {
+          console.error('🚨 AUTH PAGE: Error getting user:', error);
+          setCheckingAdminStatus(false);
+          return;
         }
-
-        // CRITICAL: Only redirect if roles are fully loaded
-        console.log('AUTH: Roles loading status:', rolesLoading, 'isAdmin:', isAdmin);
-        if (!rolesLoading) {
-          console.log('AUTH: Roles loaded, redirecting...');
-          if (isAdmin) {
-            console.log('AUTH: Redirecting admin to /admin');
-            navigate('/admin');
-            return;
-          } else {
-            console.log('AUTH: Redirecting regular user to /');
-            navigate('/');
+        
+        if (user) {
+          console.log('🚨 AUTH PAGE: User found:', {
+            id: user.id,
+            email: user.email,
+            timestamp: new Date().toISOString()
+          });
+          setCurrentUser(user);
+          
+          // EMERGENCY: Double-check session integrity
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.user && session.user.id !== user.id) {
+            console.error('🚨 AUTH PAGE: CRITICAL SESSION MISMATCH!', {
+              getUserId: user.id,
+              getUserEmail: user.email,
+              sessionUserId: session.user.id,
+              sessionUserEmail: session.user.email
+            });
+            
+            // Force complete logout and clear
+            await supabase.auth.signOut();
+            localStorage.clear();
+            sessionStorage.clear();
+            window.location.href = '/auth';
             return;
           }
+          
+          // Get user profile with validation
+          const { data: profileData, error: profileError } = await supabase
+            .from('profiles')
+            .select('first_name, last_name')
+            .eq('user_id', user.id)
+            .single();
+
+          if (profileError) {
+            console.error('🚨 AUTH PAGE: Profile fetch error:', profileError);
+          } else if (profileData) {
+            console.log('🚨 AUTH PAGE: Profile loaded:', {
+              firstName: profileData.first_name,
+              lastName: profileData.last_name,
+              userId: user.id
+            });
+            setUserProfile(profileData);
+          }
+
+          // CRITICAL: Only redirect if roles are fully loaded AND no session mismatch
+          console.log('🚨 AUTH PAGE: Role check - rolesLoading:', rolesLoading, 'isAdmin:', isAdmin);
+          if (!rolesLoading) {
+            console.log('🚨 AUTH PAGE: Roles loaded, safe to redirect...');
+            
+            // Add small delay to prevent redirect loop
+            setTimeout(() => {
+              if (isAdmin) {
+                console.log('🚨 AUTH PAGE: Redirecting admin to /admin');
+                navigate('/admin');
+              } else {
+                console.log('🚨 AUTH PAGE: Redirecting regular user to /');
+                navigate('/');
+              }
+            }, 100);
+            return;
+          } else {
+            console.log('🚨 AUTH PAGE: Roles still loading, waiting...');
+          }
         } else {
-          console.log('AUTH: Roles still loading, waiting...');
+          console.log('🚨 AUTH PAGE: No user found - staying on auth page');
         }
-      } else {
-        console.log('AUTH: No user found');
+        
+        setCheckingAdminStatus(false);
+      } catch (error) {
+        console.error('🚨 AUTH PAGE: Emergency session check failed:', error);
+        setCheckingAdminStatus(false);
       }
-      
-      // Set checking status to false
-      setCheckingAdminStatus(false);
     };
 
-    checkAdminStatus();
+    emergencySessionCheck();
 
-    // Listen for auth changes and redirect appropriately
+    // EMERGENCY: Enhanced auth state listener with strict validation
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('AUTH: Auth state changed:', event, 'rolesLoading:', rolesLoading, 'isAdmin:', isAdmin);
+      console.log('🚨 AUTH PAGE: Auth state changed:', {
+        event,
+        hasSession: !!session,
+        userId: session?.user?.id,
+        userEmail: session?.user?.email,
+        rolesLoading,
+        isAdmin,
+        timestamp: new Date().toISOString()
+      });
       
-      if (session?.user && !rolesLoading) {
-        console.log('AUTH: User authenticated and roles loaded, redirecting...');
-        if (isAdmin) {
-          console.log('AUTH: Auth change - redirecting admin to /admin');
-          navigate('/admin');
-        } else {
-          console.log('AUTH: Auth change - redirecting regular user to /');
-          navigate('/');
-        }
+      // Prevent redirect loops by only redirecting on successful sign in
+      if (event === 'SIGNED_IN' && session?.user && !rolesLoading) {
+        console.log('🚨 AUTH PAGE: User authenticated and roles loaded, safe to redirect...');
+        
+        // Add delay to prevent redirect loop
+        setTimeout(() => {
+          if (isAdmin) {
+            console.log('🚨 AUTH PAGE: Auth change - redirecting admin to /admin');
+            navigate('/admin');
+          } else {
+            console.log('🚨 AUTH PAGE: Auth change - redirecting regular user to /');
+            navigate('/');
+          }
+        }, 100);
+      } else if (event === 'SIGNED_OUT') {
+        console.log('🚨 AUTH PAGE: User signed out - staying on auth page');
+        setCurrentUser(null);
+        setUserProfile(null);
+        setCheckingAdminStatus(false);
       }
     });
 

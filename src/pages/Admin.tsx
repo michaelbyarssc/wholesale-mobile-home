@@ -27,7 +27,7 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 const Admin = () => {
-  const { user, isLoading: authLoading, handleLogout } = useAuthUser();
+  const { user, session, isLoading: authLoading, handleLogout } = useAuthUser();
   const { isAdmin, isSuperAdmin, isLoading: rolesLoading } = useUserRoles();
   const [activeTab, setActiveTab] = useState('users');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -200,7 +200,7 @@ const Admin = () => {
                       <div className="mt-3 p-3 bg-muted/50 rounded-lg">
                         <p className="text-xs text-muted-foreground">Signed in as</p>
                         <p className="text-sm font-medium truncate">
-                          {user?.email} • {isSuperAdmin ? 'Super Admin' : 'Admin'}
+                          {user?.email || session?.user?.email} • {isSuperAdmin ? 'Super Admin' : 'Admin'}
                         </p>
                       </div>
                     </div>
@@ -226,7 +226,7 @@ const Admin = () => {
               {/* User Info - Desktop */}
               <div className="hidden lg:flex flex-col items-end text-right min-w-0">
                 <p className="text-sm font-medium text-foreground truncate max-w-[200px]">
-                  {user?.email}
+                  {user?.email || session?.user?.email}
                 </p>
                 <p className="text-xs text-muted-foreground">
                   {isSuperAdmin ? 'Super Admin' : 'Admin'}

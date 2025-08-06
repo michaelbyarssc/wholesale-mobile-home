@@ -279,12 +279,41 @@ export const DeliveryManagement = () => {
       isAdmin, 
       userRoles: userRoles.map(r => r.role),
       sessionMatch: authUser?.id === session?.user?.id,
+      canManageDrivers: isSuperAdmin && authUser && session && authUser.id === session.user.id,
+      canViewScheduleDashboard: isSuperAdmin && authUser && session && authUser.id === session.user.id,
       timestamp: new Date().toISOString()
     });
+    
+    // Log warning if admin tries to access super-admin features
+    if (isAdmin && !isSuperAdmin) {
+      console.warn('⚠️ Admin user accessing delivery management (limited access)', {
+        userEmail: authUser?.email,
+        availableTabs: ['Scheduling', 'All Deliveries']
+      });
+    }
   }, [isSuperAdmin, isAdmin, userRoles, authUser, session]);
   
-  // SECURITY: Only super admins with valid session can manage drivers
+  // SECURITY: Session validation with forced logout on mismatch
+  React.useEffect(() => {
+    if (authUser && session) {
+      if (authUser.id !== session.user.id || authUser.email !== session.user.email) {
+        console.error('🚨 CRITICAL SECURITY: Session/User mismatch detected!', {
+          authUserId: authUser.id,
+          sessionUserId: session.user.id,
+          authEmail: authUser.email,
+          sessionEmail: session.user.email
+        });
+        // Force logout to prevent session hijacking
+        supabase.auth.signOut();
+        window.location.href = '/auth';
+        return;
+      }
+    }
+  }, [authUser, session]);
+
+  // SECURITY: Only super admins with valid session can manage drivers and schedule dashboard
   const canManageDrivers = isSuperAdmin && authUser && session && authUser.id === session.user.id;
+  const canViewScheduleDashboard = isSuperAdmin && authUser && session && authUser.id === session.user.id;
   
   const [filter, setFilter] = useState<'all' | 'scheduled' | 'in_transit' | 'completed' | 'pending_payment' | 'factory_pickup_scheduled' | 'factory_pickup_in_progress' | 'factory_pickup_completed' | 'delivery_in_progress' | 'delivered' | 'cancelled' | 'delayed'>('all');
   const [selectedDelivery, setSelectedDelivery] = useState<Delivery | null>(null);
@@ -1388,7 +1417,7 @@ export const DeliveryManagement = () => {
       </div>
 
       <Tabs defaultValue="scheduling" className="space-y-4">
-        <TabsList className={`grid w-full ${isSuperAdmin ? 'grid-cols-4' : 'grid-cols-3'}`}>
+        <TabsList className={`grid w-full ${isSuperAdmin ? 'grid-cols-4' : 'grid-cols-2'}`}>
           <TabsTrigger value="scheduling" className="flex items-center gap-2">
             <CalendarIcon className="h-4 w-4" />
             Scheduling
@@ -1397,16 +1426,18 @@ export const DeliveryManagement = () => {
             <Truck className="h-4 w-4" />
             All Deliveries
           </TabsTrigger>
-          {isSuperAdmin && (
+          {canManageDrivers && (
             <TabsTrigger value="drivers" className="flex items-center gap-2">
               <User className="h-4 w-4" />
               Drivers
             </TabsTrigger>
           )}
-          <TabsTrigger value="dashboard" className="flex items-center gap-2">
-            <CalendarDays className="h-4 w-4" />
-            Schedule Dashboard
-          </TabsTrigger>
+          {canViewScheduleDashboard && (
+            <TabsTrigger value="dashboard" className="flex items-center gap-2">
+              <CalendarDays className="h-4 w-4" />
+              Schedule Dashboard
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="scheduling" className="space-y-4">

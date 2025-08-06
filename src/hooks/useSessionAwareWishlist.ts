@@ -12,22 +12,22 @@ export const useSessionAwareWishlist = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   // Helper function to get session-specific localStorage keys
-  const getStorageKey = (baseKey: string) => {
+  const getStorageKey = useCallback((baseKey: string) => {
     if (activeSession) {
-      // Use user ID for consistent wishlist storage across sessions
+      // Use user ID for consistent wishlist storage across all sessions for same user
       return `${baseKey}_user_${activeSession.user.id}`;
     }
     return `${baseKey}_guest`;
-  };
+  }, [activeSession?.user.id]);
 
-  // Load wishlist on session change
+  // Load wishlist on user change (not session change)
   useEffect(() => {
     if (activeSession?.user) {
       loadUserWishlist();
     } else {
       loadGuestWishlist();
     }
-  }, [activeSession?.id]);
+  }, [activeSession?.user.id]); // Use user.id for consistency
 
   // Load wishlist from database for logged-in users
   const loadUserWishlist = async () => {

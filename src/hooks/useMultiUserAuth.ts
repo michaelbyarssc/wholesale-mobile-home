@@ -22,18 +22,36 @@ export const useMultiUserAuth = () => {
   const navigate = useNavigate();
   const { validateSession } = useSessionValidation();
 
-  // Initialize by checking for existing session with proper sequencing
+  // Initialize by checking for existing session - event-driven approach
   useEffect(() => {
+    let initialized = false;
+    
     const initializeAuth = async () => {
+      if (initialized) return;
+      initialized = true;
+      
       try {
-        // Only initialize once when sessions array is stable
-        if (sessions.length === 0 && !activeSession) {
-          const { data: { session } } = await supabase.auth.getSession();
-          if (session?.user) {
-            console.log('🔐 Initializing auth with existing session for user:', session.user.email);
-            await addSession(session.user, session);
+        // Set up auth state listener first
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(
+          async (event, session) => {
+            if (event === 'SIGNED_IN' && session?.user) {
+              const existingSession = sessions.find(s => s.user.id === session.user.id);
+              if (!existingSession) {
+                console.log('🔐 Auth state change: adding new session for user:', session.user.email);
+                await addSession(session.user, session);
+              }
+            }
           }
+        );
+
+        // Then check for existing session
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user && sessions.length === 0) {
+          console.log('🔐 Initializing auth with existing session for user:', session.user.email);
+          await addSession(session.user, session);
         }
+        
+        return () => subscription.unsubscribe();
       } catch (error) {
         console.error('Error initializing auth:', error);
       } finally {
@@ -41,9 +59,7 @@ export const useMultiUserAuth = () => {
       }
     };
 
-    // Debounce initialization to prevent race conditions
-    const timer = setTimeout(initializeAuth, 50);
-    return () => clearTimeout(timer);
+    initializeAuth();
   }, []); // Only run once on mount
 
   const signIn = useCallback(async (email: string, password: string) => {
@@ -133,12 +149,24 @@ export const useMultiUserAuth = () => {
   }, [sessions, clearAllSessions, navigate]);
 
   const switchToSessionSafe = useCallback(async (sessionId: string) => {
-    // Validate session before switching
-    const isValid = await validateSession(sessionId);
-    if (isValid) {
+    // Switch immediately for better UX, validate in background
+    const session = sessions.find(s => s.id === sessionId);
+    if (session) {
       switchToSession(sessionId);
+      
+      // Validate in background - non-blocking
+      setTimeout(async () => {
+        try {
+          const isValid = await validateSession(sessionId);
+          if (!isValid) {
+            console.warn('🔐 Session validation failed after switch:', sessionId);
+          }
+        } catch (error) {
+          console.error('🔐 Session validation error:', error);
+        }
+      }, 0);
     }
-  }, [validateSession, switchToSession]);
+  }, [sessions, switchToSession, validateSession]);
 
   const fetchUserProfile = useCallback(async (sessionId?: string) => {
     const targetSessionId = sessionId || activeSessionId;

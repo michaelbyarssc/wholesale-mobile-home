@@ -31,13 +31,13 @@ export const useSessionAwareShoppingCart = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   // Helper function to get session-specific localStorage keys
-  const getStorageKey = (baseKey: string) => {
+  const getStorageKey = useCallback((baseKey: string) => {
     if (activeSession) {
-      // Use user ID for consistent cart storage across sessions
+      // Use user ID for consistent cart storage across all sessions for same user
       return `${baseKey}_user_${activeSession.user.id}`;
     }
     return `${baseKey}_guest`;
-  };
+  }, [activeSession?.user.id]);
 
   // Load cart data from localStorage on session change
   useEffect(() => {
@@ -76,7 +76,7 @@ export const useSessionAwareShoppingCart = () => {
     };
 
     loadCart();
-  }, [activeSession?.id]); // Re-load when active session changes
+  }, [activeSession?.user.id, getStorageKey]); // Re-load when user changes
 
   // Save cart data to localStorage whenever cartItems or deliveryAddress changes
   useEffect(() => {
@@ -93,7 +93,7 @@ export const useSessionAwareShoppingCart = () => {
         console.error('🔍 Error saving cart to localStorage:', error);
       }
     }
-  }, [cartItems, deliveryAddress, isLoading, activeSession?.id]);
+  }, [cartItems, deliveryAddress, isLoading, getStorageKey]);
 
   const addToCart = useCallback((
     mobileHome: Database['public']['Tables']['mobile_homes']['Row'], 
@@ -203,7 +203,7 @@ export const useSessionAwareShoppingCart = () => {
     } catch (error) {
       console.error('🔍 Error clearing cart:', error);
     }
-  }, [activeSession?.id, getStorageKey]);
+  }, [getStorageKey]);
 
   const toggleCart = useCallback(() => {
     console.log('🔍 toggleCart called for session:', activeSession?.id || 'guest');

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/integrations/supabase/types';
@@ -42,38 +42,59 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
   const [sessions, setSessions] = useState<SessionData[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const { checkStorageIntegrity, cleanupOrphanedStorage } = useStorageCorruptionRecovery();
+  
+  // Client cache to prevent excessive recreation
+  const clientCache = useRef<Map<string, SupabaseClient<Database>>>(new Map());
+  const broadcastChannelRef = useRef<BroadcastChannel | null>(null);
+  const storageValidationInterval = useRef<NodeJS.Timeout | null>(null);
+
+  // Create cached client function
+  const getCachedClient = useCallback((storageKey: string, sessionData?: any) => {
+    if (clientCache.current.has(storageKey)) {
+      return clientCache.current.get(storageKey)!;
+    }
+    
+    const client = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+      auth: {
+        storageKey: storageKey,
+        storage: window.localStorage
+      }
+    });
+    
+    clientCache.current.set(storageKey, client);
+    console.log('🔐 Created new cached client for key:', storageKey);
+    return client;
+  }, []);
 
   // Initialize from localStorage on mount
   useEffect(() => {
     const loadSessions = () => {
-      // Check storage integrity first
-      const isIntegrityOk = checkStorageIntegrity();
-      if (!isIntegrityOk) {
-        console.log('🔐 Storage corruption detected during initialization');
-        return;
-      }
-
-      // Clean up orphaned storage
-      cleanupOrphanedStorage();
-
       try {
+        // Check storage integrity and clean up orphaned storage
+        const isIntegrityOk = checkStorageIntegrity();
+        if (isIntegrityOk) {
+          cleanupOrphanedStorage();
+        } else {
+          console.log('🔐 Storage corruption detected during initialization, clearing');
+          return;
+        }
+
         const storedSessions = localStorage.getItem('wmh_sessions');
         const storedActiveId = localStorage.getItem('wmh_active_session');
         
         if (storedSessions) {
           const sessionData = JSON.parse(storedSessions);
-          // Recreate sessions with fresh Supabase clients
-          const recreatedSessions = sessionData.map((sessionInfo: any) => {
-            // Generate proper storage key for recreated session
+          
+          // Filter out any duplicate user sessions
+          const uniqueSessionData = sessionData.filter((session: any, index: number, array: any[]) => 
+            index === array.findIndex(s => s.user.id === session.user.id)
+          );
+          
+          // Recreate sessions with cached clients
+          const recreatedSessions = uniqueSessionData.map((sessionInfo: any) => {
             const timestamp = new Date(sessionInfo.createdAt).getTime();
             const storageKey = `wmh_session_${sessionInfo.user.id}_${timestamp}`;
-            
-            const client = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
-              auth: {
-                storageKey: storageKey,
-                storage: window.localStorage
-              }
-            });
+            const client = getCachedClient(storageKey);
             
             return {
               ...sessionInfo,
@@ -83,11 +104,16 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
           });
           
           setSessions(recreatedSessions);
-          setActiveSessionId(storedActiveId);
+          
+          // Validate active session exists
+          if (storedActiveId && uniqueSessionData.some((s: any) => s.id === storedActiveId)) {
+            setActiveSessionId(storedActiveId);
+          } else if (uniqueSessionData.length > 0) {
+            setActiveSessionId(uniqueSessionData[0].id);
+          }
         }
       } catch (error) {
         console.error('🔐 Storage corruption detected during load:', error);
-        // Clear corrupted data
         localStorage.removeItem('wmh_sessions');
         localStorage.removeItem('wmh_active_session');
         setSessions([]);
@@ -96,7 +122,21 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
     };
 
     loadSessions();
-  }, []);
+    
+    // Start continuous storage integrity monitoring
+    storageValidationInterval.current = setInterval(() => {
+      const isIntegrityOk = checkStorageIntegrity();
+      if (isIntegrityOk) {
+        cleanupOrphanedStorage();
+      }
+    }, 5 * 60 * 1000); // Check every 5 minutes
+    
+    return () => {
+      if (storageValidationInterval.current) {
+        clearInterval(storageValidationInterval.current);
+      }
+    };
+  }, [checkStorageIntegrity, cleanupOrphanedStorage, getCachedClient]);
 
   // Save sessions to localStorage whenever they change
   useEffect(() => {
@@ -121,28 +161,29 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
     }
   }, [sessions, activeSessionId]);
 
-  // Cross-tab communication
+  // Optimized cross-tab communication with debouncing
   useEffect(() => {
-    const handleStorageChange = (event: StorageEvent) => {
-      if (event.key === 'wmh_sessions' || event.key === 'wmh_active_session') {
-        // Sync sessions from storage without forcing reload
-        const storedSessions = localStorage.getItem('wmh_sessions');
-        const storedActiveId = localStorage.getItem('wmh_active_session');
-        
-        if (storedSessions) {
-          try {
+    let syncTimeout: NodeJS.Timeout | null = null;
+    
+    const debouncedSync = () => {
+      if (syncTimeout) clearTimeout(syncTimeout);
+      syncTimeout = setTimeout(() => {
+        try {
+          const storedSessions = localStorage.getItem('wmh_sessions');
+          const storedActiveId = localStorage.getItem('wmh_active_session');
+          
+          if (storedSessions) {
             const sessionData = JSON.parse(storedSessions);
-            const recreatedSessions = sessionData.map((sessionInfo: any) => {
-              // Generate proper storage key for synced session
+            
+            // Filter duplicates and use cached clients
+            const uniqueSessionData = sessionData.filter((session: any, index: number, array: any[]) => 
+              index === array.findIndex(s => s.user.id === session.user.id)
+            );
+            
+            const recreatedSessions = uniqueSessionData.map((sessionInfo: any) => {
               const timestamp = new Date(sessionInfo.createdAt).getTime();
               const storageKey = `wmh_session_${sessionInfo.user.id}_${timestamp}`;
-              
-              const client = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
-                auth: {
-                  storageKey: storageKey,
-                  storage: window.localStorage
-                }
-              });
+              const client = getCachedClient(storageKey);
               
               return {
                 ...sessionInfo,
@@ -153,148 +194,127 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
             
             setSessions(recreatedSessions);
             setActiveSessionId(storedActiveId);
-          } catch (error) {
-            console.error('Error syncing sessions from storage:', error);
           }
+        } catch (error) {
+          console.error('Error syncing sessions:', error);
         }
+      }, 100); // 100ms debounce
+    };
+
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.key === 'wmh_sessions' || event.key === 'wmh_active_session') {
+        debouncedSync();
       }
     };
 
-    const channel = new BroadcastChannel('wmh_session_sync');
+    // Reuse broadcast channel
+    if (!broadcastChannelRef.current) {
+      broadcastChannelRef.current = new BroadcastChannel('wmh_session_sync');
+    }
+    
     const handleBroadcastMessage = (event: MessageEvent) => {
       if (event.data.type === 'session_change') {
-        // Sync state without forcing reload
-        const storedSessions = localStorage.getItem('wmh_sessions');
-        const storedActiveId = localStorage.getItem('wmh_active_session');
-        
-        if (storedSessions) {
-          try {
-            const sessionData = JSON.parse(storedSessions);
-            const recreatedSessions = sessionData.map((sessionInfo: any) => {
-              // Generate proper storage key for broadcast synced session
-              const timestamp = new Date(sessionInfo.createdAt).getTime();
-              const storageKey = `wmh_session_${sessionInfo.user.id}_${timestamp}`;
-              
-              const client = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
-                auth: {
-                  storageKey: storageKey,
-                  storage: window.localStorage
-                }
-              });
-              
-              return {
-                ...sessionInfo,
-                supabaseClient: client,
-                createdAt: new Date(sessionInfo.createdAt)
-              };
-            });
-            
-            setSessions(recreatedSessions);
-            setActiveSessionId(storedActiveId);
-          } catch (error) {
-            console.error('Error syncing sessions from broadcast:', error);
-          }
-        }
+        debouncedSync();
       }
     };
     
-    channel.addEventListener('message', handleBroadcastMessage);
-
+    broadcastChannelRef.current.addEventListener('message', handleBroadcastMessage);
     window.addEventListener('storage', handleStorageChange);
 
     return () => {
+      if (syncTimeout) clearTimeout(syncTimeout);
       window.removeEventListener('storage', handleStorageChange);
-      channel.removeEventListener('message', handleBroadcastMessage);
-      channel.close();
+      if (broadcastChannelRef.current) {
+        broadcastChannelRef.current.removeEventListener('message', handleBroadcastMessage);
+      }
     };
-  }, []);
+  }, [getCachedClient]);
 
   const broadcastSessionChange = useCallback(() => {
     try {
-      const channel = new BroadcastChannel('wmh_session_sync');
-      channel.postMessage({ type: 'session_change' });
-      channel.close();
+      if (broadcastChannelRef.current) {
+        broadcastChannelRef.current.postMessage({ type: 'session_change' });
+      }
     } catch (error) {
       console.error('Error broadcasting session change:', error);
     }
   }, []);
 
   const addSession = useCallback(async (user: User, session: Session): Promise<string> => {
+    // Check for existing session for this user first
+    const existingSession = sessions.find(s => s.user.id === user.id);
+    if (existingSession) {
+      console.log('🔐 Session already exists for user:', user.email, 'switching to existing');
+      setActiveSessionId(existingSession.id);
+      return existingSession.id;
+    }
+    
     const timestamp = Date.now();
     const sessionId = `session_${user.id}_${timestamp}`;
-    
-    // Use unique storage key combining user ID and timestamp for proper isolation
     const storageKey = `wmh_session_${user.id}_${timestamp}`;
     
-    // Create session-specific Supabase client with unique storage key
-    const client = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
-      auth: {
-        storageKey: storageKey,
-        storage: window.localStorage
-      }
-    });
+    // Use cached client creation
+    const client = getCachedClient(storageKey);
 
-    // Set the session in the new client
-    await client.auth.setSession({
-      access_token: session.access_token,
-      refresh_token: session.refresh_token
-    });
-
-    // Fetch user profile
-    let userProfile = null;
     try {
-      const { data: profile } = await client
-        .from('profiles')
-        .select('first_name, last_name')
-        .eq('user_id', user.id)
-        .single();
-      userProfile = profile;
-    } catch (error) {
-      console.error('Error fetching user profile:', error);
-    }
+      // Set the session in the client
+      await client.auth.setSession({
+        access_token: session.access_token,
+        refresh_token: session.refresh_token
+      });
 
-    const newSession: SessionData = {
-      id: sessionId,
-      user,
-      session,
-      supabaseClient: client,
-      userProfile,
-      createdAt: new Date()
-    };
-
-    setSessions(prev => {
-      // Check if session already exists to prevent duplicates
-      const existingSession = prev.find(s => s.user.id === user.id);
-      if (existingSession) {
-        console.log('🔐 Session already exists for user:', user.email, 'switching to existing');
-        setActiveSessionId(existingSession.id);
-        return prev;
+      // Fetch user profile
+      let userProfile = null;
+      try {
+        const { data: profile } = await client
+          .from('profiles')
+          .select('first_name, last_name')
+          .eq('user_id', user.id)
+          .single();
+        userProfile = profile;
+      } catch (error) {
+        console.error('Error fetching user profile:', error);
       }
-      return [...prev, newSession];
-    });
 
-    setActiveSessionId(sessionId);
-    broadcastSessionChange();
-    
-    console.log('🔐 Added new session:', sessionId, 'for user:', user.email);
-    return sessionId;
-  }, [broadcastSessionChange]);
+      const newSession: SessionData = {
+        id: sessionId,
+        user,
+        session,
+        supabaseClient: client,
+        userProfile,
+        createdAt: new Date()
+      };
+
+      setSessions(prev => [...prev, newSession]);
+      setActiveSessionId(sessionId);
+      broadcastSessionChange();
+      
+      console.log('🔐 Added new session:', sessionId, 'for user:', user.email);
+      return sessionId;
+    } catch (error) {
+      console.error('🔐 Error adding session:', error);
+      // Clean up cached client on error
+      clientCache.current.delete(storageKey);
+      throw error;
+    }
+  }, [sessions, getCachedClient, broadcastSessionChange]);
 
   const removeSession = useCallback((sessionId: string) => {
     setSessions(prev => {
       const session = prev.find(s => s.id === sessionId);
       if (session) {
-        // Clean up session-specific storage using the correct key format
-        const storageKeyPrefix = `wmh_session_${session.user.id}_`;
+        // Clean up session-specific storage and cached client
+        const timestamp = new Date(session.createdAt).getTime();
+        const storageKey = `wmh_session_${session.user.id}_${timestamp}`;
         
-        // Find and remove all storage keys for this session
+        // Remove from client cache
+        clientCache.current.delete(storageKey);
+        
+        // Clean up all storage keys for this session
         Object.keys(localStorage).forEach(key => {
-          if (key.startsWith(storageKeyPrefix)) {
-            const sessionIdFromKey = key.split('_')[3];
-            if (sessionId.includes(sessionIdFromKey)) {
-              localStorage.removeItem(key);
-              console.log('🔐 Cleaned up storage key:', key);
-            }
+          if (key.includes(`${session.user.id}_${timestamp}`)) {
+            localStorage.removeItem(key);
+            console.log('🔐 Cleaned up storage key:', key);
           }
         });
         
@@ -330,14 +350,24 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
 
   const clearAllSessions = useCallback(() => {
     sessions.forEach(session => {
-      // Clean up all session-specific storage
-      const storageKeyPrefix = `wmh_session_${session.user.id}_`;
+      // Clean up all session-specific storage and cached clients
+      const timestamp = new Date(session.createdAt).getTime();
+      const storageKey = `wmh_session_${session.user.id}_${timestamp}`;
+      
+      // Remove from client cache
+      clientCache.current.delete(storageKey);
+      
+      // Clean up storage keys
       Object.keys(localStorage).forEach(key => {
-        if (key.startsWith(storageKeyPrefix)) {
+        if (key.includes(`${session.user.id}_${timestamp}`)) {
           localStorage.removeItem(key);
         }
       });
     });
+    
+    // Clear all cached clients
+    clientCache.current.clear();
+    
     setSessions([]);
     setActiveSessionId(null);
     localStorage.removeItem('wmh_sessions');
@@ -363,6 +393,19 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
   }, []);
 
   const activeSession = sessions.find(s => s.id === activeSessionId) || null;
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (storageValidationInterval.current) {
+        clearInterval(storageValidationInterval.current);
+      }
+      if (broadcastChannelRef.current) {
+        broadcastChannelRef.current.close();
+      }
+      clientCache.current.clear();
+    };
+  }, []);
 
   const value: SessionManagerContextType = {
     sessions,

@@ -137,6 +137,9 @@ export const MultiUserInfrastructureTest: React.FC = () => {
       // Create corrupted data
       localStorage.setItem('wmh_sessions', 'invalid json');
       
+      // Save current sessions to restore later
+      const currentSessions = localStorage.getItem('wmh_sessions');
+      
       // Test recovery
       const isIntegrityOk = checkStorageIntegrity();
       
@@ -146,8 +149,11 @@ export const MultiUserInfrastructureTest: React.FC = () => {
         addTestResult('Storage Corruption Recovery', 'fail', 'Failed to detect corruption');
       }
 
-      // Clean up
+      // Clean up and restore if needed
       cleanupOrphanedStorage();
+      if (currentSessions) {
+        localStorage.setItem('wmh_sessions', currentSessions);
+      }
       
     } catch (error) {
       addTestResult('Storage Corruption Test', 'fail', `Error: ${error}`);

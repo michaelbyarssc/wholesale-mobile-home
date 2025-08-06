@@ -27,29 +27,22 @@ export const useSessionValidation = () => {
     }
   }, [sessions, removeSession]);
 
-  // Validate all sessions periodically
-  useEffect(() => {
-    const validateAllSessions = async () => {
-      for (const session of sessions) {
-        await validateSession(session.id);
-      }
-    };
-
-  // Validate sessions every 10 minutes (less aggressive)
-    const interval = setInterval(validateAllSessions, 10 * 60 * 1000);
-    
-    // Validate on mount
-    validateAllSessions();
-
-    return () => clearInterval(interval);
+  // Validate sessions on demand only - remove aggressive periodic validation
+  const validateAllSessions = useCallback(async () => {
+    const validationPromises = sessions.map(session => validateSession(session.id));
+    await Promise.allSettled(validationPromises);
   }, [sessions, validateSession]);
-
-  // Validate active session on switch
-  useEffect(() => {
+  
+  // Only validate when explicitly requested or on session switch
+  const validateActiveSession = useCallback(async () => {
     if (activeSessionId) {
-      validateSession(activeSessionId);
+      await validateSession(activeSessionId);
     }
   }, [activeSessionId, validateSession]);
 
-  return { validateSession };
+  return { 
+    validateSession,
+    validateAllSessions,
+    validateActiveSession 
+  };
 };

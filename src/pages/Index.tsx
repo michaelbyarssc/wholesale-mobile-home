@@ -5,10 +5,11 @@ import { TestimonialsSection } from '@/components/reviews/TestimonialsSection';
 import { FinancingCalculator } from '@/components/financing/FinancingCalculator';
 import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
-import { useShoppingCart } from '@/hooks/useShoppingCart';
+import { useSessionAwareShoppingCart } from '@/hooks/useSessionAwareShoppingCart';
+import { useMultiUserAuth } from '@/hooks/useMultiUserAuth';
 import { usePerformanceMonitor } from '@/hooks/usePerformanceMonitor';
 import { useViewportSize } from '@/hooks/useViewportSize';
-import { Header } from '@/components/layout/Header';
+import { MultiUserHeader } from '@/components/auth/MultiUserHeader';
 import { ChatWidget } from '@/components/chat/ChatWidget';
 import { HeroSection } from '@/components/layout/HeroSection';
 import { FeaturesSection } from '@/components/layout/FeaturesSection';
@@ -37,17 +38,13 @@ const Index = () => {
   const { markFeature, measureFeature } = usePerformanceMonitor();
   const { isMobile, isTablet } = useViewportSize();
   
-  // User roles for admin fallback
+  // Multi-user authentication
+  const { user, userProfile, isLoading } = useMultiUserAuth();
   const { isAdmin } = useUserRoles();
   
-  // State hooks first
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
-  const [userProfile, setUserProfile] = useState<{ first_name?: string } | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [showTestimonialForm, setShowTestimonialForm] = useState(false);
   
-  // Shopping cart hook after user state is declared
+  // Session-aware shopping cart
   const {
     cartItems,
     deliveryAddress,
@@ -62,153 +59,11 @@ const Index = () => {
     closeCart,
     setIsCartOpen,
     isLoading: cartLoading,
-  } = useShoppingCart(user);
+  } = useSessionAwareShoppingCart();
   
   console.log('Index component: All hooks initialized', { user: user?.id, isLoading, cartItems: cartItems.length });
 
-  useEffect(() => {
-    console.log('Index component: Auth effect starting');
-    let mounted = true;
-    let initialCheckDone = false;
-
-    // Set up auth state listener first
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        if (!mounted) return;
-        
-        console.log('Index: Auth state changed:', event, session?.user?.id);
-        setSession(session);
-        setUser(session?.user ?? null);
-        
-        if (event === 'SIGNED_OUT') {
-          setUserProfile(null);
-        }
-        
-        // Only set loading to false if initial check is done
-        if (initialCheckDone) {
-          console.log('Index: Setting loading to false after auth state change');
-          setIsLoading(false);
-        }
-      }
-    );
-
-    // Then check current session
-    const checkAuth = async () => {
-      try {
-        console.log('Index component: Checking current session');
-        const { data: { session }, error } = await supabase.auth.getSession();
-        
-        if (error) {
-          console.error('Index: Error getting session:', error);
-        }
-        
-        if (!mounted) return;
-        
-        console.log('Index component: Initial session check complete', { hasSession: !!session, userId: session?.user?.id });
-        setSession(session);
-        setUser(session?.user ?? null);
-        
-        initialCheckDone = true;
-        console.log('Index component: Setting loading to false after initial check');
-        setIsLoading(false);
-      } catch (error) {
-        console.error('Index: Auth check error:', error);
-        if (mounted) {
-          setSession(null);
-          setUser(null);
-          initialCheckDone = true;
-          console.log('Index component: Setting loading to false after error');
-          setIsLoading(false);
-        }
-      }
-    };
-
-    checkAuth();
-
-    return () => {
-      console.log('Index component: Cleaning up auth effect');
-      mounted = false;
-      subscription.unsubscribe();
-    };
-  }, []);
-
-  useEffect(() => {
-    const fetchUserProfile = async () => {
-      if (!user) {
-        setUserProfile(null);
-        return;
-      }
-
-      try {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('first_name')
-          .eq('user_id', user.id)
-          .maybeSingle();
-
-        if (error && error.code !== 'PGRST116') {
-          console.error('Index: Error fetching user profile:', error);
-        } else {
-          setUserProfile(data);
-        }
-      } catch (error) {
-        console.error('Index: Error fetching user profile:', error);
-      }
-    };
-
-    fetchUserProfile();
-  }, [user]);
-
-  const handleLogout = async () => {
-    try {
-      console.log('Index: Attempting logout...');
-      
-      // Clear local state immediately
-      setUser(null);
-      setSession(null);
-      setUserProfile(null);
-      
-      // Attempt to sign out from Supabase
-      const { error } = await supabase.auth.signOut();
-      
-      if (error) {
-        console.error('Index: Logout error:', error);
-      } else {
-        console.log('Index: Logout successful');
-      }
-      
-      // Navigate to home page
-      navigate('/');
-    } catch (error) {
-      console.error('Index: Error during logout:', error);
-      // Even if there's an error, clear local state and navigate
-      setUser(null);
-      setSession(null);
-      setUserProfile(null);
-      navigate('/');
-    }
-  };
-
-  const handleProfileUpdated = async () => {
-    // Refetch user profile after update
-    if (user) {
-      try {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('first_name')
-          .eq('user_id', user.id)
-          .maybeSingle();
-
-        if (error && error.code !== 'PGRST116') {
-          console.error('Index: Error fetching updated user profile:', error);
-        } else {
-          setUserProfile(data);
-        }
-      } catch (error) {
-        console.error('Index: Error fetching updated user profile:', error);
-      }
-    }
-  };
+  // Authentication is now handled by useMultiUserAuth hook
 
   console.log('Index component: About to render, isLoading:', isLoading, 'cartLoading:', cartLoading);
 
@@ -270,14 +125,10 @@ const Index = () => {
       {/* PWA Components */}
       <OfflineIndicator variant="alert" />
       
-      <Header 
-        user={user}
-        userProfile={userProfile}
+      <MultiUserHeader
         cartItems={cartItems}
         isLoading={isLoading}
-        onLogout={handleLogout}
         onToggleCart={toggleCart}
-        onProfileUpdated={handleProfileUpdated}
       />
 
 

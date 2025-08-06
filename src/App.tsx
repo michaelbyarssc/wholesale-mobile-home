@@ -9,6 +9,7 @@ import { usePerformanceMetrics } from '@/hooks/usePerformanceMetrics';
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { LoadingSpinner } from "@/components/layout/LoadingSpinner";
 import { SecurityEnhancements } from "@/components/SecurityEnhancements";
+import { SessionManagerProvider } from "@/contexts/SessionManagerContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 // Lazy load components with proper error handling
@@ -143,13 +144,15 @@ const App = () => {
       <SecurityEnhancements>
         <ErrorBoundary>
           <QueryClientProvider client={queryClient}>
-            <BrowserRouter>
-              <TooltipProvider>
-                <AppRoutes />
-                <Toaster />
-                <Sonner />
-              </TooltipProvider>
-            </BrowserRouter>
+            <SessionManagerProvider>
+              <BrowserRouter>
+                <TooltipProvider>
+                  <AppRoutes />
+                  <Toaster />
+                  <Sonner />
+                </TooltipProvider>
+              </BrowserRouter>
+            </SessionManagerProvider>
           </QueryClientProvider>
         </ErrorBoundary>
       </SecurityEnhancements>

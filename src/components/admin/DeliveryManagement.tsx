@@ -254,10 +254,22 @@ const getStatusBadge = (status: string) => {
 };
 
 export const DeliveryManagement = () => {
-  const { isSuperAdmin, isAdmin, userRoles } = useUserRoles();
+  const { isSuperAdmin, isAdmin, userRoles, forceRefreshRoles } = useUserRoles();
   
-  // Debug logging
-  console.log('DeliveryManagement roles:', { isSuperAdmin, isAdmin, userRoles });
+  // Force refresh roles on mount to prevent caching issues
+  React.useEffect(() => {
+    forceRefreshRoles();
+  }, [forceRefreshRoles]);
+  
+  // Enhanced debug logging
+  React.useEffect(() => {
+    console.log('🔧 DeliveryManagement Debug:', { 
+      isSuperAdmin, 
+      isAdmin, 
+      userRoles: userRoles.map(r => r.role),
+      timestamp: new Date().toISOString()
+    });
+  }, [isSuperAdmin, isAdmin, userRoles]);
   
   const [filter, setFilter] = useState<'all' | 'scheduled' | 'in_transit' | 'completed' | 'pending_payment' | 'factory_pickup_scheduled' | 'factory_pickup_in_progress' | 'factory_pickup_completed' | 'delivery_in_progress' | 'delivered' | 'cancelled' | 'delayed'>('all');
   const [selectedDelivery, setSelectedDelivery] = useState<Delivery | null>(null);

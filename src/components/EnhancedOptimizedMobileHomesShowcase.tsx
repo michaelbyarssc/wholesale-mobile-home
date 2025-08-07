@@ -493,7 +493,7 @@ export const EnhancedOptimizedMobileHomesShowcase = React.memo(({
       />
 
       {/* Quick Action Bar */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-center">
         <div className="flex gap-4">
           <Button
             variant="outline"

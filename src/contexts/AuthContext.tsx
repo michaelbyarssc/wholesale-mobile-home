@@ -46,6 +46,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState(true);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [isLoginInProgress, setIsLoginInProgress] = useState(false);
+  const [isProfileLoading, setIsProfileLoading] = useState(false);
   
   const {
     sessions,
@@ -64,6 +65,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const navigate = useNavigate();
   const { validateSession } = useSessionValidation();
 
+  // Request deduplication refs
+  const profileFetchInProgress = useRef(false);
+
   // Simple profile fetching
   const fetchUserProfile = useCallback(async (targetSessionId?: string) => {
     const sessionId = targetSessionId || activeSessionId;
@@ -73,6 +77,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log('🔍 PROFILE: No valid session for profile fetch');
       return null;
     }
+
+    // Prevent concurrent fetches
+    if (profileFetchInProgress.current) {
+      console.log('🔍 PROFILE: Fetch already in progress, skipping');
+      return null;
+    }
+
+    profileFetchInProgress.current = true;
+    setIsProfileLoading(true);
 
     try {
       console.log('🔍 PROFILE FETCH: Querying profiles table for user_id:', session.user.id);
@@ -98,6 +111,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error) {
       console.error('❌ PROFILE FETCH: Unexpected exception:', error);
       return null;
+    } finally {
+      profileFetchInProgress.current = false;
+      setIsProfileLoading(false);
     }
   }, [activeSessionId, sessions, updateSessionProfile]);
 
@@ -176,13 +192,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const currentSession = activeSession;
     
-    if (currentSession?.user && !currentSession.userProfile && !isLoginInProgress) {
+    if (currentSession?.user && !currentSession.userProfile && !isLoginInProgress && !isProfileLoading) {
       console.log('📱 AUTO-FETCH: Fetching profile for active user:', currentSession.user.email);
-      setTimeout(() => {
-        fetchUserProfile();
-      }, 200);
+      fetchUserProfile();
     }
-  }, [activeSession?.user?.id, activeSession?.userProfile, isLoginInProgress, fetchUserProfile]);
+  }, [activeSession?.user?.id, activeSession?.userProfile, isLoginInProgress, isProfileLoading]);
 
   // Auth methods
   const signIn = useCallback(async (email: string, password: string) => {

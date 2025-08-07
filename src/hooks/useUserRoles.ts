@@ -29,6 +29,9 @@ export const useUserRoles = (): RoleCheck => {
   const [userRoles, setUserRoles] = useState<UserRole[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Request deduplication ref
+  const rolesFetchInProgress = useRef(false);
 
   // Debug logging for role state
   console.log('useUserRoles: Current state', { 
@@ -46,6 +49,13 @@ export const useUserRoles = (): RoleCheck => {
       return;
     }
 
+    // Prevent concurrent fetches
+    if (rolesFetchInProgress.current) {
+      console.log('🔐 ROLES: Fetch already in progress, skipping');
+      return;
+    }
+
+    rolesFetchInProgress.current = true;
     setIsLoading(true);
     setError(null);
 
@@ -74,23 +84,22 @@ export const useUserRoles = (): RoleCheck => {
       setError('Failed to fetch user roles');
       setUserRoles([]);
     } finally {
+      rolesFetchInProgress.current = false;
       setIsLoading(false);
     }
   }, []);
 
   // Effect to fetch roles when user changes - coordinated after login completes
   useEffect(() => {
-    if (!authLoading && user && !isLoginInProgress) {
-      // Add delay to ensure profile is fetched first
-      setTimeout(() => {
-        fetchUserRoles(user.id);
-      }, 400);
+    if (!authLoading && user && !isLoginInProgress && !isLoading) {
+      console.log('🔐 ROLES: Fetching roles for user:', user.email);
+      fetchUserRoles(user.id);
     } else if (!authLoading && !user) {
       // Clear roles when user logs out
       setUserRoles([]);
       setError(null);
     }
-  }, [user?.id, authLoading, isLoginInProgress, fetchUserRoles]);
+  }, [user?.id, authLoading, isLoginInProgress, isLoading]);
 
   // Role checking functions
   const hasRole = useCallback((role: 'admin' | 'super_admin' | 'user' | 'driver') => {

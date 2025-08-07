@@ -23,6 +23,7 @@ import { CartItem } from '@/hooks/useShoppingCart';
 import { PasswordChangeDialog } from '@/components/auth/PasswordChangeDialog';
 import { UserSettingsDialog } from '@/components/auth/UserSettingsDialog';
 import { ForceLogoutButton } from '@/components/auth/ForceLogoutButton';
+import { EmergencyLogoutButton } from '@/components/auth/EmergencyLogoutButton';
 import { useBusinessInfo } from '@/hooks/useBusinessInfo';
 import { usePWA } from '@/hooks/usePWA';
 import { useMultiUserAuth } from '@/hooks/useMultiUserAuth';
@@ -366,6 +367,10 @@ export const MultiUserHeader = ({
                             Sign Out All
                           </DropdownMenuItem>
                         )}
+                        <DropdownMenuSeparator />
+                        <div className="p-2">
+                          <EmergencyLogoutButton className="w-full" />
+                        </div>
                       </DropdownMenuContent>
                     </DropdownMenu>
                     
@@ -525,9 +530,8 @@ export const MultiUserHeader = ({
                 
                 {/* Emergency Force Logout */}
                 <div className="border-t border-gray-200 pt-2 mt-2">
-                  <ForceLogoutButton 
+                  <EmergencyLogoutButton 
                     className="w-full justify-start text-left p-3" 
-                    variant="destructive"
                   />
                 </div>
               </div>

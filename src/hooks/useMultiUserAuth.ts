@@ -276,48 +276,84 @@ export const useMultiUserAuth = () => {
       return;
     }
 
-    console.log('🚨 SIGN OUT: Starting logout for session:', targetSessionId, 'user:', session.user.email);
+    console.log('🚨 SIGN OUT: Starting enhanced logout for session:', targetSessionId, 'user:', session.user.email);
     
     try {
-      // Set logout state immediately to show feedback
       setIsLoading(true);
       
-      console.log('🚨 SIGN OUT: Step 1 - Calling Supabase auth.signOut()');
-      
-      // Force client logout with reduced timeout
-      const logoutPromise = session.supabaseClient.auth.signOut();
-      const timeoutPromise = new Promise((resolve) => 
-        setTimeout(() => {
-          console.warn('🚨 SIGN OUT: Timeout reached, proceeding with cleanup');
-          resolve(null);
-        }, 2000) // Reduced to 2 seconds
+      // Step 1: Immediate localStorage cleanup for this user
+      console.log('🚨 SIGN OUT: Step 1 - Immediate localStorage cleanup');
+      const userId = session.user.id;
+      const keysToRemove = Object.keys(localStorage).filter(key => 
+        key.includes(userId) || 
+        key.startsWith(`wmh_session_${userId}`) ||
+        key.includes(`auth-token`) && key.includes(userId)
       );
       
-      await Promise.race([logoutPromise, timeoutPromise]);
-      console.log('🚨 SIGN OUT: Step 2 - Supabase logout completed or timed out');
+      keysToRemove.forEach(key => {
+        try {
+          localStorage.removeItem(key);
+          console.log('🚨 Removed stale key:', key);
+        } catch (error) {
+          console.warn('🚨 Failed to remove key:', key, error);
+        }
+      });
       
-      // Remove session from state immediately
-      console.log('🚨 SIGN OUT: Step 3 - Removing session from state');
+      // Step 2: Remove from session state immediately
+      console.log('🚨 SIGN OUT: Step 2 - Removing session from state');
       removeSession(targetSessionId);
       
-      console.log('🚨 SIGN OUT: Step 4 - Session removed successfully:', targetSessionId);
+      // Step 3: Attempt Supabase logout with short timeout
+      console.log('🚨 SIGN OUT: Step 3 - Calling Supabase auth.signOut()');
+      try {
+        await Promise.race([
+          session.supabaseClient.auth.signOut(),
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Logout timeout')), 1000)
+          )
+        ]);
+        console.log('🚨 SIGN OUT: Supabase logout completed');
+      } catch (logoutError) {
+        console.warn('🚨 SIGN OUT: Supabase logout failed or timed out:', logoutError);
+      }
       
-      // Force page reload after a short delay to ensure complete cleanup
-      setTimeout(() => {
-        console.log('🚨 SIGN OUT: Step 5 - Forcing page reload for complete state cleanup');
-        window.location.reload();
-      }, 500);
+      // Step 4: Comprehensive cleanup
+      console.log('🚨 SIGN OUT: Step 4 - Comprehensive cleanup');
+      
+      // Clear any remaining session artifacts
+      try {
+        const remainingSessions = localStorage.getItem('wmh_sessions');
+        if (remainingSessions) {
+          const sessions = JSON.parse(remainingSessions);
+          const filteredSessions = sessions.filter((s: any) => s.user.id !== userId);
+          if (filteredSessions.length !== sessions.length) {
+            localStorage.setItem('wmh_sessions', JSON.stringify(filteredSessions));
+            console.log('🚨 Cleaned sessions from localStorage');
+          }
+        }
+      } catch (error) {
+        console.error('🚨 Error cleaning session storage:', error);
+        localStorage.removeItem('wmh_sessions');
+      }
+      
+      // Step 5: Navigate to auth page
+      console.log('🚨 SIGN OUT: Step 5 - Navigating to auth page');
+      window.location.href = '/auth';
       
     } catch (error) {
-      console.error('🚨 SIGN OUT ERROR: Forcing emergency cleanup:', error);
-      // Force cleanup even if logout fails
+      console.error('🚨 SIGN OUT ERROR: Emergency cleanup:', error);
+      // Emergency cleanup
       removeSession(targetSessionId);
       
-      // Emergency page reload
-      setTimeout(() => {
-        console.log('🚨 EMERGENCY: Forcing page reload due to sign out error');
-        window.location.reload();
-      }, 100);
+      // Clear all localStorage if needed
+      try {
+        localStorage.removeItem('wmh_sessions');
+        localStorage.removeItem('wmh_active_session');
+      } catch (clearError) {
+        console.error('🚨 Emergency storage clear failed:', clearError);
+      }
+      
+      window.location.href = '/auth';
     } finally {
       setIsLoading(false);
     }

@@ -4,12 +4,12 @@ import { useSessionManager } from '@/contexts/SessionManagerContext';
 export const useSessionRecovery = () => {
   const { sessions, clearAllSessions, forceCleanUserSessions } = useSessionManager();
 
-  // Emergency cleanup for corrupted sessions
+  // Enhanced emergency cleanup for corrupted sessions
   const emergencyCleanup = useCallback(() => {
-    console.log('🚨 Performing emergency session cleanup');
+    console.log('🚨 Performing enhanced emergency session cleanup');
     
     try {
-      // Clear all session-related localStorage with comprehensive patterns
+      // Step 1: Clear all session-related localStorage with comprehensive patterns
       const keysToRemove = [];
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
@@ -19,11 +19,15 @@ export const useSessionRecovery = () => {
           key.startsWith('sb-') ||
           key.includes('session') ||
           key.includes('cart_data') ||
-          key.includes('wishlist')
+          key.includes('wishlist') ||
+          key.includes('supabase') ||
+          key.includes('auth')
         )) {
           keysToRemove.push(key);
         }
       }
+      
+      console.log(`🚨 Found ${keysToRemove.length} keys to remove:`, keysToRemove);
       
       keysToRemove.forEach(key => {
         try {
@@ -34,18 +38,43 @@ export const useSessionRecovery = () => {
         }
       });
       
-      // Clear sessions from context
+      // Step 2: Clear sessions from context
+      console.log('🚨 Clearing all sessions from context');
       clearAllSessions();
       
-      // Force page reload for complete state reset
-      setTimeout(() => {
-        console.log('🚨 Emergency cleanup complete, reloading page');
-        window.location.reload();
-      }, 500);
+      // Step 3: Clear any cached authentication state
+      try {
+        // Clear any global auth state that might be cached
+        if ((window as any).supabaseAuthState) {
+          delete (window as any).supabaseAuthState;
+        }
+        
+        // Clear any debounced auth events
+        Object.keys(window as any).forEach(key => {
+          if (key.startsWith('auth_')) {
+            clearTimeout((window as any)[key]);
+            delete (window as any)[key];
+          }
+        });
+      } catch (error) {
+        console.warn('🚨 Error clearing global auth state:', error);
+      }
+      
+      // Step 4: Force navigate to auth page with complete state reset
+      console.log('🚨 Emergency cleanup complete, redirecting to auth');
+      window.location.href = '/auth?emergency=true';
       
       return true;
     } catch (error) {
       console.error('❌ Emergency cleanup failed:', error);
+      // Fallback - just clear everything and reload
+      try {
+        localStorage.clear();
+        window.location.href = '/auth';
+      } catch (fallbackError) {
+        console.error('❌ Fallback cleanup failed:', fallbackError);
+        window.location.reload();
+      }
       return false;
     }
   }, [clearAllSessions]);

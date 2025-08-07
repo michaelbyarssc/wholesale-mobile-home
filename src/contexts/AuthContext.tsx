@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { useSessionManager } from '@/contexts/SessionManagerContext';
@@ -12,14 +13,14 @@ interface AuthContextType {
   userProfile: any | null;
   isLoading: boolean;
   isSigningOut: boolean;
-  isLoginInProgress: boolean; // Replace global state with React state
+  isLoginInProgress: boolean;
   
   // Session management
   sessions: any[];
   activeSession: any | null;
   activeSessionId: string | null;
   hasMultipleSessions: boolean;
-  supabaseClient: any; // For backward compatibility
+  supabaseClient: any;
   
   // Auth methods
   signIn: (email: string, password: string) => Promise<{ data: any, error: any }>;
@@ -44,7 +45,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSigningOut, setIsSigningOut] = useState(false);
-  const [isLoginInProgress, setIsLoginInProgress] = useState(false); // Replace window global
+  const [isLoginInProgress, setIsLoginInProgress] = useState(false);
   
   const {
     sessions,
@@ -63,7 +64,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const navigate = useNavigate();
   const { validateSession } = useSessionValidation();
 
-  // Simple profile fetching without complex deduplication
+  // Simple profile fetching
   const fetchUserProfile = useCallback(async (targetSessionId?: string) => {
     const sessionId = targetSessionId || activeSessionId;
     const session = sessions.find(s => s.id === sessionId);
@@ -100,7 +101,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [activeSessionId, sessions, updateSessionProfile]);
 
-  // Initialize auth - SINGLE POINT OF AUTH INITIALIZATION
+  // Initialize auth
   useEffect(() => {
     let initialized = false;
     let authSubscription: any = null;
@@ -115,17 +116,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log('🚀 AUTH INIT: Starting auth initialization...');
       
       try {
-        // Set up auth state listener FIRST
+        // Set up auth state listener
         authSubscription = supabase.auth.onAuthStateChange(async (event, session) => {
           console.log('🔄 AUTH STATE CHANGE:', event, session ? `User: ${session.user?.email}` : 'No session');
           
           if (event === 'SIGNED_IN' && session?.user) {
             console.log('✅ AUTH STATE: User signed in:', session.user.email, 'Event:', event);
-            
             await addSession(session.user, session);
             setIsLoginInProgress(false);
-            
-            // Profile will be fetched by the auto-fetch effect below
           } else if (event === 'SIGNED_OUT') {
             console.log('🚪 AUTH STATE: User signed out, clearing sessions');
             clearAllSessions();
@@ -139,7 +137,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         });
 
-        // THEN check for existing session
+        // Check for existing session
         console.log('🔍 AUTH INIT: Checking for existing session...');
         const { data: { session }, error } = await supabase.auth.getSession();
         
@@ -166,22 +164,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     initializeAuth();
 
-    // Cleanup function
     return () => {
       console.log('🧹 AUTH CLEANUP: Cleaning up auth subscription');
       if (authSubscription?.subscription) {
         authSubscription.subscription.unsubscribe();
       }
     };
-  }, []); // Empty dependency array to prevent re-initialization
+  }, []);
 
-  // Auto-fetch profile for active session when user changes or session becomes available
+  // Auto-fetch profile for active session
   useEffect(() => {
     const currentSession = activeSession;
     
     if (currentSession?.user && !currentSession.userProfile && !isLoginInProgress) {
       console.log('📱 AUTO-FETCH: Fetching profile for active user:', currentSession.user.email);
-      // Add small delay to ensure login process is complete
       setTimeout(() => {
         fetchUserProfile();
       }, 200);
@@ -350,7 +346,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     activeSession,
     activeSessionId,
     hasMultipleSessions,
-    supabaseClient: getSupabaseClient(), // For backward compatibility
+    supabaseClient: getSupabaseClient(),
     
     // Auth methods
     signIn,

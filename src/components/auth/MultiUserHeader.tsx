@@ -91,26 +91,13 @@ export const MultiUserHeader = ({
     }
   }, [user, activeSessionId, fetchUserProfile, userProfile, supabaseClient]);
 
-  // Manual refresh function for testing
+  // Manual refresh function for testing - now just calls the enhanced fetchUserProfile
   const manualRefreshProfile = async () => {
-    console.log('🔄 MANUAL: Force refreshing profile...');
+    console.log('🔄 MANUAL: Force refreshing profile via fetchUserProfile...');
     if (user && activeSessionId) {
-      try {
-        console.log('🔄 MANUAL: Direct profile query for:', user.email);
-        const { data, error } = await supabaseClient
-          .from('profiles')
-          .select('first_name, last_name, email, phone_number')
-          .eq('user_id', user.id)
-          .maybeSingle();
-        console.log('🔄 MANUAL: Direct query result:', { data, error });
-        
-        if (data && !error) {
-          console.log('🔄 MANUAL: Calling fetchUserProfile...');
-          fetchUserProfile(activeSessionId);
-        }
-      } catch (err) {
-        console.error('🔄 MANUAL: Error:', err);
-      }
+      await fetchUserProfile(activeSessionId);
+    } else {
+      console.log('🔄 MANUAL: No user or active session for refresh');
     }
   };
 

@@ -32,40 +32,72 @@ export const useMultiUserAuth = () => {
     }
 
     const session = sessions.find(s => s.id === targetSessionId);
-    if (!session) {
-      console.log('🔍 PROFILE: No session found for ID:', targetSessionId);
+    if (!session?.user?.id) {
+      console.log('🔍 PROFILE: No session or user found for ID:', targetSessionId);
       return null;
     }
 
-    console.log('🔍 PROFILE: Found session for user:', session.user.email, 'with ID:', session.user.id);
-
     try {
-      console.log('🔍 PROFILE: Querying profiles table for user_id:', session.user.id);
+      console.log('🔍 AUTH CHECK: Fetching profile for user:', session.user.email, 'session:', targetSessionId);
       
-      // Use the session's authenticated client to query profiles
-      const { data: profile, error } = await session.supabaseClient
+      // First verify the client is properly authenticated
+      const { data: authSession, error: authError } = await session.supabaseClient.auth.getSession();
+      
+      if (authError || !authSession?.session?.access_token) {
+        console.error('❌ AUTH CHECK: Client not properly authenticated:', authError);
+        
+        // Try to refresh the session
+        try {
+          console.log('🔄 AUTH CHECK: Attempting to refresh session...');
+          await session.supabaseClient.auth.setSession(session.session);
+          console.log('✅ AUTH CHECK: Session refreshed successfully');
+        } catch (refreshError) {
+          console.error('❌ AUTH CHECK: Failed to refresh session:', refreshError);
+          return null;
+        }
+      } else {
+        console.log('✅ AUTH CHECK: Client is properly authenticated');
+      }
+      
+      // Now attempt to fetch the profile with enhanced error logging
+      console.log('🔍 PROFILE FETCH: Querying profiles table for user_id:', session.user.id);
+      const { data, error } = await session.supabaseClient
         .from('profiles')
         .select('first_name, last_name, email, phone_number')
         .eq('user_id', session.user.id)
         .maybeSingle();
 
-      console.log('🔍 PROFILE: Database query result:', { profile, error });
-
       if (error) {
-        console.error('🔍 PROFILE: Profile fetch error:', error.message, error);
+        console.error('❌ PROFILE FETCH: Database error:', {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint
+        });
+        
+        // If it's an RLS error, log more details
+        if (error.code === '42501' || error.message?.includes('permission denied') || error.message?.includes('RLS')) {
+          console.error('❌ PROFILE FETCH: RLS Permission denied - this indicates an authentication or policy issue');
+          console.error('❌ PROFILE FETCH: Current auth user ID:', authSession?.session?.user?.id);
+          console.error('❌ PROFILE FETCH: Target user ID:', session.user.id);
+          console.error('❌ PROFILE FETCH: Session valid:', !!authSession?.session);
+        }
+        
         return null;
       }
 
-      if (profile) {
-        console.log('🔍 PROFILE: Profile found! Updating session with:', profile);
-        updateSessionProfile(targetSessionId, profile);
-        return profile;
+      console.log('✅ PROFILE FETCH: Profile fetched successfully:', data);
+      
+      if (data) {
+        updateSessionProfile(targetSessionId, data);
+        console.log('✅ PROFILE UPDATE: Session profile updated');
       } else {
-        console.log('🔍 PROFILE: No profile data found in database');
-        return {};
+        console.log('ℹ️ PROFILE FETCH: No profile data found for user, this may be normal for new users');
       }
+      
+      return data;
     } catch (error) {
-      console.error('🔍 PROFILE: Exception in fetchUserProfile:', error);
+      console.error('❌ PROFILE FETCH: Unexpected exception:', error);
       return null;
     }
   }, [activeSessionId, sessions, updateSessionProfile]);

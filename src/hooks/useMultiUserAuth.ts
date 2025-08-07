@@ -24,52 +24,48 @@ export const useMultiUserAuth = () => {
 
   const fetchUserProfile = useCallback(async (sessionId?: string) => {
     const targetSessionId = sessionId || activeSessionId;
-    console.log('🔍 DEBUG: fetchUserProfile called with sessionId:', sessionId, 'targetSessionId:', targetSessionId);
+    console.log('🔍 PROFILE: fetchUserProfile called with sessionId:', sessionId, 'targetSessionId:', targetSessionId);
     
     if (!targetSessionId) {
-      console.log('🔍 DEBUG: No targetSessionId, returning null');
+      console.log('🔍 PROFILE: No targetSessionId, returning null');
       return null;
     }
 
     const session = sessions.find(s => s.id === targetSessionId);
     if (!session) {
-      console.log('🔍 DEBUG: No session found for ID:', targetSessionId);
+      console.log('🔍 PROFILE: No session found for ID:', targetSessionId);
       return null;
     }
 
-    console.log('🔍 DEBUG: Found session for user:', session.user.email, 'with ID:', session.user.id);
+    console.log('🔍 PROFILE: Found session for user:', session.user.email, 'with ID:', session.user.id);
 
     try {
-      console.log('🔍 DEBUG: Querying profiles table for user_id:', session.user.id);
+      console.log('🔍 PROFILE: Querying profiles table for user_id:', session.user.id);
       
-      // SIMPLIFIED: Use maybeSingle() to handle missing profiles gracefully
+      // Use the session's authenticated client to query profiles
       const { data: profile, error } = await session.supabaseClient
         .from('profiles')
-        .select('first_name, last_name')
+        .select('first_name, last_name, email, phone_number')
         .eq('user_id', session.user.id)
         .maybeSingle();
 
-      console.log('🔍 DEBUG: Database query result - profile:', profile, 'error:', error);
+      console.log('🔍 PROFILE: Database query result:', { profile, error });
 
       if (error) {
-        console.warn('🔍 DEBUG: Profile fetch error (non-blocking):', error.message);
-        // Don't block authentication for profile errors
+        console.error('🔍 PROFILE: Profile fetch error:', error.message, error);
         return null;
       }
 
       if (profile) {
-        console.log('🔍 DEBUG: Profile found, calling updateSessionProfile with:', profile);
+        console.log('🔍 PROFILE: Profile found! Updating session with:', profile);
         updateSessionProfile(targetSessionId, profile);
-        console.log('🔍 DEBUG: updateSessionProfile called successfully');
         return profile;
       } else {
-        console.log('🔍 DEBUG: No profile data found - this is OK for new users');
-        // Return empty profile object to indicate successful fetch with no data
+        console.log('🔍 PROFILE: No profile data found in database');
         return {};
       }
     } catch (error) {
-      console.warn('🔍 DEBUG: Exception in fetchUserProfile (non-blocking):', error);
-      // Don't block authentication for profile errors
+      console.error('🔍 PROFILE: Exception in fetchUserProfile:', error);
       return null;
     }
   }, [activeSessionId, sessions, updateSessionProfile]);

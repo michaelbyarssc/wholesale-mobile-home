@@ -4,6 +4,11 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/integrations/supabase/types';
 import { useStorageCorruptionRecovery } from '@/hooks/useStorageCorruptionRecovery';
 
+// Global singleton flags to prevent StrictMode double initialization
+let isSessionManagerInitialized = false;
+let globalSessionCreationLock = false;
+let sessionCreationQueue: Array<() => void> = [];
+
 const SUPABASE_URL = "https://vgdreuwmisludqxphsph.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZnZHJldXdtaXNsdWRxeHBoc3BoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA3MDk2OTgsImV4cCI6MjA2NjI4NTY5OH0.gnJ83GgBWV4tb-cwWJXY0pPG2bGAyTK3T2IojP4llR8";
 
@@ -48,6 +53,7 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
   const clientCache = useRef<Map<string, SupabaseClient<Database>>>(new Map());
   const broadcastChannelRef = useRef<BroadcastChannel | null>(null);
   const storageValidationInterval = useRef<NodeJS.Timeout | null>(null);
+  const initializationRef = useRef<boolean>(false);
 
   // Timestamp generation for consistent session keys across operations
   const generateSessionTimestamp = useCallback(() => {
@@ -229,10 +235,39 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
     }
   }, []);
 
-  // Initialize from localStorage on mount
+  // Process session creation queue to prevent StrictMode issues
+  const processSessionQueue = useCallback(() => {
+    if (globalSessionCreationLock || sessionCreationQueue.length === 0) {
+      return;
+    }
+    
+    globalSessionCreationLock = true;
+    const nextTask = sessionCreationQueue.shift();
+    if (nextTask) {
+      nextTask();
+    }
+    
+    setTimeout(() => {
+      globalSessionCreationLock = false;
+      processSessionQueue();
+    }, 50);
+  }, []);
+
+  // Initialize from localStorage on mount with StrictMode protection
   useEffect(() => {
+    // Prevent duplicate initialization in StrictMode
+    if (initializationRef.current || isSessionManagerInitialized) {
+      console.log('🔒 Preventing duplicate SessionManager initialization (StrictMode protection)');
+      return;
+    }
+    
+    initializationRef.current = true;
+    isSessionManagerInitialized = true;
+    
     const loadSessions = () => {
       try {
+        console.log('🚀 Initializing SessionManager with StrictMode protection...');
+        
         // Check storage integrity and clean up orphaned storage
         const isIntegrityOk = checkStorageIntegrity();
         if (isIntegrityOk) {
@@ -313,8 +348,10 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
       if (storageValidationInterval.current) {
         clearInterval(storageValidationInterval.current);
       }
+      initializationRef.current = false;
+      isSessionManagerInitialized = false;
     };
-  }, [checkStorageIntegrity, cleanupOrphanedStorage, getCachedClient, deduplicateStorageSessions]);
+  }, [checkStorageIntegrity, cleanupOrphanedStorage, getCachedClient, deduplicateStorageSessions, processSessionQueue]);
 
   // Save sessions to localStorage whenever they change
   useEffect(() => {
@@ -567,143 +604,161 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
   }, [sessions, activeSessionId]);
 
   const addSession = useCallback(async (user: User, session: Session): Promise<string> => {
-    // ENHANCED SINGLE SESSION ENFORCEMENT: Check both runtime state AND storage
-    console.log('🔐 SINGLE SESSION ENFORCEMENT: Checking for existing sessions for user:', user.email);
-    
-    // First, clean any existing sessions from storage atomically
-    try {
-      const lockKey = 'wmh_session_creation_lock';
-      const lockValue = Date.now().toString();
-      localStorage.setItem(lockKey, lockValue);
-      
-      // Clean storage first
-      const storedSessions = localStorage.getItem('wmh_sessions');
-      if (storedSessions) {
-        const sessions = JSON.parse(storedSessions);
-        const existingUserSessions = sessions.filter((s: any) => s.user.id === user.id);
-        
-        if (existingUserSessions.length > 0) {
-          console.log('🔐 Found', existingUserSessions.length, 'existing storage sessions for user:', user.email);
+    return new Promise<string>((resolve, reject) => {
+      const task = async () => {
+        try {
+          // Global session creation lock to prevent StrictMode issues
+          if (globalSessionCreationLock) {
+            console.log('🔒 Session creation blocked - already in progress');
+            reject(new Error('Session creation already in progress'));
+            return;
+          }
           
-          // Remove all sessions for this user from storage
-          const cleanedSessions = sessions.filter((s: any) => s.user.id !== user.id);
-          localStorage.setItem('wmh_sessions', JSON.stringify(cleanedSessions));
+          // ENHANCED SINGLE SESSION ENFORCEMENT: Check both runtime state AND storage
+          console.log('🔐 SINGLE SESSION ENFORCEMENT: Checking for existing sessions for user:', user.email);
           
-          // Clean all related storage keys
-          existingUserSessions.forEach((existingSession: any) => {
-            const timestamp = new Date(existingSession.createdAt).getTime();
-            const storagePattern = `wmh_session_${user.id}_${timestamp}`;
+          // First, clean any existing sessions from storage atomically
+          try {
+            const lockKey = 'wmh_session_creation_lock';
+            const lockValue = Date.now().toString();
+            localStorage.setItem(lockKey, lockValue);
             
-            Object.keys(localStorage).forEach(key => {
-              if (key.includes(user.id) && (key.includes('wmh_') || key.includes('sb-'))) {
-                try {
-                  localStorage.removeItem(key);
-                  console.log('🔐 Cleaned storage key:', key);
-                } catch (error) {
-                  console.warn('🔐 Failed to clean key:', key);
-                }
+            // Clean storage first
+            const storedSessions = localStorage.getItem('wmh_sessions');
+            if (storedSessions) {
+              const sessions = JSON.parse(storedSessions);
+              const existingUserSessions = sessions.filter((s: any) => s.user.id === user.id);
+              
+              if (existingUserSessions.length > 0) {
+                console.log('🔐 Found', existingUserSessions.length, 'existing storage sessions for user:', user.email);
+                
+                // Remove all sessions for this user from storage
+                const cleanedSessions = sessions.filter((s: any) => s.user.id !== user.id);
+                localStorage.setItem('wmh_sessions', JSON.stringify(cleanedSessions));
+                
+                // Clean all related storage keys
+                existingUserSessions.forEach((existingSession: any) => {
+                  const timestamp = new Date(existingSession.createdAt).getTime();
+                  const storagePattern = `wmh_session_${user.id}_${timestamp}`;
+                  
+                  Object.keys(localStorage).forEach(key => {
+                    if (key.includes(user.id) && (key.includes('wmh_') || key.includes('sb-'))) {
+                      try {
+                        localStorage.removeItem(key);
+                        console.log('🔐 Cleaned storage key:', key);
+                      } catch (error) {
+                        console.warn('🔐 Failed to clean key:', key);
+                      }
+                    }
+                  });
+                });
               }
+            }
+            
+            // Release lock
+            localStorage.removeItem(lockKey);
+          } catch (error) {
+            console.error('🔐 Error during storage cleanup:', error);
+          }
+          
+          // Second, check runtime state and clean any existing sessions
+          const existingSession = sessions.find(s => s.user.id === user.id);
+          if (existingSession) {
+            console.log('🔐 RUNTIME: Found existing session for user:', user.email, 'logging out previous session');
+            
+            try {
+              // Force logout the existing session's client
+              await existingSession.supabaseClient.auth.signOut();
+              console.log('🔐 Successfully logged out existing session client');
+            } catch (error) {
+              console.warn('🔐 Error logging out existing session client (non-critical):', error);
+            }
+            
+            // Remove the existing session immediately
+            removeSession(existingSession.id);
+          }
+          
+          // Broadcast forced logout to other tabs/devices
+          if (broadcastChannelRef.current) {
+            try {
+              broadcastChannelRef.current.postMessage({ 
+                type: 'forced_logout', 
+                userId: user.id,
+                reason: 'new_login_detected'
+              });
+              console.log('🔐 Broadcasted forced logout for user:', user.email);
+            } catch (error) {
+              console.warn('🔐 Could not broadcast forced logout:', error);
+            }
+          }
+          
+          // Use consistent timestamp generation for stable storage keys
+          const timestamp = generateSessionTimestamp();
+          const sessionId = `session_${user.id}_${timestamp}`;
+          const storageKey = `wmh_session_${user.id}_${timestamp}`;
+          
+          console.log('🔐 Creating new session with key:', storageKey, 'for user:', user.email);
+          
+          try {
+            // Use cached client creation with validation
+            const client = getCachedClient(storageKey, user.id, timestamp);
+
+            // Set the session in the client with error handling
+            await client.auth.setSession({
+              access_token: session.access_token,
+              refresh_token: session.refresh_token
             });
-          });
+
+            // Fetch user profile with timeout to prevent hanging
+            let userProfile = null;
+            try {
+              const profilePromise = client
+                .from('profiles')
+                .select('first_name, last_name')
+                .eq('user_id', user.id)
+                .single();
+              
+              // 5 second timeout for profile fetch
+              const timeoutPromise = new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Profile fetch timeout')), 5000)
+              );
+              
+              const { data: profile } = await Promise.race([profilePromise, timeoutPromise]) as any;
+              userProfile = profile;
+            } catch (error) {
+              console.warn('Error fetching user profile (non-critical):', error);
+            }
+
+            const newSession: SessionData = {
+              id: sessionId,
+              user,
+              session,
+              supabaseClient: client,
+              userProfile,
+              createdAt: new Date(timestamp) // Use consistent timestamp
+            };
+
+            setSessions(prev => [...prev, newSession]);
+            setActiveSessionId(sessionId);
+            broadcastSessionChange();
+            
+            console.log('🔐 Added new session:', sessionId, 'for user:', user.email, 'storage key:', storageKey);
+            resolve(sessionId);
+          } catch (error) {
+            console.error('🔐 Error adding session:', error);
+            // Clean up cached client on error to prevent memory leaks
+            clientCache.current.delete(storageKey);
+            reject(error);
+          }
+        } catch (error) {
+          reject(error);
         }
-      }
-      
-      // Release lock
-      localStorage.removeItem(lockKey);
-    } catch (error) {
-      console.error('🔐 Error during storage cleanup:', error);
-    }
-    
-    // Second, check runtime state and clean any existing sessions
-    const existingSession = sessions.find(s => s.user.id === user.id);
-    if (existingSession) {
-      console.log('🔐 RUNTIME: Found existing session for user:', user.email, 'logging out previous session');
-      
-      try {
-        // Force logout the existing session's client
-        await existingSession.supabaseClient.auth.signOut();
-        console.log('🔐 Successfully logged out existing session client');
-      } catch (error) {
-        console.warn('🔐 Error logging out existing session client (non-critical):', error);
-      }
-      
-      // Remove the existing session immediately
-      removeSession(existingSession.id);
-    }
-    
-    // Broadcast forced logout to other tabs/devices
-    if (broadcastChannelRef.current) {
-      try {
-        broadcastChannelRef.current.postMessage({ 
-          type: 'forced_logout', 
-          userId: user.id,
-          reason: 'new_login_detected'
-        });
-        console.log('🔐 Broadcasted forced logout for user:', user.email);
-      } catch (error) {
-        console.warn('🔐 Could not broadcast forced logout:', error);
-      }
-    }
-    
-    // Use consistent timestamp generation for stable storage keys
-    const timestamp = generateSessionTimestamp();
-    const sessionId = `session_${user.id}_${timestamp}`;
-    const storageKey = `wmh_session_${user.id}_${timestamp}`;
-    
-    console.log('🔐 Creating new session with key:', storageKey, 'for user:', user.email);
-    
-    try {
-      // Use cached client creation with validation
-      const client = getCachedClient(storageKey, user.id, timestamp);
-
-      // Set the session in the client with error handling
-      await client.auth.setSession({
-        access_token: session.access_token,
-        refresh_token: session.refresh_token
-      });
-
-      // Fetch user profile with timeout to prevent hanging
-      let userProfile = null;
-      try {
-        const profilePromise = client
-          .from('profiles')
-          .select('first_name, last_name')
-          .eq('user_id', user.id)
-          .single();
-        
-        // 5 second timeout for profile fetch
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Profile fetch timeout')), 5000)
-        );
-        
-        const { data: profile } = await Promise.race([profilePromise, timeoutPromise]) as any;
-        userProfile = profile;
-      } catch (error) {
-        console.warn('Error fetching user profile (non-critical):', error);
-      }
-
-      const newSession: SessionData = {
-        id: sessionId,
-        user,
-        session,
-        supabaseClient: client,
-        userProfile,
-        createdAt: new Date(timestamp) // Use consistent timestamp
       };
-
-      setSessions(prev => [...prev, newSession]);
-      setActiveSessionId(sessionId);
-      broadcastSessionChange();
       
-      console.log('🔐 Added new session:', sessionId, 'for user:', user.email, 'storage key:', storageKey);
-      return sessionId;
-    } catch (error) {
-      console.error('🔐 Error adding session:', error);
-      // Clean up cached client on error to prevent memory leaks
-      clientCache.current.delete(storageKey);
-      throw error;
-    }
-  }, [sessions, getCachedClient, broadcastSessionChange, generateSessionTimestamp, removeSession]);
+      sessionCreationQueue.push(task);
+      processSessionQueue();
+    });
+  }, [sessions, getCachedClient, broadcastSessionChange, generateSessionTimestamp, removeSession, processSessionQueue]);
 
   const switchToSession = useCallback((sessionId: string) => {
     const session = sessions.find(s => s.id === sessionId);

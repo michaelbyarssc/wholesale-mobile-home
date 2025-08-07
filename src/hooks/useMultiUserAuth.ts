@@ -22,33 +22,53 @@ export const useMultiUserAuth = () => {
   const navigate = useNavigate();
   const { validateSession } = useSessionValidation();
 
-  // Initialize by checking for existing session - stable approach
+  // Initialize by checking for existing session with StrictMode protection
   useEffect(() => {
     let initialized = false;
     let authSubscription: any = null;
     
     const initializeAuth = async () => {
-      if (initialized) return;
+      if (initialized) {
+        console.log('🔒 Preventing duplicate auth initialization (StrictMode protection)');
+        return;
+      }
       initialized = true;
       
       try {
-        // Set up auth state listener with debouncing to prevent conflicts
+        console.log('🔐 Initializing multi-user auth with StrictMode protection...');
+        
+        // Set up auth state listener with enhanced debouncing
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
           (event, session) => {
             console.log('🔐 Auth state change:', event, session?.user?.email);
             
-            // Debounce auth events to prevent rapid session creation
-            setTimeout(async () => {
+            // Enhanced debounce with queue management to prevent rapid session creation
+            const authEventKey = `auth_${event}_${session?.user?.id || 'none'}`;
+            
+            // Clear any existing timeout for this auth event
+            if ((window as any)[authEventKey]) {
+              clearTimeout((window as any)[authEventKey]);
+            }
+            
+            (window as any)[authEventKey] = setTimeout(async () => {
               if (event === 'SIGNED_IN' && session?.user) {
                 try {
-                  await addSession(session.user, session);
+                  // Additional check to prevent creating session if one already exists
+                  const existingSession = sessions.find(s => s.user.id === session.user.id);
+                  if (!existingSession) {
+                    await addSession(session.user, session);
+                  } else {
+                    console.log('🔐 Session already exists for user, skipping creation');
+                  }
                 } catch (error) {
                   console.error('🔐 Error adding session on auth change:', error);
                 }
               } else if (event === 'SIGNED_OUT') {
                 console.log('🔐 User signed out via auth change');
               }
-            }, 500); // 500ms debounce
+              
+              delete (window as any)[authEventKey];
+            }, 750); // Increased debounce for StrictMode
           }
         );
         
@@ -60,9 +80,12 @@ export const useMultiUserAuth = () => {
           const storedSessions = localStorage.getItem('wmh_sessions');
           const existingSessions = storedSessions ? JSON.parse(storedSessions) : [];
           
-          if (existingSessions.length === 0) {
+          // Only add if no sessions exist AND no runtime sessions exist
+          if (existingSessions.length === 0 && sessions.length === 0) {
             console.log('🔐 Initializing auth with existing session for user:', session.user.email);
             await addSession(session.user, session);
+          } else {
+            console.log('🔐 Sessions already exist, skipping initialization');
           }
         }
         
@@ -79,8 +102,9 @@ export const useMultiUserAuth = () => {
       if (authSubscription) {
         authSubscription.unsubscribe();
       }
+      initialized = false;
     };
-  }, [addSession]); // Only depend on addSession
+  }, [addSession, sessions]); // Added sessions dependency for better protection
 
   const signIn = useCallback(async (email: string, password: string) => {
     setIsLoading(true);

@@ -67,17 +67,14 @@ export const MultiUserHeader = ({
     isSigningOut
   } = useAuth();
 
-  // Optimized display name with progressive loading
-  const [displayState, setDisplayState] = useState<'loading' | 'email' | 'profile'>('loading');
-
-  // Progressive display name with memoization
+  // Stable display name with better caching
   const getDisplayName = React.useMemo(() => {
     // If signing out, show signing out message
     if (isSigningOut) {
       return 'Signing out...';
     }
 
-    // If we have profile data, prioritize first_name
+    // If we have profile data, prioritize first_name + last_name
     if (userProfile?.first_name) {
       return userProfile.last_name ? `${userProfile.first_name} ${userProfile.last_name}` : userProfile.first_name;
     }
@@ -87,26 +84,13 @@ export const MultiUserHeader = ({
       return userProfile.last_name;
     }
     
-    // Show email prefix while profile loads, but only briefly
+    // Only show email prefix as final fallback, and only if user exists
     if (user?.email) {
       return user.email.split('@')[0];
     }
     
     return 'User';
-  }, [userProfile, user?.email, isSigningOut]);
-
-  // Track display state for smooth transitions
-  React.useEffect(() => {
-    if (isSigningOut) {
-      setDisplayState('loading');
-    } else if (userProfile?.first_name || userProfile?.last_name) {
-      setDisplayState('profile');
-    } else if (user?.email) {
-      setDisplayState('email');
-    } else {
-      setDisplayState('loading');
-    }
-  }, [userProfile, user?.email, isSigningOut]);
+  }, [userProfile?.first_name, userProfile?.last_name, user?.email, isSigningOut]);
 
   const handleChangePassword = () => {
     setIsPasswordDialogOpen(true);

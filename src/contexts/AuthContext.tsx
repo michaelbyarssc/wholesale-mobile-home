@@ -67,54 +67,71 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Request deduplication refs
   const profileFetchInProgress = useRef(false);
+  const hasProfileBeenFetched = useRef(new Set<string>());
+  const profileRequestPromises = useRef(new Map<string, Promise<any>>());
 
   // Simple profile fetching
   const fetchUserProfile = useCallback(async (targetSessionId?: string) => {
     const sessionId = targetSessionId || activeSessionId;
     const session = sessions.find(s => s.id === sessionId);
     
-    if (!session || !session.user) {
+    if (!session?.user) {
       console.log('🔍 PROFILE: No valid session for profile fetch');
       return null;
     }
 
-    // Prevent concurrent fetches
-    if (profileFetchInProgress.current) {
-      console.log('🔍 PROFILE: Fetch already in progress, skipping');
+    const userId = session.user.id;
+    const requestId = `${userId}-${Date.now()}`;
+    
+    // Check if we already fetched for this user
+    if (hasProfileBeenFetched.current.has(userId)) {
+      console.log(`🔍 PROFILE [${requestId}]: Already fetched for user ${userId}, skipping`);
       return null;
     }
 
-    profileFetchInProgress.current = true;
+    // Return existing promise if request is in progress
+    if (profileRequestPromises.current.has(userId)) {
+      console.log(`🔍 PROFILE [${requestId}]: Request already in progress for user ${userId}, returning existing promise`);
+      return profileRequestPromises.current.get(userId);
+    }
+
+    // Mark as fetched and create new promise
+    hasProfileBeenFetched.current.add(userId);
     setIsProfileLoading(true);
+    
+    const profilePromise = (async () => {
+      try {
+        console.log(`🔍 PROFILE FETCH [${requestId}]: Querying profiles table for user_id:`, userId);
+        const { data, error } = await session.supabaseClient
+          .from('profiles')
+          .select('first_name, last_name, email, phone_number')
+          .eq('user_id', userId)
+          .maybeSingle();
 
-    try {
-      console.log('🔍 PROFILE FETCH: Querying profiles table for user_id:', session.user.id);
-      const { data, error } = await session.supabaseClient
-        .from('profiles')
-        .select('first_name, last_name, email, phone_number')
-        .eq('user_id', session.user.id)
-        .maybeSingle();
+        if (error) {
+          console.error(`❌ PROFILE FETCH [${requestId}]: Database error:`, error);
+          return null;
+        }
 
-      if (error) {
-        console.error('❌ PROFILE FETCH: Database error:', error);
+        console.log(`✅ PROFILE FETCH [${requestId}]: Profile fetched successfully:`, data);
+        
+        if (data) {
+          updateSessionProfile(sessionId, data);
+          console.log(`✅ PROFILE UPDATE [${requestId}]: Session profile updated`);
+        }
+        
+        return data;
+      } catch (error) {
+        console.error(`❌ PROFILE FETCH [${requestId}]: Unexpected exception:`, error);
         return null;
+      } finally {
+        profileRequestPromises.current.delete(userId);
+        setIsProfileLoading(false);
       }
+    })();
 
-      console.log('✅ PROFILE FETCH: Profile fetched successfully:', data);
-      
-      if (data) {
-        updateSessionProfile(sessionId, data);
-        console.log('✅ PROFILE UPDATE: Session profile updated');
-      }
-      
-      return data;
-    } catch (error) {
-      console.error('❌ PROFILE FETCH: Unexpected exception:', error);
-      return null;
-    } finally {
-      profileFetchInProgress.current = false;
-      setIsProfileLoading(false);
-    }
+    profileRequestPromises.current.set(userId, profilePromise);
+    return profilePromise;
   }, [activeSessionId, sessions, updateSessionProfile]);
 
   // Initialize auth
@@ -143,6 +160,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           } else if (event === 'SIGNED_OUT') {
             console.log('🚪 AUTH STATE: User signed out, clearing sessions');
             clearAllSessions();
+            hasProfileBeenFetched.current.clear();
+            profileRequestPromises.current.clear();
             setIsLoginInProgress(false);
           } else if (event === 'TOKEN_REFRESHED' && session?.user) {
             console.log('🔄 AUTH STATE: Token refreshed for user:', session.user.email);
@@ -196,7 +215,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log('📱 AUTO-FETCH: Fetching profile for active user:', currentSession.user.email);
       fetchUserProfile();
     }
-  }, [activeSession?.user?.id, activeSession?.userProfile, isLoginInProgress, isProfileLoading]);
+  }, [activeSession?.user?.id, isLoginInProgress, isProfileLoading]);
 
   // Auth methods
   const signIn = useCallback(async (email: string, password: string) => {

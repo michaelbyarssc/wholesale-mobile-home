@@ -32,6 +32,8 @@ export const useUserRoles = (): RoleCheck => {
   
   // Request deduplication ref
   const rolesFetchInProgress = useRef(false);
+  const hasRoleBeenFetched = useRef(new Set<string>());
+  const roleRequestPromises = useRef(new Map<string, Promise<void>>());
 
   // Debug logging for role state
   console.log('useUserRoles: Current state', { 
@@ -49,57 +51,74 @@ export const useUserRoles = (): RoleCheck => {
       return;
     }
 
-    // Prevent concurrent fetches
-    if (rolesFetchInProgress.current) {
-      console.log('🔐 ROLES: Fetch already in progress, skipping');
+    const requestId = `${userId}-${Date.now()}`;
+
+    // Check if we already fetched for this user
+    if (hasRoleBeenFetched.current.has(userId)) {
+      console.log(`🔐 ROLES [${requestId}]: Already fetched for user ${userId}, skipping`);
       return;
     }
 
-    rolesFetchInProgress.current = true;
+    // Return existing promise if request is in progress
+    if (roleRequestPromises.current.has(userId)) {
+      console.log(`🔐 ROLES [${requestId}]: Request already in progress for user ${userId}, waiting for existing promise`);
+      return roleRequestPromises.current.get(userId);
+    }
+
+    // Mark as fetched and create new promise
+    hasRoleBeenFetched.current.add(userId);
     setIsLoading(true);
     setError(null);
 
-    try {
-      // Try direct role fetch first
-      const { data: roleData, error: roleError } = await supabase
-        .from('user_roles')
-        .select('id, user_id, role')
-        .eq('user_id', userId);
+    const rolePromise = (async () => {
+      try {
+        console.log(`🔐 ROLES [${requestId}]: Fetching roles for user ${userId}`);
+        
+        const { data: roleData, error: roleError } = await supabase
+          .from('user_roles')
+          .select('id, user_id, role')
+          .eq('user_id', userId);
 
-      if (roleError) {
-        console.error('Error fetching user roles:', roleError);
-        setError(`Failed to fetch user roles: ${roleError.message}`);
+        if (roleError) {
+          console.error(`❌ ROLES [${requestId}]: Database error:`, roleError);
+          setError(`Failed to fetch user roles: ${roleError.message}`);
+          setUserRoles([]);
+          return;
+        }
+
+        // SECURITY: Log role fetch for audit trail
+        console.log(`🔐 [SECURITY] [${requestId}] Role fetch for user ${userId}:`, {
+          roles: roleData?.map(r => r.role) || []
+        });
+        
+        setUserRoles(roleData || []);
+      } catch (err) {
+        console.error(`❌ ROLES [${requestId}]: Unexpected error:`, err);
+        setError('Failed to fetch user roles');
         setUserRoles([]);
-        return;
+      } finally {
+        roleRequestPromises.current.delete(userId);
+        setIsLoading(false);
       }
+    })();
 
-      // SECURITY: Log role fetch for audit trail
-      console.log(`🔐 [SECURITY] Role fetch for user ${userId}:`, {
-        roles: roleData?.map(r => r.role) || []
-      });
-      
-      setUserRoles(roleData || []);
-    } catch (err) {
-      console.error('Error in fetchUserRoles:', err);
-      setError('Failed to fetch user roles');
-      setUserRoles([]);
-    } finally {
-      rolesFetchInProgress.current = false;
-      setIsLoading(false);
-    }
+    roleRequestPromises.current.set(userId, rolePromise);
+    return rolePromise;
   }, []);
 
   // Effect to fetch roles when user changes - coordinated after login completes
   useEffect(() => {
-    if (!authLoading && user && !isLoginInProgress && !isLoading) {
+    if (!authLoading && user && !isLoginInProgress) {
       console.log('🔐 ROLES: Fetching roles for user:', user.email);
       fetchUserRoles(user.id);
     } else if (!authLoading && !user) {
       // Clear roles when user logs out
       setUserRoles([]);
       setError(null);
+      hasRoleBeenFetched.current.clear();
+      roleRequestPromises.current.clear();
     }
-  }, [user?.id, authLoading, isLoginInProgress, isLoading]);
+  }, [user?.id, authLoading, isLoginInProgress]);
 
   // Role checking functions
   const hasRole = useCallback((role: 'admin' | 'super_admin' | 'user' | 'driver') => {

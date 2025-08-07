@@ -64,12 +64,12 @@ export const UserForm = ({ onUserCreated }: UserFormProps) => {
     try {
       setCreatingUser(true);
       
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
         throw new Error('Not authenticated');
       }
 
-      console.log(`[SECURITY] Creating user with role: ${newUserRole} by user: ${session.user.id}`);
+      console.log(`[SECURITY] Creating user with role: ${newUserRole} by user: ${user.id}`);
       console.log(`[SECURITY] Current user is super admin: ${isSuperAdmin}`);
 
       const { data, error } = await supabase.functions.invoke('admin-create-user', {
@@ -80,7 +80,7 @@ export const UserForm = ({ onUserCreated }: UserFormProps) => {
           phone_number: newUserPhoneNumber,
           role: newUserRole,
           markup_percentage: 30,
-          created_by: session.user.id
+          created_by: user.id
         }
       });
 

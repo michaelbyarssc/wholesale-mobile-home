@@ -69,10 +69,10 @@ export const InvoiceManagement = () => {
   const { data: approvedEstimates = [], isLoading } = useQuery({
     queryKey: ['approved-estimates'],
     queryFn: async () => {
-      // First check if we have a session
-      const { data: { session } } = await supabase.auth.getSession();
+      // Use auth context user instead of independent session check
+      const { data: { user } } = await supabase.auth.getUser();
       
-      if (!session?.user) {
+      if (!user) {
         throw new Error('Not authenticated');
       }
 
@@ -100,14 +100,14 @@ export const InvoiceManagement = () => {
   const { data: invoices = [], error: invoicesError } = useQuery({
     queryKey: ['invoices-basic'],
     queryFn: async () => {
-      // First check if we have a session
-      const { data: { session } } = await supabase.auth.getSession();
+      // Use auth context user instead of independent session check
+      const { data: { user } } = await supabase.auth.getUser();
       
-      if (!session?.user) {
+      if (!user) {
         throw new Error('Not authenticated');
       }
 
-      console.log('Fetching invoices for user:', session.user.id);
+      console.log('Fetching invoices for user:', user.id);
 
       const { data, error } = await supabase
         .from('invoices')
@@ -400,15 +400,15 @@ export const InvoiceManagement = () => {
     }) => {
       console.log('Starting payment processing...', paymentData);
       
-      // Get current session and user
-      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      // Use auth context user instead of independent session check
+      const { data: userData, error: userError } = await supabase.auth.getUser();
       
-      if (sessionError || !sessionData.session?.user) {
-        console.error('Authentication error:', sessionError);
+      if (userError || !userData.user) {
+        console.error('Authentication error:', userError);
         throw new Error('Authentication required. Please log in again.');
       }
 
-      const user = sessionData.session.user;
+      const currentUser = userData.user;
 
       // Verify admin access using secure method
       const hasAdminAccess = await verifyAdminAccess();

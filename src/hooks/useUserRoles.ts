@@ -185,23 +185,4 @@ export const useUserRoles = (): RoleCheck => {
   };
 };
 
-/**
- * Legacy compatibility function - DEPRECATED
- * Use useUserRoles() hook instead
- */
-export const checkCurrentUserRole = async () => {
-  console.warn('[DEPRECATED] checkCurrentUserRole() is deprecated. Use useUserRoles() hook instead.');
-  
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session?.user) return { isSuperAdmin: false, isAdmin: false };
-
-  const { data: roleData } = await supabase
-    .from('user_roles')
-    .select('role')
-    .eq('user_id', session.user.id);
-
-  const isSuperAdmin = roleData?.some(role => role.role === 'super_admin') || false;
-  const isAdmin = roleData?.some(role => role.role === 'admin' || role.role === 'super_admin') || false;
-
-  return { isSuperAdmin, isAdmin };
-};
+// REMOVED: Legacy compatibility function - Use useUserRoles() hook instead

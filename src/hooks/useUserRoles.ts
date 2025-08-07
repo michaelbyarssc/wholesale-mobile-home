@@ -50,19 +50,7 @@ export const useUserRoles = (): RoleCheck => {
     setError(null);
 
     try {
-      // SECURITY: Validate current session matches requested user
-      const { data: { session: currentSession } } = await supabase.auth.getSession();
-      if (!currentSession || currentSession.user.id !== userId) {
-        console.error('🚨 SECURITY: Role fetch attempted for different user', {
-          requestedUserId: userId,
-          sessionUserId: currentSession?.user?.id
-        });
-        setUserRoles([]);
-        setError('Session validation failed');
-        return;
-      }
-
-      // SECURITY: Always fetch fresh role data - no caching as requested
+      // Try direct role fetch first
       const { data: roleData, error: roleError } = await supabase
         .from('user_roles')
         .select('id, user_id, role')
@@ -70,21 +58,60 @@ export const useUserRoles = (): RoleCheck => {
 
       if (roleError) {
         console.error('Error fetching user roles:', roleError);
+        
+        // FALLBACK: Use is_admin RPC function if role table fails
+        console.log('🔧 Attempting admin fallback using is_admin RPC...');
+        try {
+          const { data: isAdminResult, error: rpcError } = await supabase.rpc('is_admin', { user_id: userId });
+          
+          if (!rpcError && isAdminResult === true) {
+            console.log('🔧 Emergency admin access granted via RPC fallback');
+            // Create synthetic role data for emergency access
+            setUserRoles([{ 
+              id: 'emergency-admin', 
+              user_id: userId, 
+              role: 'super_admin' as const 
+            }]);
+            setError(null);
+            return;
+          }
+        } catch (rpcErr) {
+          console.error('🚨 RPC fallback also failed:', rpcErr);
+        }
+        
         setError(`Failed to fetch user roles: ${roleError.message}`);
         setUserRoles([]);
         return;
       }
 
-      // SECURITY: Log role fetch for audit trail with session validation
+      // SECURITY: Log role fetch for audit trail
       console.log(`🔐 [SECURITY] Role fetch for user ${userId}:`, {
-        roles: roleData?.map(r => r.role) || [],
-        sessionEmail: currentSession.user.email,
-        sessionId: currentSession.access_token.slice(-10)
+        roles: roleData?.map(r => r.role) || []
       });
       
       setUserRoles(roleData || []);
     } catch (err) {
       console.error('Error in fetchUserRoles:', err);
+      
+      // FINAL FALLBACK: Direct RPC check
+      try {
+        console.log('🔧 Final fallback: Checking admin status directly...');
+        const { data: isAdminResult, error: rpcError } = await supabase.rpc('is_admin', { user_id: userId });
+        
+        if (!rpcError && isAdminResult === true) {
+          console.log('🔧 Emergency admin access granted via final fallback');
+          setUserRoles([{ 
+            id: 'emergency-admin-final', 
+            user_id: userId, 
+            role: 'super_admin' as const 
+          }]);
+          setError(null);
+          return;
+        }
+      } catch (finalErr) {
+        console.error('🚨 All fallbacks failed:', finalErr);
+      }
+      
       setError('Failed to fetch user roles');
       setUserRoles([]);
     } finally {

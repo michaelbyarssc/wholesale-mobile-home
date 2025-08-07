@@ -342,15 +342,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             await fetchUserProfile();
           }
           
-          // Step 2: Fetch roles if needed  
+          // Step 2: Fetch roles in background (non-blocking)
           if (userRoles.length === 0 && !isRolesLoading) {
-            console.log('📱 STEP 2: Fetching roles...');
-            await fetchUserRoles();
+            console.log('📱 STEP 2: Fetching roles in background...');
+            fetchUserRoles(); // Don't await - let it run in background
           }
           
-          // Step 3: Mark user data as ready
-          if (!isUserDataReady && !isProfileLoading && !isRolesLoading) {
-            console.log('📱 STEP 3: Marking user data as ready');
+          // Step 3: Mark user data as ready after profile (don't wait for roles)
+          if (!isUserDataReady && !isProfileLoading) {
+            console.log('📱 STEP 3: Marking user data as ready (profile complete)');
             setIsUserDataReady(true);
           }
         } catch (error) {
@@ -362,7 +362,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const fetchTimer = setTimeout(fetchDataSequence, 200);
       return () => clearTimeout(fetchTimer);
     }
-  }, [activeSession?.user?.id, isLoginInProgress, isStabilizing, isProfileLoading, isRolesLoading, userRoles.length, isUserDataReady]);
+  }, [activeSession?.user?.id, isLoginInProgress, isStabilizing, isProfileLoading, userRoles.length, isUserDataReady]);
 
   // Auth methods
   const signIn = useCallback(async (email: string, password: string) => {

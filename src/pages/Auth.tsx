@@ -28,8 +28,7 @@ const Auth = () => {
   const navigate = useNavigate();
   
   // Multi-user authentication
-  const { user, userProfile, sessions, hasMultipleSessions } = useAuth();
-  const { isAdmin, isLoading: rolesLoading } = useUserRoles();
+  const { user, userProfile, sessions, hasMultipleSessions, isAdmin, isUserDataReady } = useAuth();
   
   // Check if this is "add user" mode
   const isAddUserMode = searchParams.get('mode') === 'add';
@@ -57,7 +56,7 @@ const Auth = () => {
     }
     
     // If user is already logged in and not in add user mode, redirect
-    if (user && !rolesLoading) {
+    if (user && isUserDataReady) {
       console.log('🔐 AUTH PAGE: User already logged in, redirecting...');
       
       setTimeout(() => {
@@ -70,7 +69,7 @@ const Auth = () => {
         }
       }, 100);
     }
-  }, [user, isAdmin, rolesLoading, searchParams, navigate, isAddUserMode]);
+  }, [user, isAdmin, isUserDataReady, searchParams, navigate, isAddUserMode]);
 
   const resetForm = () => {
     setEmail('');
@@ -104,16 +103,7 @@ const Auth = () => {
     navigate('/');
   };
 
-  if (rolesLoading && !isAddUserMode) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-green-50 to-yellow-50 flex items-center justify-center p-4">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
-        </div>
-      </div>
-    );
-  }
+  // Remove blocking loading state - always show the auth form
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-green-50 to-yellow-50 flex items-center justify-center p-4">

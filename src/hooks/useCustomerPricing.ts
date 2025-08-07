@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { User } from '@supabase/supabase-js';
@@ -9,8 +8,6 @@ type Service = Database['public']['Tables']['services']['Row'];
 type HomeOption = Database['public']['Tables']['home_options']['Row'];
 
 export const useCustomerPricing = (user: User | null) => {
-  const [loading, setLoading] = useState(true);
-
   console.log('useCustomerPricing: Hook called with user:', user?.id);
 
   // Fetch customer markup with tiered pricing info (cached for 5 minutes)
@@ -51,13 +48,6 @@ export const useCustomerPricing = (user: User | null) => {
     gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
     refetchOnWindowFocus: false
   });
-
-  useEffect(() => {
-    if (!markupLoading) {
-      console.log('useCustomerPricing: Setting loading to false');
-      setLoading(false);
-    }
-  }, [markupLoading]);
 
   const calculatePrice = (basePrice: number): number => {
     if (!basePrice || !customerMarkup) return 0;
@@ -177,14 +167,14 @@ export const useCustomerPricing = (user: User | null) => {
     return totalPrice;
   };
 
-  console.log('useCustomerPricing: Returning hook values, loading:', loading);
+  console.log('useCustomerPricing: Returning hook values, loading:', markupLoading);
 
   return {
     customerMarkup: customerMarkup?.markup_percentage || 30,
     markupPercentage: customerMarkup?.markup_percentage || 30, // Add alias for backward compatibility
     tierLevel: customerMarkup?.tier_level || 'user',
     parentMarkup: customerMarkup?.super_admin_markup_percentage || 30,
-    loading,
+    loading: markupLoading, // Use React Query's loading state directly
     calculatePrice,
     calculateMobileHomePrice,
     calculateServicePrice,

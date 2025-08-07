@@ -64,8 +64,10 @@ export const MultiUserHeader = ({
     hasMultipleSessions
   } = useMultiUserAuth();
 
-  const getDisplayName = (profile?: { first_name?: string; last_name?: string } | null) => {
-    if (!profile) return 'User';
+  const getDisplayName = (profile?: { first_name?: string; last_name?: string } | null, email?: string) => {
+    if (!profile) {
+      return email ? email.split('@')[0] : 'User';
+    }
     
     const firstName = profile.first_name || '';
     const lastName = profile.last_name || '';
@@ -78,10 +80,10 @@ export const MultiUserHeader = ({
       return lastName;
     }
     
-    return 'User';
+    return email ? email.split('@')[0] : 'User';
   };
 
-  const displayName = getDisplayName(userProfile);
+  const displayName = getDisplayName(userProfile, user?.email);
   
   // Debug logging for user profile
   console.log('🔍 DEBUG: MultiUserHeader - user:', user?.email, 'userProfile:', userProfile, 'displayName:', displayName);
@@ -262,7 +264,7 @@ export const MultiUserHeader = ({
                                   </div>
                                   <div className="flex-1">
                                     <div className="font-medium text-gray-900">
-                                      {getDisplayName(session.userProfile)}
+                                      {getDisplayName(session.userProfile, session.user.email)}
                                     </div>
                                     <div className="text-sm text-gray-500">{session.user.email}</div>
                                   </div>

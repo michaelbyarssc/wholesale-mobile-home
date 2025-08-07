@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { User } from '@supabase/supabase-js';
 import type { Database } from '@/integrations/supabase/types';
@@ -14,9 +14,18 @@ const PRICING_GC_TIME = 30 * 60 * 1000; // 30 minutes
 
 export const useOptimizedCustomerPricing = (user: User | null) => {
   const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
 
-  // Fetch customer markup with extended caching
-  const { data: customerMarkup, isLoading: markupLoading } = useQuery({
+  // Fetch customer markup with extended caching but always refetch on mount for signed-in users to guarantee freshness
+  const { 
+    data: customerMarkup, 
+    isLoading: markupLoading,
+    isFetching,
+    isSuccess,
+    status,
+    error,
+    dataUpdatedAt
+  } = useQuery({
     queryKey: ['customer-markup-optimized', user?.id],
     queryFn: async () => {
       if (!user) {
@@ -35,32 +44,35 @@ export const useOptimizedCustomerPricing = (user: User | null) => {
 
       if (error) {
         console.error('Pricing: Error fetching markup:', error);
-        return { 
-          markup_percentage: 30, 
-          tier_level: 'user', 
-          super_admin_markup_percentage: 30 
-        };
+        return null; // Do not fall back for signed-in users
       }
 
-      return data || { 
-        markup_percentage: 30, 
-        tier_level: 'user', 
-        super_admin_markup_percentage: 30 
-      };
+      return data; // Could be null if no row
     },
     enabled: true,
-    staleTime: PRICING_CACHE_TIME,
+    staleTime: user ? 0 : PRICING_CACHE_TIME,
     gcTime: PRICING_GC_TIME,
     refetchOnWindowFocus: false,
-    refetchOnMount: false,
-    refetchOnReconnect: false
+    refetchOnMount: user ? true : false,
+    refetchOnReconnect: user ? true : false,
   });
 
   useEffect(() => {
-    if (!markupLoading) {
+    // For signed-in users, keep loading true until we have a fresh DB value
+    if (user) {
+      setLoading(isFetching || markupLoading || !isSuccess || !customerMarkup);
+    } else {
+      // Anonymous users use default pricing immediately
       setLoading(false);
     }
-  }, [markupLoading]);
+  }, [user, isFetching, markupLoading, isSuccess, customerMarkup]);
+
+  // Clear cached markup when the authenticated user changes to avoid stale data
+  useEffect(() => {
+    if (user) {
+      queryClient.removeQueries({ queryKey: ['customer-markup-optimized'] });
+    }
+  }, [user?.id, queryClient]);
 
   // Memoized calculation functions to prevent recalculation
   const calculatePrice = useMemo(() => {

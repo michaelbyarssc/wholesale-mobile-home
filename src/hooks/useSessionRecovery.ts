@@ -2,7 +2,7 @@ import { useCallback } from 'react';
 import { useSessionManager } from '@/contexts/SessionManagerContext';
 
 export const useSessionRecovery = () => {
-  const { sessions, clearAllSessions } = useSessionManager();
+  const { sessions, clearAllSessions, forceCleanUserSessions } = useSessionManager();
 
   // Emergency cleanup for corrupted sessions
   const emergencyCleanup = useCallback(() => {
@@ -77,9 +77,22 @@ export const useSessionRecovery = () => {
     return [];
   }, [sessions]);
 
+  // Force clean all sessions for a specific user (emergency use)
+  const forceCleanSpecificUser = useCallback((userId: string) => {
+    console.log('🚨 EMERGENCY: Force cleaning sessions for specific user:', userId);
+    try {
+      forceCleanUserSessions(userId);
+      return true;
+    } catch (error) {
+      console.error('🚨 Emergency user cleanup failed:', error);
+      return false;
+    }
+  }, [forceCleanUserSessions]);
+
   return {
     emergencyCleanup,
     fixDuplicateSessions,
+    forceCleanSpecificUser,
     hasMultipleSessions: sessions.length > 1,
     sessionCount: sessions.length
   };

@@ -26,6 +26,7 @@ interface SessionManagerContextType {
   clearAllSessions: () => void;
   getSessionClient: (sessionId?: string) => SupabaseClient<Database> | null;
   updateSessionProfile: (sessionId: string, profile: { first_name?: string; last_name?: string }) => void;
+  forceCleanUserSessions: (userId: string) => void;
 }
 
 const SessionManagerContext = createContext<SessionManagerContextType | null>(null);
@@ -106,6 +107,128 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
     return client;
   }, []);
 
+  // Emergency session deduplication utility
+  const forceCleanUserSessions = useCallback((userId: string) => {
+    console.log('🚨 EMERGENCY: Force cleaning all sessions for user:', userId);
+    
+    // Remove from runtime state
+    setSessions(prev => prev.filter(s => s.user.id !== userId));
+    
+    // Clean localStorage sessions data
+    try {
+      const storedSessions = localStorage.getItem('wmh_sessions');
+      if (storedSessions) {
+        const sessions = JSON.parse(storedSessions);
+        const cleanedSessions = sessions.filter((s: any) => s.user.id !== userId);
+        localStorage.setItem('wmh_sessions', JSON.stringify(cleanedSessions));
+      }
+    } catch (error) {
+      console.error('🚨 Error cleaning localStorage sessions:', error);
+    }
+    
+    // Clean all storage keys for this user
+    const keysToRemove = Object.keys(localStorage).filter(key => 
+      key.includes(userId) && (
+        key.includes('wmh_') || 
+        key.includes('sb-') ||
+        key.includes('auth-token')
+      )
+    );
+    
+    keysToRemove.forEach(key => {
+      try {
+        localStorage.removeItem(key);
+        console.log('🚨 Removed orphaned key:', key);
+      } catch (error) {
+        console.warn('🚨 Failed to remove key:', key, error);
+      }
+    });
+    
+    // Clean client cache
+    Array.from(clientCache.current.keys())
+      .filter(key => key.includes(userId))
+      .forEach(key => clientCache.current.delete(key));
+      
+    console.log('🚨 Emergency cleanup complete for user:', userId);
+  }, []);
+
+  // Storage-based deduplication with atomic locks
+  const deduplicateStorageSessions = useCallback(() => {
+    const lockKey = 'wmh_dedup_lock';
+    const lockValue = Date.now().toString();
+    const lockTimeout = 5000; // 5 second timeout
+    
+    try {
+      // Atomic lock acquisition
+      const existingLock = localStorage.getItem(lockKey);
+      if (existingLock && (Date.now() - parseInt(existingLock)) < lockTimeout) {
+        console.log('🔐 Deduplication already in progress, skipping');
+        return false;
+      }
+      
+      localStorage.setItem(lockKey, lockValue);
+      
+      // Perform deduplication
+      const storedSessions = localStorage.getItem('wmh_sessions');
+      if (storedSessions) {
+        const sessions = JSON.parse(storedSessions);
+        const userCounts = new Map<string, number>();
+        
+        // Count sessions per user
+        sessions.forEach((session: any) => {
+          const count = userCounts.get(session.user.id) || 0;
+          userCounts.set(session.user.id, count + 1);
+        });
+        
+        // Find duplicates and clean them
+        const duplicateUsers = Array.from(userCounts.entries())
+          .filter(([_, count]) => count > 1)
+          .map(([userId, _]) => userId);
+          
+        if (duplicateUsers.length > 0) {
+          console.log('🔐 Found duplicate users in storage:', duplicateUsers);
+          
+          // Keep only the most recent session per user
+          const dedupedSessions = sessions.reduce((acc: any[], session: any) => {
+            const existingIndex = acc.findIndex(s => s.user.id === session.user.id);
+            if (existingIndex === -1) {
+              acc.push(session);
+            } else {
+              // Keep the more recent session
+              const existing = acc[existingIndex];
+              const sessionTime = new Date(session.createdAt).getTime();
+              const existingTime = new Date(existing.createdAt).getTime();
+              
+              if (sessionTime > existingTime) {
+                acc[existingIndex] = session;
+                console.log('🔐 Replaced older session for user:', session.user.email);
+              }
+            }
+            return acc;
+          }, []);
+          
+          localStorage.setItem('wmh_sessions', JSON.stringify(dedupedSessions));
+          console.log('🔐 Deduplication complete, removed', sessions.length - dedupedSessions.length, 'duplicate sessions');
+        }
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('🔐 Error during deduplication:', error);
+      return false;
+    } finally {
+      // Release lock
+      try {
+        const currentLock = localStorage.getItem(lockKey);
+        if (currentLock === lockValue) {
+          localStorage.removeItem(lockKey);
+        }
+      } catch (error) {
+        console.warn('🔐 Error releasing deduplication lock:', error);
+      }
+    }
+  }, []);
+
   // Initialize from localStorage on mount
   useEffect(() => {
     const loadSessions = () => {
@@ -119,34 +242,42 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
           return;
         }
 
+        // Perform storage deduplication before loading
+        deduplicateStorageSessions();
+
         const storedSessions = localStorage.getItem('wmh_sessions');
         const storedActiveId = localStorage.getItem('wmh_active_session');
         
         if (storedSessions) {
           const sessionData = JSON.parse(storedSessions);
           
-          // Filter out any duplicate user sessions
+          // Additional runtime deduplication as safety net
           const uniqueSessionData = sessionData.filter((session: any, index: number, array: any[]) => 
             index === array.findIndex(s => s.user.id === session.user.id)
           );
           
+          // Log if we found any runtime duplicates that escaped storage dedup
+          if (sessionData.length !== uniqueSessionData.length) {
+            console.warn('🔐 Found runtime duplicates that escaped storage dedup:', 
+              sessionData.length - uniqueSessionData.length);
+          }
+          
           // Recreate sessions with consistent storage key generation
-            const recreatedSessions = uniqueSessionData.map((sessionInfo: any) => {
-              // Use the original timestamp to ensure consistent storage keys
-              const originalTimestamp = new Date(sessionInfo.createdAt).getTime();
-              const storageKey = `wmh_session_${sessionInfo.user.id}_${originalTimestamp}`;
-              
-              // Validate storage key exists before creating client
-              const existingAuth = localStorage.getItem(`sb-${SUPABASE_URL.split('//')[1].split('.')[0]}-auth-token`);
-              const client = getCachedClient(storageKey, sessionInfo.user.id, originalTimestamp);
-              
-              return {
-                ...sessionInfo,
-                supabaseClient: client,
-                createdAt: new Date(sessionInfo.createdAt),
-                storageKey // Store key for validation
-              };
-            });
+          const recreatedSessions = uniqueSessionData.map((sessionInfo: any) => {
+            // Use the original timestamp to ensure consistent storage keys
+            const originalTimestamp = new Date(sessionInfo.createdAt).getTime();
+            const storageKey = `wmh_session_${sessionInfo.user.id}_${originalTimestamp}`;
+            
+            // Validate storage key exists before creating client
+            const client = getCachedClient(storageKey, sessionInfo.user.id, originalTimestamp);
+            
+            return {
+              ...sessionInfo,
+              supabaseClient: client,
+              createdAt: new Date(sessionInfo.createdAt),
+              storageKey // Store key for validation
+            };
+          });
           
           setSessions(recreatedSessions);
           
@@ -173,6 +304,8 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
       const isIntegrityOk = checkStorageIntegrity();
       if (isIntegrityOk) {
         cleanupOrphanedStorage();
+        // Also run deduplication periodically
+        deduplicateStorageSessions();
       }
     }, 5 * 60 * 1000); // Check every 5 minutes
     
@@ -181,7 +314,7 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
         clearInterval(storageValidationInterval.current);
       }
     };
-  }, [checkStorageIntegrity, cleanupOrphanedStorage, getCachedClient]);
+  }, [checkStorageIntegrity, cleanupOrphanedStorage, getCachedClient, deduplicateStorageSessions]);
 
   // Save sessions to localStorage whenever they change
   useEffect(() => {
@@ -206,7 +339,7 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
     }
   }, [sessions, activeSessionId]);
 
-  // Optimized cross-tab communication with debouncing
+  // Optimized cross-tab communication with enhanced deduplication
   useEffect(() => {
     let syncTimeout: NodeJS.Timeout | null = null;
     
@@ -214,11 +347,29 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
       if (syncTimeout) clearTimeout(syncTimeout);
       syncTimeout = setTimeout(() => {
         try {
+          // Run deduplication before sync
+          deduplicateStorageSessions();
+          
           const storedSessions = localStorage.getItem('wmh_sessions');
           const storedActiveId = localStorage.getItem('wmh_active_session');
           
           if (storedSessions) {
             const sessionData = JSON.parse(storedSessions);
+            
+            // Validate single session per user during sync
+            const userSessionCounts = new Map<string, number>();
+            sessionData.forEach((session: any) => {
+              const count = userSessionCounts.get(session.user.id) || 0;
+              userSessionCounts.set(session.user.id, count + 1);
+            });
+            
+            // Log any duplicates found during sync
+            const duplicateUsers = Array.from(userSessionCounts.entries())
+              .filter(([_, count]) => count > 1);
+            
+            if (duplicateUsers.length > 0) {
+              console.warn('🔐 SYNC: Found duplicates for users:', duplicateUsers.map(([id, count]) => `${id}:${count}`));
+            }
             
             // Filter duplicates and use cached clients
             const uniqueSessionData = sessionData.filter((session: any, index: number, array: any[]) => 
@@ -243,7 +394,7 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
         } catch (error) {
           console.error('Error syncing sessions:', error);
         }
-      }, 100); // 100ms debounce
+      }, 50); // Reduced to 50ms for faster sync
     };
 
     const handleStorageChange = (event: StorageEvent) => {
@@ -301,7 +452,7 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
         broadcastChannelRef.current.removeEventListener('message', handleBroadcastMessage);
       }
     };
-  }, [getCachedClient]);
+  }, [getCachedClient, deduplicateStorageSessions]);
 
   const broadcastSessionChange = useCallback(() => {
     try {
@@ -416,10 +567,57 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
   }, [sessions, activeSessionId]);
 
   const addSession = useCallback(async (user: User, session: Session): Promise<string> => {
-    // SINGLE SESSION ENFORCEMENT: Check for existing sessions for this user
+    // ENHANCED SINGLE SESSION ENFORCEMENT: Check both runtime state AND storage
+    console.log('🔐 SINGLE SESSION ENFORCEMENT: Checking for existing sessions for user:', user.email);
+    
+    // First, clean any existing sessions from storage atomically
+    try {
+      const lockKey = 'wmh_session_creation_lock';
+      const lockValue = Date.now().toString();
+      localStorage.setItem(lockKey, lockValue);
+      
+      // Clean storage first
+      const storedSessions = localStorage.getItem('wmh_sessions');
+      if (storedSessions) {
+        const sessions = JSON.parse(storedSessions);
+        const existingUserSessions = sessions.filter((s: any) => s.user.id === user.id);
+        
+        if (existingUserSessions.length > 0) {
+          console.log('🔐 Found', existingUserSessions.length, 'existing storage sessions for user:', user.email);
+          
+          // Remove all sessions for this user from storage
+          const cleanedSessions = sessions.filter((s: any) => s.user.id !== user.id);
+          localStorage.setItem('wmh_sessions', JSON.stringify(cleanedSessions));
+          
+          // Clean all related storage keys
+          existingUserSessions.forEach((existingSession: any) => {
+            const timestamp = new Date(existingSession.createdAt).getTime();
+            const storagePattern = `wmh_session_${user.id}_${timestamp}`;
+            
+            Object.keys(localStorage).forEach(key => {
+              if (key.includes(user.id) && (key.includes('wmh_') || key.includes('sb-'))) {
+                try {
+                  localStorage.removeItem(key);
+                  console.log('🔐 Cleaned storage key:', key);
+                } catch (error) {
+                  console.warn('🔐 Failed to clean key:', key);
+                }
+              }
+            });
+          });
+        }
+      }
+      
+      // Release lock
+      localStorage.removeItem(lockKey);
+    } catch (error) {
+      console.error('🔐 Error during storage cleanup:', error);
+    }
+    
+    // Second, check runtime state and clean any existing sessions
     const existingSession = sessions.find(s => s.user.id === user.id);
     if (existingSession) {
-      console.log('🔐 SINGLE SESSION ENFORCEMENT: Found existing session for user:', user.email, 'logging out previous session');
+      console.log('🔐 RUNTIME: Found existing session for user:', user.email, 'logging out previous session');
       
       try {
         // Force logout the existing session's client
@@ -431,18 +629,19 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
       
       // Remove the existing session immediately
       removeSession(existingSession.id);
-      
-      // Broadcast forced logout to other tabs
-      if (broadcastChannelRef.current) {
-        try {
-          broadcastChannelRef.current.postMessage({ 
-            type: 'forced_logout', 
-            userId: user.id,
-            reason: 'new_login_detected'
-          });
-        } catch (error) {
-          console.warn('🔐 Could not broadcast forced logout:', error);
-        }
+    }
+    
+    // Broadcast forced logout to other tabs/devices
+    if (broadcastChannelRef.current) {
+      try {
+        broadcastChannelRef.current.postMessage({ 
+          type: 'forced_logout', 
+          userId: user.id,
+          reason: 'new_login_detected'
+        });
+        console.log('🔐 Broadcasted forced logout for user:', user.email);
+      } catch (error) {
+        console.warn('🔐 Could not broadcast forced logout:', error);
       }
     }
     
@@ -601,7 +800,8 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
     switchToSession,
     clearAllSessions,
     getSessionClient,
-    updateSessionProfile
+    updateSessionProfile,
+    forceCleanUserSessions
   };
 
   return (

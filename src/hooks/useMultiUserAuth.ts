@@ -37,6 +37,12 @@ export const useMultiUserAuth = () => {
       return null;
     }
 
+    // Check if profile already exists and is valid
+    if (session.userProfile && session.userProfile.first_name && session.userProfile.last_name) {
+      console.log('🔍 PROFILE: Profile already exists for user:', session.user.email, session.userProfile);
+      return session.userProfile;
+    }
+
     console.log('🔍 PROFILE: Found session for user:', session.user.email, 'with ID:', session.user.id);
 
     try {
@@ -53,19 +59,60 @@ export const useMultiUserAuth = () => {
 
       if (error) {
         console.error('🔍 PROFILE: Profile fetch error:', error.message, error);
+        // Try fallback to user metadata if available
+        const fallbackProfile = {
+          first_name: session.user.user_metadata?.first_name || null,
+          last_name: session.user.user_metadata?.last_name || null
+        };
+        if (fallbackProfile.first_name || fallbackProfile.last_name) {
+          console.log('🔍 PROFILE: Using fallback profile from user metadata:', fallbackProfile);
+          updateSessionProfile(targetSessionId, fallbackProfile);
+          return fallbackProfile;
+        }
         return null;
       }
 
-      if (profile) {
+      if (profile && (profile.first_name || profile.last_name)) {
         console.log('🔍 PROFILE: Profile found! Updating session with:', profile);
-        updateSessionProfile(targetSessionId, profile);
-        return profile;
+        // Ensure immediate synchronous update
+        updateSessionProfile(targetSessionId, {
+          first_name: profile.first_name,
+          last_name: profile.last_name
+        });
+        
+        // Verify the update was applied
+        setTimeout(() => {
+          const updatedSession = sessions.find(s => s.id === targetSessionId);
+          console.log('🔍 PROFILE: Verification - session profile after update:', updatedSession?.userProfile);
+        }, 100);
+        
+        return { first_name: profile.first_name, last_name: profile.last_name };
       } else {
-        console.log('🔍 PROFILE: No profile data found in database, returning null');
+        console.log('🔍 PROFILE: No valid profile data found in database');
+        // Try fallback to user metadata
+        const fallbackProfile = {
+          first_name: session.user.user_metadata?.first_name || null,
+          last_name: session.user.user_metadata?.last_name || null
+        };
+        if (fallbackProfile.first_name || fallbackProfile.last_name) {
+          console.log('🔍 PROFILE: Using fallback profile from user metadata:', fallbackProfile);
+          updateSessionProfile(targetSessionId, fallbackProfile);
+          return fallbackProfile;
+        }
         return null;
       }
     } catch (error) {
       console.error('🔍 PROFILE: Exception in fetchUserProfile:', error);
+      // Try fallback to user metadata on exception
+      const fallbackProfile = {
+        first_name: session.user.user_metadata?.first_name || null,
+        last_name: session.user.user_metadata?.last_name || null
+      };
+      if (fallbackProfile.first_name || fallbackProfile.last_name) {
+        console.log('🔍 PROFILE: Using fallback profile from user metadata after exception:', fallbackProfile);
+        updateSessionProfile(targetSessionId, fallbackProfile);
+        return fallbackProfile;
+      }
       return null;
     }
   }, [activeSessionId, sessions, updateSessionProfile]);
@@ -154,7 +201,7 @@ export const useMultiUserAuth = () => {
     };
   }, [addSession, sessions, fetchUserProfile]);
 
-  // Immediate profile loading with retry logic
+  // Single profile loading effect with validation
   useEffect(() => {
     if (activeSession && activeSessionId) {
       console.log('🔍 DEBUG: Active session changed, checking profile:', {
@@ -163,23 +210,16 @@ export const useMultiUserAuth = () => {
         profile: activeSession.userProfile
       });
       
-      // If no profile or profile is empty/null, fetch immediately
-      if (!activeSession.userProfile) {
-        console.log('🔍 DEBUG: No profile found, fetching immediately for:', activeSession.user.email);
+      // Check if profile is missing or incomplete
+      const hasValidProfile = activeSession.userProfile && 
+        (activeSession.userProfile.first_name || activeSession.userProfile.last_name);
+      
+      if (!hasValidProfile) {
+        console.log('🔍 DEBUG: Profile missing or incomplete, fetching for:', activeSession.user.email);
         fetchUserProfile(activeSessionId);
       }
     }
   }, [activeSession, activeSessionId, fetchUserProfile]);
-
-  // Enhanced profile loading for all sessions
-  useEffect(() => {
-    sessions.forEach(session => {
-      if (!session.userProfile) {
-        console.log('🔍 DEBUG: Session missing profile, fetching for:', session.user.email);
-        fetchUserProfile(session.id);
-      }
-    });
-  }, [sessions, fetchUserProfile]);
 
   const signIn = useCallback(async (email: string, password: string) => {
     setIsLoading(true);

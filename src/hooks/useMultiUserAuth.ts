@@ -42,16 +42,18 @@ export const useMultiUserAuth = () => {
     try {
       console.log('🔍 DEBUG: Querying profiles table for user_id:', session.user.id);
       
+      // SIMPLIFIED: Use maybeSingle() to handle missing profiles gracefully
       const { data: profile, error } = await session.supabaseClient
         .from('profiles')
         .select('first_name, last_name')
         .eq('user_id', session.user.id)
-        .single();
+        .maybeSingle();
 
       console.log('🔍 DEBUG: Database query result - profile:', profile, 'error:', error);
 
       if (error) {
-        console.error('🔍 DEBUG: Database error:', error);
+        console.warn('🔍 DEBUG: Profile fetch error (non-blocking):', error.message);
+        // Don't block authentication for profile errors
         return null;
       }
 
@@ -59,13 +61,15 @@ export const useMultiUserAuth = () => {
         console.log('🔍 DEBUG: Profile found, calling updateSessionProfile with:', profile);
         updateSessionProfile(targetSessionId, profile);
         console.log('🔍 DEBUG: updateSessionProfile called successfully');
+        return profile;
       } else {
-        console.log('🔍 DEBUG: No profile data returned from database');
+        console.log('🔍 DEBUG: No profile data found - this is OK for new users');
+        // Return empty profile object to indicate successful fetch with no data
+        return {};
       }
-
-      return profile;
     } catch (error) {
-      console.error('🔍 DEBUG: Exception in fetchUserProfile:', error);
+      console.warn('🔍 DEBUG: Exception in fetchUserProfile (non-blocking):', error);
+      // Don't block authentication for profile errors
       return null;
     }
   }, [activeSessionId, sessions, updateSessionProfile]);
@@ -85,15 +89,14 @@ export const useMultiUserAuth = () => {
       try {
         console.log('🔐 Initializing multi-user auth with StrictMode protection...');
         
-        // Set up auth state listener with enhanced debouncing
+        // Set up auth state listener with simplified logic
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
           (event, session) => {
             console.log('🔐 Auth state change:', event, session?.user?.email);
             
-            // Enhanced debounce with queue management to prevent rapid session creation
+            // Simplified timeout to prevent excessive session creation
             const authEventKey = `auth_${event}_${session?.user?.id || 'none'}`;
             
-            // Clear any existing timeout for this auth event
             if ((window as any)[authEventKey]) {
               clearTimeout((window as any)[authEventKey]);
             }
@@ -101,13 +104,12 @@ export const useMultiUserAuth = () => {
             (window as any)[authEventKey] = setTimeout(async () => {
               if (event === 'SIGNED_IN' && session?.user) {
                 try {
-                  // Additional check to prevent creating session if one already exists
                   const existingSession = sessions.find(s => s.user.id === session.user.id);
                   if (!existingSession) {
-            const sessionId = await addSession(session.user, session);
-            // Fetch profile for new session immediately
-            console.log('🔍 DEBUG: New session added via auth change, fetching profile');
-            fetchUserProfile(sessionId);
+                    console.log('🔐 Creating new session for user:', session.user.email);
+                    const sessionId = await addSession(session.user, session);
+                    // Profile fetching is now non-blocking
+                    fetchUserProfile(sessionId);
                   } else {
                     console.log('🔐 Session already exists for user, skipping creation');
                   }
@@ -119,27 +121,23 @@ export const useMultiUserAuth = () => {
               }
               
               delete (window as any)[authEventKey];
-            }, 750); // Increased debounce for StrictMode
+            }, 500); // Reduced debounce
           }
         );
         
         authSubscription = subscription;
 
-        // Then check for existing session
+        // SIMPLIFIED: Check for existing session without complex conditions
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
-          const storedSessions = localStorage.getItem('wmh_sessions');
-          const existingSessions = storedSessions ? JSON.parse(storedSessions) : [];
+          console.log('🔐 Found existing session, checking if session exists for user:', session.user.email);
+          const existingSession = sessions.find(s => s.user.id === session.user.id);
           
-          // Only add if no sessions exist AND no runtime sessions exist
-          if (existingSessions.length === 0 && sessions.length === 0) {
-            console.log('🔐 Initializing auth with existing session for user:', session.user.email);
+          if (!existingSession) {
+            console.log('🔐 Initializing auth with existing session');
             const sessionId = await addSession(session.user, session);
-            // Fetch profile for initialized session immediately
-            console.log('🔍 DEBUG: Initializing session, fetching profile');
+            // Profile fetching is now non-blocking
             fetchUserProfile(sessionId);
-          } else {
-            console.log('🔐 Sessions already exist, skipping initialization');
           }
         }
         
@@ -158,34 +156,18 @@ export const useMultiUserAuth = () => {
       }
       initialized = false;
     };
-  }, [addSession, sessions, fetchUserProfile]); // Added fetchUserProfile dependency
+  }, [addSession, sessions, fetchUserProfile]);
 
-  // Auto-fetch profiles when activeSession changes or sessions are loaded
+  // SIMPLIFIED: Auto-fetch profiles only when needed, non-blocking
   useEffect(() => {
-    console.log('🔍 DEBUG: useEffect triggered - activeSession:', activeSession?.user?.email, 'userProfile:', activeSession?.userProfile);
-    
-    if (activeSession && !activeSession.userProfile) {
-      console.log('🔍 DEBUG: Active session found without profile, fetching profile...');
-      fetchUserProfile(activeSessionId!);
-    } else if (activeSession?.userProfile) {
-      console.log('🔍 DEBUG: Active session already has profile:', activeSession.userProfile);
+    if (activeSession && activeSession.userProfile === undefined) {
+      console.log('🔍 DEBUG: Fetching profile for active session:', activeSession.user.email);
+      // Use setTimeout to make this completely non-blocking
+      setTimeout(() => {
+        fetchUserProfile(activeSessionId!);
+      }, 100);
     }
   }, [activeSession, activeSessionId, fetchUserProfile]);
-
-  // Auto-fetch profiles for any sessions missing profile data
-  useEffect(() => {
-    console.log('🔍 DEBUG: Checking all sessions for missing profiles. Total sessions:', sessions.length);
-    
-    sessions.forEach(session => {
-      if (!session.userProfile) {
-        console.log('🔍 DEBUG: Session missing profile:', session.user.email, 'fetching...');
-        // Make profile fetching more immediate
-        fetchUserProfile(session.id);
-      } else {
-        console.log('🔍 DEBUG: Session has profile:', session.user.email, session.userProfile);
-      }
-    });
-  }, [sessions, fetchUserProfile]);
 
   const signIn = useCallback(async (email: string, password: string) => {
     setIsLoading(true);
@@ -201,9 +183,8 @@ export const useMultiUserAuth = () => {
         try {
           const sessionId = await addSession(data.user, data.session);
           console.log('🔐 Sign in successful, session ID:', sessionId);
-          // Fetch profile immediately after successful sign in
-          console.log('🔍 DEBUG: Fetching profile immediately after sign in');
-          fetchUserProfile(sessionId);
+          // Profile fetching is now non-blocking
+          setTimeout(() => fetchUserProfile(sessionId), 100);
           return { data, error: null };
         } catch (sessionError: any) {
           if (sessionError.message?.includes('Session creation is temporarily locked')) {
@@ -241,9 +222,8 @@ export const useMultiUserAuth = () => {
       if (data.user && data.session) {
         const sessionId = await addSession(data.user, data.session);
         console.log('🔐 Sign up successful, session ID:', sessionId);
-        // Fetch profile immediately after successful sign up
-        console.log('🔍 DEBUG: Fetching profile immediately after sign up');
-        fetchUserProfile(sessionId);
+        // Profile fetching is now non-blocking
+        setTimeout(() => fetchUserProfile(sessionId), 100);
       }
 
       return { data, error: null };

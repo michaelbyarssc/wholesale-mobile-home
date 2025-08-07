@@ -23,19 +23,26 @@ export const useMultiUserAuth = () => {
   const navigate = useNavigate();
   const { validateSession } = useSessionValidation();
 
+  // Request deduplication map
+  const [ongoingRequests, setOngoingRequests] = useState<Map<string, Promise<any>>>(new Map());
+
   const fetchUserProfile = useCallback(async (sessionId?: string, forceRefresh = false) => {
     const targetSessionId = sessionId || activeSessionId;
-    console.log('🔍 PROFILE: fetchUserProfile called with sessionId:', sessionId, 'targetSessionId:', targetSessionId, 'forceRefresh:', forceRefresh);
     
     if (!targetSessionId) {
-      console.log('🔍 PROFILE: No targetSessionId, returning null');
       return null;
     }
 
     const session = sessions.find(s => s.id === targetSessionId);
     if (!session?.user?.id) {
-      console.log('🔍 PROFILE: No session or user found for ID:', targetSessionId);
       return null;
+    }
+
+    // Request deduplication - check if already fetching for this user
+    const requestKey = `profile_${session.user.id}`;
+    if (!forceRefresh && ongoingRequests.has(requestKey)) {
+      console.log('🔍 PROFILE: Deduplicating request for user:', session.user.email);
+      return ongoingRequests.get(requestKey);
     }
 
     // Check if profile is already cached and not forcing refresh
@@ -44,11 +51,13 @@ export const useMultiUserAuth = () => {
       return session.userProfile;
     }
 
-    try {
-      console.log('🔍 AUTH CHECK: Fetching profile for user:', session.user.email, 'session:', targetSessionId);
-      
-      // First verify the client is properly authenticated
-      const { data: authSession, error: authError } = await session.supabaseClient.auth.getSession();
+    // Create the fetch promise and store it for deduplication
+    const fetchPromise = (async () => {
+      try {
+        console.log('🔍 AUTH CHECK: Fetching profile for user:', session.user.email, 'session:', targetSessionId);
+        
+        // First verify the client is properly authenticated
+        const { data: authSession, error: authError } = await session.supabaseClient.auth.getSession();
       
       if (authError || !authSession?.session?.access_token) {
         console.error('❌ AUTH CHECK: Client not properly authenticated:', authError);
@@ -111,12 +120,25 @@ export const useMultiUserAuth = () => {
         console.log('ℹ️ PROFILE FETCH: No profile data found for user, this may be normal for new users');
       }
       
-      return data;
-    } catch (error) {
-      console.error('❌ PROFILE FETCH: Unexpected exception:', error);
-      return null;
-    }
-  }, [activeSessionId, sessions, updateSessionProfile]);
+        return data;
+      } catch (error) {
+        console.error('❌ PROFILE FETCH: Unexpected exception:', error);
+        return null;
+      } finally {
+        // Remove from ongoing requests when done
+        setOngoingRequests(prev => {
+          const newMap = new Map(prev);
+          newMap.delete(requestKey);
+          return newMap;
+        });
+      }
+    })();
+
+    // Store the promise for deduplication
+    setOngoingRequests(prev => new Map(prev.set(requestKey, fetchPromise)));
+    
+    return fetchPromise;
+  }, [activeSessionId, sessions, updateSessionProfile, ongoingRequests]);
 
   // Initialize by checking for existing session with StrictMode protection
   useEffect(() => {

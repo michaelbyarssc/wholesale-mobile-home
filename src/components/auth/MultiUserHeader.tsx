@@ -68,104 +68,46 @@ export const MultiUserHeader = ({
     isSigningOut
   } = useMultiUserAuth();
 
-  // Profile loading state to prevent flashing
-  const [isProfileLoading, setIsProfileLoading] = useState(false);
-  const [cachedProfiles, setCachedProfiles] = useState<Map<string, any>>(new Map());
-  
-  // Cache profile data in component state
-  React.useEffect(() => {
-    if (userProfile && user?.id) {
-      setCachedProfiles(prev => new Map(prev.set(user.id, userProfile)));
-      
-      // Also cache in localStorage for persistence
-      try {
-        const profileCache = JSON.parse(localStorage.getItem('wmh_profile_cache') || '{}');
-        profileCache[user.id] = userProfile;
-        localStorage.setItem('wmh_profile_cache', JSON.stringify(profileCache));
-      } catch (error) {
-        console.warn('Failed to cache profile in localStorage:', error);
-      }
-    }
-  }, [userProfile, user?.id]);
+  // Optimized display name with progressive loading
+  const [displayState, setDisplayState] = useState<'loading' | 'email' | 'profile'>('loading');
 
-  // Load cached profile on user change - skip during sign out
-  React.useEffect(() => {
-    if (isSigningOut) return; // Prevent profile fetching during logout
-    
-    if (user?.id && !userProfile) {
-      // Check component cache first
-      const componentCached = cachedProfiles.get(user.id);
-      if (componentCached) {
-        return; // Profile is already cached
-      }
-      
-      // Check localStorage cache
-      try {
-        const profileCache = JSON.parse(localStorage.getItem('wmh_profile_cache') || '{}');
-        const cachedProfile = profileCache[user.id];
-        if (cachedProfile) {
-          setCachedProfiles(prev => new Map(prev.set(user.id, cachedProfile)));
-          return; // Use cached profile
-        }
-      } catch (error) {
-        console.warn('Failed to load cached profile:', error);
-      }
-      
-      // Only fetch if we have no cached profile and user is available
-      if (activeSessionId) {
-        setIsProfileLoading(true);
-        fetchUserProfile(activeSessionId).finally(() => {
-          setIsProfileLoading(false);
-        });
-      }
-    }
-  }, [user?.id, userProfile, activeSessionId, fetchUserProfile, cachedProfiles, isSigningOut]);
-
-  const getDisplayName = (profile?: { first_name?: string; last_name?: string } | null, email?: string, isLoading?: boolean) => {
+  // Progressive display name with memoization
+  const getDisplayName = React.useMemo(() => {
     // If signing out, show signing out message
     if (isSigningOut) {
       return 'Signing out...';
     }
-    
-    // If still loading profile, show loading placeholder
-    if (isLoading) {
-      return 'Loading...';
-    }
-    
-    // Check cached profile first
-    if (user?.id && cachedProfiles.has(user.id)) {
-      const cached = cachedProfiles.get(user.id);
-      if (cached?.first_name) {
-        return cached.last_name ? `${cached.first_name} ${cached.last_name}` : cached.first_name;
-      }
-      if (cached?.last_name) {
-        return cached.last_name;
-      }
-    }
-    
+
     // If we have profile data, prioritize first_name
-    if (profile?.first_name) {
-      return profile.last_name ? `${profile.first_name} ${profile.last_name}` : profile.first_name;
+    if (userProfile?.first_name) {
+      return userProfile.last_name ? `${userProfile.first_name} ${userProfile.last_name}` : userProfile.first_name;
     }
     
     // If we only have last_name
-    if (profile?.last_name) {
-      return profile.last_name;
+    if (userProfile?.last_name) {
+      return userProfile.last_name;
     }
     
-    // If we're just switching sessions and expect a profile soon, show loading
-    if (!profile && user?.id && activeSessionId) {
-      return 'Loading...';
+    // Show email prefix while profile loads, but only briefly
+    if (user?.email) {
+      return user.email.split('@')[0];
     }
     
-    // Final fallback to email prefix
-    return email ? email.split('@')[0] : 'User';
-  };
+    return 'User';
+  }, [userProfile, user?.email, isSigningOut]);
 
-  const displayName = getDisplayName(userProfile, user?.email, isProfileLoading);
-  
-  // Debug logging for user profile
-  console.log('🔍 DEBUG: MultiUserHeader - user:', user?.email, 'userProfile:', userProfile, 'displayName:', displayName);
+  // Track display state for smooth transitions
+  React.useEffect(() => {
+    if (isSigningOut) {
+      setDisplayState('loading');
+    } else if (userProfile?.first_name || userProfile?.last_name) {
+      setDisplayState('profile');
+    } else if (user?.email) {
+      setDisplayState('email');
+    } else {
+      setDisplayState('loading');
+    }
+  }, [userProfile, user?.email, isSigningOut]);
 
   const handleChangePassword = () => {
     setIsPasswordDialogOpen(true);
@@ -298,7 +240,7 @@ export const MultiUserHeader = ({
                           <div className="flex items-center justify-center w-8 h-8 bg-blue-100 rounded-full">
                             <User className="h-4 w-4 text-blue-600" />
                           </div>
-                          <span className="font-medium">{displayName}</span>
+                          <span className="font-medium">{getDisplayName}</span>
                           {hasMultipleSessions && (
                             <>
                               <Badge variant="secondary" className="ml-1 text-xs">
@@ -319,7 +261,7 @@ export const MultiUserHeader = ({
                             <User className="h-4 w-4 text-blue-600" />
                           </div>
                           <div className="flex-1">
-                            <div className="font-medium text-gray-900">{displayName}</div>
+                            <div className="font-medium text-gray-900">{getDisplayName}</div>
                             <div className="text-sm text-gray-500">{user.email}</div>
                           </div>
                         </DropdownMenuItem>
@@ -342,9 +284,11 @@ export const MultiUserHeader = ({
                                     <User className="h-4 w-4 text-gray-600" />
                                   </div>
                                   <div className="flex-1">
-                                    <div className="font-medium text-gray-900">
-                                      {getDisplayName(session.userProfile, session.user.email)}
-                                    </div>
+                                     <div className="font-medium text-gray-900">
+                                       {session.userProfile?.first_name || session.userProfile?.last_name 
+                                         ? `${session.userProfile.first_name || ''} ${session.userProfile.last_name || ''}`.trim()
+                                         : session.user.email.split('@')[0]}
+                                     </div>
                                     <div className="text-sm text-gray-500">{session.user.email}</div>
                                   </div>
                                 </DropdownMenuItem>
@@ -485,7 +429,7 @@ export const MultiUserHeader = ({
                     <User className="h-4 w-4 text-blue-600" />
                   </div>
                   <div>
-                    <div className="font-medium text-gray-700">{displayName}</div>
+                    <div className="font-medium text-gray-700">{getDisplayName}</div>
                     <div className="text-sm text-gray-500">{user.email}</div>
                   </div>
                 </div>

@@ -626,25 +626,32 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
     }
   }, [sessions, activeSessionId]);
 
-  // Add session with simplified locking and error recovery
-  const addSession = useCallback(async (user: User, session: Session): Promise<string> => {
-    console.log('🔐 Adding session for user:', user.email);
+  // Add session with simplified locking and error recovery  
+  const addSession = useCallback(async (user: User, session: Session, retryCount = 0): Promise<string> => {
+    console.log('🔐 Adding session for user:', user.email, 'retry:', retryCount);
     
     // Check for simple lock with auto-release
     if (!acquireSessionLock()) {
-      const error = new Error('Session creation is temporarily locked. Please try again.');
       console.warn('🔐 Session creation locked for user:', user.email);
       
-      // Auto-retry after a short delay
+      // Prevent infinite retry loop - max 3 retries
+      if (retryCount >= 3) {
+        console.error('🔐 Max retries reached for session creation, forcing unlock');
+        releaseSessionLock();
+        throw new Error('Session creation failed after maximum retries');
+      }
+      
+      // Auto-retry after a short delay with increasing backoff
       return new Promise((resolve, reject) => {
+        const delay = 200 + (retryCount * 300); // Increasing delay: 200ms, 500ms, 800ms
         setTimeout(async () => {
           try {
-            const result = await addSession(user, session);
+            const result = await addSession(user, session, retryCount + 1);
             resolve(result);
           } catch (retryError) {
             reject(retryError);
           }
-        }, 500);
+        }, delay);
       });
     }
     

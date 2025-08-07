@@ -35,74 +35,26 @@ const Admin = () => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
 
-  // SECURITY: Enhanced admin validation with session checks
-  const isSecureAdmin = isAdmin && user && session && user.id === session.user.id;
-  
-  // SECURITY: Enhanced debug logging with session validation
   console.log('🔐 Admin Panel State:', {
     userEmail: user?.email,
     userId: user?.id,
-    sessionUserId: session?.user?.id,
-    sessionUserEmail: session?.user?.email,
     isAdmin,
     isSuperAdmin,
-    isSecureAdmin,
     userRoles: userRoles.map(r => r.role),
     authLoading,
-    rolesLoading,
-    sessionMatch: user?.id === session?.user?.id,
-    timestamp: new Date().toISOString()
+    rolesLoading
   });
 
-  // SECURITY: Alert on session mismatch
-  if (user && session && user.id !== session.user.id) {
-    console.error('🚨 SECURITY ALERT: User/Session mismatch in Admin panel!', {
-      userId: user.id,
-      sessionUserId: session.user.id,
-      userEmail: user.email,
-      sessionUserEmail: session.user.email
-    });
-  }
-
-  // SECURITY: Force auth and role refresh on mount to prevent stale data
+  // Initialize default tab based on role
   useEffect(() => {
-    const initializeAdminPanel = async () => {
-      console.log('🔐 Initializing admin panel...');
-      await forceRefreshAuth();
-      await forceRefreshRoles();
-    };
-    
-    initializeAdminPanel();
-  }, []); // Only run once on mount
-
-  // SECURITY: Verify admin access with database function
-  useEffect(() => {
-    const verifyAccess = async () => {
-      if (user && !authLoading && !rolesLoading) {
-        const isVerifiedAdmin = await verifyAdminAccess();
-        if (!isVerifiedAdmin) {
-          console.error('🚨 SECURITY: Admin access verification failed');
-          await handleLogout();
-        }
-      }
-    };
-    
-    verifyAccess();
-  }, [user, authLoading, rolesLoading, verifyAdminAccess, handleLogout]);
-
-  // Initialize default tab based on role (ProtectedRoute already handles auth)
-  useEffect(() => {
-    if (!authLoading && !rolesLoading && isSecureAdmin) {
-      // Set default tab based on role
+    if (!authLoading && !rolesLoading && isAdmin) {
       if (isSuperAdmin) {
         setActiveTab('mobile-homes');
-        console.log('🔐 Admin: Super admin detected, setting tab to mobile-homes');
       } else {
         setActiveTab('sales');
-        console.log('🔐 Admin: Regular admin detected, setting tab to sales');
       }
     }
-  }, [isSuperAdmin, authLoading, rolesLoading, isSecureAdmin]);
+  }, [isSuperAdmin, authLoading, rolesLoading, isAdmin]);
 
   const handleSignOut = async () => {
     await handleLogout();
@@ -114,7 +66,7 @@ const Admin = () => {
     setMobileMenuOpen(false); // Close mobile menu when tab changes
   };
 
-  // SECURITY: Show loading while verifying authentication and roles
+  // Show loading while verifying authentication and roles
   if (authLoading || rolesLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -126,10 +78,9 @@ const Admin = () => {
     );
   }
 
-  // SECURITY: Enhanced authentication check with session validation
-  if (!user || !session || !isSecureAdmin) {
-    console.error('🚨 SECURITY: Invalid admin access attempt');
-    navigate('/auth');
+  // Enhanced authentication check - ProtectedRoute handles the security
+  if (!user || !isAdmin) {
+    console.log('🔐 Admin access check failed, should redirect via ProtectedRoute');
     return null;
   }
 

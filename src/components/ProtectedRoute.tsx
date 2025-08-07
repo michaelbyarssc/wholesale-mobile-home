@@ -1,9 +1,9 @@
+
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LoadingSpinner } from '@/components/layout/LoadingSpinner';
 import { useUserRoles } from '@/hooks/useUserRoles';
 import { useMultiUserAuth } from '@/hooks/useMultiUserAuth';
-import { EmergencyLogoutButton } from '@/components/auth/EmergencyLogoutButton';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -83,6 +83,20 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
       });
     } finally {
       setEmergencyChecking(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      navigate('/auth');
+    } catch (error) {
+      console.error('Logout error:', error);
+      toast({
+        title: "Logout Error",
+        description: "There was an error signing out. Please try again.",
+        variant: "destructive"
+      });
     }
   };
 
@@ -184,7 +198,14 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
                   <p className="text-xs text-muted-foreground mb-2">
                     Or try logging out:
                   </p>
-                  <EmergencyLogoutButton className="text-xs w-full" />
+                  <Button
+                    variant="outline"
+                    onClick={handleLogout}
+                    className="text-xs w-full"
+                    size="sm"
+                  >
+                    Emergency Logout
+                  </Button>
                 </div>
               </div>
             </div>

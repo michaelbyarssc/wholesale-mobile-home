@@ -579,6 +579,7 @@ export const CRMDashboard = ({ userRole, currentUserId }: CRMDashboardProps) => 
                                   size="sm"
                                   onClick={() => {
                                     setShowLeadDetailsDialog(false);
+                                    setSelectedLead(selectedLead);
                                     setShowLeadDialog(true);
                                   }}
                                 >
@@ -678,7 +679,7 @@ export const CRMDashboard = ({ userRole, currentUserId }: CRMDashboardProps) => 
             <h3 className="text-lg font-semibold">Upcoming Follow-ups</h3>
             <Dialog open={showFollowUpDialog} onOpenChange={setShowFollowUpDialog}>
               <DialogTrigger asChild>
-                <Button>
+                <Button onClick={() => setShowFollowUpDialog(true)}>
                   <Plus className="h-4 w-4 mr-2" />
                   Schedule Follow-up
                 </Button>

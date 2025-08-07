@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { useSessionManager } from '@/contexts/SessionManagerContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -71,8 +71,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     activeSession
   } = useSessionManager();
 
-  // Derived state
-  const hasMultipleSessions = sessions.length > 1;
+  // Memoized derived state to prevent unnecessary recalculations
+  const hasMultipleSessions = useMemo(() => sessions.length > 1, [sessions.length]);
 
   const navigate = useNavigate();
   const { validateSession } = useSessionValidation();
@@ -256,15 +256,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           
           if (event === 'SIGNED_IN' && session?.user) {
             console.log('✅ AUTH STATE: User signed in:', session.user.email, 'Event:', event);
-            setIsStabilizing(true);
-            setIsUserDataReady(false);
-            await addSession(session.user, session);
-            setIsLoginInProgress(false);
             
-            // Add stabilization period to prevent UI flashing
+            // Batch state updates to reduce re-renders
+            React.startTransition(() => {
+              setIsStabilizing(true);
+              setIsUserDataReady(false);
+              setIsLoginInProgress(false);
+            });
+            
+            await addSession(session.user, session);
+            
+            // Reduced stabilization period for faster UI response
             setTimeout(() => {
-              setIsStabilizing(false);
-            }, 500);
+              React.startTransition(() => {
+                setIsStabilizing(false);
+              });
+            }, 150);
           } else if (event === 'SIGNED_OUT') {
             console.log('🚪 AUTH STATE: User signed out, clearing sessions and refs');
             clearAllSessions();

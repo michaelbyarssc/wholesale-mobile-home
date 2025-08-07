@@ -69,7 +69,7 @@ const MultiUserHeaderComponent = ({
     isStabilizing
   } = useAuth();
 
-  // Stable display name with login state handling  
+  // Optimized display name with memoization to prevent unnecessary recalculations
   const getDisplayName = React.useMemo(() => {
     // Handle various loading and transitional states
     if (isSigningOut) {
@@ -102,30 +102,30 @@ const MultiUserHeaderComponent = ({
     return 'User';
   }, [userProfile?.first_name, userProfile?.last_name, user?.email, isSigningOut, isLoginInProgress, isStabilizing]);
 
-  const handleChangePassword = () => {
+  // Memoized event handlers to prevent child re-renders
+  const handleChangePassword = React.useCallback(() => {
     setIsPasswordDialogOpen(true);
-  };
+  }, []);
 
-  const handleProfileUpdated = () => {
+  const handleProfileUpdated = React.useCallback(() => {
     if (onProfileUpdated) {
       onProfileUpdated();
     }
-  };
+  }, [onProfileUpdated]);
 
-  const handleInstallApp = async () => {
+  const handleInstallApp = React.useCallback(async () => {
     try {
       await installApp();
     } catch (error) {
       console.error('Failed to install app:', error);
     }
-  };
+  }, [installApp]);
 
-
-  const handleSwitchSession = (sessionId: string) => {
+  const handleSwitchSession = React.useCallback((sessionId: string) => {
     switchToSession(sessionId);
-  };
+  }, [switchToSession]);
 
-  const handleSignOut = async () => {
+  const handleSignOut = React.useCallback(async () => {
     console.log('🚨 HEADER: User clicked sign out, sessions:', sessions.length);
     
     try {
@@ -141,9 +141,9 @@ const MultiUserHeaderComponent = ({
       // Emergency fallback - force page reload
       window.location.href = '/';
     }
-  };
+  }, [hasMultipleSessions, signOut, signOutAll, sessions.length]);
 
-  const handleSignOutAll = async () => {
+  const handleSignOutAll = React.useCallback(async () => {
     console.log('🚨 HEADER: User clicked sign out all');
     try {
       await signOutAll();
@@ -152,11 +152,17 @@ const MultiUserHeaderComponent = ({
       // Emergency fallback
       window.location.href = '/';
     }
-  };
+  }, [signOutAll]);
+
+  // Event handlers moved to memoized section above
 
   return (
     <>
-      <header className="bg-white shadow-sm border-b border-gray-100 relative z-50">
+      <header className="bg-white shadow-sm border-b border-gray-100 relative z-50 transition-opacity duration-200 ease-in-out"
+              style={{ 
+                opacity: isStabilizing || isLoginInProgress ? 0.8 : 1,
+                pointerEvents: isStabilizing || isLoginInProgress ? 'none' : 'auto'
+              }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             {/* Left side - Brand */}
@@ -507,11 +513,59 @@ const MultiUserHeaderComponent = ({
   );
 };
 
-// Optimize with React.memo to prevent unnecessary re-renders
 export const MultiUserHeader = React.memo(MultiUserHeaderComponent, (prevProps, nextProps) => {
-  // Only re-render if cartItems length changes or loading state changes
-  return (
-    prevProps.cartItems.length === nextProps.cartItems.length &&
-    prevProps.isLoading === nextProps.isLoading
-  );
+  // Enhanced memoization to prevent flashing during auth state changes
+  const { 
+    user: prevUser, 
+    userProfile: prevProfile, 
+    sessions: prevSessions, 
+    activeSessionId: prevActiveSessionId,
+    isStabilizing: prevIsStabilizing,
+    isLoginInProgress: prevIsLoginInProgress,
+    isSigningOut: prevIsSigningOut 
+  } = prevProps as any;
+  
+  const { 
+    user: nextUser, 
+    userProfile: nextProfile, 
+    sessions: nextSessions, 
+    activeSessionId: nextActiveSessionId,
+    isStabilizing: nextIsStabilizing,
+    isLoginInProgress: nextIsLoginInProgress,
+    isSigningOut: nextIsSigningOut 
+  } = nextProps as any;
+
+  // Check basic props
+  if (prevProps.cartItems.length !== nextProps.cartItems.length ||
+      prevProps.isLoading !== nextProps.isLoading) {
+    return false;
+  }
+
+  // Check critical auth state props that cause flashing
+  if (prevUser?.id !== nextUser?.id ||
+      prevProfile?.id !== nextProfile?.id ||
+      prevActiveSessionId !== nextActiveSessionId ||
+      prevIsStabilizing !== nextIsStabilizing ||
+      prevIsLoginInProgress !== nextIsLoginInProgress ||
+      prevIsSigningOut !== nextIsSigningOut) {
+    return false;
+  }
+
+  // Deep compare sessions array
+  if (prevSessions?.length !== nextSessions?.length) {
+    return false;
+  }
+
+  // Check if session objects have changed
+  if (prevSessions && nextSessions) {
+    for (let i = 0; i < prevSessions.length; i++) {
+      if (prevSessions[i]?.id !== nextSessions[i]?.id ||
+          prevSessions[i]?.user?.id !== nextSessions[i]?.user?.id ||
+          prevSessions[i]?.userProfile?.id !== nextSessions[i]?.userProfile?.id) {
+        return false;
+      }
+    }
+  }
+
+  return true;
 });

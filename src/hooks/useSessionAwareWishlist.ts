@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -21,14 +21,25 @@ export const useSessionAwareWishlist = () => {
     return `${baseKey}_guest`;
   }, [activeSession?.user.id]);
 
-  // Load wishlist on user change (not session change)
+  // Load wishlist on user change (not session change) - optimized to prevent continuous calls
+  const lastUserIdRef = useRef<string | null>(null);
+  
   useEffect(() => {
+    const currentUserId = activeSession?.user?.id || null;
+    
+    // Only reload if the user ID actually changed
+    if (lastUserIdRef.current === currentUserId) {
+      return;
+    }
+    
+    lastUserIdRef.current = currentUserId;
+    
     if (activeSession?.user) {
       loadUserWishlist();
     } else {
       loadGuestWishlist();
     }
-  }, [activeSession?.user.id]); // Use user.id for consistency
+  }, [activeSession?.user?.id]); // Use stable user.id reference
 
   // Load wishlist from database for logged-in users
   const loadUserWishlist = async () => {

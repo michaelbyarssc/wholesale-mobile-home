@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -119,8 +119,21 @@ export const useUserRoles = (): RoleCheck => {
     }
   }, []);
 
-  // Effect to fetch roles when user changes
+  // Effect to fetch roles when user changes - optimized to prevent continuous calls
+  const lastUserIdRef = useRef<string | null>(null);
+  const lastAuthLoadingRef = useRef<boolean>(true);
+  
   useEffect(() => {
+    const currentUserId = user?.id || null;
+    
+    // Only fetch if user ID changed or auth loading state changed meaningfully
+    if (lastUserIdRef.current === currentUserId && lastAuthLoadingRef.current === authLoading) {
+      return;
+    }
+    
+    lastUserIdRef.current = currentUserId;
+    lastAuthLoadingRef.current = authLoading;
+    
     if (!authLoading && user) {
       fetchUserRoles(user.id);
     } else if (!authLoading && !user) {
@@ -128,7 +141,7 @@ export const useUserRoles = (): RoleCheck => {
       setUserRoles([]);
       setError(null);
     }
-  }, [user, authLoading, fetchUserRoles]);
+  }, [user?.id, authLoading, fetchUserRoles]); // Use stable user.id reference
 
   // Role checking functions
   const hasRole = useCallback((role: 'admin' | 'super_admin' | 'user' | 'driver') => {

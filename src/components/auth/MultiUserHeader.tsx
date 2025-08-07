@@ -82,6 +82,9 @@ export const MultiUserHeader = ({
   };
 
   const displayName = getDisplayName(userProfile);
+  
+  // Debug logging for user profile
+  console.log('🔍 DEBUG: MultiUserHeader - user:', user?.email, 'userProfile:', userProfile, 'displayName:', displayName);
 
   const handleChangePassword = () => {
     setIsPasswordDialogOpen(true);

@@ -726,11 +726,20 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
   }, [sessions, activeSessionId]);
 
   const updateSessionProfile = useCallback((sessionId: string, profile: { first_name?: string; last_name?: string }) => {
-    setSessions(prev => prev.map(session => 
-      session.id === sessionId 
-        ? { ...session, userProfile: profile }
-        : session
-    ));
+    console.log('🔍 DEBUG: updateSessionProfile called with sessionId:', sessionId, 'profile:', profile);
+    
+    setSessions(prev => {
+      const updated = prev.map(session => {
+        if (session.id === sessionId) {
+          console.log('🔍 DEBUG: Updating session profile for:', session.user.email, 'from:', session.userProfile, 'to:', profile);
+          return { ...session, userProfile: profile };
+        }
+        return session;
+      });
+      
+      console.log('🔍 DEBUG: Sessions state updated, new sessions:', updated);
+      return updated;
+    });
   }, []);
 
   const activeSession = sessions.find(s => s.id === activeSessionId) || null;

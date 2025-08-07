@@ -24,25 +24,48 @@ export const useMultiUserAuth = () => {
 
   const fetchUserProfile = useCallback(async (sessionId?: string) => {
     const targetSessionId = sessionId || activeSessionId;
-    if (!targetSessionId) return null;
+    console.log('🔍 DEBUG: fetchUserProfile called with sessionId:', sessionId, 'targetSessionId:', targetSessionId);
+    
+    if (!targetSessionId) {
+      console.log('🔍 DEBUG: No targetSessionId, returning null');
+      return null;
+    }
 
     const session = sessions.find(s => s.id === targetSessionId);
-    if (!session) return null;
+    if (!session) {
+      console.log('🔍 DEBUG: No session found for ID:', targetSessionId);
+      return null;
+    }
+
+    console.log('🔍 DEBUG: Found session for user:', session.user.email, 'with ID:', session.user.id);
 
     try {
-      const { data: profile } = await session.supabaseClient
+      console.log('🔍 DEBUG: Querying profiles table for user_id:', session.user.id);
+      
+      const { data: profile, error } = await session.supabaseClient
         .from('profiles')
         .select('first_name, last_name')
         .eq('user_id', session.user.id)
         .single();
 
+      console.log('🔍 DEBUG: Database query result - profile:', profile, 'error:', error);
+
+      if (error) {
+        console.error('🔍 DEBUG: Database error:', error);
+        return null;
+      }
+
       if (profile) {
+        console.log('🔍 DEBUG: Profile found, calling updateSessionProfile with:', profile);
         updateSessionProfile(targetSessionId, profile);
+        console.log('🔍 DEBUG: updateSessionProfile called successfully');
+      } else {
+        console.log('🔍 DEBUG: No profile data returned from database');
       }
 
       return profile;
     } catch (error) {
-      console.error('Error fetching user profile:', error);
+      console.error('🔍 DEBUG: Exception in fetchUserProfile:', error);
       return null;
     }
   }, [activeSessionId, sessions, updateSessionProfile]);
@@ -81,9 +104,10 @@ export const useMultiUserAuth = () => {
                   // Additional check to prevent creating session if one already exists
                   const existingSession = sessions.find(s => s.user.id === session.user.id);
                   if (!existingSession) {
-                    const sessionId = await addSession(session.user, session);
-                    // Fetch profile for new session
-                    setTimeout(() => fetchUserProfile(sessionId), 100);
+            const sessionId = await addSession(session.user, session);
+            // Fetch profile for new session immediately
+            console.log('🔍 DEBUG: New session added via auth change, fetching profile');
+            fetchUserProfile(sessionId);
                   } else {
                     console.log('🔐 Session already exists for user, skipping creation');
                   }
@@ -111,8 +135,9 @@ export const useMultiUserAuth = () => {
           if (existingSessions.length === 0 && sessions.length === 0) {
             console.log('🔐 Initializing auth with existing session for user:', session.user.email);
             const sessionId = await addSession(session.user, session);
-            // Fetch profile for initialized session
-            setTimeout(() => fetchUserProfile(sessionId), 100);
+            // Fetch profile for initialized session immediately
+            console.log('🔍 DEBUG: Initializing session, fetching profile');
+            fetchUserProfile(sessionId);
           } else {
             console.log('🔐 Sessions already exist, skipping initialization');
           }
@@ -137,16 +162,27 @@ export const useMultiUserAuth = () => {
 
   // Auto-fetch profiles when activeSession changes or sessions are loaded
   useEffect(() => {
+    console.log('🔍 DEBUG: useEffect triggered - activeSession:', activeSession?.user?.email, 'userProfile:', activeSession?.userProfile);
+    
     if (activeSession && !activeSession.userProfile) {
+      console.log('🔍 DEBUG: Active session found without profile, fetching profile...');
       fetchUserProfile(activeSessionId!);
+    } else if (activeSession?.userProfile) {
+      console.log('🔍 DEBUG: Active session already has profile:', activeSession.userProfile);
     }
   }, [activeSession, activeSessionId, fetchUserProfile]);
 
   // Auto-fetch profiles for any sessions missing profile data
   useEffect(() => {
+    console.log('🔍 DEBUG: Checking all sessions for missing profiles. Total sessions:', sessions.length);
+    
     sessions.forEach(session => {
       if (!session.userProfile) {
-        setTimeout(() => fetchUserProfile(session.id), 100);
+        console.log('🔍 DEBUG: Session missing profile:', session.user.email, 'fetching...');
+        // Make profile fetching more immediate
+        fetchUserProfile(session.id);
+      } else {
+        console.log('🔍 DEBUG: Session has profile:', session.user.email, session.userProfile);
       }
     });
   }, [sessions, fetchUserProfile]);
@@ -165,8 +201,9 @@ export const useMultiUserAuth = () => {
         try {
           const sessionId = await addSession(data.user, data.session);
           console.log('🔐 Sign in successful, session ID:', sessionId);
-          // Fetch profile after successful sign in
-          setTimeout(() => fetchUserProfile(sessionId), 100);
+          // Fetch profile immediately after successful sign in
+          console.log('🔍 DEBUG: Fetching profile immediately after sign in');
+          fetchUserProfile(sessionId);
           return { data, error: null };
         } catch (sessionError: any) {
           if (sessionError.message?.includes('Session creation is temporarily locked')) {
@@ -204,8 +241,9 @@ export const useMultiUserAuth = () => {
       if (data.user && data.session) {
         const sessionId = await addSession(data.user, data.session);
         console.log('🔐 Sign up successful, session ID:', sessionId);
-        // Fetch profile after successful sign up
-        setTimeout(() => fetchUserProfile(sessionId), 100);
+        // Fetch profile immediately after successful sign up
+        console.log('🔍 DEBUG: Fetching profile immediately after sign up');
+        fetchUserProfile(sessionId);
       }
 
       return { data, error: null };
@@ -348,7 +386,8 @@ export const useMultiUserAuth = () => {
     
     // Fetch profile if not already loaded
     if (!session.userProfile) {
-      setTimeout(() => fetchUserProfile(sessionId), 100);
+      console.log('🔍 DEBUG: Session switch - fetching profile for session:', sessionId);
+      fetchUserProfile(sessionId);
     }
     
     // Validate in background with debouncing to prevent excessive calls
@@ -383,7 +422,9 @@ export const useMultiUserAuth = () => {
   }, [activeSession]);
 
   const getCurrentUserProfile = useCallback(() => {
-    return activeSession?.userProfile || null;
+    const profile = activeSession?.userProfile || null;
+    console.log('🔍 DEBUG: getCurrentUserProfile called, returning:', profile);
+    return profile;
   }, [activeSession]);
 
   const getSupabaseClient = useCallback(() => {

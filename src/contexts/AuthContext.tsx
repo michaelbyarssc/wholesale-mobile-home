@@ -372,6 +372,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [activeSession?.user?.id, isLoginInProgress, isStabilizing, isProfileLoading, isUserDataReady]);
 
+  // Handle non-authenticated users - mark as ready when no session exists
+  useEffect(() => {
+    if (!activeSession && !isLoading && !isUserDataReady) {
+      console.log('📱 NON-AUTH USER: Marking user data as ready (no session)');
+      setIsUserDataReady(true);
+    }
+  }, [activeSession, isLoading, isUserDataReady]);
+
   // Auth methods
   const signIn = useCallback(async (email: string, password: string) => {
     console.log('🔐 SIGN IN: Starting sign in for:', email);

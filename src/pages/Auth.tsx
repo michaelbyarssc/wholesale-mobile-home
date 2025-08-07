@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -215,21 +214,6 @@ const Auth = () => {
                 onShowPasswordChange={() => setShowPasswordChange(true)}
                 isAddUserMode={isAddUserMode}
               />
-
-              {/* Emergency Access Button */}
-              {!isAddUserMode && !isForgotPassword && (
-                <div className="mt-4 pt-4 border-t">
-                  <Button
-                    onClick={toggleEmergencyMode}
-                    variant="outline"
-                    size="sm"
-                    className="w-full text-orange-600 border-orange-200 hover:bg-orange-50"
-                  >
-                    <AlertTriangle className="h-4 w-4 mr-2" />
-                    Emergency Access
-                  </Button>
-                </div>
-              )}
             </CardContent>
           </Card>
         )}

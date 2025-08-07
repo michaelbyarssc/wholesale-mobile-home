@@ -418,21 +418,34 @@ export const EnhancedOptimizedMobileHomesShowcase = React.memo(({
     });
   }, [mobileHomes, debouncedSearchQuery, filters]);
 
-  // Memoized series calculation
-  const uniqueSeries = useMemo(() => {
-    return [...new Set(filteredHomes.map(home => home.series))].sort((a, b) => {
+  // Series lists derived from all active homes (always show all series)
+  const ALL_TAB = 'All';
+  const normalizeSeries = useCallback((s?: string | null) => (s?.trim() || 'Uncategorized'), []);
+  const allSeries = useMemo(() => {
+    const set = new Set<string>(mobileHomes.map(h => normalizeSeries(h.series)));
+    return Array.from(set).sort((a, b) => {
       if (a === 'Tru') return -1;
       if (b === 'Tru') return 1;
       return a.localeCompare(b);
     });
-  }, [filteredHomes]);
+  }, [mobileHomes, normalizeSeries]);
 
-  // Set default tab
+  // Counts for filtered results per series
+  const seriesCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    filteredHomes.forEach(h => {
+      const s = normalizeSeries(h.series);
+      counts[s] = (counts[s] || 0) + 1;
+    });
+    return counts;
+  }, [filteredHomes, normalizeSeries]);
+
+  // Set default tab to 'All' once
   React.useEffect(() => {
-    if (uniqueSeries.length > 0 && !activeTab) {
-      setActiveTab(uniqueSeries[0]);
+    if (!activeTab) {
+      setActiveTab(ALL_TAB);
     }
-  }, [uniqueSeries, activeTab]);
+  }, [activeTab]);
 
   // Memoized image lookup
   const getHomeImages = useCallback((homeId: string) => {
@@ -506,37 +519,63 @@ export const EnhancedOptimizedMobileHomesShowcase = React.memo(({
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-auto mb-4">
-          {uniqueSeries.map((series) => (
+          <TabsTrigger key={ALL_TAB} value={ALL_TAB} className="text-sm">
+            {ALL_TAB} ({filteredHomes.length})
+          </TabsTrigger>
+          {allSeries.map((series) => (
             <TabsTrigger key={series} value={series} className="text-sm">
-              {series} Series
+              {series} ({seriesCounts[series] ?? 0})
             </TabsTrigger>
           ))}
         </TabsList>
 
-        {uniqueSeries.map((series) => {
-          const seriesHomes = filteredHomes.filter(home => home.series === series);
+        {[ALL_TAB, ...allSeries].map((series) => {
+          const seriesHomes = series === ALL_TAB
+            ? filteredHomes
+            : filteredHomes.filter(home => normalizeSeries(home.series) === series);
           
           return (
             <TabsContent key={series} value={series}>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {seriesHomes.map((home) => (
-                  <EnhancedMobileHomeCard
-                    key={home.id}
-                    home={home}
-                    images={getHomeImages(home.id)}
-                    isInCart={cartItems.some(item => item.mobileHome.id === home.id)}
-                    user={user}
-                    price={getHomePrice(home.id)}
-                    pricingLoading={pricingLoading}
-                    onAddToCart={handleAddToCart}
-                    onViewDetails={handleViewDetails}
-                    onAddToComparison={handleAddToComparison}
-                    onToggleWishlist={handleToggleWishlist}
-                    isInComparison={isInComparison(home.id)}
-                    isInWishlist={isInWishlist(home.id)}
-                  />
-                ))}
-              </div>
+              {seriesHomes.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <p className="text-gray-600 mb-4">No homes match your filters in this series.</p>
+                  <Button
+                    variant="outline"
+                    onClick={() => setFilters({
+                      searchQuery: '',
+                      priceRange: [0, 200000],
+                      squareFootageRange: [400, 2000],
+                      bedrooms: [],
+                      bathrooms: [],
+                      manufacturers: [],
+                      features: [],
+                      widthType: 'all'
+                    })}
+                  >
+                    Clear filters
+                  </Button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {seriesHomes.map((home) => (
+                    <EnhancedMobileHomeCard
+                      key={home.id}
+                      home={home}
+                      images={getHomeImages(home.id)}
+                      isInCart={cartItems.some(item => item.mobileHome.id === home.id)}
+                      user={user}
+                      price={getHomePrice(home.id)}
+                      pricingLoading={pricingLoading}
+                      onAddToCart={handleAddToCart}
+                      onViewDetails={handleViewDetails}
+                      onAddToComparison={handleAddToComparison}
+                      onToggleWishlist={handleToggleWishlist}
+                      isInComparison={isInComparison(home.id)}
+                      isInWishlist={isInWishlist(home.id)}
+                    />
+                  ))}
+                </div>
+              )}
             </TabsContent>
           );
         })}

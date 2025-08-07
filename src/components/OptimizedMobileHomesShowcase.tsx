@@ -420,7 +420,7 @@ export const OptimizedMobileHomesShowcase = React.memo(({
       />
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-      <TabsList className="grid w-full grid-cols-auto mb-4">
+      <TabsList className="mb-4 w-full flex-wrap gap-2 overflow-x-auto justify-start">
           <TabsTrigger key={ALL_TAB} value={ALL_TAB} className="text-sm">
             {ALL_TAB} ({filteredHomes.length})
           </TabsTrigger>

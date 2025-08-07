@@ -61,8 +61,8 @@ export const useMultiUserAuth = () => {
         updateSessionProfile(targetSessionId, profile);
         return profile;
       } else {
-        console.log('🔍 PROFILE: No profile data found in database');
-        return {};
+        console.log('🔍 PROFILE: No profile data found in database, returning null');
+        return null;
       }
     } catch (error) {
       console.error('🔍 PROFILE: Exception in fetchUserProfile:', error);

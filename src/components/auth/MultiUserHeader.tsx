@@ -66,10 +66,15 @@ export const MultiUserHeader = ({
     activeSessionId
   } = useMultiUserAuth();
 
+  // Helper function to check if profile has actual data
+  const hasProfileData = (profile: any) => {
+    return profile && (profile.first_name || profile.last_name);
+  };
+
   // Ensure profile is fetched when component mounts or user changes
   React.useEffect(() => {
-    if (user && activeSessionId && !userProfile) {
-      console.log('🔍 DEBUG: MultiUserHeader - Fetching profile for user:', user.email);
+    if (user && activeSessionId && !hasProfileData(userProfile)) {
+      console.log('🔍 DEBUG: MultiUserHeader - Fetching profile for user:', user.email, 'current profile:', userProfile);
       fetchUserProfile(activeSessionId);
     }
   }, [user, activeSessionId, userProfile, fetchUserProfile]);

@@ -79,6 +79,18 @@ export const MultiUserHeader = ({
     }
   }, [user, activeSessionId, userProfile, fetchUserProfile]);
 
+  // Force profile fetch after a short delay if still no profile data
+  React.useEffect(() => {
+    if (user && activeSessionId && !hasProfileData(userProfile)) {
+      const retryTimer = setTimeout(() => {
+        console.log('🔍 DEBUG: MultiUserHeader - Retry fetching profile after delay for:', user.email);
+        fetchUserProfile(activeSessionId);
+      }, 1000);
+      
+      return () => clearTimeout(retryTimer);
+    }
+  }, [user, activeSessionId, userProfile, fetchUserProfile]);
+
   const getDisplayName = (profile?: { first_name?: string; last_name?: string } | null, email?: string) => {
     // Prioritize showing full name from profile
     if (profile?.first_name && profile?.last_name) {

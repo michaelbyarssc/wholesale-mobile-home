@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { OptimizedMobileHomesShowcase } from '@/components/OptimizedMobileHomesShowcase';
+import { MobileHomesShowcase } from '@/components/MobileHomesShowcase';
 import { TestimonialsSection } from '@/components/reviews/TestimonialsSection';
 import { FinancingCalculator } from '@/components/financing/FinancingCalculator';
 import { supabase } from '@/integrations/supabase/client';
@@ -151,7 +151,7 @@ const Index = () => {
       </div>
 
       <div id="mobile-homes">
-        <OptimizedMobileHomesShowcase 
+        <MobileHomesShowcase 
           user={user}
           {...cartProps}
         />

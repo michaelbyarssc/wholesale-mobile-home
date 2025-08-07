@@ -3,14 +3,14 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, RefreshCw, LogOut, Database } from 'lucide-react';
-import { useAuthUser } from '@/hooks/useAuthUser';
+import { useMultiUserAuth } from '@/hooks/useMultiUserAuth';
 import { useUserRoles } from '@/hooks/useUserRoles';
 import { useSessionRecovery } from '@/hooks/useSessionRecovery';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
 export const AdminRecoveryPanel: React.FC = () => {
-  const { user, forceRefreshAuth } = useAuthUser();
+  const { user } = useMultiUserAuth();
   const { isAdmin, isSuperAdmin, forceRefreshRoles, userRoles } = useUserRoles();
   const { emergencyCleanup } = useSessionRecovery();
   const { toast } = useToast();
@@ -61,17 +61,16 @@ export const AdminRecoveryPanel: React.FC = () => {
     });
     
     try {
-      await forceRefreshAuth();
       await forceRefreshRoles();
       
       toast({
-        title: "Refresh Complete",
-        description: "Auth and roles have been refreshed"
+        title: "Refresh Complete", 
+        description: "Roles have been refreshed"
       });
     } catch (error) {
       toast({
         title: "Refresh Failed",
-        description: "Unable to refresh authentication data",
+        description: "Unable to refresh role data",
         variant: "destructive"
       });
     }

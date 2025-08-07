@@ -174,16 +174,9 @@ export const useMultiUserAuth = () => {
                   if (!existingSession) {
                     console.log('🔐 Creating new session for user:', session.user.email);
                     const sessionId = await addSession(session.user, session);
-                    // Immediate profile fetching for faster display
-                    setTimeout(() => fetchUserProfile(sessionId), 0);
                   } else {
                     console.log('🔐 Session already exists for user, switching to it');
-                    // Switch to existing session and ensure profile is loaded
-                    const existingSessionId = existingSession.id;
-                    switchToSession(existingSessionId);
-                    if (!existingSession.userProfile) {
-                      setTimeout(() => fetchUserProfile(existingSessionId), 0);
-                    }
+                    switchToSession(existingSession.id);
                   }
                 } catch (error) {
                   console.error('🔐 Error adding session on auth change:', error);
@@ -207,15 +200,10 @@ export const useMultiUserAuth = () => {
           
           if (!existingSession) {
             console.log('🔐 Initializing auth with existing session');
-            const sessionId = await addSession(session.user, session);
-            // Immediate profile fetching for faster display
-            setTimeout(() => fetchUserProfile(sessionId), 0);
+            await addSession(session.user, session);
           } else {
-            // Switch to existing session and ensure profile is loaded
+            // Switch to existing session
             switchToSession(existingSession.id);
-            if (!existingSession.userProfile) {
-              setTimeout(() => fetchUserProfile(existingSession.id), 0);
-            }
           }
         }
         
@@ -236,19 +224,19 @@ export const useMultiUserAuth = () => {
     };
   }, [addSession, sessions, fetchUserProfile]);
 
-  // Auto-fetch profiles with caching and immediate loading - skip during sign out
+  // Auto-fetch profiles with caching - single point of profile fetching
   useEffect(() => {
     if (isSigningOut) return; // Prevent profile fetching during logout
     
     if (activeSession && !activeSession.userProfile) {
-      console.log('🔍 DEBUG: Fetching profile for active session:', activeSession.user.email);
+      console.log('🔍 PROFILE: Auto-fetching profile for active session:', activeSession.user.email);
       
       // Check localStorage cache first for instant display
       try {
         const profileCache = JSON.parse(localStorage.getItem('wmh_profile_cache') || '{}');
         const cachedProfile = profileCache[activeSession.user.id];
         if (cachedProfile) {
-          console.log('🔍 DEBUG: Using cached profile for instant display');
+          console.log('🔍 PROFILE: Using cached profile for instant display');
           updateSessionProfile(activeSessionId!, cachedProfile);
           return;
         }
@@ -256,10 +244,8 @@ export const useMultiUserAuth = () => {
         console.warn('Failed to load cached profile:', error);
       }
       
-      // Fetch immediately if no cache
-      setTimeout(() => {
-        fetchUserProfile(activeSessionId!);
-      }, 0);
+      // Only fetch if no cache available
+      fetchUserProfile(activeSessionId!);
     }
   }, [activeSession, activeSessionId, fetchUserProfile, updateSessionProfile, isSigningOut]);
 
@@ -277,8 +263,6 @@ export const useMultiUserAuth = () => {
         try {
         const sessionId = await addSession(data.user, data.session);
         console.log('🔐 Sign in successful, session ID:', sessionId);
-        // Immediate profile fetching for sign in
-        setTimeout(() => fetchUserProfile(sessionId), 0);
           return { data, error: null };
         } catch (sessionError: any) {
           if (sessionError.message?.includes('Session creation is temporarily locked')) {
@@ -316,8 +300,6 @@ export const useMultiUserAuth = () => {
       if (data.user && data.session) {
         const sessionId = await addSession(data.user, data.session);
         console.log('🔐 Sign up successful, session ID:', sessionId);
-        // Immediate profile fetching for sign up
-        setTimeout(() => fetchUserProfile(sessionId), 0);
       }
 
       return { data, error: null };

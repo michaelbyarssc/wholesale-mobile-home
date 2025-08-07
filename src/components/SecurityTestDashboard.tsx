@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Shield, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
 import { useUserRoles } from '@/hooks/useUserRoles';
 import { useSecureRoles } from '@/hooks/useSecureRoles';
-import { useAuthUser } from '@/hooks/useAuthUser';
+import { useMultiUserAuth } from '@/hooks/useMultiUserAuth';
 
 interface SecurityTestResult {
   test: string;
@@ -15,7 +15,7 @@ interface SecurityTestResult {
 }
 
 export const SecurityTestDashboard = () => {
-  const { user } = useAuthUser();
+  const { user } = useMultiUserAuth();
   const { isAdmin, isSuperAdmin, userRoles, verifyAdminAccess } = useUserRoles();
   const { isSecureAdmin, verifySecureRoles, sessionId } = useSecureRoles();
   const [testResults, setTestResults] = useState<SecurityTestResult[]>([]);

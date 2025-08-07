@@ -11,7 +11,7 @@ import { Search, HelpCircle, Star } from "lucide-react";
 import { Tables } from "@/integrations/supabase/types";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
-import { useAuthUser } from "@/hooks/useAuthUser";
+import { useMultiUserAuth } from "@/hooks/useMultiUserAuth";
 import { useShoppingCart } from "@/hooks/useShoppingCart";
 import { SEO } from "@/components/SEO";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
@@ -30,7 +30,11 @@ export default function FAQ() {
   const [loading, setLoading] = useState(true);
   
   const navigate = useNavigate();
-  const { user, userProfile, handleLogout, isLoading: authLoading } = useAuthUser();
+  const { user, userProfile, signOut, isLoading: authLoading } = useMultiUserAuth();
+
+  const handleLogout = async () => {
+    await signOut();
+  };
   const { cartItems, toggleCart } = useShoppingCart();
 
   useEffect(() => {

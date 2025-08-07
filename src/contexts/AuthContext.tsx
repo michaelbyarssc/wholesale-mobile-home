@@ -342,19 +342,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             await fetchUserProfile();
           }
           
-          // Step 2: Fetch roles if needed  
-          if (userRoles.length === 0 && !isRolesLoading) {
+          // Step 2: Fetch roles if needed - but don't block on this  
+          if (!hasRoleBeenFetched.current.has(currentSession.user.id) && !isRolesLoading) {
             console.log('📱 STEP 2: Fetching roles...');
-            await fetchUserRoles();
+            // Don't await - let roles load in background
+            fetchUserRoles().catch(error => {
+              console.error('📱 BACKGROUND ROLES FETCH: Error:', error);
+            });
           }
           
-          // Step 3: Mark user data as ready
-          if (!isUserDataReady && !isProfileLoading && !isRolesLoading) {
-            console.log('📱 STEP 3: Marking user data as ready');
+          // Step 3: Mark user data as ready after profile is loaded (don't wait for roles)
+          if (!isUserDataReady && !isProfileLoading) {
+            console.log('📱 STEP 3: Marking user data as ready (profile loaded, roles loading in background)');
             setIsUserDataReady(true);
           }
         } catch (error) {
           console.error('📱 COORDINATED FETCH: Error in data sequence:', error);
+          // Even on error, mark as ready so user isn't stuck
+          if (!isUserDataReady) {
+            console.log('📱 STEP 3 (FALLBACK): Marking user data as ready despite error');
+            setIsUserDataReady(true);
+          }
         }
       };
       
@@ -362,7 +370,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const fetchTimer = setTimeout(fetchDataSequence, 200);
       return () => clearTimeout(fetchTimer);
     }
-  }, [activeSession?.user?.id, isLoginInProgress, isStabilizing, isProfileLoading, isRolesLoading, userRoles.length, isUserDataReady]);
+  }, [activeSession?.user?.id, isLoginInProgress, isStabilizing, isProfileLoading, isUserDataReady]);
 
   // Auth methods
   const signIn = useCallback(async (email: string, password: string) => {

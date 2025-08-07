@@ -63,16 +63,56 @@ export const MultiUserHeader = ({
     signOutAll,
     hasMultipleSessions,
     fetchUserProfile,
-    activeSessionId
+    activeSessionId,
+    supabaseClient
   } = useMultiUserAuth();
 
   // Ensure profile is fetched when component mounts or user changes
   React.useEffect(() => {
-    if (user && activeSessionId && !userProfile) {
-      console.log('🔍 DEBUG: MultiUserHeader - Fetching profile for user:', user.email);
+    console.log('🔍 HEADER: Effect triggered - user:', !!user, 'activeSessionId:', !!activeSessionId, 'userProfile:', userProfile);
+    if (user && activeSessionId) {
+      console.log('🔍 HEADER: Fetching profile for user:', user.email, 'current profile:', userProfile);
       fetchUserProfile(activeSessionId);
+      
+      // Also try a direct test query to debug RLS and permissions
+      setTimeout(async () => {
+        try {
+          console.log('🔍 HEADER: Testing direct profile query...');
+          const { data, error } = await supabaseClient
+            .from('profiles')
+            .select('first_name, last_name, email')
+            .eq('user_id', user.id)
+            .maybeSingle();
+          console.log('🔍 HEADER: Direct query result:', { data, error });
+        } catch (err) {
+          console.error('🔍 HEADER: Direct query failed:', err);
+        }
+      }, 2000);
     }
-  }, [user, activeSessionId, userProfile, fetchUserProfile]);
+  }, [user, activeSessionId, fetchUserProfile, userProfile, supabaseClient]);
+
+  // Manual refresh function for testing
+  const manualRefreshProfile = async () => {
+    console.log('🔄 MANUAL: Force refreshing profile...');
+    if (user && activeSessionId) {
+      try {
+        console.log('🔄 MANUAL: Direct profile query for:', user.email);
+        const { data, error } = await supabaseClient
+          .from('profiles')
+          .select('first_name, last_name, email, phone_number')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        console.log('🔄 MANUAL: Direct query result:', { data, error });
+        
+        if (data && !error) {
+          console.log('🔄 MANUAL: Calling fetchUserProfile...');
+          fetchUserProfile(activeSessionId);
+        }
+      } catch (err) {
+        console.error('🔄 MANUAL: Error:', err);
+      }
+    }
+  };
 
   const getDisplayName = (profile?: { first_name?: string; last_name?: string } | null, email?: string) => {
     // If we have profile data, prioritize first_name
@@ -286,6 +326,16 @@ export const MultiUserHeader = ({
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
+
+                    {/* Debug Button - Temporary */}
+                    <Button
+                      onClick={manualRefreshProfile}
+                      variant="outline"
+                      size="sm"
+                      className="bg-yellow-100 border-yellow-300 text-yellow-800 hover:bg-yellow-200"
+                    >
+                      🔄 Debug Profile
+                    </Button>
 
                     {/* Appointments Link */}
                     <Link 

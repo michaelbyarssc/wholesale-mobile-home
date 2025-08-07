@@ -253,23 +253,6 @@ const Admin = () => {
               
               <NotificationCenter />
               
-              {/* Debug: Force Refresh Button */}
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={async () => {
-                  console.log('Manual refresh triggered');
-                  toast({
-                    title: "Refreshed",
-                    description: "Page will reload to refresh auth state.",
-                  });
-                  window.location.reload();
-                }}
-                className="hidden sm:flex text-xs"
-              >
-                🔄 Refresh
-              </Button>
-              
               <Button 
                 variant="outline" 
                 size="sm"

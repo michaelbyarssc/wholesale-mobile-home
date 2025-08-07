@@ -69,6 +69,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const profileFetchInProgress = useRef(false);
   const hasProfileBeenFetched = useRef(new Set<string>());
   const profileRequestPromises = useRef(new Map<string, Promise<any>>());
+  
+  // Auth event deduplication ref
+  const lastProcessedEvent = useRef<{event: string, userId?: string, timestamp: number} | null>(null);
 
   // Simple profile fetching
   const fetchUserProfile = useCallback(async (targetSessionId?: string) => {
@@ -153,19 +156,44 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         authSubscription = supabase.auth.onAuthStateChange(async (event, session) => {
           console.log('🔄 AUTH STATE CHANGE:', event, session ? `User: ${session.user?.email}` : 'No session');
           
+          // Deduplicate rapid auth events
+          const currentEvent = {
+            event,
+            userId: session?.user?.id,
+            timestamp: Date.now()
+          };
+          
+          // Skip if same event for same user within 100ms
+          if (lastProcessedEvent.current && 
+              lastProcessedEvent.current.event === event &&
+              lastProcessedEvent.current.userId === session?.user?.id &&
+              (currentEvent.timestamp - lastProcessedEvent.current.timestamp) < 100) {
+            console.log('⏭️ AUTH EVENT SKIPPED: Duplicate event within 100ms');
+            return;
+          }
+          
+          lastProcessedEvent.current = currentEvent;
+          
           if (event === 'SIGNED_IN' && session?.user) {
             console.log('✅ AUTH STATE: User signed in:', session.user.email, 'Event:', event);
             await addSession(session.user, session);
             setIsLoginInProgress(false);
           } else if (event === 'SIGNED_OUT') {
-            console.log('🚪 AUTH STATE: User signed out, clearing sessions');
+            console.log('🚪 AUTH STATE: User signed out, clearing sessions and refs');
             clearAllSessions();
             hasProfileBeenFetched.current.clear();
             profileRequestPromises.current.clear();
             setIsLoginInProgress(false);
           } else if (event === 'TOKEN_REFRESHED' && session?.user) {
             console.log('🔄 AUTH STATE: Token refreshed for user:', session.user.email);
-            await addSession(session.user, session);
+            // Check if session already exists to prevent feedback loops
+            const existingSession = sessions.find(s => s.user.id === session.user.id);
+            if (!existingSession) {
+              console.log('⚠️ TOKEN_REFRESHED: No existing session found, adding session');
+              await addSession(session.user, session);
+            } else {
+              console.log('✅ TOKEN_REFRESHED: Session already exists, skipping addSession');
+            }
           } else {
             console.log('❌ AUTH STATE: No user session, signing out');
             setIsLoginInProgress(false);

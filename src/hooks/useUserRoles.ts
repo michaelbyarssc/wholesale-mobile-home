@@ -119,7 +119,7 @@ export const useUserRoles = (): RoleCheck => {
     }
   }, []);
 
-  // Effect to fetch roles when user changes - optimized to prevent continuous calls
+  // Effect to fetch roles when user changes - delayed during login to prevent API spam
   const lastUserIdRef = useRef<string | null>(null);
   const lastAuthLoadingRef = useRef<boolean>(true);
   
@@ -134,8 +134,15 @@ export const useUserRoles = (): RoleCheck => {
     lastUserIdRef.current = currentUserId;
     lastAuthLoadingRef.current = authLoading;
     
-    if (!authLoading && user) {
-      fetchUserRoles(user.id);
+    // Check global login state from AuthContext
+    const globalLoginInProgress = (window as any).globalLoginInProgress;
+    
+    if (!authLoading && user && !globalLoginInProgress) {
+      // Delay role fetching by 1 second after login to allow auth to settle
+      const delay = lastUserIdRef.current !== currentUserId ? 1000 : 0;
+      setTimeout(() => {
+        fetchUserRoles(user.id);
+      }, delay);
     } else if (!authLoading && !user) {
       // Clear roles when user logs out
       setUserRoles([]);

@@ -7,6 +7,8 @@ import { useSessionValidation } from '@/hooks/useSessionValidation';
 
 // Global login state to prevent secondary auth calls
 let globalLoginInProgress = false;
+// Expose to window for other hooks to access
+(window as any).globalLoginInProgress = false;
 
 interface AuthContextType {
   // Current auth state
@@ -192,6 +194,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             // Mark login as complete when we get a signed in event
             if (event === 'SIGNED_IN') {
               globalLoginInProgress = false;
+              (window as any).globalLoginInProgress = false;
             }
             
             // Simplified timeout to prevent excessive session creation
@@ -227,16 +230,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         authSubscription = subscription;
         
-        // Only check existing session if we have stored sessions but no active session
-        // This prevents duplicate auth calls on every page load
-        if (sessions.length === 0 && !activeSessionId) {
-          console.log('🔐 Checking for existing session only once during initialization');
-          const { data: { session } } = await supabase.auth.getSession();
-          if (session?.user) {
-            console.log('🔐 Found existing session, creating session manager entry');
-            await addSession(session.user, session);
-          }
-        }
+        // No duplicate getSession() call - auth state listener handles everything
         
       } catch (error) {
         console.error('Error initializing auth:', error);
@@ -294,6 +288,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signIn = useCallback(async (email: string, password: string) => {
     setIsLoading(true);
     globalLoginInProgress = true; // Prevent secondary auth calls
+    (window as any).globalLoginInProgress = true;
     
     try {
       console.log('🔐 Starting login process - preventing secondary auth calls');
@@ -322,6 +317,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error: any) {
       console.error('🔐 Sign in error:', error);
       globalLoginInProgress = false; // Reset on error
+      (window as any).globalLoginInProgress = false;
       return { data: null, error };
     } finally {
       setIsLoading(false);

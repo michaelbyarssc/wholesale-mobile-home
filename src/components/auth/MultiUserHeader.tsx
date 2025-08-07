@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { CartItem } from '@/hooks/useShoppingCart';
 import { PasswordChangeDialog } from '@/components/auth/PasswordChangeDialog';
-import { UserSettingsDialog } from '@/components/auth/UserSettingsDialog';
+import { UserSettingsDialogTrigger, UserSettingsDialog } from '@/components/auth/UserSettingsDialog';
 import { ForceLogoutButton } from '@/components/auth/ForceLogoutButton';
 import { useBusinessInfo } from '@/hooks/useBusinessInfo';
 import { usePWA } from '@/hooks/usePWA';
@@ -330,7 +330,7 @@ const MultiUserHeaderComponent = ({
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem asChild>
-                          <UserSettingsDialog 
+                          <UserSettingsDialogTrigger 
                             user={user} 
                             userProfile={userProfile} 
                             onProfileUpdated={handleProfileUpdated}

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -20,8 +19,92 @@ interface UserSettingsDialogProps {
   onProfileUpdated: () => void;
 }
 
+interface UserSettingsDialogTriggerProps {
+  user: SupabaseUser;
+  userProfile: { 
+    first_name?: string;
+    last_name?: string;
+    phone_number?: string;
+    email?: string;
+  } | null;
+  onProfileUpdated: () => void;
+}
+
+// Trigger component that can properly forward refs for use in dropdowns
+export const UserSettingsDialogTrigger = React.forwardRef<
+  HTMLButtonElement,
+  UserSettingsDialogTriggerProps
+>(({ user, userProfile, onProfileUpdated, ...props }, ref) => {
+  const [open, setOpen] = useState(false);
+
+  const handleProfileUpdated = () => {
+    setOpen(false);
+    onProfileUpdated();
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <button
+          ref={ref}
+          className="w-full justify-start text-left p-3 hover:bg-gray-50 flex items-center"
+          {...props}
+        >
+          <Settings className="h-4 w-4 mr-3" />
+          Account Settings
+        </button>
+      </DialogTrigger>
+      <UserSettingsDialogContent 
+        user={user} 
+        userProfile={userProfile} 
+        onProfileUpdated={handleProfileUpdated}
+        onClose={() => setOpen(false)}
+      />
+    </Dialog>
+  );
+});
+
+UserSettingsDialogTrigger.displayName = "UserSettingsDialogTrigger";
+
+// Main dialog component for standalone use
 export const UserSettingsDialog = ({ user, userProfile, onProfileUpdated }: UserSettingsDialogProps) => {
   const [open, setOpen] = useState(false);
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="ghost" className="w-full justify-start text-left p-3">
+          <Settings className="h-4 w-4 mr-3" />
+          Account Settings
+        </Button>
+      </DialogTrigger>
+      <UserSettingsDialogContent 
+        user={user} 
+        userProfile={userProfile} 
+        onProfileUpdated={() => {
+          setOpen(false);
+          onProfileUpdated();
+        }}
+        onClose={() => setOpen(false)}
+      />
+    </Dialog>
+  );
+};
+
+// Shared dialog content component
+interface UserSettingsDialogContentProps {
+  user: SupabaseUser;
+  userProfile: { 
+    first_name?: string;
+    last_name?: string;
+    phone_number?: string;
+    email?: string;
+  } | null;
+  onProfileUpdated: () => void;
+  onClose: () => void;
+}
+
+const UserSettingsDialogContent = ({ user, userProfile, onProfileUpdated, onClose }: UserSettingsDialogContentProps) => {
   const [loading, setLoading] = useState(false);
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -30,7 +113,7 @@ export const UserSettingsDialog = ({ user, userProfile, onProfileUpdated }: User
   const { toast } = useToast();
 
   useEffect(() => {
-    if (open && user) {
+    if (user) {
       // Initialize form fields from existing userProfile prop to avoid duplicate fetching
       if (userProfile) {
         setFirstName(userProfile.first_name || '');
@@ -41,7 +124,7 @@ export const UserSettingsDialog = ({ user, userProfile, onProfileUpdated }: User
         setEmail(user.email || '');
       }
     }
-  }, [open, user, userProfile]);
+  }, [user, userProfile]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -94,7 +177,6 @@ export const UserSettingsDialog = ({ user, userProfile, onProfileUpdated }: User
         });
       }
 
-      setOpen(false);
       onProfileUpdated();
     } catch (error: any) {
       console.error('Error updating profile:', error);
@@ -109,70 +191,62 @@ export const UserSettingsDialog = ({ user, userProfile, onProfileUpdated }: User
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="ghost" className="w-full justify-start text-left p-3">
-          <Settings className="h-4 w-4 mr-3" />
+    <DialogContent className="sm:max-w-md">
+      <DialogHeader>
+        <DialogTitle className="flex items-center gap-2">
+          <User className="h-5 w-5" />
           Account Settings
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <User className="h-5 w-5" />
-            Account Settings
-          </DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <Label htmlFor="firstName">First Name</Label>
-            <Input
-              id="firstName"
-              value={firstName}
-              onChange={(e) => setFirstName(e.target.value)}
-              placeholder="First name"
-            />
-          </div>
-          <div>
-            <Label htmlFor="lastName">Last Name</Label>
-            <Input
-              id="lastName"
-              value={lastName}
-              onChange={(e) => setLastName(e.target.value)}
-              placeholder="Last name"
-            />
-          </div>
-          <div>
-            <Label htmlFor="phoneNumber">Phone Number</Label>
-            <Input
-              id="phoneNumber"
-              value={phoneNumber}
-              onChange={(e) => setPhoneNumber(e.target.value)}
-              placeholder="Phone number"
-              type="tel"
-            />
-          </div>
-          <div>
-            <Label htmlFor="email">Email Address</Label>
-            <Input
-              id="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Email address"
-              type="email"
-              required
-            />
-          </div>
-          <div className="flex justify-end gap-2 pt-4">
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? "Updating..." : "Update Profile"}
-            </Button>
-          </div>
-        </form>
-      </DialogContent>
-    </Dialog>
+        </DialogTitle>
+      </DialogHeader>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <Label htmlFor="firstName">First Name</Label>
+          <Input
+            id="firstName"
+            value={firstName}
+            onChange={(e) => setFirstName(e.target.value)}
+            placeholder="First name"
+          />
+        </div>
+        <div>
+          <Label htmlFor="lastName">Last Name</Label>
+          <Input
+            id="lastName"
+            value={lastName}
+            onChange={(e) => setLastName(e.target.value)}
+            placeholder="Last name"
+          />
+        </div>
+        <div>
+          <Label htmlFor="phoneNumber">Phone Number</Label>
+          <Input
+            id="phoneNumber"
+            value={phoneNumber}
+            onChange={(e) => setPhoneNumber(e.target.value)}
+            placeholder="Phone number"
+            type="tel"
+          />
+        </div>
+        <div>
+          <Label htmlFor="email">Email Address</Label>
+          <Input
+            id="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="Email address"
+            type="email"
+            required
+          />
+        </div>
+        <div className="flex justify-end gap-2 pt-4">
+          <Button type="button" variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button type="submit" disabled={loading}>
+            {loading ? "Updating..." : "Update Profile"}
+          </Button>
+        </div>
+      </form>
+    </DialogContent>
   );
 };

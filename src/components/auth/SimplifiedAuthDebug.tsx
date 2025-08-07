@@ -2,19 +2,19 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { useSimpleAuth } from '@/hooks/useSimpleAuth';
+import { useMultiUserAuth } from '@/hooks/useMultiUserAuth';
 import { useUserRoles } from '@/hooks/useUserRoles';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
 export const SimplifiedAuthDebug: React.FC = () => {
-  const simpleAuth = useSimpleAuth();
+  const auth = useMultiUserAuth();
   const userRoles = useUserRoles();
   const { toast } = useToast();
   const [checking, setChecking] = useState(false);
 
   const handleDirectAdminCheck = async () => {
-    if (!simpleAuth.user) {
+    if (!auth.user) {
       toast({
         title: "No User",
         description: "Please sign in first.",
@@ -26,7 +26,7 @@ export const SimplifiedAuthDebug: React.FC = () => {
     setChecking(true);
     try {
       const { data: isAdminResult, error: rpcError } = await supabase.rpc('is_admin', { 
-        user_id: simpleAuth.user.id 
+        user_id: auth.user.id 
       });
 
       if (rpcError) {
@@ -72,10 +72,10 @@ export const SimplifiedAuthDebug: React.FC = () => {
           <div>
             <span className="text-muted-foreground">Simple Auth:</span>
             <div className="font-mono">
-              User: {simpleAuth.user?.email || 'None'}
+              User: {auth.user?.email || 'None'}
             </div>
             <div className="font-mono">
-              Loading: {simpleAuth.isLoading ? 'Yes' : 'No'}
+              Loading: {auth.isLoading ? 'Yes' : 'No'}
             </div>
           </div>
           
@@ -103,7 +103,7 @@ export const SimplifiedAuthDebug: React.FC = () => {
         <Button
           variant="outline"
           onClick={handleDirectAdminCheck}
-          disabled={checking || !simpleAuth.user}
+          disabled={checking || !auth.user}
           className="w-full"
           size="sm"
         >

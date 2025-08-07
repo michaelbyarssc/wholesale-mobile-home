@@ -3,10 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { EnhancedOptimizedMobileHomesShowcase } from '@/components/EnhancedOptimizedMobileHomesShowcase';
 import { TestimonialsSection } from '@/components/reviews/TestimonialsSection';
 import { FinancingCalculator } from '@/components/financing/FinancingCalculator';
-import { supabase } from '@/integrations/supabase/client';
-import { User, Session } from '@supabase/supabase-js';
 import { useSessionAwareShoppingCart } from '@/hooks/useSessionAwareShoppingCart';
-import { useSimplifiedAuth } from '@/hooks/useSimplifiedAuth';
+import { useMultiUserAuth } from '@/hooks/useMultiUserAuth';
 import { useOptimizedPerformanceMonitor } from '@/hooks/useOptimizedPerformanceMonitor';
 import { useViewportSize } from '@/hooks/useViewportSize';
 import { useScrollOptimization, optimizeScrollForMobile } from '@/hooks/useScrollOptimization';
@@ -48,8 +46,8 @@ const Index = () => {
     optimizeScrollForMobile();
   }, []);
   
-  // Simplified authentication
-  const { user, userProfile, isLoading } = useSimplifiedAuth();
+  // Centralized authentication
+  const { user, userProfile, isLoading } = useMultiUserAuth();
   const { isAdmin } = useUserRoles();
   
   const [showTestimonialForm, setShowTestimonialForm] = useState(false);

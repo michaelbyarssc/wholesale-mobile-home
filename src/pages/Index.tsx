@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { OptimizedMobileHomesShowcase } from '@/components/OptimizedMobileHomesShowcase';
@@ -32,7 +33,6 @@ import { MultiUserDebugPanel } from '@/components/debug/MultiUserDebugPanel';
 import { MultiUserSessionTest } from '@/components/test/MultiUserSessionTest';
 import { MultiUserStabilityTest } from '@/components/test/MultiUserStabilityTest';
 import { EmergencyLogoutAll } from '@/components/auth/EmergencyLogoutAll';
-import { EmergencyAdminAccess } from '@/components/auth/EmergencyAdminAccess';
 
 const Index = () => {
   console.log('Index component: Starting to render');
@@ -248,9 +248,6 @@ const Index = () => {
 
       {/* Emergency Logout All Button */}
       <EmergencyLogoutAll />
-
-      {/* Emergency Admin Access */}
-      <EmergencyAdminAccess />
 
       {/* Development debugging panels */}
       <MultiUserStabilityTest />

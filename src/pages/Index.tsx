@@ -254,7 +254,7 @@ const Index = () => {
 
       {/* Development debugging panels */}
       <MultiUserStabilityTest />
-      <MultiUserDebugPanel />
+      {/* <MultiUserDebugPanel /> */}
       <MultiUserSessionTest />
 
       <Footer />

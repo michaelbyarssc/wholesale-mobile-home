@@ -6,7 +6,7 @@ import { FinancingCalculator } from '@/components/financing/FinancingCalculator'
 import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
 import { useSessionAwareShoppingCart } from '@/hooks/useSessionAwareShoppingCart';
-import { useOptimizedAuth } from '@/hooks/useOptimizedAuth';
+import { useMultiUserAuth } from '@/hooks/useMultiUserAuth';
 import { useOptimizedPerformanceMonitor } from '@/hooks/useOptimizedPerformanceMonitor';
 import { useViewportSize } from '@/hooks/useViewportSize';
 import { MultiUserHeader } from '@/components/auth/MultiUserHeader';
@@ -40,7 +40,7 @@ const Index = () => {
   const { isMobile, isTablet } = useViewportSize();
   
   // Multi-user authentication
-  const { user, userProfile, isLoading } = useOptimizedAuth();
+  const { user, userProfile, isLoading } = useMultiUserAuth();
   const { isAdmin } = useUserRoles();
   
   const [showTestimonialForm, setShowTestimonialForm] = useState(false);

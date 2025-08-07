@@ -35,7 +35,7 @@ import { useHomeComparison } from '@/hooks/useHomeComparison';
 import { useShoppingCart } from '@/hooks/useShoppingCart';
 import { useAnalytics } from '@/hooks/useAnalytics';
 import { formatPrice } from '@/lib/utils';
-import { useMultiUserAuth } from '@/hooks/useMultiUserAuth';
+import { useAuth } from '@/contexts/AuthContext';
 import type { Database } from '@/integrations/supabase/types';
 import { SEO } from '@/components/SEO';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
@@ -57,8 +57,8 @@ export const MobileHomeDetail: React.FC = () => {
   const navigate = useNavigate();
   const [selectedHomeForServices, setSelectedHomeForServices] = useState<MobileHome | null>(null);
   
-  // Use consolidated multi-user auth
-  const { user, isLoading: isAuthLoading } = useMultiUserAuth();
+  // Use consolidated auth
+  const { user, isLoading: isAuthLoading } = useAuth();
   
   const { calculateMobileHomePrice, loading: pricingLoading } = useCustomerPricing(user);
   const { isInWishlist, toggleWishlist } = useWishlist(user);

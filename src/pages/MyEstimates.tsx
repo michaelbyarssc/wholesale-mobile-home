@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
-import { useMultiUserAuth } from '@/hooks/useMultiUserAuth';
+import { useAuth } from '@/contexts/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { Home, LogOut, Phone, Mail } from 'lucide-react';
@@ -42,8 +42,8 @@ interface Service {
 const MyEstimates = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
-  // Use consolidated multi-user auth
-  const { user } = useMultiUserAuth();
+  // Use consolidated auth
+  const { user } = useAuth();
 
   // Check for authenticated user
   useEffect(() => {

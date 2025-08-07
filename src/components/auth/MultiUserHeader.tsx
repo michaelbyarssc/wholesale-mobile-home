@@ -25,7 +25,7 @@ import { UserSettingsDialog } from '@/components/auth/UserSettingsDialog';
 import { ForceLogoutButton } from '@/components/auth/ForceLogoutButton';
 import { useBusinessInfo } from '@/hooks/useBusinessInfo';
 import { usePWA } from '@/hooks/usePWA';
-import { useMultiUserAuth } from '@/hooks/useMultiUserAuth';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -66,7 +66,7 @@ export const MultiUserHeader = ({
     activeSessionId,
     supabaseClient,
     isSigningOut
-  } = useMultiUserAuth();
+  } = useAuth();
 
   // Optimized display name with progressive loading
   const [displayState, setDisplayState] = useState<'loading' | 'email' | 'profile'>('loading');

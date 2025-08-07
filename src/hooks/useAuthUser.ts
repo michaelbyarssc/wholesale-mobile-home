@@ -9,7 +9,7 @@ export const useAuthUser = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
-  const [userProfile, setUserProfile] = useState<{ first_name?: string } | null>(null);
+  const [userProfile, setUserProfile] = useState<{ first_name?: string; last_name?: string } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [sessionFingerprint, setSessionFingerprint] = useState<string | null>(null);
 
@@ -158,17 +158,17 @@ export const useAuthUser = () => {
 
       const { data, error } = await supabase
         .from('profiles')
-        .select('first_name')
-        .eq('user_id', userId)
+        .select('first_name, last_name')
+        .eq('id', userId)
         .maybeSingle();
 
-      if (error && error.code !== 'PGRST116') {
+      if (error) {
         console.error('Error fetching user profile:', error);
         setUserProfile(null);
         return;
       }
       
-      console.log('🔐 Profile fetched:', data);
+      console.log('🔐 Profile fetched successfully:', data);
       setUserProfile(data);
     } catch (error) {
       console.error('Error fetching user profile:', error);

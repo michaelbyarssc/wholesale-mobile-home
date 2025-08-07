@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MobileHomesShowcase } from '@/components/MobileHomesShowcase';
+import { OptimizedMobileHomesShowcase } from '@/components/OptimizedMobileHomesShowcase';
 import { TestimonialsSection } from '@/components/reviews/TestimonialsSection';
 import { FinancingCalculator } from '@/components/financing/FinancingCalculator';
 import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
 import { useSessionAwareShoppingCart } from '@/hooks/useSessionAwareShoppingCart';
-import { useMultiUserAuth } from '@/hooks/useMultiUserAuth';
-import { usePerformanceMonitor } from '@/hooks/usePerformanceMonitor';
+import { useOptimizedAuth } from '@/hooks/useOptimizedAuth';
+import { useOptimizedPerformanceMonitor } from '@/hooks/useOptimizedPerformanceMonitor';
 import { useViewportSize } from '@/hooks/useViewportSize';
 import { MultiUserHeader } from '@/components/auth/MultiUserHeader';
 import { ChatWidget } from '@/components/chat/ChatWidget';
@@ -40,11 +40,11 @@ const Index = () => {
   const navigate = useNavigate();
   
   // Performance and viewport hooks
-  const { markFeature, measureFeature } = usePerformanceMonitor();
+  const { markFeature, measureFeature } = useOptimizedPerformanceMonitor();
   const { isMobile, isTablet } = useViewportSize();
   
   // Multi-user authentication
-  const { user, userProfile, isLoading } = useMultiUserAuth();
+  const { user, userProfile, isLoading } = useOptimizedAuth();
   const { isAdmin } = useUserRoles();
   
   const [showTestimonialForm, setShowTestimonialForm] = useState(false);
@@ -153,8 +153,8 @@ const Index = () => {
       </div>
 
       <div id="mobile-homes">
-        <MobileHomesShowcase 
-          user={user} 
+        <OptimizedMobileHomesShowcase 
+          user={user}
           {...cartProps}
         />
       </div>

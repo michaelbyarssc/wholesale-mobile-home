@@ -5627,6 +5627,10 @@ export type Database = {
         }
         Returns: string
       }
+      can_read_own_profile: {
+        Args: { profile_user_id: string }
+        Returns: boolean
+      }
       check_expired_transactions: {
         Args: Record<PropertyKey, never>
         Returns: number

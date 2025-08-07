@@ -43,7 +43,9 @@ export const Header = ({
   const { data: businessInfo } = useBusinessInfo();
   const { canInstall, installApp } = usePWA();
 
-  const displayName = userProfile?.first_name || (user?.email ? user.email.split('@')[0] : 'User');
+  const displayName = `${userProfile?.first_name?.trim() || ''} ${(
+    (userProfile as any)?.last_name?.trim?.() || ''
+  )}`.trim() || 'User';
 
   const handleChangePassword = () => {
     setIsPasswordDialogOpen(true);

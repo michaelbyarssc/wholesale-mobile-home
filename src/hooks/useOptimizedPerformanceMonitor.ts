@@ -3,24 +3,13 @@ import { useEffect, useCallback } from 'react';
 // Lightweight performance monitoring with reduced overhead
 export const useOptimizedPerformanceMonitor = () => {
   useEffect(() => {
-    // Only observe critical performance metrics
+    // Lightweight performance monitoring - only track critical issues
     if (typeof window === 'undefined' || !('PerformanceObserver' in window)) return;
 
-    let lcpObserver: PerformanceObserver | null = null;
     let clsObserver: PerformanceObserver | null = null;
 
     try {
-      // Observe LCP with reduced frequency
-      lcpObserver = new PerformanceObserver((entryList) => {
-        const entries = entryList.getEntries();
-        const lastEntry = entries[entries.length - 1];
-        if (lastEntry.startTime > 4000) { // Only log if LCP is concerning
-          console.warn('⚠️ Poor LCP:', lastEntry.startTime);
-        }
-      });
-      lcpObserver.observe({ entryTypes: ['largest-contentful-paint'], buffered: false });
-
-      // Observe CLS with threshold
+      // Only observe CLS since it's causing scroll issues
       let clsScore = 0;
       clsObserver = new PerformanceObserver((entryList) => {
         const entries = entryList.getEntries();
@@ -29,8 +18,10 @@ export const useOptimizedPerformanceMonitor = () => {
             const clsEntry = entry as any;
             if (!clsEntry.hadRecentInput) {
               clsScore += clsEntry.value;
-              if (clsScore > 0.25) { // Only log if CLS is concerning
-                console.warn('⚠️ Poor CLS:', clsScore);
+              // Reduced threshold and frequency
+              if (clsScore > 0.5) {
+                console.warn('CLS issue detected:', clsScore);
+                clsScore = 0; // Reset to prevent spam
               }
             }
           }
@@ -39,11 +30,10 @@ export const useOptimizedPerformanceMonitor = () => {
       clsObserver.observe({ entryTypes: ['layout-shift'], buffered: false });
 
     } catch (error) {
-      console.error('Performance observer error:', error);
+      // Silent fail
     }
 
     return () => {
-      if (lcpObserver) lcpObserver.disconnect();
       if (clsObserver) clsObserver.disconnect();
     };
   }, []);

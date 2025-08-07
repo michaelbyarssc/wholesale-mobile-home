@@ -9,6 +9,7 @@ import { useSessionAwareShoppingCart } from '@/hooks/useSessionAwareShoppingCart
 import { useSimplifiedAuth } from '@/hooks/useSimplifiedAuth';
 import { useOptimizedPerformanceMonitor } from '@/hooks/useOptimizedPerformanceMonitor';
 import { useViewportSize } from '@/hooks/useViewportSize';
+import { useScrollOptimization, optimizeScrollForMobile } from '@/hooks/useScrollOptimization';
 import { MultiUserHeader } from '@/components/auth/MultiUserHeader';
 import { ChatWidget } from '@/components/chat/ChatWidget';
 import { HeroSection } from '@/components/layout/HeroSection';
@@ -40,6 +41,12 @@ const Index = () => {
   // Performance and viewport hooks
   const { markFeature, measureFeature } = useOptimizedPerformanceMonitor();
   const { isMobile, isTablet } = useViewportSize();
+  const { throttledScrollHandler } = useScrollOptimization({ throttleMs: 16 });
+
+  // Initialize scroll optimizations
+  React.useEffect(() => {
+    optimizeScrollForMobile();
+  }, []);
   
   // Simplified authentication
   const { user, userProfile, isLoading } = useSimplifiedAuth();
@@ -118,7 +125,7 @@ const Index = () => {
   console.log('Index component: Rendering main content');
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-green-50 to-yellow-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-green-50 to-yellow-50 scroll-optimized">
       <SEO 
         title="Wholesale Mobile Homes for Sale | Quality Homes at Best Prices"
         description="Browse quality mobile homes at wholesale prices. Get instant quotes, view detailed specs, and save thousands. Clayton, Champion, and Fleetwood homes available with financing options."

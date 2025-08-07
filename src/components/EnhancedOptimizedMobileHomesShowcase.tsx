@@ -95,7 +95,7 @@ const EnhancedMobileHomeCard = React.memo(({
   }, [home.features]);
 
   return (
-    <Card className="overflow-hidden hover:shadow-lg transition-shadow group">
+    <Card className="overflow-hidden hover:shadow-lg transition-shadow group scroll-item">
       <CardHeader className="pb-4">
         <div className="flex justify-between items-start">
           <CardTitle 

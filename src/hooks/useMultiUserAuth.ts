@@ -117,9 +117,16 @@ export const useMultiUserAuth = () => {
       if (error) throw error;
 
       if (data.user && data.session) {
-        const sessionId = await addSession(data.user, data.session);
-        console.log('🔐 Sign in successful, session ID:', sessionId);
-        return { data, error: null };
+        try {
+          const sessionId = await addSession(data.user, data.session);
+          console.log('🔐 Sign in successful, session ID:', sessionId);
+          return { data, error: null };
+        } catch (sessionError: any) {
+          if (sessionError.message?.includes('Session creation is temporarily locked')) {
+            return { data: null, error: { message: 'Please wait a moment and try again.' } };
+          }
+          throw sessionError;
+        }
       }
 
       return { data, error: null };

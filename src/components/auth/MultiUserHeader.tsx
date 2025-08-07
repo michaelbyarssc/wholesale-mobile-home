@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useNavigate, Link } from 'react-router-dom';
@@ -40,7 +40,7 @@ interface MultiUserHeaderProps {
   onProfileUpdated?: () => void;
 }
 
-const MultiUserHeaderComponent = ({ 
+export const MultiUserHeader = ({ 
   cartItems, 
   isLoading, 
   onToggleCart,
@@ -49,7 +49,6 @@ const MultiUserHeaderComponent = ({
   const navigate = useNavigate();
   const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isStabilizing, setIsStabilizing] = useState(false);
   const { data: businessInfo } = useBusinessInfo();
   const { canInstall, installApp } = usePWA();
   
@@ -65,30 +64,11 @@ const MultiUserHeaderComponent = ({
     fetchUserProfile,
     activeSessionId,
     supabaseClient,
-    isSigningOut,
-    isLoginInProgress
+    isSigningOut
   } = useAuth();
 
-  // Login stabilization effect - prevents flashing during login
-  useEffect(() => {
-    if (isLoginInProgress) {
-      setIsStabilizing(true);
-    } else if (user && !isLoginInProgress) {
-      // Add a brief delay to let all auth state settle before showing final UI
-      const timer = setTimeout(() => {
-        setIsStabilizing(false);
-      }, 300);
-      return () => clearTimeout(timer);
-    }
-  }, [isLoginInProgress, user]);
-
-  // Stable display name with login state awareness
+  // Stable display name with better caching
   const getDisplayName = React.useMemo(() => {
-    // During login process, show stable "signing in" message
-    if (isLoginInProgress || isStabilizing) {
-      return 'Signing in...';
-    }
-
     // If signing out, show signing out message
     if (isSigningOut) {
       return 'Signing out...';
@@ -110,7 +90,7 @@ const MultiUserHeaderComponent = ({
     }
     
     return 'User';
-  }, [userProfile?.first_name, userProfile?.last_name, user?.email, isSigningOut, isLoginInProgress, isStabilizing]);
+  }, [userProfile?.first_name, userProfile?.last_name, user?.email, isSigningOut]);
 
   const handleChangePassword = () => {
     setIsPasswordDialogOpen(true);
@@ -240,9 +220,7 @@ const MultiUserHeaderComponent = ({
                           <div className="flex items-center justify-center w-8 h-8 bg-blue-100 rounded-full">
                             <User className="h-4 w-4 text-blue-600" />
                           </div>
-                          <span className="font-medium">
-                            {isStabilizing || isLoginInProgress ? 'Loading...' : getDisplayName}
-                          </span>
+                          <span className="font-medium">{getDisplayName}</span>
                           {hasMultipleSessions && (
                             <>
                               <Badge variant="secondary" className="ml-1 text-xs">
@@ -263,9 +241,7 @@ const MultiUserHeaderComponent = ({
                             <User className="h-4 w-4 text-blue-600" />
                           </div>
                           <div className="flex-1">
-                            <div className="font-medium text-gray-900">
-                              {isStabilizing || isLoginInProgress ? 'Loading...' : getDisplayName}
-                            </div>
+                            <div className="font-medium text-gray-900">{getDisplayName}</div>
                             <div className="text-sm text-gray-500">{user.email}</div>
                           </div>
                         </DropdownMenuItem>
@@ -428,9 +404,7 @@ const MultiUserHeaderComponent = ({
                     <User className="h-4 w-4 text-blue-600" />
                   </div>
                   <div>
-                    <div className="font-medium text-gray-700">
-                      {isStabilizing || isLoginInProgress ? 'Loading...' : getDisplayName}
-                    </div>
+                    <div className="font-medium text-gray-700">{getDisplayName}</div>
                     <div className="text-sm text-gray-500">{user.email}</div>
                   </div>
                 </div>
@@ -522,6 +496,3 @@ const MultiUserHeaderComponent = ({
     </>
   );
 };
-
-// Wrap with React.memo to prevent unnecessary re-renders
-export const MultiUserHeader = React.memo(MultiUserHeaderComponent);

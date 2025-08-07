@@ -57,6 +57,8 @@ export const useCustomerPricing = (user: User | null) => {
     } else {
       setLoading(false);
     }
+  }, [user, isFetching, markupLoading, isSuccess, customerMarkup]);
+
   // Clear cached markup when user changes
   useEffect(() => {
     if (user) {

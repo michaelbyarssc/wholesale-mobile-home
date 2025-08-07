@@ -245,7 +245,6 @@ const Index = () => {
       <ChatWidget userId={user?.id} />
 
       {/* Development debugging panels */}
-      <MultiUserStabilityTest />
       {/* <MultiUserDebugPanel /> */}
       <MultiUserSessionTest />
 

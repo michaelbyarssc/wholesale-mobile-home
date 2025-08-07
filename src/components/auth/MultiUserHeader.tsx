@@ -91,16 +91,6 @@ export const MultiUserHeader = ({
     }
   }, [user, activeSessionId, fetchUserProfile, userProfile, supabaseClient]);
 
-  // Manual refresh function for testing - now just calls the enhanced fetchUserProfile
-  const manualRefreshProfile = async () => {
-    console.log('🔄 MANUAL: Force refreshing profile via fetchUserProfile...');
-    if (user && activeSessionId) {
-      await fetchUserProfile(activeSessionId);
-    } else {
-      console.log('🔄 MANUAL: No user or active session for refresh');
-    }
-  };
-
   const getDisplayName = (profile?: { first_name?: string; last_name?: string } | null, email?: string) => {
     // If we have profile data, prioritize first_name
     if (profile?.first_name) {
@@ -313,16 +303,6 @@ export const MultiUserHeader = ({
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
-
-                    {/* Debug Button - Temporary */}
-                    <Button
-                      onClick={manualRefreshProfile}
-                      variant="outline"
-                      size="sm"
-                      className="bg-yellow-100 border-yellow-300 text-yellow-800 hover:bg-yellow-200"
-                    >
-                      🔄 Debug Profile
-                    </Button>
 
                     {/* Appointments Link */}
                     <Link 

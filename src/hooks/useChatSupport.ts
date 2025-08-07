@@ -392,13 +392,6 @@ export const useChatSupport = (userId?: string) => {
   useEffect(() => {
     if (!userId) return;
 
-    // Check global login state to prevent API calls during login
-    const globalLoginInProgress = (window as any).globalLoginInProgress;
-    if (globalLoginInProgress) {
-      console.log('💬 Skipping chat session load during login process');
-      return;
-    }
-
     let isMounted = true;
     const loadExistingSession = async () => {
       try {
@@ -428,10 +421,7 @@ export const useChatSupport = (userId?: string) => {
       }
     };
 
-    // Delay chat session loading to allow auth to settle completely
-    setTimeout(() => {
-      loadExistingSession();
-    }, 1000);
+    loadExistingSession();
     
     return () => {
       isMounted = false;

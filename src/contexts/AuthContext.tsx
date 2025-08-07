@@ -5,11 +5,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { useSessionValidation } from '@/hooks/useSessionValidation';
 
-// Global login state to prevent secondary auth calls
-let globalLoginInProgress = false;
-// Expose to window for other hooks to access
-(window as any).globalLoginInProgress = false;
-
 interface AuthContextType {
   // Current auth state
   user: User | null;
@@ -17,6 +12,7 @@ interface AuthContextType {
   userProfile: any | null;
   isLoading: boolean;
   isSigningOut: boolean;
+  isLoginInProgress: boolean; // Replace global state with React state
   
   // Session management
   sessions: any[];
@@ -46,6 +42,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [isLoginInProgress, setIsLoginInProgress] = useState(false);
   const {
     sessions,
     activeSession,
@@ -193,12 +190,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             
             // Mark login as complete when we get a signed in event
             if (event === 'SIGNED_IN') {
-              // Add a small delay to ensure all auth state is settled before clearing flag
-              setTimeout(() => {
-                globalLoginInProgress = false;
-                (window as any).globalLoginInProgress = false;
-                console.log('🔐 Login complete - clearing global login state');
-              }, 2000); // 2 second delay to ensure all auth flows are complete
+              console.log('🔐 Login complete - clearing login state');
+              setIsLoginInProgress(false);
             }
             
             // Simplified timeout to prevent excessive session creation
@@ -215,20 +208,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                   if (!existingSession) {
                     console.log('🔐 Creating new session for user:', session.user.email);
                     await addSession(session.user, session);
+                    // Immediately fetch profile after session creation
+                    setTimeout(() => {
+                      fetchUserProfile();
+                    }, 100);
                   } else {
                     console.log('🔐 Session already exists for user, switching to it');
                     switchToSession(existingSession.id);
+                    // Immediately fetch profile for existing session
+                    setTimeout(() => {
+                      fetchUserProfile();
+                    }, 100);
                   }
                 } catch (error) {
                   console.error('🔐 Error adding session on auth change:', error);
                 }
               } else if (event === 'SIGNED_OUT') {
                 console.log('🔐 User signed out via auth change');
-                globalLoginInProgress = false;
+                setIsLoginInProgress(false);
               }
               
               delete (window as any)[authEventKey];
-            }, 500);
+            }, 200);
           }
         );
         
@@ -257,7 +258,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const shouldFetchProfile = useRef(false);
   
   useEffect(() => {
-    if (isSigningOut || globalLoginInProgress) return; // Skip during login
+    if (isSigningOut || isLoginInProgress) return; // Skip during login
     
     if (activeSession && !activeSession.userProfile && !shouldFetchProfile.current) {
       shouldFetchProfile.current = true;
@@ -290,19 +291,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [activeSession?.id, activeSessionId, isSigningOut]);
 
   const signIn = useCallback(async (email: string, password: string) => {
-    setIsLoading(true);
-    globalLoginInProgress = true; // Prevent secondary auth calls
-    (window as any).globalLoginInProgress = true;
+    console.log('🔐 Attempting sign in...');
+    setIsLoginInProgress(true);
     
     try {
-      console.log('🔐 Starting login process - preventing secondary auth calls');
-      
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
       });
-
-      if (error) throw error;
 
       if (data.user && data.session) {
         try {
@@ -320,12 +316,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { data, error: null };
     } catch (error: any) {
       console.error('🔐 Sign in error:', error);
-      globalLoginInProgress = false; // Reset on error
-      (window as any).globalLoginInProgress = false;
+      setIsLoginInProgress(false);
       return { data: null, error };
-    } finally {
-      setIsLoading(false);
-      // Note: globalLoginInProgress is reset in auth state change handler
     }
   }, [addSession]);
 
@@ -495,6 +487,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     userProfile: activeSession?.userProfile || null,
     isLoading,
     isSigningOut,
+    isLoginInProgress,
     
     // Session management
     sessions,

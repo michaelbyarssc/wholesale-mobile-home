@@ -25,7 +25,7 @@ export interface RoleCheck {
  * Uses the secure is_admin() database function when possible
  */
 export const useUserRoles = (): RoleCheck => {
-  const { user, isLoading: authLoading } = useAuth();
+  const { user, isLoading: authLoading, isLoginInProgress } = useAuth();
   const [userRoles, setUserRoles] = useState<UserRole[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -134,10 +134,7 @@ export const useUserRoles = (): RoleCheck => {
     lastUserIdRef.current = currentUserId;
     lastAuthLoadingRef.current = authLoading;
     
-    // Check global login state from AuthContext
-    const globalLoginInProgress = (window as any).globalLoginInProgress;
-    
-    if (!authLoading && user && !globalLoginInProgress) {
+    if (!authLoading && user && !isLoginInProgress) {
       // Delay role fetching by 1 second after login to allow auth to settle
       const delay = lastUserIdRef.current !== currentUserId ? 1000 : 0;
       setTimeout(() => {
@@ -148,7 +145,7 @@ export const useUserRoles = (): RoleCheck => {
       setUserRoles([]);
       setError(null);
     }
-  }, [user?.id, authLoading, fetchUserRoles]); // Use stable user.id reference
+  }, [user?.id, authLoading, isLoginInProgress, fetchUserRoles]); // Use stable user.id reference
 
   // Role checking functions
   const hasRole = useCallback((role: 'admin' | 'super_admin' | 'user' | 'driver') => {

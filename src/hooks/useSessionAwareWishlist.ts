@@ -25,13 +25,6 @@ export const useSessionAwareWishlist = () => {
   const lastUserIdRef = useRef<string | null>(null);
   
   useEffect(() => {
-    // Check global login state to prevent API calls during login
-    const globalLoginInProgress = (window as any).globalLoginInProgress;
-    if (globalLoginInProgress) {
-      console.log('🔍 Skipping wishlist load during login process');
-      return;
-    }
-
     const currentUserId = activeSession?.user?.id || null;
     
     // Only reload if the user ID actually changed
@@ -42,10 +35,7 @@ export const useSessionAwareWishlist = () => {
     lastUserIdRef.current = currentUserId;
     
     if (activeSession?.user) {
-      // Delay wishlist loading to allow auth to settle completely
-      setTimeout(() => {
-        loadUserWishlist();
-      }, 500);
+      loadUserWishlist();
     } else {
       loadGuestWishlist();
     }

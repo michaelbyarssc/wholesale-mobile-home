@@ -45,16 +45,12 @@ export const useSessionAwareShoppingCart = () => {
       try {
         const cartDataKey = getStorageKey('cart_data');
         const savedCartData = localStorage.getItem(cartDataKey);
-        console.log('🔍 Loading cart from localStorage for session:', activeSession?.id || 'guest', 'key:', cartDataKey);
-        
         if (savedCartData) {
           const parsed: CartData = JSON.parse(savedCartData);
           if (parsed && typeof parsed === 'object') {
-            console.log('🔍 Loaded cart items:', parsed.items?.length || 0);
             setCartItems(parsed.items || []);
             setDeliveryAddress(parsed.deliveryAddress || null);
           } else {
-            console.log('🔍 Invalid cart data format, clearing cart');
             localStorage.removeItem(cartDataKey);
             setCartItems([]);
             setDeliveryAddress(null);
@@ -65,7 +61,7 @@ export const useSessionAwareShoppingCart = () => {
           setDeliveryAddress(null);
         }
       } catch (error) {
-        console.error('🔍 Error loading cart from localStorage:', error);
+        console.error('Error loading cart from localStorage:', error);
         const cartDataKey = getStorageKey('cart_data');
         localStorage.removeItem(cartDataKey);
         setCartItems([]);
@@ -87,10 +83,10 @@ export const useSessionAwareShoppingCart = () => {
           deliveryAddress: deliveryAddress
         };
         const cartDataKey = getStorageKey('cart_data');
-        console.log('🔍 Saving cart data to localStorage for session:', activeSession?.id || 'guest', 'items:', cartItems.length);
+        // Save cart data to localStorage
         localStorage.setItem(cartDataKey, JSON.stringify(cartData));
       } catch (error) {
-        console.error('🔍 Error saving cart to localStorage:', error);
+        console.error('Error saving cart to localStorage:', error);
       }
     }
   }, [cartItems, deliveryAddress, isLoading, getStorageKey]);
@@ -100,14 +96,11 @@ export const useSessionAwareShoppingCart = () => {
     selectedServices: string[] = [],
     selectedHomeOptions: { option: HomeOption; quantity: number }[] = []
   ) => {
-    console.log('🔍 addToCart called for session:', activeSession?.id || 'guest', 'home:', mobileHome.id);
-    
     try {
       setCartItems(prevItems => {
         const existingIndex = prevItems.findIndex(cartItem => cartItem.mobileHome.id === mobileHome.id);
         
         if (existingIndex >= 0) {
-          console.log('🔍 Item already in cart, updating services and options');
           const updatedItems = [...prevItems];
           updatedItems[existingIndex] = {
             ...updatedItems[existingIndex],
@@ -122,7 +115,7 @@ export const useSessionAwareShoppingCart = () => {
             selectedServices,
             selectedHomeOptions
           };
-          console.log('🔍 Adding new item to cart for session:', activeSession?.id || 'guest');
+          // Adding new item to cart
           
           // Notify admin about cart addition for logged-in users
           if (activeSession?.user && supabaseClient) {
@@ -142,21 +135,19 @@ export const useSessionAwareShoppingCart = () => {
         }
       });
     } catch (error) {
-      console.error('🔍 Error adding to cart:', error);
+      console.error('Error adding to cart:', error);
     }
   }, [activeSession, supabaseClient]);
 
   const removeFromCart = useCallback((itemId: string) => {
-    console.log('🔍 removeFromCart called for session:', activeSession?.id || 'guest', 'item:', itemId);
     try {
       setCartItems(prev => prev.filter(item => item.mobileHome.id !== itemId));
     } catch (error) {
-      console.error('🔍 Error removing from cart:', error);
+      console.error('Error removing from cart:', error);
     }
   }, [activeSession?.id]);
 
   const updateServices = useCallback((homeId: string, selectedServices: string[]) => {
-    console.log('🔍 updateServices called for session:', activeSession?.id || 'guest', 'home:', homeId);
     try {
       setCartItems(prev => prev.map(item => 
         item.mobileHome.id === homeId 
@@ -164,12 +155,11 @@ export const useSessionAwareShoppingCart = () => {
           : item
       ));
     } catch (error) {
-      console.error('🔍 Error updating services:', error);
+      console.error('Error updating services:', error);
     }
   }, [activeSession?.id]);
 
   const updateHomeOptions = useCallback((homeId: string, selectedHomeOptions: { option: HomeOption; quantity: number }[]) => {
-    console.log('🔍 updateHomeOptions called for session:', activeSession?.id || 'guest', 'home:', homeId);
     try {
       setCartItems(prev => prev.map(item => 
         item.mobileHome.id === homeId 
@@ -177,21 +167,19 @@ export const useSessionAwareShoppingCart = () => {
           : item
       ));
     } catch (error) {
-      console.error('🔍 Error updating home options:', error);
+      console.error('Error updating home options:', error);
     }
   }, [activeSession?.id]);
 
   const updateDeliveryAddress = useCallback((address: DeliveryAddress | null) => {
-    console.log('🔍 updateDeliveryAddress called for session:', activeSession?.id || 'guest');
     try {
       setDeliveryAddress(address);
     } catch (error) {
-      console.error('🔍 Error updating delivery address:', error);
+      console.error('Error updating delivery address:', error);
     }
   }, [activeSession?.id]);
 
   const clearCart = useCallback(() => {
-    console.log('🔍 clearCart called for session:', activeSession?.id || 'guest');
     try {
       setCartItems([]);
       setDeliveryAddress(null);
@@ -199,31 +187,29 @@ export const useSessionAwareShoppingCart = () => {
       // Clear cart data from localStorage
       const cartDataKey = getStorageKey('cart_data');
       localStorage.removeItem(cartDataKey);
-      console.log('🔍 Cleared cart data from localStorage for session:', activeSession?.id || 'guest');
+      // Cart data cleared from localStorage
     } catch (error) {
-      console.error('🔍 Error clearing cart:', error);
+      console.error('Error clearing cart:', error);
     }
   }, [getStorageKey]);
 
   const toggleCart = useCallback(() => {
-    console.log('🔍 toggleCart called for session:', activeSession?.id || 'guest');
     try {
       setIsCartOpen(prev => !prev);
     } catch (error) {
-      console.error('🔍 Error toggling cart:', error);
+      console.error('Error toggling cart:', error);
     }
   }, [activeSession?.id]);
 
   const closeCart = useCallback(() => {
-    console.log('🔍 closeCart called for session:', activeSession?.id || 'guest');
     try {
       setIsCartOpen(false);
     } catch (error) {
-      console.error('🔍 Error closing cart:', error);
+      console.error('Error closing cart:', error);
     }
   }, [activeSession?.id]);
 
-  console.log('🔍 useSessionAwareShoppingCart render - session:', activeSession?.id || 'guest', 'cart items:', cartItems.length, 'isOpen:', isCartOpen);
+  // Shopping cart state management for session
 
   return {
     cartItems,

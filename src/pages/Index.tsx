@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { OptimizedMobileHomesShowcase } from '@/components/OptimizedMobileHomesShowcase';
+import { EnhancedOptimizedMobileHomesShowcase } from '@/components/EnhancedOptimizedMobileHomesShowcase';
 import { TestimonialsSection } from '@/components/reviews/TestimonialsSection';
 import { FinancingCalculator } from '@/components/financing/FinancingCalculator';
 import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
 import { useSessionAwareShoppingCart } from '@/hooks/useSessionAwareShoppingCart';
-import { useOptimizedAuth } from '@/hooks/useOptimizedAuth';
+import { useSimplifiedAuth } from '@/hooks/useSimplifiedAuth';
 import { useOptimizedPerformanceMonitor } from '@/hooks/useOptimizedPerformanceMonitor';
 import { useViewportSize } from '@/hooks/useViewportSize';
 import { MultiUserHeader } from '@/components/auth/MultiUserHeader';
@@ -41,8 +41,8 @@ const Index = () => {
   const { markFeature, measureFeature } = useOptimizedPerformanceMonitor();
   const { isMobile, isTablet } = useViewportSize();
   
-  // Multi-user authentication
-  const { user, userProfile, isLoading } = useOptimizedAuth();
+  // Simplified authentication
+  const { user, userProfile, isLoading } = useSimplifiedAuth();
   const { isAdmin } = useUserRoles();
   
   const [showTestimonialForm, setShowTestimonialForm] = useState(false);
@@ -151,7 +151,7 @@ const Index = () => {
       </div>
 
       <div id="mobile-homes">
-        <OptimizedMobileHomesShowcase 
+        <EnhancedOptimizedMobileHomesShowcase 
           user={user}
           {...cartProps}
         />

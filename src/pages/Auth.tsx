@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -8,14 +9,12 @@ import { AuthForm } from '@/components/auth/AuthForm';
 import { ForgotPasswordForm } from '@/components/auth/ForgotPasswordForm';
 import { AuthNavigation } from '@/components/auth/AuthNavigation';
 import { UserWelcome } from '@/components/auth/UserWelcome';
-import { EmergencyAuthForm } from '@/components/auth/EmergencyAuthForm';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, AlertTriangle } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 
 const Auth = () => {
   const [isSignUp, setIsSignUp] = useState(false);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
-  const [isEmergencyMode, setIsEmergencyMode] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [firstName, setFirstName] = useState('');
@@ -89,14 +88,6 @@ const Auth = () => {
   const toggleForgotPassword = () => {
     setIsForgotPassword(!isForgotPassword);
     setIsSignUp(false);
-    setIsEmergencyMode(false);
-    resetForm();
-  };
-
-  const toggleEmergencyMode = () => {
-    setIsEmergencyMode(!isEmergencyMode);
-    setIsForgotPassword(false);
-    setIsSignUp(false);
     resetForm();
   };
 
@@ -140,82 +131,72 @@ const Auth = () => {
           {isAddUserMode && hasMultipleSessions && (
             <p className="text-gray-600">Add another user to this browser session</p>
           )}
-          {isEmergencyMode && (
-            <div className="flex items-center justify-center gap-2 text-orange-700 bg-orange-100 p-3 rounded-lg">
-              <AlertTriangle className="h-5 w-5" />
-              <span className="text-sm font-medium">Emergency Authentication Mode</span>
-            </div>
-          )}
         </div>
 
         {/* Auth form */}
-        {isEmergencyMode ? (
-          <EmergencyAuthForm onBack={toggleEmergencyMode} />
-        ) : (
-          <Card>
-            <CardHeader>
-              <CardTitle>
-                {isForgotPassword 
-                  ? 'Reset Password' 
-                  : isAddUserMode 
-                    ? 'Add Another User'
-                    : (isSignUp ? 'Create Account' : 'Sign In')
-                }
-              </CardTitle>
-              <CardDescription>
-                {isForgotPassword 
-                  ? 'Enter your email to receive reset instructions'
-                  : isAddUserMode
-                    ? 'Sign in or create an account for another user'
-                    : (isSignUp 
-                      ? 'Create an account to access the platform'
-                      : 'Sign in to access the platform'
-                    )
-                }
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {isForgotPassword ? (
-                <ForgotPasswordForm
-                  email={email}
-                  setEmail={setEmail}
-                  loading={loading}
-                  setLoading={setLoading}
-                  onBack={toggleForgotPassword}
-                  resetForm={resetForm}
-                />
-              ) : (
-                <AuthForm
-                  isSignUp={isSignUp}
-                  email={email}
-                  setEmail={setEmail}
-                  password={password}
-                  setPassword={setPassword}
-                  firstName={firstName}
-                  setFirstName={setFirstName}
-                  lastName={lastName}
-                  setLastName={setLastName}
-                  phoneNumber={phoneNumber}
-                  setPhoneNumber={setPhoneNumber}
-                  loading={loading}
-                  setLoading={setLoading}
-                  isAddUserMode={isAddUserMode}
-                />
-              )}
-              
-              <AuthNavigation
+        <Card>
+          <CardHeader>
+            <CardTitle>
+              {isForgotPassword 
+                ? 'Reset Password' 
+                : isAddUserMode 
+                  ? 'Add Another User'
+                  : (isSignUp ? 'Create Account' : 'Sign In')
+              }
+            </CardTitle>
+            <CardDescription>
+              {isForgotPassword 
+                ? 'Enter your email to receive reset instructions'
+                : isAddUserMode
+                  ? 'Sign in or create an account for another user'
+                  : (isSignUp 
+                    ? 'Create an account to access the platform'
+                    : 'Sign in to access the platform'
+                  )
+              }
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isForgotPassword ? (
+              <ForgotPasswordForm
+                email={email}
+                setEmail={setEmail}
+                loading={loading}
+                setLoading={setLoading}
+                onBack={toggleForgotPassword}
+                resetForm={resetForm}
+              />
+            ) : (
+              <AuthForm
                 isSignUp={isSignUp}
-                isForgotPassword={isForgotPassword}
-                onToggleAuthMode={toggleAuthMode}
-                onToggleForgotPassword={toggleForgotPassword}
-                currentUser={user}
-                isAdmin={isAdmin}
-                onShowPasswordChange={() => setShowPasswordChange(true)}
+                email={email}
+                setEmail={setEmail}
+                password={password}
+                setPassword={setPassword}
+                firstName={firstName}
+                setFirstName={setFirstName}
+                lastName={lastName}
+                setLastName={setLastName}
+                phoneNumber={phoneNumber}
+                setPhoneNumber={setPhoneNumber}
+                loading={loading}
+                setLoading={setLoading}
                 isAddUserMode={isAddUserMode}
               />
-            </CardContent>
-          </Card>
-        )}
+            )}
+            
+            <AuthNavigation
+              isSignUp={isSignUp}
+              isForgotPassword={isForgotPassword}
+              onToggleAuthMode={toggleAuthMode}
+              onToggleForgotPassword={toggleForgotPassword}
+              currentUser={user}
+              isAdmin={isAdmin}
+              onShowPasswordChange={() => setShowPasswordChange(true)}
+              isAddUserMode={isAddUserMode}
+            />
+          </CardContent>
+        </Card>
 
         <PasswordChangeDialog
           isOpen={showPasswordChange}

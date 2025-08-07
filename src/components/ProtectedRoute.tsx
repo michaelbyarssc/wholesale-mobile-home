@@ -2,11 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LoadingSpinner } from '@/components/layout/LoadingSpinner';
 import { useUserRoles } from '@/hooks/useUserRoles';
-import { useMultiUserAuth } from '@/hooks/useMultiUserAuth';
-import { EmergencyLogoutButton } from '@/components/auth/EmergencyLogoutButton';
+import { useAuthUser } from '@/hooks/useAuthUser';
+import { logger } from '@/utils/logger';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
-import { Button } from '@/components/ui/button';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -22,176 +20,178 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   superAdminOnly = false
 }) => {
   const navigate = useNavigate();
-  const { user, isLoading: authLoading } = useMultiUserAuth();
-  const { isAdmin, isSuperAdmin, isLoading: rolesLoading } = useUserRoles();
+  const { user, isLoading: authLoading } = useAuthUser();
+  const { isAdmin, isSuperAdmin, isLoading: rolesLoading, verifyAdminAccess, userRoles } = useUserRoles();
   const [authChecked, setAuthChecked] = useState(false);
-  const [emergencyBypass, setEmergencyBypass] = useState(false);
-  const [emergencyChecking, setEmergencyChecking] = useState(false);
-  const { toast } = useToast();
+  const [debugInfo, setDebugInfo] = useState<any>({});
+  const [retryCount, setRetryCount] = useState(0);
 
-  // Emergency admin access function
-  const handleEmergencyAdminAccess = async () => {
-    if (!user) {
-      toast({
-        title: "No User Found",
-        description: "Please sign in first before using emergency access.",
-        variant: "destructive"
-      });
-      return;
-    }
+  // Comprehensive debugging function
+  const logDebugInfo = (stage: string) => {
+    const info = {
+      stage,
+      timestamp: new Date().toISOString(),
+      user: user ? { id: user.id, email: user.email } : null,
+      authLoading,
+      rolesLoading,
+      isAdmin,
+      isSuperAdmin,
+      userRoles: userRoles.map(r => r.role),
+      authChecked,
+      retryCount,
+      requireAuth,
+      adminOnly,
+      superAdminOnly,
+      currentPath: window.location.pathname
+    };
+    
+    console.log(`[DEBUG] ProtectedRoute ${stage}:`, info);
+    setDebugInfo(info);
+    return info;
+  };
 
-    setEmergencyChecking(true);
-    console.log('🚨 Emergency admin access check for:', user.email);
-
+  // Direct database verification as fallback
+  const verifyAdminDirectly = async (userId: string): Promise<boolean> => {
     try {
-      // Direct database check using is_admin RPC
-      const { data: isAdminResult, error: rpcError } = await supabase.rpc('is_admin', { 
-        user_id: user.id 
-      });
-
-      if (rpcError) {
-        console.error('🚨 Emergency RPC error:', rpcError);
-        toast({
-          title: "Emergency Check Failed",
-          description: `Database error: ${rpcError.message}`,
-          variant: "destructive"
-        });
-        return;
+      console.log(`[FALLBACK] Checking admin status directly for user ${userId}`);
+      const { data, error } = await supabase.rpc('is_admin', { user_id: userId });
+      
+      if (error) {
+        console.error('[FALLBACK] Error in direct admin check:', error);
+        return false;
       }
-
-      if (isAdminResult === true) {
-        console.log('✅ Emergency admin access confirmed for:', user.email);
-        setEmergencyBypass(true);
-        toast({
-          title: "Emergency Access Granted",
-          description: "Admin access confirmed via database. Access granted.",
-        });
-      } else {
-        console.log('❌ Emergency admin access denied for:', user.email);
-        toast({
-          title: "Access Denied",
-          description: "You do not have admin privileges in the database.",
-          variant: "destructive"
-        });
-      }
-    } catch (error) {
-      console.error('🚨 Emergency admin access check failed:', error);
-      toast({
-        title: "Emergency Check Failed",
-        description: "Unable to verify admin status. Please contact support.",
-        variant: "destructive"
-      });
-    } finally {
-      setEmergencyChecking(false);
+      
+      console.log(`[FALLBACK] Direct admin check result: ${data}`);
+      return data === true;
+    } catch (err) {
+      console.error('[FALLBACK] Exception in direct admin check:', err);
+      return false;
     }
   };
 
   useEffect(() => {
-    const checkAccess = () => {
-      console.log('🔐 ProtectedRoute check:', {
-        user: user?.email,
-        authLoading,
-        rolesLoading,
-        isAdmin,
-        isSuperAdmin,
-        adminOnly,
-        superAdminOnly,
-        emergencyBypass,
-        path: window.location.pathname
-      });
-
-      // Wait for auth and roles to load (with timeout)
-      if (authLoading || rolesLoading) {
-        return;
-      }
-
-      // Check authentication
-      if (requireAuth && !user) {
-        console.log('🔐 No user, redirecting to auth');
-        navigate('/auth');
-        return;
-      }
-
-      // EMERGENCY BYPASS: If emergency bypass is active, grant access
-      if (emergencyBypass && (adminOnly || superAdminOnly)) {
-        console.log('🚨 Emergency bypass active, granting admin access');
+    // Timeout protection
+    const timeoutId = setTimeout(() => {
+      if (!authChecked && retryCount < 3) {
+        console.warn(`[TIMEOUT] Auth check taking too long, retry ${retryCount + 1}`);
+        setRetryCount(prev => prev + 1);
         setAuthChecked(true);
-        return;
       }
+    }, 5000);
 
-      // Check admin access
-      if (adminOnly && !isAdmin) {
-        console.log('🔐 Admin required but user not admin, staying on loading screen for emergency bypass');
-        // Don't redirect immediately - show emergency bypass option
-        return;
+    const checkAuthAndRoles = async () => {
+      try {
+        const debugInfo = logDebugInfo('START');
+        
+        // Wait a bit if still loading
+        if (authLoading || rolesLoading) {
+          console.log(`[WAIT] Still loading - authLoading=${authLoading}, rolesLoading=${rolesLoading}`);
+          return;
+        }
+
+        if (!user) {
+          logDebugInfo('NO_USER');
+          if (requireAuth) {
+            console.log('[REDIRECT] No user, redirecting to /auth');
+            navigate('/auth');
+          }
+          setAuthChecked(true);
+          clearTimeout(timeoutId);
+          return;
+        }
+
+        logDebugInfo('USER_FOUND');
+
+        // For admin routes, do comprehensive checking
+        if (adminOnly || superAdminOnly) {
+          console.log(`[ADMIN_CHECK] Checking admin access - isAdmin=${isAdmin}, isSuperAdmin=${isSuperAdmin}`);
+          console.log(`[ADMIN_CHECK] User roles:`, userRoles.map(r => r.role));
+
+          // If hook says not admin, verify with database
+          if (!isAdmin && retryCount < 2) {
+            console.log('[FALLBACK] Hook says not admin, checking database directly...');
+            const dbAdminStatus = await verifyAdminDirectly(user.id);
+            
+            if (dbAdminStatus && !isAdmin) {
+              console.warn('[MISMATCH] Database says admin but hook says not admin - forcing role refresh');
+              setRetryCount(prev => prev + 1);
+              // Force a role refresh by not setting authChecked
+              clearTimeout(timeoutId);
+              return;
+            }
+          }
+
+          if (superAdminOnly && !isSuperAdmin) {
+            console.warn(`[ACCESS_DENIED] Super admin required but user ${user.id} is not super admin`);
+            logDebugInfo('SUPER_ADMIN_DENIED');
+            navigate('/');
+            setAuthChecked(true);
+            clearTimeout(timeoutId);
+            return;
+          }
+          
+          if (adminOnly && !isAdmin) {
+            console.warn(`[ACCESS_DENIED] Admin required but user ${user.id} is not admin`);
+            logDebugInfo('ADMIN_DENIED');
+            navigate('/');
+            setAuthChecked(true);
+            clearTimeout(timeoutId);
+            return;
+          }
+        }
+
+        console.log(`[ACCESS_GRANTED] User ${user.id} granted access`);
+        logDebugInfo('ACCESS_GRANTED');
+        setAuthChecked(true);
+        clearTimeout(timeoutId);
+        
+      } catch (error) {
+        console.error('[ERROR] ProtectedRoute error:', error);
+        logDebugInfo('ERROR');
+        if (requireAuth) {
+          navigate('/auth');
+        }
+        setAuthChecked(true);
+        clearTimeout(timeoutId);
       }
-
-      // Check super admin access
-      if (superAdminOnly && !isSuperAdmin) {
-        console.log('🔐 Super admin required but user not super admin, staying on loading screen for emergency bypass');
-        // Don't redirect immediately - show emergency bypass option
-        return;
-      }
-
-      console.log('🔐 Access granted');
-      setAuthChecked(true);
     };
 
-    checkAccess();
-  }, [user, isAdmin, isSuperAdmin, authLoading, rolesLoading, requireAuth, adminOnly, superAdminOnly, navigate, emergencyBypass]);
+    checkAuthAndRoles();
 
-  // Show loading with emergency recovery option
+    return () => clearTimeout(timeoutId);
+  }, [user, isAdmin, isSuperAdmin, authLoading, rolesLoading, requireAuth, adminOnly, superAdminOnly, navigate, retryCount]);
+
+  // Show loading while checking auth and roles with debug info
   if (authLoading || rolesLoading || !authChecked) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center space-y-4">
         <LoadingSpinner />
-        <div className="text-center space-y-4">
-          <p className="text-sm text-muted-foreground">
-            Verifying access...
-          </p>
-          
-          {(adminOnly || superAdminOnly) && user && (
-            <div className="mt-4 p-4 border rounded-lg bg-muted/20 max-w-md">
-              <div className="space-y-3">
-                <p className="text-xs text-muted-foreground">
-                  Having trouble accessing the admin panel?
-                </p>
-                
-                <div className="text-xs">
-                  <span className="text-muted-foreground">Signed in as:</span>
-                  <br />
-                  <span className="font-mono text-foreground">{user.email}</span>
-                </div>
-                
-                <Button
-                  variant="outline"
-                  onClick={handleEmergencyAdminAccess}
-                  disabled={emergencyChecking}
-                  className="w-full text-xs"
-                  size="sm"
-                >
-                  {emergencyChecking ? (
-                    <>
-                      <div className="animate-spin rounded-full h-3 w-3 border-b border-current mr-2" />
-                      Checking Admin Status...
-                    </>
-                  ) : (
-                    'Emergency Admin Access'
-                  )}
-                </Button>
-                
-                <div className="pt-2 border-t">
-                  <p className="text-xs text-muted-foreground mb-2">
-                    Or try logging out:
-                  </p>
-                  <EmergencyLogoutButton className="text-xs w-full" />
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
+        {process.env.NODE_ENV === 'development' && (
+          <div className="text-xs text-muted-foreground max-w-md">
+            <div>Auth Loading: {authLoading ? 'Yes' : 'No'}</div>
+            <div>Roles Loading: {rolesLoading ? 'Yes' : 'No'}</div>
+            <div>Auth Checked: {authChecked ? 'Yes' : 'No'}</div>
+            <div>User: {user?.email || 'None'}</div>
+            <div>Is Admin: {isAdmin ? 'Yes' : 'No'}</div>
+            <div>Retry Count: {retryCount}</div>
+            {userRoles.length > 0 && <div>Roles: {userRoles.map(r => r.role).join(', ')}</div>}
+          </div>
+        )}
       </div>
     );
+  }
+
+  // Access control checks
+  if (requireAuth && !user) {
+    return null; // Redirect handled in useEffect
+  }
+
+  if (superAdminOnly && !isSuperAdmin) {
+    return null; // Redirect handled in useEffect
+  }
+
+  if (adminOnly && !isAdmin) {
+    return null; // Redirect handled in useEffect
   }
 
   return <>{children}</>;

@@ -7,10 +7,12 @@ interface UserWelcomeProps {
 
 export const UserWelcome: React.FC<UserWelcomeProps> = ({ userProfile }) => {
   const getUserDisplayName = () => {
-    const first = userProfile?.first_name?.trim() || '';
-    const last = userProfile?.last_name?.trim() || '';
-    const full = `${first} ${last}`.trim();
-    return full || null;
+    if (userProfile?.first_name && userProfile?.last_name) {
+      return `${userProfile.first_name} ${userProfile.last_name}`;
+    } else if (userProfile?.first_name) {
+      return userProfile.first_name;
+    }
+    return null;
   };
 
   const displayName = getUserDisplayName();

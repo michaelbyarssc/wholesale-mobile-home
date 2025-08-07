@@ -47,7 +47,7 @@ export const useSessionAwareWishlist = () => {
 
       const homes = data?.map(item => item.mobile_homes).filter(Boolean) as MobileHome[];
       setWishlistItems(homes || []);
-      // Wishlist loaded successfully
+      console.log('🔍 Loaded wishlist for session:', activeSession.id, 'items:', homes?.length || 0);
     } catch (error) {
       console.error('Error loading user wishlist:', error);
     } finally {
@@ -60,7 +60,7 @@ export const useSessionAwareWishlist = () => {
     try {
       const wishlistKey = getStorageKey(WISHLIST_STORAGE_KEY);
       const stored = localStorage.getItem(wishlistKey);
-      // Loading guest wishlist from localStorage
+      console.log('🔍 Loading guest wishlist for session:', activeSession?.id || 'guest', 'key:', wishlistKey);
       
       if (stored) {
         const homeIds = JSON.parse(stored) as string[];
@@ -103,7 +103,7 @@ export const useSessionAwareWishlist = () => {
 
   // Add home to wishlist
   const addToWishlist = useCallback(async (home: MobileHome) => {
-    // Adding home to wishlist
+    console.log('🔍 addToWishlist called for session:', activeSession?.id || 'guest', 'home:', home.id);
     
     if (activeSession?.user && supabaseClient) {
       // Add to database for logged-in users
@@ -154,7 +154,7 @@ export const useSessionAwareWishlist = () => {
             if (prev.some(item => item.id === home.id)) return prev;
             return [...prev, home];
           });
-          // Added to guest wishlist
+          console.log('🔍 Added to guest wishlist for session:', activeSession?.id || 'guest');
         }
       } catch (error) {
         console.error('Error adding to guest wishlist:', error);
@@ -164,7 +164,7 @@ export const useSessionAwareWishlist = () => {
 
   // Remove home from wishlist
   const removeFromWishlist = useCallback(async (homeId: string) => {
-    // Removing home from wishlist
+    console.log('🔍 removeFromWishlist called for session:', activeSession?.id || 'guest', 'home:', homeId);
     
     if (activeSession?.user && supabaseClient) {
       // Remove from database for logged-in users
@@ -191,7 +191,7 @@ export const useSessionAwareWishlist = () => {
         
         localStorage.setItem(wishlistKey, JSON.stringify(newIds));
         setWishlistItems(prev => prev.filter(item => item.id !== homeId));
-        // Removed from guest wishlist
+        console.log('🔍 Removed from guest wishlist for session:', activeSession?.id || 'guest');
       } catch (error) {
         console.error('Error removing from guest wishlist:', error);
       }
@@ -200,7 +200,7 @@ export const useSessionAwareWishlist = () => {
 
   // Clear entire wishlist
   const clearWishlist = useCallback(async () => {
-    // Clearing wishlist
+    console.log('🔍 clearWishlist called for session:', activeSession?.id || 'guest');
     
     if (activeSession?.user && supabaseClient) {
       // Clear database for logged-in users
@@ -221,7 +221,7 @@ export const useSessionAwareWishlist = () => {
         const wishlistKey = getStorageKey(WISHLIST_STORAGE_KEY);
         localStorage.removeItem(wishlistKey);
         setWishlistItems([]);
-        // Cleared guest wishlist
+        console.log('🔍 Cleared guest wishlist for session:', activeSession?.id || 'guest');
       } catch (error) {
         console.error('Error clearing guest wishlist:', error);
       }

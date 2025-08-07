@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { useUserRoles } from '@/hooks/useUserRoles';
-import { useMultiUserAuth } from '@/hooks/useMultiUserAuth';
+import { useAuthUser } from '@/hooks/useAuthUser';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { MobileHomesTab } from '@/components/admin/MobileHomesTab';
 import { SalesTab } from '@/components/admin/SalesTab';
@@ -21,44 +21,91 @@ import { ComprehensiveTestSuite } from '@/components/admin/ComprehensiveTestSuit
 import { ComprehensiveTestRunner } from '@/components/ComprehensiveTestRunner';
 import { SecurityTestDashboard } from '@/components/SecurityTestDashboard';
 import { SecurityOverhaulVerification } from '@/components/SecurityOverhaulVerification';
-import { ForceLogoutButton } from '@/components/auth/ForceLogoutButton';
 
 import { Menu, X } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 const Admin = () => {
-  const { user, activeSession, isLoading: authLoading, signOut } = useMultiUserAuth();
-  const { isAdmin, isSuperAdmin, isLoading: rolesLoading, userRoles, verifyAdminAccess } = useUserRoles();
+  const { user, session, isLoading: authLoading, handleLogout, forceRefreshAuth } = useAuthUser();
+  const { isAdmin, isSuperAdmin, isLoading: rolesLoading, userRoles, verifyAdminAccess, forceRefreshRoles } = useUserRoles();
   const [activeTab, setActiveTab] = useState('users');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
 
+  // SECURITY: Enhanced admin validation with session checks
+  const isSecureAdmin = isAdmin && user && session && user.id === session.user.id;
+  
+  // SECURITY: Enhanced debug logging with session validation
   console.log('🔐 Admin Panel State:', {
     userEmail: user?.email,
     userId: user?.id,
+    sessionUserId: session?.user?.id,
+    sessionUserEmail: session?.user?.email,
     isAdmin,
     isSuperAdmin,
+    isSecureAdmin,
     userRoles: userRoles.map(r => r.role),
     authLoading,
-    rolesLoading
+    rolesLoading,
+    sessionMatch: user?.id === session?.user?.id,
+    timestamp: new Date().toISOString()
   });
 
-  // Initialize default tab based on role
+  // SECURITY: Alert on session mismatch
+  if (user && session && user.id !== session.user.id) {
+    console.error('🚨 SECURITY ALERT: User/Session mismatch in Admin panel!', {
+      userId: user.id,
+      sessionUserId: session.user.id,
+      userEmail: user.email,
+      sessionUserEmail: session.user.email
+    });
+  }
+
+  // SECURITY: Force auth and role refresh on mount to prevent stale data
   useEffect(() => {
-    if (!authLoading && !rolesLoading && isAdmin) {
+    const initializeAdminPanel = async () => {
+      console.log('🔐 Initializing admin panel...');
+      await forceRefreshAuth();
+      await forceRefreshRoles();
+    };
+    
+    initializeAdminPanel();
+  }, []); // Only run once on mount
+
+  // SECURITY: Verify admin access with database function
+  useEffect(() => {
+    const verifyAccess = async () => {
+      if (user && !authLoading && !rolesLoading) {
+        const isVerifiedAdmin = await verifyAdminAccess();
+        if (!isVerifiedAdmin) {
+          console.error('🚨 SECURITY: Admin access verification failed');
+          await handleLogout();
+        }
+      }
+    };
+    
+    verifyAccess();
+  }, [user, authLoading, rolesLoading, verifyAdminAccess, handleLogout]);
+
+  // Initialize default tab based on role (ProtectedRoute already handles auth)
+  useEffect(() => {
+    if (!authLoading && !rolesLoading && isSecureAdmin) {
+      // Set default tab based on role
       if (isSuperAdmin) {
         setActiveTab('mobile-homes');
+        console.log('🔐 Admin: Super admin detected, setting tab to mobile-homes');
       } else {
         setActiveTab('sales');
+        console.log('🔐 Admin: Regular admin detected, setting tab to sales');
       }
     }
-  }, [isSuperAdmin, authLoading, rolesLoading, isAdmin]);
+  }, [isSuperAdmin, authLoading, rolesLoading, isSecureAdmin]);
 
   const handleSignOut = async () => {
-    await signOut();
+    await handleLogout();
     navigate('/');
   };
 
@@ -67,7 +114,7 @@ const Admin = () => {
     setMobileMenuOpen(false); // Close mobile menu when tab changes
   };
 
-  // Show loading while verifying authentication and roles
+  // SECURITY: Show loading while verifying authentication and roles
   if (authLoading || rolesLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -79,9 +126,10 @@ const Admin = () => {
     );
   }
 
-  // Enhanced authentication check - ProtectedRoute handles the security
-  if (!user || !isAdmin) {
-    console.log('🔐 Admin access check failed, should redirect via ProtectedRoute');
+  // SECURITY: Enhanced authentication check with session validation
+  if (!user || !session || !isSecureAdmin) {
+    console.error('🚨 SECURITY: Invalid admin access attempt');
+    navigate('/auth');
     return null;
   }
 
@@ -215,7 +263,7 @@ const Admin = () => {
                       <div className="mt-3 p-3 bg-muted/50 rounded-lg">
                         <p className="text-xs text-muted-foreground">Signed in as</p>
                         <p className="text-sm font-medium truncate">
-                          {user?.email || activeSession?.user?.email} • {isSuperAdmin ? 'Super Admin' : 'Admin'}
+                          {user?.email || session?.user?.email} • {isSuperAdmin ? 'Super Admin' : 'Admin'}
                         </p>
                       </div>
                     </div>
@@ -241,7 +289,7 @@ const Admin = () => {
               {/* User Info - Desktop */}
               <div className="hidden lg:flex flex-col items-end text-right min-w-0">
                 <p className="text-sm font-medium text-foreground truncate max-w-[200px]">
-                  {user?.email || activeSession?.user?.email}
+                  {user?.email || session?.user?.email}
                 </p>
                 <p className="text-xs text-muted-foreground">
                   {isSuperAdmin ? 'Super Admin' : 'Admin'}
@@ -259,11 +307,12 @@ const Admin = () => {
                 size="sm"
                 onClick={async () => {
                   console.log('Manual refresh triggered');
+                  await forceRefreshAuth();
+                  await forceRefreshRoles();
                   toast({
                     title: "Refreshed",
-                    description: "Page will reload to refresh auth state.",
+                    description: "Auth and roles have been refreshed. Check console for debug info.",
                   });
-                  window.location.reload();
                 }}
                 className="hidden sm:flex text-xs"
               >
@@ -286,20 +335,14 @@ const Admin = () => {
               >
                 Site
               </Button>
-               <Button 
-                 variant="outline" 
-                 size="sm"
-                 onClick={handleSignOut}
-                 className="text-destructive hover:text-destructive"
-               >
-                 Sign Out
-               </Button>
-               
-               {/* Emergency Force Logout - Hidden but accessible */}
-               <ForceLogoutButton 
-                 className="hidden"
-                 size="sm"
-               />
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={handleSignOut}
+                className="text-destructive hover:text-destructive"
+              >
+                Sign Out
+              </Button>
             </div>
           </div>
         </div>

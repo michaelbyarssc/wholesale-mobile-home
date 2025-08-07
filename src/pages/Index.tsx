@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { EnhancedOptimizedMobileHomesShowcase } from '@/components/EnhancedOptimizedMobileHomesShowcase';
+import { MobileHomesShowcase } from '@/components/MobileHomesShowcase';
 import { TestimonialsSection } from '@/components/reviews/TestimonialsSection';
 import { FinancingCalculator } from '@/components/financing/FinancingCalculator';
+import { supabase } from '@/integrations/supabase/client';
+import { User, Session } from '@supabase/supabase-js';
 import { useSessionAwareShoppingCart } from '@/hooks/useSessionAwareShoppingCart';
 import { useMultiUserAuth } from '@/hooks/useMultiUserAuth';
-import { useOptimizedPerformanceMonitor } from '@/hooks/useOptimizedPerformanceMonitor';
+import { usePerformanceMonitor } from '@/hooks/usePerformanceMonitor';
 import { useViewportSize } from '@/hooks/useViewportSize';
-import { useScrollOptimization, optimizeScrollForMobile } from '@/hooks/useScrollOptimization';
 import { MultiUserHeader } from '@/components/auth/MultiUserHeader';
 import { ChatWidget } from '@/components/chat/ChatWidget';
 import { HeroSection } from '@/components/layout/HeroSection';
@@ -37,16 +38,10 @@ const Index = () => {
   const navigate = useNavigate();
   
   // Performance and viewport hooks
-  const { markFeature, measureFeature } = useOptimizedPerformanceMonitor();
+  const { markFeature, measureFeature } = usePerformanceMonitor();
   const { isMobile, isTablet } = useViewportSize();
-  const { throttledScrollHandler } = useScrollOptimization({ throttleMs: 16 });
-
-  // Initialize scroll optimizations
-  React.useEffect(() => {
-    optimizeScrollForMobile();
-  }, []);
   
-  // Centralized authentication
+  // Multi-user authentication
   const { user, userProfile, isLoading } = useMultiUserAuth();
   const { isAdmin } = useUserRoles();
   
@@ -123,7 +118,7 @@ const Index = () => {
   console.log('Index component: Rendering main content');
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-green-50 to-yellow-50 scroll-optimized">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-green-50 to-yellow-50">
       <SEO 
         title="Wholesale Mobile Homes for Sale | Quality Homes at Best Prices"
         description="Browse quality mobile homes at wholesale prices. Get instant quotes, view detailed specs, and save thousands. Clayton, Champion, and Fleetwood homes available with financing options."
@@ -156,8 +151,8 @@ const Index = () => {
       </div>
 
       <div id="mobile-homes">
-        <EnhancedOptimizedMobileHomesShowcase 
-          user={user}
+        <MobileHomesShowcase 
+          user={user} 
           {...cartProps}
         />
       </div>
@@ -250,7 +245,8 @@ const Index = () => {
       <ChatWidget userId={user?.id} />
 
       {/* Development debugging panels */}
-      {/* <MultiUserDebugPanel /> */}
+      <MultiUserStabilityTest />
+      <MultiUserDebugPanel />
       <MultiUserSessionTest />
 
       <Footer />

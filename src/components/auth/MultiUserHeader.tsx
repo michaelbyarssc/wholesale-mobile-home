@@ -22,7 +22,6 @@ import {
 import { CartItem } from '@/hooks/useShoppingCart';
 import { PasswordChangeDialog } from '@/components/auth/PasswordChangeDialog';
 import { UserSettingsDialog } from '@/components/auth/UserSettingsDialog';
-import { ForceLogoutButton } from '@/components/auth/ForceLogoutButton';
 import { useBusinessInfo } from '@/hooks/useBusinessInfo';
 import { usePWA } from '@/hooks/usePWA';
 import { useMultiUserAuth } from '@/hooks/useMultiUserAuth';
@@ -61,60 +60,10 @@ export const MultiUserHeader = ({
     switchToSession,
     signOut,
     signOutAll,
-    hasMultipleSessions,
-    fetchUserProfile,
-    activeSessionId
+    hasMultipleSessions
   } = useMultiUserAuth();
 
-  // Helper function to check if profile has actual data
-  const hasProfileData = (profile: any) => {
-    return profile && (profile.first_name || profile.last_name);
-  };
-
-  // Ensure profile is fetched when component mounts or user changes
-  React.useEffect(() => {
-    if (user && activeSessionId && !hasProfileData(userProfile)) {
-      console.log('🔍 DEBUG: MultiUserHeader - Fetching profile for user:', user.email, 'current profile:', userProfile);
-      fetchUserProfile(activeSessionId);
-    }
-  }, [user, activeSessionId, userProfile, fetchUserProfile]);
-
-  // Force profile fetch after a short delay if still no profile data
-  React.useEffect(() => {
-    if (user && activeSessionId && !hasProfileData(userProfile)) {
-      const retryTimer = setTimeout(() => {
-        console.log('🔍 DEBUG: MultiUserHeader - Retry fetching profile after delay for:', user.email);
-        fetchUserProfile(activeSessionId);
-      }, 1000);
-      
-      return () => clearTimeout(retryTimer);
-    }
-  }, [user, activeSessionId, userProfile, fetchUserProfile]);
-
-  const getDisplayName = (profile?: { first_name?: string; last_name?: string } | null, email?: string) => {
-    // Prioritize showing full name from profile
-    if (profile?.first_name && profile?.last_name) {
-      return `${profile.first_name} ${profile.last_name}`;
-    }
-    
-    // Show just first name if that's all we have
-    if (profile?.first_name) {
-      return profile.first_name;
-    }
-    
-    // Show just last name if that's all we have
-    if (profile?.last_name) {
-      return profile.last_name;
-    }
-    
-    // Only fallback to email prefix if no profile name data exists at all
-    return email ? email.split('@')[0] : 'User';
-  };
-
-  const displayName = getDisplayName(userProfile, user?.email);
-  
-  // Debug logging for user profile
-  console.log('🔍 DEBUG: MultiUserHeader - user:', user?.email, 'userProfile:', userProfile, 'displayName:', displayName);
+  const displayName = userProfile?.first_name || 'User';
 
   const handleChangePassword = () => {
     setIsPasswordDialogOpen(true);
@@ -143,32 +92,17 @@ export const MultiUserHeader = ({
   };
 
   const handleSignOut = async () => {
-    console.log('🚨 HEADER: User clicked sign out, sessions:', sessions.length);
-    
-    try {
-      if (hasMultipleSessions) {
-        console.log('🚨 HEADER: Multiple sessions detected, signing out current user');
-        await signOut();
-      } else {
-        console.log('🚨 HEADER: Single session, signing out all');
-        await signOutAll();
-      }
-    } catch (error) {
-      console.error('🚨 HEADER: Sign out error, forcing page reload:', error);
-      // Emergency fallback - force page reload
-      window.location.href = '/';
+    if (hasMultipleSessions) {
+      await signOut();
+    } else {
+      await signOutAll();
+      navigate('/');
     }
   };
 
   const handleSignOutAll = async () => {
-    console.log('🚨 HEADER: User clicked sign out all');
-    try {
-      await signOutAll();
-    } catch (error) {
-      console.error('🚨 HEADER: Sign out all error, forcing page reload:', error);
-      // Emergency fallback
-      window.location.href = '/';
-    }
+    await signOutAll();
+    navigate('/');
   };
 
   return (
@@ -292,7 +226,7 @@ export const MultiUserHeader = ({
                                   </div>
                                   <div className="flex-1">
                                     <div className="font-medium text-gray-900">
-                                      {getDisplayName(session.userProfile, session.user.email)}
+                                      {session.userProfile?.first_name || 'User'}
                                     </div>
                                     <div className="text-sm text-gray-500">{session.user.email}</div>
                                   </div>
@@ -425,7 +359,7 @@ export const MultiUserHeader = ({
           </div>
 
           {/* Mobile Menu with Multi-User Support */}
-          {isMobileMenuOpen && (
+          {user && isMobileMenuOpen && (
             <div className="lg:hidden border-t border-gray-200 py-4 space-y-3 animate-fade-in">
               {/* Current User Info */}
               <div className="flex items-center justify-between px-4">
@@ -527,14 +461,6 @@ export const MultiUserHeader = ({
                     Sign Out All Users
                   </Button>
                 )}
-                
-                {/* Emergency Force Logout */}
-                <div className="border-t border-gray-200 pt-2 mt-2">
-                  <ForceLogoutButton 
-                    className="w-full justify-start text-left p-3" 
-                    variant="destructive"
-                  />
-                </div>
               </div>
             </div>
           )}

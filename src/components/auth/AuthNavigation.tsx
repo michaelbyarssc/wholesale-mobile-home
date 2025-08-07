@@ -2,7 +2,6 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
-import { EmergencyLogoutButton } from './EmergencyLogoutButton';
 
 interface AuthNavigationProps {
   isSignUp: boolean;
@@ -76,7 +75,7 @@ export const AuthNavigation: React.FC<AuthNavigationProps> = ({
 
       {/* Show change password button if user is logged in */}
       {currentUser && (
-        <div className="space-y-2 text-center">
+        <div className="text-center">
           <Button
             variant="outline"
             onClick={onShowPasswordChange}
@@ -84,7 +83,6 @@ export const AuthNavigation: React.FC<AuthNavigationProps> = ({
           >
             Change Password
           </Button>
-          <EmergencyLogoutButton className="w-full" />
         </div>
       )}
 

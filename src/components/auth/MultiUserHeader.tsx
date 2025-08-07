@@ -40,7 +40,7 @@ interface MultiUserHeaderProps {
   onProfileUpdated?: () => void;
 }
 
-export const MultiUserHeader = ({ 
+const MultiUserHeaderComponent = ({ 
   cartItems, 
   isLoading, 
   onToggleCart,
@@ -64,14 +64,24 @@ export const MultiUserHeader = ({
     fetchUserProfile,
     activeSessionId,
     supabaseClient,
-    isSigningOut
+    isSigningOut,
+    isLoginInProgress,
+    isStabilizing
   } = useAuth();
 
-  // Stable display name with better caching
+  // Stable display name with login state handling
   const getDisplayName = React.useMemo(() => {
-    // If signing out, show signing out message
+    // Handle various loading and transitional states
     if (isSigningOut) {
       return 'Signing out...';
+    }
+    
+    if (isLoginInProgress) {
+      return 'Signing in...';
+    }
+    
+    if (isStabilizing) {
+      return 'Loading...';
     }
 
     // If we have profile data, prioritize first_name + last_name
@@ -90,7 +100,7 @@ export const MultiUserHeader = ({
     }
     
     return 'User';
-  }, [userProfile?.first_name, userProfile?.last_name, user?.email, isSigningOut]);
+  }, [userProfile?.first_name, userProfile?.last_name, user?.email, isSigningOut, isLoginInProgress, isStabilizing]);
 
   const handleChangePassword = () => {
     setIsPasswordDialogOpen(true);
@@ -496,3 +506,12 @@ export const MultiUserHeader = ({
     </>
   );
 };
+
+// Optimize with React.memo to prevent unnecessary re-renders
+export const MultiUserHeader = React.memo(MultiUserHeaderComponent, (prevProps, nextProps) => {
+  // Only re-render if cartItems length changes or loading state changes
+  return (
+    prevProps.cartItems.length === nextProps.cartItems.length &&
+    prevProps.isLoading === nextProps.isLoading
+  );
+});

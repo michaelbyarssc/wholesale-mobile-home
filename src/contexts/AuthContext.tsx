@@ -14,6 +14,7 @@ interface AuthContextType {
   isLoading: boolean;
   isSigningOut: boolean;
   isLoginInProgress: boolean;
+  isStabilizing: boolean;
   
   // Session management
   sessions: any[];
@@ -47,6 +48,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [isLoginInProgress, setIsLoginInProgress] = useState(false);
   const [isProfileLoading, setIsProfileLoading] = useState(false);
+  const [isStabilizing, setIsStabilizing] = useState(false);
   
   const {
     sessions,
@@ -176,8 +178,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           
           if (event === 'SIGNED_IN' && session?.user) {
             console.log('✅ AUTH STATE: User signed in:', session.user.email, 'Event:', event);
+            setIsStabilizing(true);
             await addSession(session.user, session);
             setIsLoginInProgress(false);
+            
+            // Add stabilization period to prevent UI flashing
+            setTimeout(() => {
+              setIsStabilizing(false);
+            }, 500);
           } else if (event === 'SIGNED_OUT') {
             console.log('🚪 AUTH STATE: User signed out, clearing sessions and refs');
             clearAllSessions();
@@ -235,13 +243,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
-  // Auto-fetch profile for active session
+  // Auto-fetch profile for active session with debouncing
   useEffect(() => {
     const currentSession = activeSession;
     
     if (currentSession?.user && !currentSession.userProfile && !isLoginInProgress && !isProfileLoading) {
-      console.log('📱 AUTO-FETCH: Fetching profile for active user:', currentSession.user.email);
-      fetchUserProfile();
+      console.log('📱 AUTO-FETCH: Debounced profile fetch for active user:', currentSession.user.email);
+      
+      // Add 300ms delay to prevent rapid successive profile fetches during login transitions
+      const fetchTimer = setTimeout(() => {
+        fetchUserProfile();
+      }, 300);
+      
+      return () => clearTimeout(fetchTimer);
     }
   }, [activeSession?.user?.id, isLoginInProgress, isProfileLoading]);
 
@@ -401,6 +415,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     isLoading,
     isSigningOut,
     isLoginInProgress,
+    isStabilizing,
     
     // Session management
     sessions,

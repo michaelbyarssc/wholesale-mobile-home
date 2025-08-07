@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { User } from '@supabase/supabase-js';
+import { useDebounce } from './useDebounce';
 import type { Database } from '@/integrations/supabase/types';
 
 type MobileHome = Database['public']['Tables']['mobile_homes']['Row'];
@@ -8,13 +9,16 @@ type Service = Database['public']['Tables']['services']['Row'];
 type HomeOption = Database['public']['Tables']['home_options']['Row'];
 
 export const useCustomerPricing = (user: User | null) => {
-  console.log('useCustomerPricing: Hook called with user:', user?.id);
+  // Debounce user changes to prevent excessive API calls during login transitions
+  const debouncedUserId = useDebounce(user?.id, 200);
+  
+  console.log('useCustomerPricing: Hook called with user:', debouncedUserId);
 
   // Fetch customer markup with tiered pricing info (cached for 5 minutes)
   const { data: customerMarkup, isLoading: markupLoading } = useQuery({
-    queryKey: ['customer-markup', user?.id],
+    queryKey: ['customer-markup', debouncedUserId],
     queryFn: async () => {
-      if (!user) {
+      if (!debouncedUserId) {
         return { 
           markup_percentage: 30, 
           tier_level: 'user', 
@@ -25,7 +29,7 @@ export const useCustomerPricing = (user: User | null) => {
       const { data, error } = await supabase
         .from('customer_markups')
         .select('markup_percentage, tier_level, super_admin_markup_percentage')
-        .eq('user_id', user.id)
+        .eq('user_id', debouncedUserId)
         .maybeSingle();
 
       if (error) {
@@ -43,7 +47,7 @@ export const useCustomerPricing = (user: User | null) => {
         super_admin_markup_percentage: 30 
       };
     },
-    enabled: true,
+    enabled: !!debouncedUserId, // Only fetch when we have a stable user ID
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
     gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
     refetchOnWindowFocus: false

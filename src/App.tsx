@@ -11,6 +11,7 @@ import { LoadingSpinner } from "@/components/layout/LoadingSpinner";
 import { SecurityEnhancements } from "@/components/SecurityEnhancements";
 import { SessionManagerProvider } from "@/contexts/SessionManagerContext";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { PricingWrapper } from "@/contexts/PricingWrapper";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 // Lazy load components with proper error handling
@@ -148,11 +149,13 @@ const App = () => {
             <SessionManagerProvider>
               <BrowserRouter>
                 <AuthProvider>
-                  <TooltipProvider>
-                    <AppRoutes />
-                    <Toaster />
-                    <Sonner />
-                  </TooltipProvider>
+                  <PricingWrapper>
+                    <TooltipProvider>
+                      <AppRoutes />
+                      <Toaster />
+                      <Sonner />
+                    </TooltipProvider>
+                  </PricingWrapper>
                 </AuthProvider>
               </BrowserRouter>
             </SessionManagerProvider>

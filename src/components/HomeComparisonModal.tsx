@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { X, Home, Bed, Bath, Maximize, Ruler, DollarSign } from 'lucide-react';
 import { MobileHomeImageCarousel } from './MobileHomeImageCarousel';
-import { useCustomerPricing } from '@/hooks/useCustomerPricing';
+import { usePricingContext } from '@/contexts/PricingContext';
 import { formatPrice } from '@/lib/utils';
 import { User } from '@supabase/supabase-js';
 import type { Database } from '@/integrations/supabase/types';
@@ -41,7 +41,7 @@ export const HomeComparisonModal: React.FC<HomeComparisonModalProps> = ({
   homeImages,
   user
 }) => {
-  const { calculateMobileHomePrice, loading: pricingLoading } = useCustomerPricing(user);
+  const { calculateMobileHomePrice, loading: pricingLoading } = usePricingContext();
 
   const getHomeImages = (homeId: string) => {
     return homeImages.filter(image => image.mobile_home_id === homeId);

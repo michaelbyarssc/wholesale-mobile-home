@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useCustomerPricing } from '@/hooks/useCustomerPricing';
+import { usePricingContext } from '@/contexts/PricingContext';
 import { useConditionalServices } from '@/hooks/useConditionalServices';
 import { formatPrice } from '@/lib/utils';
 import { User } from '@supabase/supabase-js';
@@ -41,7 +41,7 @@ export const MobileHomeServicesDialog = ({
   
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [selectedHomeOptions, setSelectedHomeOptions] = useState<{ option: HomeOption; quantity: number }[]>([]);
-  const { calculateMobileHomePrice, calculateServicePrice, calculateHomeOptionPrice, calculateTotalPrice } = useCustomerPricing(user);
+  const { calculateMobileHomePrice, calculateServicePrice, calculateHomeOptionPrice, calculateTotalPrice } = usePricingContext();
 
   // Fetch all services
   const { data: allServices = [] } = useQuery({

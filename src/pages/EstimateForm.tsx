@@ -11,7 +11,7 @@ import { EstimateTotal } from '@/components/estimate/EstimateTotal';
 import { ComparableHomesCard } from '@/components/estimate-approval/ComparableHomesCard';
 import { CustomerInfoModal } from '@/components/cart/CustomerInfoModal';
 import { useShoppingCart } from '@/hooks/useShoppingCart';
-import { useCustomerPricing } from '@/hooks/useCustomerPricing';
+import { usePricingContext } from '@/contexts/PricingContext';
 import type { Database } from '@/integrations/supabase/types';
 
 type HomeOption = Database['public']['Tables']['home_options']['Row'];
@@ -20,7 +20,7 @@ const EstimateForm = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { cartItems, clearCart } = useShoppingCart(null); // Estimates can be anonymous
-  const { markupPercentage, calculatePrice, calculateHomeOptionPrice } = useCustomerPricing(null);
+  const { markupPercentage, calculatePrice, calculateHomeOptionPrice } = usePricingContext();
   
   const [services, setServices] = useState<any[]>([]);
   const [mobileHomes, setMobileHomes] = useState<any[]>([]);

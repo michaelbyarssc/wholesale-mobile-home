@@ -9,7 +9,6 @@ import { CartHomeOptionsList } from './CartHomeOptionsList';
 import { formatPrice } from '@/lib/utils';
 import type { Database } from '@/integrations/supabase/types';
 import { CartItem } from '@/components/ShoppingCart';
-import { useCustomerPricing } from '@/hooks/useCustomerPricing';
 
 type HomeOption = Database['public']['Tables']['home_options']['Row'];
 

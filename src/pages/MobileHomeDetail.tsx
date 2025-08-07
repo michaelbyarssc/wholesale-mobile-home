@@ -27,7 +27,7 @@ import {
 import { MobileHomeImageCarousel } from '@/components/MobileHomeImageCarousel';
 import { MobileHomeServicesDialog } from '@/components/MobileHomeServicesDialog';
 import { OptimizedImage } from '@/components/OptimizedImage';
-import { useCustomerPricing } from '@/hooks/useCustomerPricing';
+import { usePricingContext } from '@/contexts/PricingContext';
 import { MobileHomeReviews } from '@/components/reviews/MobileHomeReviews';
 import { AppointmentBookingWidget } from '@/components/appointments/AppointmentBookingWidget';
 import { useWishlist } from '@/hooks/useWishlist';
@@ -60,7 +60,7 @@ export const MobileHomeDetail: React.FC = () => {
   // Use consolidated auth
   const { user, isLoading: isAuthLoading } = useAuth();
   
-  const { calculateMobileHomePrice, loading: pricingLoading } = useCustomerPricing(user);
+  const { calculateMobileHomePrice, loading: pricingLoading } = usePricingContext();
   const { isInWishlist, toggleWishlist } = useWishlist(user);
   const { addToComparison, isInComparison } = useHomeComparison();
   const { cartItems, addToCart } = useShoppingCart(user);

@@ -122,11 +122,25 @@ export const useUserRoles = (): RoleCheck => {
   // Effect to fetch roles when user changes - optimized to prevent continuous calls
   const lastUserIdRef = useRef<string | null>(null);
   const lastAuthLoadingRef = useRef<boolean>(true);
+  const isMountedRef = useRef(true);
+  
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
   
   useEffect(() => {
     const currentUserId = user?.id || null;
     
-    // Only fetch if user ID changed or auth loading state changed meaningfully
+    // Skip during global login state to prevent redundant calls
+    if ((window as any).globalLoginInProgress) {
+      console.log('🔐 useUserRoles: Skipping role fetch during login');
+      return;
+    }
+    
+    // Only fetch if user ID actually changed (not just object reference)
     if (lastUserIdRef.current === currentUserId && lastAuthLoadingRef.current === authLoading) {
       return;
     }
@@ -134,9 +148,9 @@ export const useUserRoles = (): RoleCheck => {
     lastUserIdRef.current = currentUserId;
     lastAuthLoadingRef.current = authLoading;
     
-    if (!authLoading && user) {
+    if (!authLoading && user && isMountedRef.current) {
       fetchUserRoles(user.id);
-    } else if (!authLoading && !user) {
+    } else if (!authLoading && !user && isMountedRef.current) {
       // Clear roles when user logs out
       setUserRoles([]);
       setError(null);

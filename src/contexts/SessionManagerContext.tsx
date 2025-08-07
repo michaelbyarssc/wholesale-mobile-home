@@ -260,6 +260,34 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
     const handleBroadcastMessage = (event: MessageEvent) => {
       if (event.data.type === 'session_change') {
         debouncedSync();
+      } else if (event.data.type === 'forced_logout') {
+        // Handle forced logout from another tab/device
+        const { userId, reason } = event.data;
+        console.log('🔐 Received forced logout broadcast for user:', userId, 'reason:', reason);
+        
+        // Remove any sessions for this user
+        setSessions(prev => {
+          const userSessions = prev.filter(s => s.user.id === userId);
+          if (userSessions.length > 0) {
+            console.log('🔐 Removing', userSessions.length, 'sessions due to forced logout');
+            // Clear storage for these sessions
+            userSessions.forEach(session => {
+              const timestamp = new Date(session.createdAt).getTime();
+              const storageKey = `wmh_session_${session.user.id}_${timestamp}`;
+              clientCache.current.delete(storageKey);
+            });
+          }
+          return prev.filter(s => s.user.id !== userId);
+        });
+        
+        // If the removed user was active, clear active session
+        setActiveSessionId(prevActiveId => {
+          const activeSession = sessions.find(s => s.id === prevActiveId);
+          if (activeSession && activeSession.user.id === userId) {
+            return null;
+          }
+          return prevActiveId;
+        });
       }
     };
     
@@ -287,84 +315,6 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
       }
     }
   }, []);
-
-  const addSession = useCallback(async (user: User, session: Session): Promise<string> => {
-    // Enhanced session deduplication with storage key consistency
-    const existingSession = sessions.find(s => s.user.id === user.id);
-    if (existingSession) {
-      console.log('🔐 Session already exists for user:', user.email, 'updating existing session');
-      
-      // Update the existing session with fresh auth data
-      const updatedSessions = sessions.map(s => 
-        s.id === existingSession.id 
-          ? { ...s, session, user }
-          : s
-      );
-      setSessions(updatedSessions);
-      setActiveSessionId(existingSession.id);
-      broadcastSessionChange();
-      return existingSession.id;
-    }
-    
-    // Use consistent timestamp generation for stable storage keys
-    const timestamp = generateSessionTimestamp();
-    const sessionId = `session_${user.id}_${timestamp}`;
-    const storageKey = `wmh_session_${user.id}_${timestamp}`;
-    
-    console.log('🔐 Creating session with consistent key:', storageKey);
-    
-    try {
-      // Use cached client creation with validation
-      const client = getCachedClient(storageKey, user.id, timestamp);
-
-      // Set the session in the client with error handling
-      await client.auth.setSession({
-        access_token: session.access_token,
-        refresh_token: session.refresh_token
-      });
-
-      // Fetch user profile with timeout to prevent hanging
-      let userProfile = null;
-      try {
-        const profilePromise = client
-          .from('profiles')
-          .select('first_name, last_name')
-          .eq('user_id', user.id)
-          .single();
-        
-        // 5 second timeout for profile fetch
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Profile fetch timeout')), 5000)
-        );
-        
-        const { data: profile } = await Promise.race([profilePromise, timeoutPromise]) as any;
-        userProfile = profile;
-      } catch (error) {
-        console.warn('Error fetching user profile (non-critical):', error);
-      }
-
-      const newSession: SessionData = {
-        id: sessionId,
-        user,
-        session,
-        supabaseClient: client,
-        userProfile,
-        createdAt: new Date(timestamp) // Use consistent timestamp
-      };
-
-      setSessions(prev => [...prev, newSession]);
-      setActiveSessionId(sessionId);
-      broadcastSessionChange();
-      
-      console.log('🔐 Added new session:', sessionId, 'for user:', user.email, 'storage key:', storageKey);
-      return sessionId;
-    } catch (error) {
-      console.error('🔐 Error adding session:', error);
-      // Clean up cached client on error to prevent memory leaks
-      clientCache.current.delete(storageKey);
-      throw error;
-    }
-  }, [sessions, getCachedClient, broadcastSessionChange, generateSessionTimestamp]);
 
   const removeSession = useCallback((sessionId: string) => {
     console.log('🔐 Starting session removal for:', sessionId);
@@ -464,6 +414,97 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
       }, 100);
     }
   }, [sessions, activeSessionId]);
+
+  const addSession = useCallback(async (user: User, session: Session): Promise<string> => {
+    // SINGLE SESSION ENFORCEMENT: Check for existing sessions for this user
+    const existingSession = sessions.find(s => s.user.id === user.id);
+    if (existingSession) {
+      console.log('🔐 SINGLE SESSION ENFORCEMENT: Found existing session for user:', user.email, 'logging out previous session');
+      
+      try {
+        // Force logout the existing session's client
+        await existingSession.supabaseClient.auth.signOut();
+        console.log('🔐 Successfully logged out existing session client');
+      } catch (error) {
+        console.warn('🔐 Error logging out existing session client (non-critical):', error);
+      }
+      
+      // Remove the existing session immediately
+      removeSession(existingSession.id);
+      
+      // Broadcast forced logout to other tabs
+      if (broadcastChannelRef.current) {
+        try {
+          broadcastChannelRef.current.postMessage({ 
+            type: 'forced_logout', 
+            userId: user.id,
+            reason: 'new_login_detected'
+          });
+        } catch (error) {
+          console.warn('🔐 Could not broadcast forced logout:', error);
+        }
+      }
+    }
+    
+    // Use consistent timestamp generation for stable storage keys
+    const timestamp = generateSessionTimestamp();
+    const sessionId = `session_${user.id}_${timestamp}`;
+    const storageKey = `wmh_session_${user.id}_${timestamp}`;
+    
+    console.log('🔐 Creating new session with key:', storageKey, 'for user:', user.email);
+    
+    try {
+      // Use cached client creation with validation
+      const client = getCachedClient(storageKey, user.id, timestamp);
+
+      // Set the session in the client with error handling
+      await client.auth.setSession({
+        access_token: session.access_token,
+        refresh_token: session.refresh_token
+      });
+
+      // Fetch user profile with timeout to prevent hanging
+      let userProfile = null;
+      try {
+        const profilePromise = client
+          .from('profiles')
+          .select('first_name, last_name')
+          .eq('user_id', user.id)
+          .single();
+        
+        // 5 second timeout for profile fetch
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Profile fetch timeout')), 5000)
+        );
+        
+        const { data: profile } = await Promise.race([profilePromise, timeoutPromise]) as any;
+        userProfile = profile;
+      } catch (error) {
+        console.warn('Error fetching user profile (non-critical):', error);
+      }
+
+      const newSession: SessionData = {
+        id: sessionId,
+        user,
+        session,
+        supabaseClient: client,
+        userProfile,
+        createdAt: new Date(timestamp) // Use consistent timestamp
+      };
+
+      setSessions(prev => [...prev, newSession]);
+      setActiveSessionId(sessionId);
+      broadcastSessionChange();
+      
+      console.log('🔐 Added new session:', sessionId, 'for user:', user.email, 'storage key:', storageKey);
+      return sessionId;
+    } catch (error) {
+      console.error('🔐 Error adding session:', error);
+      // Clean up cached client on error to prevent memory leaks
+      clientCache.current.delete(storageKey);
+      throw error;
+    }
+  }, [sessions, getCachedClient, broadcastSessionChange, generateSessionTimestamp, removeSession]);
 
   const switchToSession = useCallback((sessionId: string) => {
     const session = sessions.find(s => s.id === sessionId);

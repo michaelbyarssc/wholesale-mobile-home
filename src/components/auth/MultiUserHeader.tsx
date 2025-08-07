@@ -61,8 +61,18 @@ export const MultiUserHeader = ({
     switchToSession,
     signOut,
     signOutAll,
-    hasMultipleSessions
+    hasMultipleSessions,
+    fetchUserProfile,
+    activeSessionId
   } = useMultiUserAuth();
+
+  // Ensure profile is fetched when component mounts or user changes
+  React.useEffect(() => {
+    if (user && activeSessionId && !userProfile) {
+      console.log('🔍 DEBUG: MultiUserHeader - Fetching profile for user:', user.email);
+      fetchUserProfile(activeSessionId);
+    }
+  }, [user, activeSessionId, userProfile, fetchUserProfile]);
 
   const getDisplayName = (profile?: { first_name?: string; last_name?: string } | null, email?: string) => {
     if (!profile) {

@@ -628,7 +628,7 @@ export const CRMDashboard = ({ userRole, currentUserId }: CRMDashboardProps) => 
             <h3 className="text-lg font-semibold">Recent Interactions</h3>
             <Dialog open={showInteractionDialog} onOpenChange={setShowInteractionDialog}>
               <DialogTrigger asChild>
-                <Button>
+                <Button onClick={() => setShowInteractionDialog(true)}>
                   <Plus className="h-4 w-4 mr-2" />
                   Log Interaction
                 </Button>

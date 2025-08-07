@@ -139,34 +139,81 @@ export const useMultiUserAuth = () => {
 
   const signOut = useCallback(async (sessionId?: string) => {
     const targetSessionId = sessionId || activeSessionId;
-    if (!targetSessionId) return;
+    if (!targetSessionId) {
+      console.warn('🔐 No session to sign out');
+      return;
+    }
 
     const session = sessions.find(s => s.id === targetSessionId);
-    if (!session) return;
+    if (!session) {
+      console.warn('🔐 Session not found for logout:', targetSessionId);
+      return;
+    }
 
+    console.log('🔐 Starting logout for session:', targetSessionId, 'user:', session.user.email);
+    
     try {
-      // Sign out from the specific session's client
-      await session.supabaseClient.auth.signOut();
+      // Set logout state to prevent interference
+      setIsLoading(true);
+      
+      // Force client logout with timeout
+      const logoutPromise = session.supabaseClient.auth.signOut();
+      const timeoutPromise = new Promise((resolve) => 
+        setTimeout(() => {
+          console.warn('🔐 Logout timeout, proceeding with cleanup');
+          resolve(null);
+        }, 3000)
+      );
+      
+      await Promise.race([logoutPromise, timeoutPromise]);
+      
+      // Remove session after client logout
       removeSession(targetSessionId);
-      console.log('🔐 Signed out session:', targetSessionId);
+      
+      console.log('🔐 Successfully signed out session:', targetSessionId);
+      
     } catch (error) {
-      console.error('🔐 Sign out error:', error);
+      console.error('🔐 Sign out error, forcing cleanup:', error);
+      // Force cleanup even if logout fails
+      removeSession(targetSessionId);
+    } finally {
+      setIsLoading(false);
     }
   }, [activeSessionId, sessions, removeSession]);
 
   const signOutAll = useCallback(async () => {
+    console.log('🔐 Starting sign out all for', sessions.length, 'sessions');
+    
     try {
-      // Sign out all sessions
-      await Promise.all(sessions.map(session => 
-        session.supabaseClient.auth.signOut()
-      ));
+      setIsLoading(true);
+      
+      // Force logout all clients with timeout
+      const logoutPromises = sessions.map(session => 
+        Promise.race([
+          session.supabaseClient.auth.signOut(),
+          new Promise(resolve => setTimeout(resolve, 2000)) // 2s timeout per session
+        ])
+      );
+      
+      await Promise.allSettled(logoutPromises);
+      
+      // Clear all sessions and force page reload for complete cleanup
       clearAllSessions();
-      navigate('/');
-      console.log('🔐 Signed out all sessions');
+      
+      // Force page reload to clear all state
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 100);
+      
+      console.log('🔐 Signed out all sessions and reloading');
+      
     } catch (error) {
-      console.error('🔐 Sign out all error:', error);
+      console.error('🔐 Sign out all error, forcing cleanup:', error);
+      // Force cleanup even if logout fails
+      clearAllSessions();
+      window.location.href = '/';
     }
-  }, [sessions, clearAllSessions, navigate]);
+  }, [sessions, clearAllSessions]);
 
   const switchToSessionSafe = useCallback(async (sessionId: string) => {
     // Enhanced session switching with better validation

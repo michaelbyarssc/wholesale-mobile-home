@@ -367,72 +367,103 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
   }, [sessions, getCachedClient, broadcastSessionChange, generateSessionTimestamp]);
 
   const removeSession = useCallback((sessionId: string) => {
-    setSessions(prev => {
-      const session = prev.find(s => s.id === sessionId);
-      if (session) {
-        // Enhanced cleanup with consistent key generation
-        const timestamp = new Date(session.createdAt).getTime();
-        const storageKey = `wmh_session_${session.user.id}_${timestamp}`;
-        
-        console.log('🔐 Removing session with cleanup:', sessionId, 'storage key:', storageKey);
-        
-        // Remove from client cache with extensive cleanup
-        clientCache.current.delete(storageKey);
-        
-        // Clean up any other cache entries for this user pattern
-        const userPattern = `wmh_session_${session.user.id}_`;
-        const keysToDelete = Array.from(clientCache.current.keys()).filter(key => 
-          key.startsWith(userPattern)
-        );
-        keysToDelete.forEach(key => {
+    console.log('🔐 Starting session removal for:', sessionId);
+    
+    // Disable cross-tab sync during logout
+    const originalBroadcast = broadcastChannelRef.current;
+    broadcastChannelRef.current = null;
+    
+    try {
+      const sessionToRemove = sessions.find(s => s.id === sessionId);
+      if (!sessionToRemove) {
+        console.warn('🔐 Session not found for removal:', sessionId);
+        return;
+      }
+      
+      const timestamp = new Date(sessionToRemove.createdAt).getTime();
+      const storageKey = `wmh_session_${sessionToRemove.user.id}_${timestamp}`;
+      
+      console.log('🔐 Removing session with cleanup:', sessionId, 'storage key:', storageKey);
+      
+      // Force logout on client before removal
+      try {
+        if (sessionToRemove.supabaseClient) {
+          sessionToRemove.supabaseClient.auth.signOut();
+        }
+      } catch (error) {
+        console.warn('🔐 Client signOut failed (non-critical):', error);
+      }
+      
+      // Synchronous client cache cleanup
+      clientCache.current.delete(storageKey);
+      
+      // Clean up any other cache entries for this user
+      const userPattern = `wmh_session_${sessionToRemove.user.id}_`;
+      Array.from(clientCache.current.keys())
+        .filter(key => key.startsWith(userPattern))
+        .forEach(key => {
           clientCache.current.delete(key);
           console.log('🔐 Cleaned up orphaned client cache key:', key);
         });
-        
-        // Enhanced storage cleanup - more aggressive pattern matching
-        const storageKeysToDelete = Object.keys(localStorage).filter(key => {
-          return key.includes(`${session.user.id}_${timestamp}`) ||
-                 key.includes(`${session.user.id}`) && key.includes('wmh_');
-        });
-        
-        storageKeysToDelete.forEach(key => {
-          try {
-            localStorage.removeItem(key);
-            console.log('🔐 Cleaned up storage key:', key);
-          } catch (error) {
-            console.warn('🔐 Error cleaning storage key:', key, error);
-          }
-        });
-        
-        // Also clean up session-specific storage like cart and wishlist
-        const userSpecificKeys = [
-          `cart_data_user_${session.user.id}`,
-          `mobile-home-wishlist_user_${session.user.id}`
-        ];
-        
-        userSpecificKeys.forEach(key => {
-          if (localStorage.getItem(key)) {
-            console.log('🔐 Preserving user data key (will be cleaned on app restart):', key);
-          }
-        });
-        
-        console.log('🔐 Removed session:', sessionId, 'for user:', session.user.email, 'cache size:', clientCache.current.size);
-      }
-      return prev.filter(s => s.id !== sessionId);
-    });
-
-    // Handle active session switching with better logic
-    if (activeSessionId === sessionId) {
-      setSessions(current => {
-        const remaining = current.filter(s => s.id !== sessionId);
-        const newActiveId = remaining.length > 0 ? remaining[0].id : null;
-        setActiveSessionId(newActiveId);
-        return remaining;
+      
+      // Complete storage cleanup with fallback patterns
+      const storageKeysToDelete = Object.keys(localStorage).filter(key => {
+        // Primary pattern matches
+        if (key.includes(`${sessionToRemove.user.id}_${timestamp}`)) return true;
+        if (key.includes(`${sessionToRemove.user.id}`) && key.includes('wmh_')) return true;
+        // Auth token cleanup
+        if (key.includes('auth-token') && key.includes(sessionToRemove.user.id)) return true;
+        return false;
       });
+      
+      storageKeysToDelete.forEach(key => {
+        try {
+          localStorage.removeItem(key);
+          console.log('🔐 Cleaned up storage key:', key);
+        } catch (error) {
+          console.warn('🔐 Error cleaning storage key:', key, error);
+        }
+      });
+      
+      // Clear auth tokens using Supabase pattern
+      try {
+        const authKeys = Object.keys(localStorage).filter(key => 
+          key.includes('sb-') && key.includes('auth-token')
+        );
+        authKeys.forEach(key => localStorage.removeItem(key));
+      } catch (error) {
+        console.warn('🔐 Auth token cleanup failed:', error);
+      }
+      
+      // Single atomic state update to prevent race conditions
+      setSessions(prev => {
+        const filteredSessions = prev.filter(s => s.id !== sessionId);
+        
+        // Handle active session switching
+        if (activeSessionId === sessionId) {
+          const newActiveId = filteredSessions.length > 0 ? filteredSessions[0].id : null;
+          setActiveSessionId(newActiveId);
+          console.log('🔐 Active session switched to:', newActiveId);
+        }
+        
+        console.log('🔐 Session removed:', sessionId, 'remaining sessions:', filteredSessions.length);
+        return filteredSessions;
+      });
+      
+    } finally {
+      // Re-enable cross-tab sync and broadcast change
+      setTimeout(() => {
+        broadcastChannelRef.current = originalBroadcast;
+        if (originalBroadcast) {
+          try {
+            originalBroadcast.postMessage({ type: 'session_logout', sessionId });
+          } catch (error) {
+            console.warn('🔐 Logout broadcast failed:', error);
+          }
+        }
+      }, 100);
     }
-
-    broadcastSessionChange();
-  }, [activeSessionId, broadcastSessionChange]);
+  }, [sessions, activeSessionId]);
 
   const switchToSession = useCallback((sessionId: string) => {
     const session = sessions.find(s => s.id === sessionId);

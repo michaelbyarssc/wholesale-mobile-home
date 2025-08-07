@@ -9,21 +9,40 @@ export const useSessionRecovery = () => {
     console.log('🚨 Performing emergency session cleanup');
     
     try {
-      // Clear all session-related localStorage
+      // Clear all session-related localStorage with comprehensive patterns
       const keysToRemove = [];
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
-        if (key && key.startsWith('wmh_')) {
+        if (key && (
+          key.startsWith('wmh_') ||
+          key.includes('auth-token') ||
+          key.startsWith('sb-') ||
+          key.includes('session') ||
+          key.includes('cart_data') ||
+          key.includes('wishlist')
+        )) {
           keysToRemove.push(key);
         }
       }
       
-      keysToRemove.forEach(key => localStorage.removeItem(key));
+      keysToRemove.forEach(key => {
+        try {
+          localStorage.removeItem(key);
+          console.log('🚨 Removed emergency key:', key);
+        } catch (error) {
+          console.warn('🚨 Could not remove key:', key, error);
+        }
+      });
       
       // Clear sessions from context
       clearAllSessions();
       
-      console.log('✅ Emergency cleanup completed');
+      // Force page reload for complete state reset
+      setTimeout(() => {
+        console.log('🚨 Emergency cleanup complete, reloading page');
+        window.location.reload();
+      }, 500);
+      
       return true;
     } catch (error) {
       console.error('❌ Emergency cleanup failed:', error);

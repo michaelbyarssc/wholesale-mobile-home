@@ -292,7 +292,7 @@ const Admin = () => {
       <main className="container mx-auto px-2 sm:px-4 py-4 sm:py-6 lg:py-8">
         <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4 sm:space-y-6">
           {/* Desktop Tab Navigation - Super Admin */}
-          {!isMobile && isSuperAdmin && (
+          {(isMobile === false) && isSuperAdmin && (
             <div className="border rounded-lg p-1 bg-muted/30 overflow-x-auto">
               <TabsList className="grid w-full grid-cols-10 h-12 bg-transparent min-w-[900px]">
                 <TabsTrigger 
@@ -360,7 +360,7 @@ const Admin = () => {
           )}
           
           {/* Desktop Tab Navigation - Regular Admin */}
-          {!isMobile && !isSuperAdmin && (
+          {(isMobile === false) && !isSuperAdmin && (
             <div className="border rounded-lg p-1 bg-muted/30">
               <TabsList className="grid w-full grid-cols-3 h-12 bg-transparent">
                 <TabsTrigger 

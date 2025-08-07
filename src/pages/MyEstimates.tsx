@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
-import { User } from '@supabase/supabase-js';
+import { useMultiUserAuth } from '@/hooks/useMultiUserAuth';
 import { Link, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { Home, LogOut, Phone, Mail } from 'lucide-react';
@@ -42,31 +42,15 @@ interface Service {
 const MyEstimates = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
-  const [user, setUser] = useState<User | null>(null);
+  // Use consolidated multi-user auth
+  const { user } = useMultiUserAuth();
 
   // Check for authenticated user
   useEffect(() => {
-    const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
-      
-      if (!user) {
-        navigate('/auth');
-      }
-    };
-    
-    getUser();
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      setUser(session?.user || null);
-      if (!session?.user) {
-        navigate('/auth');
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, [navigate]);
+    if (!user) {
+      navigate('/auth');
+    }
+  }, [user, navigate]);
 
   // Fetch user's estimates
   const { data: estimates = [], isLoading: estimatesLoading, refetch } = useQuery({

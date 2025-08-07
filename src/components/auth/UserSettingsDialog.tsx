@@ -11,7 +11,12 @@ import { User as SupabaseUser } from '@supabase/supabase-js';
 
 interface UserSettingsDialogProps {
   user: SupabaseUser;
-  userProfile: { first_name?: string } | null;
+  userProfile: { 
+    first_name?: string;
+    last_name?: string;
+    phone_number?: string;
+    email?: string;
+  } | null;
   onProfileUpdated: () => void;
 }
 
@@ -26,35 +31,17 @@ export const UserSettingsDialog = ({ user, userProfile, onProfileUpdated }: User
 
   useEffect(() => {
     if (open && user) {
-      fetchUserProfile();
-    }
-  }, [open, user]);
-
-  const fetchUserProfile = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('first_name, last_name, phone_number, email')
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-      if (error) {
-        console.error('Error fetching user profile:', error);
-        return;
-      }
-
-      if (data) {
-        setFirstName(data.first_name || '');
-        setLastName(data.last_name || '');
-        setPhoneNumber(data.phone_number || '');
-        setEmail(data.email || user.email || '');
+      // Initialize form fields from existing userProfile prop to avoid duplicate fetching
+      if (userProfile) {
+        setFirstName(userProfile.first_name || '');
+        setLastName(userProfile.last_name || '');
+        setPhoneNumber(userProfile.phone_number || '');
+        setEmail(userProfile.email || user.email || '');
       } else {
         setEmail(user.email || '');
       }
-    } catch (error) {
-      console.error('Error fetching user profile:', error);
     }
-  };
+  }, [open, user, userProfile]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

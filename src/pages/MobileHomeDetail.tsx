@@ -35,7 +35,7 @@ import { useHomeComparison } from '@/hooks/useHomeComparison';
 import { useShoppingCart } from '@/hooks/useShoppingCart';
 import { useAnalytics } from '@/hooks/useAnalytics';
 import { formatPrice } from '@/lib/utils';
-import { User, Session } from '@supabase/supabase-js';
+import { useMultiUserAuth } from '@/hooks/useMultiUserAuth';
 import type { Database } from '@/integrations/supabase/types';
 import { SEO } from '@/components/SEO';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
@@ -57,39 +57,8 @@ export const MobileHomeDetail: React.FC = () => {
   const navigate = useNavigate();
   const [selectedHomeForServices, setSelectedHomeForServices] = useState<MobileHome | null>(null);
   
-  // Authentication state
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
-  const [isAuthLoading, setIsAuthLoading] = useState(true);
-
-  // Set up authentication listener
-  useEffect(() => {
-    let mounted = true;
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        if (mounted) {
-          setSession(session);
-          setUser(session?.user ?? null);
-          setIsAuthLoading(false);
-        }
-      }
-    );
-
-    // Check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (mounted) {
-        setSession(session);
-        setUser(session?.user ?? null);
-        setIsAuthLoading(false);
-      }
-    });
-
-    return () => {
-      mounted = false;
-      subscription.unsubscribe();
-    };
-  }, []);
+  // Use consolidated multi-user auth
+  const { user, isLoading: isAuthLoading } = useMultiUserAuth();
   
   const { calculateMobileHomePrice, loading: pricingLoading } = useCustomerPricing(user);
   const { isInWishlist, toggleWishlist } = useWishlist(user);

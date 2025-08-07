@@ -7,7 +7,7 @@ export const useSessionValidation = () => {
   // Validation state to prevent race conditions
   const validationInProgress = useRef<Set<string>>(new Set());
 
-  // Enhanced session validation with error detection and auto-cleanup
+  // Enhanced session validation with graceful error handling
   const validateSession = useCallback(async (sessionId: string) => {
     // Prevent concurrent validation of same session
     if (validationInProgress.current.has(sessionId)) {
@@ -28,7 +28,7 @@ export const useSessionValidation = () => {
       // Shorter timeout to prevent hanging and faster recovery
       const validationPromise = session.supabaseClient.auth.getUser();
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Validation timeout')), 1000)
+        setTimeout(() => reject(new Error('Validation timeout')), 1500)
       );
       
       const { data: { user }, error } = await Promise.race([
@@ -36,67 +36,21 @@ export const useSessionValidation = () => {
         timeoutPromise
       ]) as any;
       
-      // Check for specific error codes that indicate invalid sessions
-      if (error) {
-        console.warn('🔐 Session validation error:', error);
-        
-        // Handle session_not_found and other auth errors
-        if (error.message?.includes('session_not_found') || 
-            error.message?.includes('invalid_token') ||
-            error.message?.includes("session id doesn't exist") ||
-            error.status === 403) {
-          console.error('🚨 CRITICAL: Invalid session detected, auto-removing:', sessionId);
-          
-          // Auto-remove invalid session
-          setTimeout(() => {
-            removeSession(sessionId);
-            
-            // Clean localStorage for this session
-            const userId = session.user.id;
-            Object.keys(localStorage).forEach(key => {
-              if (key.includes(userId)) {
-                try {
-                  localStorage.removeItem(key);
-                  console.log('🚨 Auto-cleaned invalid session key:', key);
-                } catch (cleanError) {
-                  console.warn('🚨 Failed to clean key:', key, cleanError);
-                }
-              }
-            });
-          }, 0);
-          
-          return false;
-        }
-        
-        return false;
-      }
-      
-      if (!user) {
-        console.warn('🔐 Session validation failed - no user returned:', sessionId);
+      if (error || !user) {
+        // Don't remove session immediately, just log the issue
+        console.warn('🔐 Session validation failed, user may need to re-login:', sessionId);
         return false;
       }
       
       console.log('🔐 Session validation successful:', sessionId);
       return true;
     } catch (error) {
-      // Handle timeout errors and other validation failures
+      // Handle timeout errors more gracefully
       if (error instanceof Error && error.message === 'Validation timeout') {
         console.warn('🔐 Session validation timeout (network issue):', sessionId);
         return true; // Assume valid on timeout to prevent logout loops
       }
-      
       console.error('🔐 Error validating session:', error);
-      
-      // Check if this looks like a session corruption issue
-      if (error instanceof Error && (
-        error.message.includes('session') || 
-        error.message.includes('auth') ||
-        error.message.includes('token')
-      )) {
-        console.warn('🚨 Possible session corruption detected for:', sessionId);
-        return false;
-      }
-      
       return false;
     } finally {
       // Always clean up validation state

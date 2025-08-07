@@ -63,51 +63,36 @@ export const MultiUserHeader = ({
     signOutAll,
     hasMultipleSessions,
     fetchUserProfile,
-    activeSessionId,
-    supabaseClient,
-    isSigningOut
+    activeSessionId
   } = useMultiUserAuth();
 
-  // Optimized display name with progressive loading
-  const [displayState, setDisplayState] = useState<'loading' | 'email' | 'profile'>('loading');
-
-  // Progressive display name with memoization
-  const getDisplayName = React.useMemo(() => {
-    // If signing out, show signing out message
-    if (isSigningOut) {
-      return 'Signing out...';
+  // Ensure profile is fetched when component mounts or user changes
+  React.useEffect(() => {
+    if (user && activeSessionId && !userProfile) {
+      console.log('🔍 DEBUG: MultiUserHeader - Fetching profile for user:', user.email);
+      fetchUserProfile(activeSessionId);
     }
+  }, [user, activeSessionId, userProfile, fetchUserProfile]);
 
+  const getDisplayName = (profile?: { first_name?: string; last_name?: string } | null, email?: string) => {
     // If we have profile data, prioritize first_name
-    if (userProfile?.first_name) {
-      return userProfile.last_name ? `${userProfile.first_name} ${userProfile.last_name}` : userProfile.first_name;
+    if (profile?.first_name) {
+      return profile.last_name ? `${profile.first_name} ${profile.last_name}` : profile.first_name;
     }
     
     // If we only have last_name
-    if (userProfile?.last_name) {
-      return userProfile.last_name;
+    if (profile?.last_name) {
+      return profile.last_name;
     }
     
-    // Show email prefix while profile loads, but only briefly
-    if (user?.email) {
-      return user.email.split('@')[0];
-    }
-    
-    return 'User';
-  }, [userProfile, user?.email, isSigningOut]);
+    // Fallback to email prefix only if no profile data exists
+    return email ? email.split('@')[0] : 'User';
+  };
 
-  // Track display state for smooth transitions
-  React.useEffect(() => {
-    if (isSigningOut) {
-      setDisplayState('loading');
-    } else if (userProfile?.first_name || userProfile?.last_name) {
-      setDisplayState('profile');
-    } else if (user?.email) {
-      setDisplayState('email');
-    } else {
-      setDisplayState('loading');
-    }
-  }, [userProfile, user?.email, isSigningOut]);
+  const displayName = getDisplayName(userProfile, user?.email);
+  
+  // Debug logging for user profile
+  console.log('🔍 DEBUG: MultiUserHeader - user:', user?.email, 'userProfile:', userProfile, 'displayName:', displayName);
 
   const handleChangePassword = () => {
     setIsPasswordDialogOpen(true);
@@ -240,7 +225,7 @@ export const MultiUserHeader = ({
                           <div className="flex items-center justify-center w-8 h-8 bg-blue-100 rounded-full">
                             <User className="h-4 w-4 text-blue-600" />
                           </div>
-                          <span className="font-medium">{getDisplayName}</span>
+                          <span className="font-medium">{displayName}</span>
                           {hasMultipleSessions && (
                             <>
                               <Badge variant="secondary" className="ml-1 text-xs">
@@ -261,7 +246,7 @@ export const MultiUserHeader = ({
                             <User className="h-4 w-4 text-blue-600" />
                           </div>
                           <div className="flex-1">
-                            <div className="font-medium text-gray-900">{getDisplayName}</div>
+                            <div className="font-medium text-gray-900">{displayName}</div>
                             <div className="text-sm text-gray-500">{user.email}</div>
                           </div>
                         </DropdownMenuItem>
@@ -284,11 +269,9 @@ export const MultiUserHeader = ({
                                     <User className="h-4 w-4 text-gray-600" />
                                   </div>
                                   <div className="flex-1">
-                                     <div className="font-medium text-gray-900">
-                                       {session.userProfile?.first_name || session.userProfile?.last_name 
-                                         ? `${session.userProfile.first_name || ''} ${session.userProfile.last_name || ''}`.trim()
-                                         : session.user.email.split('@')[0]}
-                                     </div>
+                                    <div className="font-medium text-gray-900">
+                                      {getDisplayName(session.userProfile, session.user.email)}
+                                    </div>
                                     <div className="text-sm text-gray-500">{session.user.email}</div>
                                   </div>
                                 </DropdownMenuItem>
@@ -356,14 +339,14 @@ export const MultiUserHeader = ({
                           Change Password
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={handleSignOut} disabled={isLoading || isSigningOut} className="hover:bg-gray-50">
+                        <DropdownMenuItem onClick={handleSignOut} disabled={isLoading} className="hover:bg-gray-50">
                           <LogOut className="h-4 w-4 mr-2" />
-                          {isSigningOut ? 'Signing out...' : (hasMultipleSessions ? 'Sign Out User' : 'Sign Out')}
+                          {hasMultipleSessions ? 'Sign Out User' : 'Sign Out'}
                         </DropdownMenuItem>
                         {hasMultipleSessions && (
-                          <DropdownMenuItem onClick={handleSignOutAll} disabled={isLoading || isSigningOut} className="hover:bg-red-50 text-red-600">
+                          <DropdownMenuItem onClick={handleSignOutAll} disabled={isLoading} className="hover:bg-red-50 text-red-600">
                             <Users className="h-4 w-4 mr-2" />
-                            {isSigningOut ? 'Signing out...' : 'Sign Out All'}
+                            Sign Out All
                           </DropdownMenuItem>
                         )}
                       </DropdownMenuContent>
@@ -429,7 +412,7 @@ export const MultiUserHeader = ({
                     <User className="h-4 w-4 text-blue-600" />
                   </div>
                   <div>
-                    <div className="font-medium text-gray-700">{getDisplayName}</div>
+                    <div className="font-medium text-gray-700">{displayName}</div>
                     <div className="text-sm text-gray-500">{user.email}</div>
                   </div>
                 </div>
@@ -501,12 +484,12 @@ export const MultiUserHeader = ({
                     handleSignOut();
                     setIsMobileMenuOpen(false);
                   }}
-                  disabled={isLoading || isSigningOut}
+                  disabled={isLoading}
                   variant="ghost"
                   className="w-full justify-start text-left p-3 hover:bg-gray-50"
                 >
                   <LogOut className="h-4 w-4 mr-3" />
-                  {isSigningOut ? 'Signing out...' : (hasMultipleSessions ? 'Sign Out User' : 'Sign Out')}
+                  {hasMultipleSessions ? 'Sign Out User' : 'Sign Out'}
                 </Button>
                 {hasMultipleSessions && (
                   <Button
@@ -514,14 +497,22 @@ export const MultiUserHeader = ({
                       handleSignOutAll();
                       setIsMobileMenuOpen(false);
                     }}
-                    disabled={isLoading || isSigningOut}
+                    disabled={isLoading}
                     variant="ghost"
                     className="w-full justify-start text-left p-3 hover:bg-red-50 text-red-600"
                   >
                     <Users className="h-4 w-4 mr-3" />
-                    {isSigningOut ? 'Signing out...' : 'Sign Out All Users'}
+                    Sign Out All Users
                   </Button>
                 )}
+                
+                {/* Emergency Force Logout */}
+                <div className="border-t border-gray-200 pt-2 mt-2">
+                  <ForceLogoutButton 
+                    className="w-full justify-start text-left p-3" 
+                    variant="destructive"
+                  />
+                </div>
               </div>
             </div>
           )}

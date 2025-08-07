@@ -2,6 +2,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
+import { EmergencyLogoutButton } from './EmergencyLogoutButton';
 
 interface AuthNavigationProps {
   isSignUp: boolean;
@@ -19,6 +20,9 @@ export const AuthNavigation: React.FC<AuthNavigationProps> = ({
   isForgotPassword,
   onToggleAuthMode,
   onToggleForgotPassword,
+  currentUser,
+  isAdmin,
+  onShowPasswordChange,
 }) => {
   const navigate = useNavigate();
 
@@ -69,6 +73,33 @@ export const AuthNavigation: React.FC<AuthNavigationProps> = ({
           Back to Home
         </Button>
       </div>
+
+      {/* Show change password button if user is logged in */}
+      {currentUser && (
+        <div className="space-y-2 text-center">
+          <Button
+            variant="outline"
+            onClick={onShowPasswordChange}
+            className="w-full bg-yellow-50 border-yellow-200 text-yellow-700 hover:bg-yellow-100"
+          >
+            Change Password
+          </Button>
+          <EmergencyLogoutButton className="w-full" />
+        </div>
+      )}
+
+      {/* Only show admin login button if user is admin */}
+      {isAdmin && (
+        <div className="text-center">
+          <Button
+            variant="outline"
+            onClick={() => navigate('/admin')}
+            className="w-full bg-red-50 border-red-200 text-red-700 hover:bg-red-100"
+          >
+            Access Admin Dashboard
+          </Button>
+        </div>
+      )}
     </div>
   );
 };

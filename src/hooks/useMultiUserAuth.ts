@@ -19,126 +19,56 @@ export const useMultiUserAuth = () => {
   } = useSessionManager();
   
   const [isLoading, setIsLoading] = useState(true);
-  const [isSigningOut, setIsSigningOut] = useState(false);
   const navigate = useNavigate();
   const { validateSession } = useSessionValidation();
 
-  // Request deduplication map
-  const [ongoingRequests, setOngoingRequests] = useState<Map<string, Promise<any>>>(new Map());
-
-  const fetchUserProfile = useCallback(async (sessionId?: string, forceRefresh = false) => {
+  const fetchUserProfile = useCallback(async (sessionId?: string) => {
     const targetSessionId = sessionId || activeSessionId;
+    console.log('🔍 PROFILE: fetchUserProfile called with sessionId:', sessionId, 'targetSessionId:', targetSessionId);
     
     if (!targetSessionId) {
+      console.log('🔍 PROFILE: No targetSessionId, returning null');
       return null;
     }
 
     const session = sessions.find(s => s.id === targetSessionId);
-    if (!session?.user?.id) {
+    if (!session) {
+      console.log('🔍 PROFILE: No session found for ID:', targetSessionId);
       return null;
     }
 
-    // Request deduplication - check if already fetching for this user
-    const requestKey = `profile_${session.user.id}`;
-    if (!forceRefresh && ongoingRequests.has(requestKey)) {
-      console.log('🔍 PROFILE: Deduplicating request for user:', session.user.email);
-      return ongoingRequests.get(requestKey);
-    }
+    console.log('🔍 PROFILE: Found session for user:', session.user.email, 'with ID:', session.user.id);
 
-    // Check if profile is already cached and not forcing refresh
-    if (!forceRefresh && session.userProfile) {
-      console.log('🔍 PROFILE: Using cached profile for user:', session.user.email);
-      return session.userProfile;
-    }
-
-    // Create the fetch promise and store it for deduplication
-    const fetchPromise = (async () => {
-      try {
-        console.log('🔍 AUTH CHECK: Fetching profile for user:', session.user.email, 'session:', targetSessionId);
-        
-        // First verify the client is properly authenticated
-        const { data: authSession, error: authError } = await session.supabaseClient.auth.getSession();
+    try {
+      console.log('🔍 PROFILE: Querying profiles table for user_id:', session.user.id);
       
-      if (authError || !authSession?.session?.access_token) {
-        console.error('❌ AUTH CHECK: Client not properly authenticated:', authError);
-        
-        // Try to refresh the session
-        try {
-          console.log('🔄 AUTH CHECK: Attempting to refresh session...');
-          await session.supabaseClient.auth.setSession(session.session);
-          console.log('✅ AUTH CHECK: Session refreshed successfully');
-        } catch (refreshError) {
-          console.error('❌ AUTH CHECK: Failed to refresh session:', refreshError);
-          return null;
-        }
-      } else {
-        console.log('✅ AUTH CHECK: Client is properly authenticated');
-      }
-      
-      // Now attempt to fetch the profile with enhanced error logging
-      console.log('🔍 PROFILE FETCH: Querying profiles table for user_id:', session.user.id);
-      const { data, error } = await session.supabaseClient
+      // Use the session's authenticated client to query profiles
+      const { data: profile, error } = await session.supabaseClient
         .from('profiles')
         .select('first_name, last_name, email, phone_number')
         .eq('user_id', session.user.id)
         .maybeSingle();
 
+      console.log('🔍 PROFILE: Database query result:', { profile, error });
+
       if (error) {
-        console.error('❌ PROFILE FETCH: Database error:', {
-          code: error.code,
-          message: error.message,
-          details: error.details,
-          hint: error.hint
-        });
-        
-        // If it's an RLS error, log more details
-        if (error.code === '42501' || error.message?.includes('permission denied') || error.message?.includes('RLS')) {
-          console.error('❌ PROFILE FETCH: RLS Permission denied - this indicates an authentication or policy issue');
-          console.error('❌ PROFILE FETCH: Current auth user ID:', authSession?.session?.user?.id);
-          console.error('❌ PROFILE FETCH: Target user ID:', session.user.id);
-          console.error('❌ PROFILE FETCH: Session valid:', !!authSession?.session);
-        }
-        
+        console.error('🔍 PROFILE: Profile fetch error:', error.message, error);
         return null;
       }
 
-      console.log('✅ PROFILE FETCH: Profile fetched successfully:', data);
-      
-      if (data) {
-        updateSessionProfile(targetSessionId, data);
-        console.log('✅ PROFILE UPDATE: Session profile updated');
-        
-        // Cache in localStorage for instant retrieval
-        try {
-          const profileCache = JSON.parse(localStorage.getItem('wmh_profile_cache') || '{}');
-          profileCache[session.user.id] = data;
-          localStorage.setItem('wmh_profile_cache', JSON.stringify(profileCache));
-        } catch (error) {
-          console.warn('Failed to cache profile in localStorage:', error);
-        }
+      if (profile) {
+        console.log('🔍 PROFILE: Profile found! Updating session with:', profile);
+        updateSessionProfile(targetSessionId, profile);
+        return profile;
       } else {
-        console.log('ℹ️ PROFILE FETCH: No profile data found for user, this may be normal for new users');
+        console.log('🔍 PROFILE: No profile data found in database');
+        return {};
       }
-      
-        return data;
-      } catch (error) {
-        console.error('❌ PROFILE FETCH: Unexpected exception:', error);
-        return null;
-      } finally {
-        // Remove from ongoing requests when done
-        setOngoingRequests(prev => {
-          const newMap = new Map(prev);
-          newMap.delete(requestKey);
-          return newMap;
-        });
-      }
-    })();
-
-    // Store the promise for deduplication
-    setOngoingRequests(prev => new Map(prev.set(requestKey, fetchPromise)));
-    
-    return fetchPromise;
-  }, [activeSessionId, sessions, updateSessionProfile, ongoingRequests]);
+    } catch (error) {
+      console.error('🔍 PROFILE: Exception in fetchUserProfile:', error);
+      return null;
+    }
+  }, [activeSessionId, sessions, updateSessionProfile]);
 
   // Initialize by checking for existing session with StrictMode protection
   useEffect(() => {
@@ -174,16 +104,10 @@ export const useMultiUserAuth = () => {
                   if (!existingSession) {
                     console.log('🔐 Creating new session for user:', session.user.email);
                     const sessionId = await addSession(session.user, session);
-                    // Immediate profile fetching for faster display
-                    setTimeout(() => fetchUserProfile(sessionId), 0);
+                    // Profile fetching is now non-blocking
+                    fetchUserProfile(sessionId);
                   } else {
-                    console.log('🔐 Session already exists for user, switching to it');
-                    // Switch to existing session and ensure profile is loaded
-                    const existingSessionId = existingSession.id;
-                    switchToSession(existingSessionId);
-                    if (!existingSession.userProfile) {
-                      setTimeout(() => fetchUserProfile(existingSessionId), 0);
-                    }
+                    console.log('🔐 Session already exists for user, skipping creation');
                   }
                 } catch (error) {
                   console.error('🔐 Error adding session on auth change:', error);
@@ -208,14 +132,8 @@ export const useMultiUserAuth = () => {
           if (!existingSession) {
             console.log('🔐 Initializing auth with existing session');
             const sessionId = await addSession(session.user, session);
-            // Immediate profile fetching for faster display
-            setTimeout(() => fetchUserProfile(sessionId), 0);
-          } else {
-            // Switch to existing session and ensure profile is loaded
-            switchToSession(existingSession.id);
-            if (!existingSession.userProfile) {
-              setTimeout(() => fetchUserProfile(existingSession.id), 0);
-            }
+            // Profile fetching is now non-blocking
+            fetchUserProfile(sessionId);
           }
         }
         
@@ -236,32 +154,16 @@ export const useMultiUserAuth = () => {
     };
   }, [addSession, sessions, fetchUserProfile]);
 
-  // Auto-fetch profiles with caching and immediate loading - skip during sign out
+  // SIMPLIFIED: Auto-fetch profiles only when needed, non-blocking
   useEffect(() => {
-    if (isSigningOut) return; // Prevent profile fetching during logout
-    
-    if (activeSession && !activeSession.userProfile) {
+    if (activeSession && activeSession.userProfile === undefined) {
       console.log('🔍 DEBUG: Fetching profile for active session:', activeSession.user.email);
-      
-      // Check localStorage cache first for instant display
-      try {
-        const profileCache = JSON.parse(localStorage.getItem('wmh_profile_cache') || '{}');
-        const cachedProfile = profileCache[activeSession.user.id];
-        if (cachedProfile) {
-          console.log('🔍 DEBUG: Using cached profile for instant display');
-          updateSessionProfile(activeSessionId!, cachedProfile);
-          return;
-        }
-      } catch (error) {
-        console.warn('Failed to load cached profile:', error);
-      }
-      
-      // Fetch immediately if no cache
+      // Use setTimeout to make this completely non-blocking
       setTimeout(() => {
         fetchUserProfile(activeSessionId!);
-      }, 0);
+      }, 100);
     }
-  }, [activeSession, activeSessionId, fetchUserProfile, updateSessionProfile, isSigningOut]);
+  }, [activeSession, activeSessionId, fetchUserProfile]);
 
   const signIn = useCallback(async (email: string, password: string) => {
     setIsLoading(true);
@@ -275,10 +177,10 @@ export const useMultiUserAuth = () => {
 
       if (data.user && data.session) {
         try {
-        const sessionId = await addSession(data.user, data.session);
-        console.log('🔐 Sign in successful, session ID:', sessionId);
-        // Immediate profile fetching for sign in
-        setTimeout(() => fetchUserProfile(sessionId), 0);
+          const sessionId = await addSession(data.user, data.session);
+          console.log('🔐 Sign in successful, session ID:', sessionId);
+          // Profile fetching is now non-blocking
+          setTimeout(() => fetchUserProfile(sessionId), 100);
           return { data, error: null };
         } catch (sessionError: any) {
           if (sessionError.message?.includes('Session creation is temporarily locked')) {
@@ -316,8 +218,8 @@ export const useMultiUserAuth = () => {
       if (data.user && data.session) {
         const sessionId = await addSession(data.user, data.session);
         console.log('🔐 Sign up successful, session ID:', sessionId);
-        // Immediate profile fetching for sign up
-        setTimeout(() => fetchUserProfile(sessionId), 0);
+        // Profile fetching is now non-blocking
+        setTimeout(() => fetchUserProfile(sessionId), 100);
       }
 
       return { data, error: null };
@@ -342,97 +244,57 @@ export const useMultiUserAuth = () => {
       return;
     }
 
-    console.log('🚨 SIGN OUT: Starting enhanced logout for session:', targetSessionId, 'user:', session.user.email);
+    console.log('🚨 SIGN OUT: Starting logout for session:', targetSessionId, 'user:', session.user.email);
     
     try {
-      // Set signing out state immediately to prevent UI flashing
-      setIsSigningOut(true);
+      // Set logout state immediately to show feedback
       setIsLoading(true);
       
-      // Step 1: Immediate localStorage cleanup for this user
-      console.log('🚨 SIGN OUT: Step 1 - Immediate localStorage cleanup');
-      const userId = session.user.id;
-      const keysToRemove = Object.keys(localStorage).filter(key => 
-        key.includes(userId) || 
-        key.startsWith(`wmh_session_${userId}`) ||
-        key.includes(`auth-token`) && key.includes(userId)
+      console.log('🚨 SIGN OUT: Step 1 - Calling Supabase auth.signOut()');
+      
+      // Force client logout with reduced timeout
+      const logoutPromise = session.supabaseClient.auth.signOut();
+      const timeoutPromise = new Promise((resolve) => 
+        setTimeout(() => {
+          console.warn('🚨 SIGN OUT: Timeout reached, proceeding with cleanup');
+          resolve(null);
+        }, 2000) // Reduced to 2 seconds
       );
       
-      keysToRemove.forEach(key => {
-        try {
-          localStorage.removeItem(key);
-          console.log('🚨 Removed stale key:', key);
-        } catch (error) {
-          console.warn('🚨 Failed to remove key:', key, error);
-        }
-      });
+      await Promise.race([logoutPromise, timeoutPromise]);
+      console.log('🚨 SIGN OUT: Step 2 - Supabase logout completed or timed out');
       
-      // Step 2: Remove from session state immediately
-      console.log('🚨 SIGN OUT: Step 2 - Removing session from state');
+      // Remove session from state immediately
+      console.log('🚨 SIGN OUT: Step 3 - Removing session from state');
       removeSession(targetSessionId);
       
-      // Step 3: Attempt Supabase logout with short timeout
-      console.log('🚨 SIGN OUT: Step 3 - Calling Supabase auth.signOut()');
-      try {
-        await Promise.race([
-          session.supabaseClient.auth.signOut(),
-          new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Logout timeout')), 1000)
-          )
-        ]);
-        console.log('🚨 SIGN OUT: Supabase logout completed');
-      } catch (logoutError) {
-        console.warn('🚨 SIGN OUT: Supabase logout failed or timed out:', logoutError);
-      }
+      console.log('🚨 SIGN OUT: Step 4 - Session removed successfully:', targetSessionId);
       
-      // Step 4: Comprehensive cleanup
-      console.log('🚨 SIGN OUT: Step 4 - Comprehensive cleanup');
-      
-      // Clear any remaining session artifacts
-      try {
-        const remainingSessions = localStorage.getItem('wmh_sessions');
-        if (remainingSessions) {
-          const sessions = JSON.parse(remainingSessions);
-          const filteredSessions = sessions.filter((s: any) => s.user.id !== userId);
-          if (filteredSessions.length !== sessions.length) {
-            localStorage.setItem('wmh_sessions', JSON.stringify(filteredSessions));
-            console.log('🚨 Cleaned sessions from localStorage');
-          }
-        }
-      } catch (error) {
-        console.error('🚨 Error cleaning session storage:', error);
-        localStorage.removeItem('wmh_sessions');
-      }
-      
-      // Step 5: Navigate to auth page
-      console.log('🚨 SIGN OUT: Step 5 - Navigating to auth page');
-      navigate('/auth');
+      // Force page reload after a short delay to ensure complete cleanup
+      setTimeout(() => {
+        console.log('🚨 SIGN OUT: Step 5 - Forcing page reload for complete state cleanup');
+        window.location.reload();
+      }, 500);
       
     } catch (error) {
-      console.error('🚨 SIGN OUT ERROR: Emergency cleanup:', error);
-      // Emergency cleanup
+      console.error('🚨 SIGN OUT ERROR: Forcing emergency cleanup:', error);
+      // Force cleanup even if logout fails
       removeSession(targetSessionId);
       
-      // Clear all localStorage if needed
-      try {
-        localStorage.removeItem('wmh_sessions');
-        localStorage.removeItem('wmh_active_session');
-      } catch (clearError) {
-        console.error('🚨 Emergency storage clear failed:', clearError);
-      }
-      
-      navigate('/auth');
+      // Emergency page reload
+      setTimeout(() => {
+        console.log('🚨 EMERGENCY: Forcing page reload due to sign out error');
+        window.location.reload();
+      }, 100);
     } finally {
-      setIsSigningOut(false);
       setIsLoading(false);
     }
-  }, [activeSessionId, sessions, removeSession, navigate]);
+  }, [activeSessionId, sessions, removeSession]);
 
   const signOutAll = useCallback(async () => {
     console.log('🚨 SIGN OUT ALL: Starting logout for', sessions.length, 'sessions');
     
     try {
-      setIsSigningOut(true);
       setIsLoading(true);
       
       console.log('🚨 SIGN OUT ALL: Step 1 - Calling logout for all sessions');
@@ -470,7 +332,7 @@ export const useMultiUserAuth = () => {
       
       // Force page reload immediately for complete cleanup
       console.log('🚨 SIGN OUT ALL: Step 5 - Forcing immediate page reload');
-      navigate('/');
+      window.location.href = '/';
       
     } catch (error) {
       console.error('🚨 SIGN OUT ALL ERROR: Forcing emergency cleanup:', error);
@@ -481,11 +343,9 @@ export const useMultiUserAuth = () => {
       } catch (clearError) {
         console.error('🚨 EMERGENCY: Failed to clear localStorage:', clearError);
       }
-      navigate('/');
-    } finally {
-      setIsSigningOut(false);
+      window.location.href = '/';
     }
-  }, [sessions, clearAllSessions, navigate]);
+  }, [sessions, clearAllSessions]);
 
   const switchToSessionSafe = useCallback(async (sessionId: string) => {
     // Enhanced session switching with better validation
@@ -559,7 +419,6 @@ export const useMultiUserAuth = () => {
     session: getCurrentSession()?.session || null,
     userProfile: getCurrentUserProfile(),
     isLoading,
-    isSigningOut,
     
     // Auth methods
     signIn,

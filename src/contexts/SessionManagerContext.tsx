@@ -61,16 +61,12 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
     return Date.now();
   }, []);
 
-  // Create cached client function with enhanced resource management and proper session authentication
-  const getCachedClient = useCallback(async (storageKey: string, session?: Session, userId?: string, timestamp?: number) => {
+  // Create cached client function with enhanced resource management
+  const getCachedClient = useCallback((storageKey: string, userId?: string, timestamp?: number) => {
     // Track client creation for memory monitoring
     const currentClientCount = clientCache.current.size;
     if (currentClientCount > 10) {
-      console.warn('🔐 Client cache growing beyond expected size:', { 
-        clients: currentClientCount, 
-        sessions: sessions.length,
-        ratio: currentClientCount / Math.max(sessions.length, 1)
-      });
+      console.warn('🔐 High client count detected:', currentClientCount, 'cleaning up oldest clients');
       // Remove oldest clients to prevent memory leaks
       const entries = Array.from(clientCache.current.entries());
       entries.slice(0, 5).forEach(([key]) => {
@@ -80,27 +76,26 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
     
     // Try exact key first for perfect match
     if (clientCache.current.has(storageKey)) {
-      const existingClient = clientCache.current.get(storageKey)!;
-      
-      // If we have a session, verify the client is properly authenticated
-      if (session) {
-        try {
-          const { data: currentSession } = await existingClient.auth.getSession();
-          if (!currentSession.session || currentSession.session.access_token !== session.access_token) {
-            console.log('🔐 Client session mismatch, refreshing authentication...');
-            await existingClient.auth.setSession(session);
-            console.log('🔐 Client session refreshed for key:', storageKey);
+      console.log('🔐 Reusing exact cached client for key:', storageKey);
+      return clientCache.current.get(storageKey)!;
+    }
+    
+    // For recreation scenarios with user ID, try to find compatible client
+    if (userId) {
+      const userPattern = `wmh_session_${userId}_`;
+      for (const [key, client] of clientCache.current.entries()) {
+        if (key.startsWith(userPattern)) {
+          // Validate client is still functional before reuse
+          try {
+            client.auth.getSession(); // Quick validity check
+            clientCache.current.set(storageKey, client);
+            console.log('🔐 Reusing validated cached client for user:', userId);
+            return client;
+          } catch (error) {
+            console.warn('🔐 Cached client invalid, removing:', key);
+            clientCache.current.delete(key);
           }
-        } catch (error) {
-          console.warn('🔐 Error verifying client session:', error);
-          // Remove invalid client and create new one
-          clientCache.current.delete(storageKey);
         }
-      }
-      
-      if (clientCache.current.has(storageKey)) {
-        console.log('🔐 Reusing exact cached client for key:', storageKey);
-        return clientCache.current.get(storageKey)!;
       }
     }
     
@@ -114,21 +109,10 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
       }
     });
     
-    // If we have a session, set it immediately to ensure proper authentication
-    if (session) {
-      try {
-        console.log('🔐 Setting session for new client:', storageKey);
-        await client.auth.setSession(session);
-        console.log('🔐 Session set successfully for client:', storageKey);
-      } catch (error) {
-        console.error('🔐 Error setting session for client:', error);
-      }
-    }
-    
     clientCache.current.set(storageKey, client);
-    console.log('🔐 Created new authenticated client for key:', storageKey, 'total clients:', clientCache.current.size);
+    console.log('🔐 Created new cached client for key:', storageKey, 'total clients:', clientCache.current.size);
     return client;
-  }, [sessions.length]);
+  }, []);
 
   // Emergency session deduplication utility
   const forceCleanUserSessions = useCallback((userId: string) => {
@@ -287,7 +271,7 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
     initializationRef.current = true;
     isSessionManagerInitialized = true;
     
-    const loadSessions = async () => {
+    const loadSessions = () => {
       try {
         console.log('🚀 Initializing SessionManager with StrictMode protection...');
         
@@ -321,13 +305,13 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
           }
           
           // Recreate sessions with consistent storage key generation
-          const recreatedSessions = await Promise.all(uniqueSessionData.map(async (sessionInfo: any) => {
+          const recreatedSessions = uniqueSessionData.map((sessionInfo: any) => {
             // Use the original timestamp to ensure consistent storage keys
             const originalTimestamp = new Date(sessionInfo.createdAt).getTime();
             const storageKey = `wmh_session_${sessionInfo.user.id}_${originalTimestamp}`;
             
             // Validate storage key exists before creating client
-            const client = await getCachedClient(storageKey, sessionInfo.session, sessionInfo.user.id, originalTimestamp);
+            const client = getCachedClient(storageKey, sessionInfo.user.id, originalTimestamp);
             
             return {
               ...sessionInfo,
@@ -335,7 +319,7 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
               createdAt: new Date(sessionInfo.createdAt),
               storageKey // Store key for validation
             };
-          }));
+          });
           
           setSessions(recreatedSessions);
           
@@ -405,7 +389,7 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
     
     const debouncedSync = () => {
       if (syncTimeout) clearTimeout(syncTimeout);
-      syncTimeout = setTimeout(async () => {
+      syncTimeout = setTimeout(() => {
         try {
           // Run deduplication before sync
           deduplicateStorageSessions();
@@ -436,17 +420,17 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
               index === array.findIndex(s => s.user.id === session.user.id)
             );
             
-            const recreatedSessions = await Promise.all(uniqueSessionData.map(async (sessionInfo: any) => {
+            const recreatedSessions = uniqueSessionData.map((sessionInfo: any) => {
               const timestamp = new Date(sessionInfo.createdAt).getTime();
               const storageKey = `wmh_session_${sessionInfo.user.id}_${timestamp}`;
-              const client = await getCachedClient(storageKey, sessionInfo.session);
+              const client = getCachedClient(storageKey);
               
               return {
                 ...sessionInfo,
                 supabaseClient: client,
                 createdAt: new Date(sessionInfo.createdAt)
               };
-            }));
+            });
             
             setSessions(recreatedSessions);
             setActiveSessionId(storedActiveId);
@@ -626,32 +610,25 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
     }
   }, [sessions, activeSessionId]);
 
-  // Add session with simplified locking and error recovery  
-  const addSession = useCallback(async (user: User, session: Session, retryCount = 0): Promise<string> => {
-    console.log('🔐 Adding session for user:', user.email, 'retry:', retryCount);
+  // Add session with simplified locking and error recovery
+  const addSession = useCallback(async (user: User, session: Session): Promise<string> => {
+    console.log('🔐 Adding session for user:', user.email);
     
     // Check for simple lock with auto-release
     if (!acquireSessionLock()) {
+      const error = new Error('Session creation is temporarily locked. Please try again.');
       console.warn('🔐 Session creation locked for user:', user.email);
       
-      // Prevent infinite retry loop - max 3 retries
-      if (retryCount >= 3) {
-        console.error('🔐 Max retries reached for session creation, forcing unlock');
-        releaseSessionLock();
-        throw new Error('Session creation failed after maximum retries');
-      }
-      
-      // Auto-retry after a short delay with increasing backoff
+      // Auto-retry after a short delay
       return new Promise((resolve, reject) => {
-        const delay = 200 + (retryCount * 300); // Increasing delay: 200ms, 500ms, 800ms
         setTimeout(async () => {
           try {
-            const result = await addSession(user, session, retryCount + 1);
+            const result = await addSession(user, session);
             resolve(result);
           } catch (retryError) {
             reject(retryError);
           }
-        }, delay);
+        }, 500);
       });
     }
     
@@ -675,7 +652,7 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
       const sessionId = `session_${user.id}_${timestamp}`;
       const storageKey = `wmh_session_${user.id}_${timestamp}`;
       
-      const client = await getCachedClient(storageKey, session, user.id, timestamp);
+      const client = getCachedClient(storageKey, user.id, timestamp);
       
       const newSessionData: SessionData = {
         id: sessionId,
@@ -755,16 +732,6 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
       const updated = prev.map(session => {
         if (session.id === sessionId) {
           console.log('🔍 DEBUG: Updating session profile for:', session.user.email, 'from:', session.userProfile, 'to:', profile);
-          
-          // Cache profile in localStorage for instant retrieval
-          try {
-            const profileCache = JSON.parse(localStorage.getItem('wmh_profile_cache') || '{}');
-            profileCache[session.user.id] = profile;
-            localStorage.setItem('wmh_profile_cache', JSON.stringify(profileCache));
-          } catch (error) {
-            console.warn('Failed to cache profile in localStorage:', error);
-          }
-          
           return { ...session, userProfile: profile };
         }
         return session;

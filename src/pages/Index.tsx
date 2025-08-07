@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MobileHomesShowcase } from '@/components/MobileHomesShowcase';
+import { OptimizedMobileHomesShowcase } from '@/components/OptimizedMobileHomesShowcase';
 import { TestimonialsSection } from '@/components/reviews/TestimonialsSection';
 import { FinancingCalculator } from '@/components/financing/FinancingCalculator';
 import { supabase } from '@/integrations/supabase/client';
@@ -29,6 +29,8 @@ import { SEO } from '@/components/SEO';
 import { SocialProofBanner } from '@/components/SocialProofBanner';
 import { useUserRoles } from '@/hooks/useUserRoles';
 import { MultiUserDebugPanel } from '@/components/debug/MultiUserDebugPanel';
+import { MultiUserSessionTest } from '@/components/test/MultiUserSessionTest';
+import { MultiUserStabilityTest } from '@/components/test/MultiUserStabilityTest';
 
 const Index = () => {
   console.log('Index component: Starting to render');
@@ -149,7 +151,7 @@ const Index = () => {
       </div>
 
       <div id="mobile-homes">
-        <MobileHomesShowcase 
+        <OptimizedMobileHomesShowcase 
           user={user}
           {...cartProps}
         />
@@ -243,7 +245,9 @@ const Index = () => {
       <ChatWidget userId={user?.id} />
 
       {/* Development debugging panels */}
+      <MultiUserStabilityTest />
       {/* <MultiUserDebugPanel /> */}
+      <MultiUserSessionTest />
 
       <Footer />
     </div>

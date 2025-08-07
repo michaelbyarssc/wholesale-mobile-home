@@ -10,6 +10,7 @@ import { ForgotPasswordForm } from '@/components/auth/ForgotPasswordForm';
 import { AuthNavigation } from '@/components/auth/AuthNavigation';
 import { UserWelcome } from '@/components/auth/UserWelcome';
 import { EmergencyAuthForm } from '@/components/auth/EmergencyAuthForm';
+import { SimplifiedAuthDebug } from '@/components/auth/SimplifiedAuthDebug';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, AlertTriangle } from 'lucide-react';
 
@@ -237,6 +238,9 @@ const Auth = () => {
           isOpen={showPasswordChange}
           onClose={() => setShowPasswordChange(false)}
         />
+        
+        {/* Debug panel for troubleshooting */}
+        <SimplifiedAuthDebug />
       </div>
     </div>
   );

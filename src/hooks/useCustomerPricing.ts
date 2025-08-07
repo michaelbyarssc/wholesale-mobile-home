@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { User } from '@supabase/supabase-js';
 import { useDebounce } from './useDebounce';
+import { useCallback, useMemo } from 'react';
 import type { Database } from '@/integrations/supabase/types';
 
 type MobileHome = Database['public']['Tables']['mobile_homes']['Row'];
@@ -53,13 +54,17 @@ export const useCustomerPricing = (user: User | null) => {
     refetchOnWindowFocus: false
   });
 
-  const calculatePrice = (basePrice: number): number => {
+  // Memoize pricing configuration to prevent recalculations
+  const pricingConfig = useMemo(() => ({
+    userMarkup: customerMarkup?.markup_percentage || 30,
+    parentMarkup: customerMarkup?.super_admin_markup_percentage || 30,
+    tierLevel: customerMarkup?.tier_level || 'user'
+  }), [customerMarkup]);
+
+  const calculatePrice = useCallback((basePrice: number): number => {
     if (!basePrice || !customerMarkup) return 0;
     
-    const userMarkup = customerMarkup.markup_percentage || 30;
-    const parentMarkup = customerMarkup.super_admin_markup_percentage || 30;
-    const tierLevel = customerMarkup.tier_level || 'user';
-
+    const { userMarkup, parentMarkup, tierLevel } = pricingConfig;
     let finalPrice = basePrice;
 
     // Apply tiered pricing based on tier level
@@ -79,9 +84,9 @@ export const useCustomerPricing = (user: User | null) => {
 
     console.log(`🔍 calculatePrice: Base: ${basePrice}, Tier: ${tierLevel}, Parent: ${parentMarkup}%, User: ${userMarkup}%, Final: ${finalPrice}`);
     return finalPrice;
-  };
+  }, [customerMarkup, pricingConfig]);
 
-  const calculateMobileHomePrice = (mobileHome: MobileHome | null): number => {
+  const calculateMobileHomePrice = useCallback((mobileHome: MobileHome | null): number => {
     console.log('useCustomerPricing: calculateMobileHomePrice called with:', mobileHome?.id);
     
     if (!mobileHome) {
@@ -108,9 +113,9 @@ export const useCustomerPricing = (user: User | null) => {
     
     console.log('useCustomerPricing: Tiered pricing - Base cost:', baseCost, 'Tiered price:', tieredPrice, 'Min profit:', minProfitPrice, 'Final (higher):', finalPrice);
     return finalPrice;
-  };
+  }, [calculatePrice]);
 
-  const calculateServicePrice = (service: Service, mobileHome?: MobileHome | null): number => {
+  const calculateServicePrice = useCallback((service: Service, mobileHome?: MobileHome | null): number => {
     if (!service) return 0;
     
     let baseCost = service.cost || service.price || 0;
@@ -129,9 +134,9 @@ export const useCustomerPricing = (user: User | null) => {
     const finalPrice = calculatePrice(baseCost);
     console.log('useCustomerPricing: Service price calculation - Base cost:', baseCost, 'Final:', finalPrice);
     return finalPrice;
-  };
+  }, [calculatePrice]);
 
-  const calculateHomeOptionPrice = (option: HomeOption, squareFootage?: number): number => {
+  const calculateHomeOptionPrice = useCallback((option: HomeOption, squareFootage?: number): number => {
     if (!option) return 0;
     
     let baseCost = 0;
@@ -147,9 +152,9 @@ export const useCustomerPricing = (user: User | null) => {
     const finalPrice = calculatePrice(baseCost);
     console.log(`🔍 useCustomerPricing: Option ${option.name} - Base cost: ${baseCost}, Final: ${finalPrice}`);
     return finalPrice;
-  };
+  }, [calculatePrice]);
 
-  const calculateTotalPrice = (
+  const calculateTotalPrice = useCallback((
     mobileHome: MobileHome | null,
     selectedServices: Service[] = [],
     selectedHomeOptions: { option: HomeOption; quantity: number }[] = []
@@ -169,7 +174,7 @@ export const useCustomerPricing = (user: User | null) => {
     const totalPrice = homePrice + servicesPrice + optionsPrice;
     console.log('useCustomerPricing: Total price calculated:', totalPrice);
     return totalPrice;
-  };
+  }, [calculateMobileHomePrice, calculateServicePrice, calculateHomeOptionPrice]);
 
   console.log('useCustomerPricing: Returning hook values, loading:', markupLoading);
 

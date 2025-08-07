@@ -5,6 +5,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { useSessionValidation } from '@/hooks/useSessionValidation';
 
+// Global login state to prevent secondary auth calls
+let globalLoginInProgress = false;
+
 interface AuthContextType {
   // Current auth state
   user: User | null;
@@ -181,10 +184,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         console.log('🔐 Initializing centralized auth...');
         
-        // Set up auth state listener
+        // Set up auth state listener ONLY (no duplicate getSession call)
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
           (event, session) => {
             console.log('🔐 Auth state change:', event, session?.user?.email);
+            
+            // Mark login as complete when we get a signed in event
+            if (event === 'SIGNED_IN') {
+              globalLoginInProgress = false;
+            }
             
             // Simplified timeout to prevent excessive session creation
             const authEventKey = `auth_${event}_${session?.user?.id || 'none'}`;
@@ -199,7 +207,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                   const existingSession = sessions.find(s => s.user.id === session.user.id);
                   if (!existingSession) {
                     console.log('🔐 Creating new session for user:', session.user.email);
-                    const sessionId = await addSession(session.user, session);
+                    await addSession(session.user, session);
                   } else {
                     console.log('🔐 Session already exists for user, switching to it');
                     switchToSession(existingSession.id);
@@ -209,6 +217,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 }
               } else if (event === 'SIGNED_OUT') {
                 console.log('🔐 User signed out via auth change');
+                globalLoginInProgress = false;
               }
               
               delete (window as any)[authEventKey];
@@ -217,18 +226,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         );
         
         authSubscription = subscription;
-
-        // Check for existing session
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user) {
-          console.log('🔐 Found existing session, checking if session exists for user:', session.user.email);
-          const existingSession = sessions.find(s => s.user.id === session.user.id);
-          
-          if (!existingSession) {
-            console.log('🔐 Initializing auth with existing session');
+        
+        // Only check existing session if we have stored sessions but no active session
+        // This prevents duplicate auth calls on every page load
+        if (sessions.length === 0 && !activeSessionId) {
+          console.log('🔐 Checking for existing session only once during initialization');
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.user) {
+            console.log('🔐 Found existing session, creating session manager entry');
             await addSession(session.user, session);
-          } else {
-            switchToSession(existingSession.id);
           }
         }
         
@@ -247,13 +253,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       initialized = false;
     };
-  }, [addSession, sessions, switchToSession]);
+  }, [addSession, sessions, switchToSession, activeSessionId]);
 
-  // Auto-fetch profiles - SINGLE POINT OF PROFILE FETCHING
+  // Auto-fetch profiles - SINGLE POINT OF PROFILE FETCHING (disabled during login)
   const shouldFetchProfile = useRef(false);
   
   useEffect(() => {
-    if (isSigningOut) return;
+    if (isSigningOut || globalLoginInProgress) return; // Skip during login
     
     if (activeSession && !activeSession.userProfile && !shouldFetchProfile.current) {
       shouldFetchProfile.current = true;
@@ -273,7 +279,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.warn('Failed to load cached profile:', error);
       }
       
-      // Only fetch if no cache available
+      // Only fetch if no cache available and not during login
       fetchUserProfile(activeSessionId!).finally(() => {
         shouldFetchProfile.current = false;
       });
@@ -287,7 +293,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signIn = useCallback(async (email: string, password: string) => {
     setIsLoading(true);
+    globalLoginInProgress = true; // Prevent secondary auth calls
+    
     try {
+      console.log('🔐 Starting login process - preventing secondary auth calls');
+      
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
@@ -311,9 +321,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { data, error: null };
     } catch (error: any) {
       console.error('🔐 Sign in error:', error);
+      globalLoginInProgress = false; // Reset on error
       return { data: null, error };
     } finally {
       setIsLoading(false);
+      // Note: globalLoginInProgress is reset in auth state change handler
     }
   }, [addSession]);
 

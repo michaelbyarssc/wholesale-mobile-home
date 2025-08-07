@@ -82,21 +82,8 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
     if (clientCache.current.has(storageKey)) {
       const existingClient = clientCache.current.get(storageKey)!;
       
-      // If we have a session, verify the client is properly authenticated
-      if (session) {
-        try {
-          const { data: currentSession } = await existingClient.auth.getSession();
-          if (!currentSession.session || currentSession.session.access_token !== session.access_token) {
-            console.log('🔐 Client session mismatch, refreshing authentication...');
-            await existingClient.auth.setSession(session);
-            console.log('🔐 Client session refreshed for key:', storageKey);
-          }
-        } catch (error) {
-          console.warn('🔐 Error verifying client session:', error);
-          // Remove invalid client and create new one
-          clientCache.current.delete(storageKey);
-        }
-      }
+      // Skip verification during login - trust the passed session
+      console.log('🔐 Reusing exact cached client for key:', storageKey, '(skipping verification)');
       
       if (clientCache.current.has(storageKey)) {
         console.log('🔐 Reusing exact cached client for key:', storageKey);

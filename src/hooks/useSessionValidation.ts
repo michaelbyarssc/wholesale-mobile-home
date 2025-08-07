@@ -1,6 +1,11 @@
 import { useEffect, useCallback, useRef } from 'react';
 import { useSessionManager } from '@/contexts/SessionManagerContext';
 
+// Global flag to disable validation during login
+declare global {
+  var globalLoginInProgress: boolean | undefined;
+}
+
 export const useSessionValidation = () => {
   const { sessions, activeSessionId, removeSession } = useSessionManager();
 
@@ -104,12 +109,24 @@ export const useSessionValidation = () => {
     }
   }, [sessions, removeSession]);
 
-  // Optimized periodic validation - much less aggressive
+  // Optimized periodic validation - disabled during login
   useEffect(() => {
+    // Skip validation entirely during login process
+    if (globalThis.globalLoginInProgress) {
+      console.log('🔐 Skipping session validation during login');
+      return;
+    }
+    
     let validationTimer: NodeJS.Timeout | null = null;
     let lastValidationTime = 0;
     
     const smartValidation = async () => {
+      // Double-check login state before validation
+      if (globalThis.globalLoginInProgress) {
+        console.log('🔐 Login detected, skipping validation cycle');
+        return;
+      }
+      
       const now = Date.now();
       
       // Only validate if enough time has passed and we have an active session

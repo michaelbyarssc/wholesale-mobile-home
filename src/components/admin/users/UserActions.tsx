@@ -28,8 +28,8 @@ export const UserActions = ({ profile, onUserUpdated }: UserActionsProps) => {
     try {
       setResettingPassword(userId);
 
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
         throw new Error('Not authenticated');
       }
 
@@ -40,7 +40,7 @@ export const UserActions = ({ profile, onUserUpdated }: UserActionsProps) => {
           user_id: userId
         },
         headers: {
-          Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+          Authorization: `Bearer ${session.access_token}`
         }
       });
 
@@ -91,8 +91,8 @@ export const UserActions = ({ profile, onUserUpdated }: UserActionsProps) => {
     try {
       setDeletingUser(userId);
 
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
         throw new Error('Not authenticated');
       }
 
@@ -103,7 +103,7 @@ export const UserActions = ({ profile, onUserUpdated }: UserActionsProps) => {
           user_id: userId
         },
         headers: {
-          Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+          Authorization: `Bearer ${session.access_token}`
         }
       });
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { User } from '@supabase/supabase-js';
 import type { Database } from '@/integrations/supabase/types';
@@ -11,25 +11,14 @@ export const useWishlist = (user?: User | null) => {
   const [wishlistItems, setWishlistItems] = useState<MobileHome[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Load wishlist on mount and when user changes - optimized to prevent continuous calls
-  const lastUserIdRef = useRef<string | null>(null);
-  
+  // Load wishlist on mount and when user changes
   useEffect(() => {
-    const currentUserId = user?.id || null;
-    
-    // Only reload if the user ID actually changed
-    if (lastUserIdRef.current === currentUserId) {
-      return;
-    }
-    
-    lastUserIdRef.current = currentUserId;
-    
     if (user) {
       loadUserWishlist();
     } else {
       loadGuestWishlist();
     }
-  }, [user?.id]); // Use stable user.id reference
+  }, [user]);
 
   // Load wishlist from database for logged-in users
   const loadUserWishlist = async () => {

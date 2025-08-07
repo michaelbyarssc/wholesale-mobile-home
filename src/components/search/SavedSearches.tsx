@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Bookmark, BookmarkPlus, Search, Trash2, Clock } from 'lucide-react';
 import { useSavedSearches } from '@/hooks/useSavedSearches';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuthUser } from '@/hooks/useAuthUser';
 import type { FilterState } from '@/components/MobileHomeFilters';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -25,7 +25,7 @@ export const SavedSearches: React.FC<SavedSearchesProps> = ({
   onApplySearch,
   resultCount
 }) => {
-  const { user } = useAuth();
+  const { user } = useAuthUser();
   const { savedSearches, saveSearch, updateSearchUsage, deleteSearch, isLoading } = useSavedSearches(user);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [searchName, setSearchName] = useState('');

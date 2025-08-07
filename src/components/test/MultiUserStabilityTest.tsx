@@ -2,7 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { useAuth } from '@/contexts/AuthContext';
+import { useMultiUserAuth } from '@/hooks/useMultiUserAuth';
 import { useSessionManager } from '@/contexts/SessionManagerContext';
 import { useSessionValidation } from '@/hooks/useSessionValidation';
 
@@ -14,7 +14,7 @@ interface TestResult {
 }
 
 export const MultiUserStabilityTest: React.FC = () => {
-  const { sessions, activeSession, signIn, signOut } = useAuth();
+  const { sessions, activeSession, signIn, signOut } = useMultiUserAuth();
   const { clearAllSessions } = useSessionManager();
   const { validateAllSessions } = useSessionValidation();
   const [testResults, setTestResults] = useState<TestResult[]>([]);

@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { formatPrice } from '@/lib/utils';
-import { usePricingContext } from '@/contexts/PricingContext';
+import { useCustomerPricing } from '@/hooks/useCustomerPricing';
 import type { Database } from '@/integrations/supabase/types';
 
 type MobileHome = Database['public']['Tables']['mobile_homes']['Row'];
@@ -22,7 +22,7 @@ export const MobileHomeSelection: React.FC<MobileHomeSelectionProps> = ({
   onMobileHomeSelect,
   user
 }) => {
-  const { calculateMobileHomePrice } = usePricingContext();
+  const { calculateMobileHomePrice } = useCustomerPricing(user);
 
   const getHomeName = (home: MobileHome) => {
     return home.display_name || `${home.series} ${home.model}`;

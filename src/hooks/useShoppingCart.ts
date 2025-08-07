@@ -32,9 +32,15 @@ export const useShoppingCart = (user?: User | null) => {
   const [isLoading, setIsLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<User | null>(user || null);
 
-  // Use provided user - no independent auth calls
+  // Get current user if not provided
   useEffect(() => {
-    setCurrentUser(user || null);
+    if (!user) {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        setCurrentUser(session?.user || null);
+      });
+    } else {
+      setCurrentUser(user);
+    }
   }, [user]);
 
   // Helper function to get user-specific localStorage keys

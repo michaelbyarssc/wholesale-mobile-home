@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { usePricingContext } from '@/contexts/PricingContext';
+import { useCustomerPricing } from '@/hooks/useCustomerPricing';
 import { useConditionalServices } from '@/hooks/useConditionalServices';
 import { formatPrice } from '@/lib/utils';
 import type { Database } from '@/integrations/supabase/types';
@@ -45,7 +45,7 @@ export const ServicesSelection = ({
   onHomeOptionQuantityChange,
   user
 }: ServicesSelectionProps) => {
-  const { calculateHomeOptionPrice } = usePricingContext();
+  const { calculateHomeOptionPrice } = useCustomerPricing(user);
 
   // Fix: Pass the actual home object and its ID correctly to useConditionalServices
   const mobileHomes = selectedHome ? [selectedHome] : [];

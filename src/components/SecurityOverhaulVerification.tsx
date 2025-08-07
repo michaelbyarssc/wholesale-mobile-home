@@ -6,7 +6,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { CheckCircle, XCircle, Shield, AlertTriangle } from 'lucide-react';
 import { useUserRoles } from '@/hooks/useUserRoles';
 import { useSecureRoles } from '@/hooks/useSecureRoles';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuthUser } from '@/hooks/useAuthUser';
 
 interface SecurityCheck {
   id: string;
@@ -19,7 +19,7 @@ interface SecurityCheck {
 export const SecurityOverhaulVerification = () => {
   const [checks, setChecks] = useState<SecurityCheck[]>([]);
   const [isRunning, setIsRunning] = useState(false);
-  const { user } = useAuth();
+  const { user } = useAuthUser();
   const { isAdmin, isSuperAdmin, verifyAdminAccess } = useUserRoles();
   const { isSecureAdmin, verifySecureRoles } = useSecureRoles();
 

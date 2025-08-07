@@ -5,18 +5,15 @@ import { MyAppointments } from '@/components/appointments/MyAppointments';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuthUser } from '@/hooks/useAuthUser';
 const Appointments = () => {
-  const { user, userProfile, isLoading, signOut } = useAuth();
-
-  const handleLogout = async () => {
-    await signOut();
-  };
-
-  const handleProfileUpdated = () => {
-    // Force profile refresh - useAuth will automatically re-fetch
-    console.log('Profile update requested');
-  };
+  const {
+    user,
+    userProfile,
+    isLoading,
+    handleLogout,
+    handleProfileUpdated
+  } = useAuthUser();
   return <div className="min-h-screen bg-gradient-to-br from-blue-50 via-green-50 to-yellow-50">
       <Header user={user} userProfile={userProfile} cartItems={[]} isLoading={isLoading} onLogout={handleLogout} onToggleCart={() => {}} onProfileUpdated={handleProfileUpdated} />
       

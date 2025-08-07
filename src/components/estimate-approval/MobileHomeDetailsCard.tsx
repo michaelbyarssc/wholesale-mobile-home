@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { usePricingContext } from '@/contexts/PricingContext';
+import { useCustomerPricing } from '@/hooks/useCustomerPricing';
 import { formatPrice } from '@/lib/utils';
 
 interface MobileHomeDetailsCardProps {
@@ -11,7 +11,7 @@ interface MobileHomeDetailsCardProps {
 }
 
 export const MobileHomeDetailsCard = ({ mobileHome, homeDisplayName, user }: MobileHomeDetailsCardProps) => {
-  const { calculateMobileHomePrice } = usePricingContext();
+  const { calculateMobileHomePrice } = useCustomerPricing(user);
   
   return (
     <Card className="mb-6 shadow-lg">

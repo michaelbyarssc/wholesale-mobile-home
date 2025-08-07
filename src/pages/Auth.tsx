@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
+import { useMultiUserAuth } from '@/hooks/useMultiUserAuth';
 import { useUserRoles } from '@/hooks/useUserRoles';
 import { PasswordChangeDialog } from '@/components/auth/PasswordChangeDialog';
 import { AuthForm } from '@/components/auth/AuthForm';
@@ -28,7 +28,7 @@ const Auth = () => {
   const navigate = useNavigate();
   
   // Multi-user authentication
-  const { user, userProfile, sessions, hasMultipleSessions } = useAuth();
+  const { user, userProfile, sessions, hasMultipleSessions } = useMultiUserAuth();
   const { isAdmin, isLoading: rolesLoading } = useUserRoles();
   
   // Check if this is "add user" mode

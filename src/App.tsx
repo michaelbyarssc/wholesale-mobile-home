@@ -10,8 +10,6 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { LoadingSpinner } from "@/components/layout/LoadingSpinner";
 import { SecurityEnhancements } from "@/components/SecurityEnhancements";
 import { SessionManagerProvider } from "@/contexts/SessionManagerContext";
-import { AuthProvider } from "@/contexts/AuthContext";
-import { PricingWrapper } from "@/contexts/PricingWrapper";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 // Lazy load components with proper error handling
@@ -148,15 +146,11 @@ const App = () => {
           <QueryClientProvider client={queryClient}>
             <SessionManagerProvider>
               <BrowserRouter>
-                <AuthProvider>
-                  <PricingWrapper>
-                    <TooltipProvider>
-                      <AppRoutes />
-                      <Toaster />
-                      <Sonner />
-                    </TooltipProvider>
-                  </PricingWrapper>
-                </AuthProvider>
+                <TooltipProvider>
+                  <AppRoutes />
+                  <Toaster />
+                  <Sonner />
+                </TooltipProvider>
               </BrowserRouter>
             </SessionManagerProvider>
           </QueryClientProvider>

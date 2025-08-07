@@ -7,8 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { X, Heart, ShoppingCart, Scale, Bed, Bath, Maximize, Ruler } from 'lucide-react';
 import { MobileHomeImageCarousel } from './MobileHomeImageCarousel';
-import { usePricingContext } from '@/contexts/PricingContext';
-import { useAuth } from '@/contexts/AuthContext';
+import { useCustomerPricing } from '@/hooks/useCustomerPricing';
+import { useMultiUserAuth } from '@/hooks/useMultiUserAuth';
 import { formatPrice } from '@/lib/utils';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -48,8 +48,8 @@ export const WishlistModal: React.FC<WishlistModalProps> = ({
   isInComparison
 }) => {
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const { calculateMobileHomePrice, loading: pricingLoading } = usePricingContext();
+  const { user } = useMultiUserAuth();
+  const { calculateMobileHomePrice, loading: pricingLoading } = useCustomerPricing(user);
 
   const getHomeImages = (homeId: string) => {
     return homeImages.filter(image => image.mobile_home_id === homeId);

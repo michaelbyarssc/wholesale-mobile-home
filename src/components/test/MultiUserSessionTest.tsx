@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useMultiUserAuth } from '@/hooks/useMultiUserAuth';
 import { useSessionAwareShoppingCart } from '@/hooks/useSessionAwareShoppingCart';
 import { useSessionAwareWishlist } from '@/hooks/useSessionAwareWishlist';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,7 +18,7 @@ export const MultiUserSessionTest = () => {
     signIn,
     signOut,
     isLoading: authLoading
-  } = useAuth();
+  } = useMultiUserAuth();
 
   const {
     cartItems,

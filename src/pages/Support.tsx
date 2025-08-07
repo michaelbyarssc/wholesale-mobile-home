@@ -2,19 +2,10 @@ import React from 'react';
 import { ChatInterface } from '@/components/chat/ChatInterface';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuthUser } from '@/hooks/useAuthUser';
 
 const Support = () => {
-  const { user, userProfile, isLoading, signOut } = useAuth();
-
-  const handleLogout = async () => {
-    await signOut();
-  };
-
-  const handleProfileUpdated = () => {
-    // Force profile refresh - useAuth will automatically re-fetch
-    console.log('Profile update requested');
-  };
+  const { user, userProfile, isLoading, handleLogout, handleProfileUpdated } = useAuthUser();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-green-50 to-yellow-50">

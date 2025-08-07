@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { useUserRoles } from '@/hooks/useUserRoles';
-import { useAuth } from '@/contexts/AuthContext';
+import { useMultiUserAuth } from '@/hooks/useMultiUserAuth';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { MobileHomesTab } from '@/components/admin/MobileHomesTab';
 import { SalesTab } from '@/components/admin/SalesTab';
@@ -28,7 +28,7 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 const Admin = () => {
-  const { user, activeSession, isLoading: authLoading, signOut } = useAuth();
+  const { user, activeSession, isLoading: authLoading, signOut } = useMultiUserAuth();
   const { isAdmin, isSuperAdmin, isLoading: rolesLoading, userRoles, verifyAdminAccess } = useUserRoles();
   const [activeTab, setActiveTab] = useState('users');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -292,7 +292,7 @@ const Admin = () => {
       <main className="container mx-auto px-2 sm:px-4 py-4 sm:py-6 lg:py-8">
         <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4 sm:space-y-6">
           {/* Desktop Tab Navigation - Super Admin */}
-          {(isMobile === false) && isSuperAdmin && (
+          {!isMobile && isSuperAdmin && (
             <div className="border rounded-lg p-1 bg-muted/30 overflow-x-auto">
               <TabsList className="grid w-full grid-cols-10 h-12 bg-transparent min-w-[900px]">
                 <TabsTrigger 
@@ -360,7 +360,7 @@ const Admin = () => {
           )}
           
           {/* Desktop Tab Navigation - Regular Admin */}
-          {(isMobile === false) && !isSuperAdmin && (
+          {!isMobile && !isSuperAdmin && (
             <div className="border rounded-lg p-1 bg-muted/30">
               <TabsList className="grid w-full grid-cols-3 h-12 bg-transparent">
                 <TabsTrigger 

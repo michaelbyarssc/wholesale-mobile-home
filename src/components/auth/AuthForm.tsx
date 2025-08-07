@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/contexts/AuthContext';
+import { useMultiUserAuth } from '@/hooks/useMultiUserAuth';
 import { supabase } from '@/integrations/supabase/client';
 
 interface AuthFormProps {
@@ -41,7 +41,7 @@ export const AuthForm = ({
   isAddUserMode = false,
 }: AuthFormProps) => {
   const { toast } = useToast();
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp } = useMultiUserAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

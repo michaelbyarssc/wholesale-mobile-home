@@ -30,7 +30,7 @@ import {
   validateTimezoneAwareDate 
 } from '@/lib/timezone-utils';
 import { useUserRoles } from '@/hooks/useUserRoles';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuthUser } from '@/hooks/useAuthUser';
 
 // Function to determine timezone based on delivery address
 const getTimezoneFromAddress = (address: string): string => {
@@ -256,16 +256,17 @@ const getStatusBadge = (status: string) => {
 
 export const DeliveryManagement = () => {
   const { isSuperAdmin, isAdmin, userRoles, forceRefreshRoles } = useUserRoles();
-  const { user: authUser, session } = useAuth();
+  const { user: authUser, session, forceRefreshAuth } = useAuthUser();
   
-  // SECURITY: Force role refresh on mount to prevent caching issues
+  // SECURITY: Force complete auth and role refresh on mount to prevent caching issues
   React.useEffect(() => {
     const forceRefresh = async () => {
-      console.log('🔧 DeliveryManagement: Forcing role refresh...');
+      console.log('🔧 DeliveryManagement: Forcing auth and role refresh...');
+      await forceRefreshAuth();
       await forceRefreshRoles();
     };
     forceRefresh();
-  }, [forceRefreshRoles]);
+  }, [forceRefreshAuth, forceRefreshRoles]);
   
   // Enhanced debug logging with session info
   React.useEffect(() => {

@@ -11,7 +11,7 @@ import { MobileHomeImageCarousel } from './MobileHomeImageCarousel';
 import { MobileHomeServicesDialog } from './MobileHomeServicesDialog';
 import { ShoppingCart } from './ShoppingCart';
 import { MobileHomeFilters, FilterState } from './MobileHomeFilters';
-import { usePricingContext } from '@/contexts/PricingContext';
+import { useOptimizedMemoizedPricing } from '@/hooks/useOptimizedMemoizedPricing';
 import { useSearchDebounce } from '@/hooks/useSearchDebounce';
 import { LoadingSpinner } from './loading/LoadingSpinner';
 import { CartItem, DeliveryAddress } from '@/hooks/useShoppingCart';
@@ -326,22 +326,8 @@ export const OptimizedMobileHomesShowcase = React.memo(({
     refetchOnWindowFocus: false
   });
 
-  // Use centralized pricing context for optimal performance
-  const { calculateMobileHomePrice, loading: pricingLoading } = usePricingContext();
-  
-  // Create optimized price getter with memoization
-  const getHomePrice = useMemo(() => {
-    const priceCache = new Map<string, number>();
-    return (homeId: string) => {
-      if (priceCache.has(homeId)) {
-        return priceCache.get(homeId)!;
-      }
-      const home = mobileHomes.find(h => h.id === homeId);
-      const price = home ? calculateMobileHomePrice(home) : 0;
-      priceCache.set(homeId, price);
-      return price;
-    };
-  }, [mobileHomes, calculateMobileHomePrice]);
+  // Optimized pricing with aggressive caching
+  const { getHomePrice, pricingLoading } = useOptimizedMemoizedPricing(user, mobileHomes);
 
   // Debounced search for better performance
   const debouncedSearchQuery = useSearchDebounce(filters.searchQuery, 500);

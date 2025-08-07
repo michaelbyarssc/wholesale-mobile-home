@@ -26,7 +26,7 @@ import { MobileHomeCardSkeleton } from './loading/MobileHomeCardSkeleton';
 import { FiltersSkeleton } from './loading/FiltersSkeleton';
 import { TabsSkeleton } from './loading/TabsSkeleton';
 import { LoadingSpinner } from './loading/LoadingSpinner';
-import { usePricingContext } from '@/contexts/PricingContext';
+import { useMemoizedPricing } from '@/hooks/useMemoizedPricing';
 import { useHomeComparison } from '@/hooks/useHomeComparison';
 import { useWishlist } from '@/hooks/useWishlist';
 import { CartItem, DeliveryAddress } from '@/hooks/useShoppingCart';
@@ -156,14 +156,8 @@ export const MobileHomesShowcase = ({
     refetchOnWindowFocus: false
   });
 
-  // Use centralized pricing context for better performance
-  const { calculateMobileHomePrice, loading: pricingLoading } = usePricingContext();
-  
-  // Create a simple price getter that uses the context directly
-  const getHomePrice = (homeId: string) => {
-    const home = mobileHomes.find(h => h.id === homeId);
-    return home ? calculateMobileHomePrice(home) : 0;
-  };
+  // Initialize memoized pricing for better performance
+  const { getHomePrice, pricingLoading, calculateMobileHomePrice } = useMemoizedPricing(user, mobileHomes);
 
   // Initialize comprehensive filters
   const [filters, setFilters] = useState<FilterState>(() => {

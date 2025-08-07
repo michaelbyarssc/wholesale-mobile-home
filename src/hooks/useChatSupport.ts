@@ -388,11 +388,10 @@ export const useChatSupport = (userId?: string) => {
     };
   }, [currentSession]);
 
-  // Load existing session on mount - optimized to prevent continuous calls
+  // Load existing session on mount
   useEffect(() => {
     if (!userId) return;
 
-    let isMounted = true;
     const loadExistingSession = async () => {
       try {
         console.log('Loading existing session for user:', userId);
@@ -404,8 +403,6 @@ export const useChatSupport = (userId?: string) => {
           .order('created_at', { referencedTable: 'chat_messages', ascending: true })
           .maybeSingle();
 
-        if (!isMounted) return; // Prevent state update if component unmounted
-
         console.log('Found existing session:', session);
         if (session) {
           console.log('Setting session with messages:', session.chat_messages?.length || 0);
@@ -416,17 +413,12 @@ export const useChatSupport = (userId?: string) => {
           console.log('No existing active session found for user');
         }
       } catch (error) {
-        if (!isMounted) return;
         console.error('Error loading existing session:', error);
       }
     };
 
     loadExistingSession();
-    
-    return () => {
-      isMounted = false;
-    };
-  }, [userId]); // Only depend on userId, not changing objects
+  }, [userId]);
 
   return {
     isLoading,

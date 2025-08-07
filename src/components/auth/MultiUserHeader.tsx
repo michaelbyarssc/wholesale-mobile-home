@@ -15,16 +15,17 @@ import {
   Calendar, 
   Home, 
   FileText, 
+  UserPlus,
   Users,
   ChevronDown
 } from 'lucide-react';
 import { CartItem } from '@/hooks/useShoppingCart';
 import { PasswordChangeDialog } from '@/components/auth/PasswordChangeDialog';
-import { UserSettingsDialogTrigger, UserSettingsDialog } from '@/components/auth/UserSettingsDialog';
+import { UserSettingsDialog } from '@/components/auth/UserSettingsDialog';
 import { ForceLogoutButton } from '@/components/auth/ForceLogoutButton';
 import { useBusinessInfo } from '@/hooks/useBusinessInfo';
 import { usePWA } from '@/hooks/usePWA';
-import { useAuth } from '@/contexts/AuthContext';
+import { useMultiUserAuth } from '@/hooks/useMultiUserAuth';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -40,7 +41,7 @@ interface MultiUserHeaderProps {
   onProfileUpdated?: () => void;
 }
 
-const MultiUserHeaderComponent = ({ 
+export const MultiUserHeader = ({ 
   cartItems, 
   isLoading, 
   onToggleCart,
@@ -64,27 +65,20 @@ const MultiUserHeaderComponent = ({
     fetchUserProfile,
     activeSessionId,
     supabaseClient,
-    isSigningOut,
-    isLoginInProgress,
-    isStabilizing
-  } = useAuth();
+    isSigningOut
+  } = useMultiUserAuth();
 
-  // Optimized display name with memoization to prevent unnecessary recalculations
+  // Optimized display name with progressive loading
+  const [displayState, setDisplayState] = useState<'loading' | 'email' | 'profile'>('loading');
+
+  // Progressive display name with memoization
   const getDisplayName = React.useMemo(() => {
-    // Handle various loading and transitional states
+    // If signing out, show signing out message
     if (isSigningOut) {
       return 'Signing out...';
     }
-    
-    if (isLoginInProgress) {
-      return 'Signing in...';
-    }
-    
-    if (isStabilizing) {
-      return 'Loading...';
-    }
 
-    // If we have profile data, prioritize first_name + last_name
+    // If we have profile data, prioritize first_name
     if (userProfile?.first_name) {
       return userProfile.last_name ? `${userProfile.first_name} ${userProfile.last_name}` : userProfile.first_name;
     }
@@ -94,38 +88,54 @@ const MultiUserHeaderComponent = ({
       return userProfile.last_name;
     }
     
-    // Only show email prefix as final fallback, and only if user exists
+    // Show email prefix while profile loads, but only briefly
     if (user?.email) {
       return user.email.split('@')[0];
     }
     
     return 'User';
-  }, [userProfile?.first_name, userProfile?.last_name, user?.email, isSigningOut, isLoginInProgress, isStabilizing]);
+  }, [userProfile, user?.email, isSigningOut]);
 
-  // Memoized event handlers to prevent child re-renders
-  const handleChangePassword = React.useCallback(() => {
+  // Track display state for smooth transitions
+  React.useEffect(() => {
+    if (isSigningOut) {
+      setDisplayState('loading');
+    } else if (userProfile?.first_name || userProfile?.last_name) {
+      setDisplayState('profile');
+    } else if (user?.email) {
+      setDisplayState('email');
+    } else {
+      setDisplayState('loading');
+    }
+  }, [userProfile, user?.email, isSigningOut]);
+
+  const handleChangePassword = () => {
     setIsPasswordDialogOpen(true);
-  }, []);
+  };
 
-  const handleProfileUpdated = React.useCallback(() => {
+  const handleProfileUpdated = () => {
     if (onProfileUpdated) {
       onProfileUpdated();
     }
-  }, [onProfileUpdated]);
+  };
 
-  const handleInstallApp = React.useCallback(async () => {
+  const handleInstallApp = async () => {
     try {
       await installApp();
     } catch (error) {
       console.error('Failed to install app:', error);
     }
-  }, [installApp]);
+  };
 
-  const handleSwitchSession = React.useCallback((sessionId: string) => {
+  const handleAddUser = () => {
+    navigate('/auth?mode=add');
+  };
+
+  const handleSwitchSession = (sessionId: string) => {
     switchToSession(sessionId);
-  }, [switchToSession]);
+  };
 
-  const handleSignOut = React.useCallback(async () => {
+  const handleSignOut = async () => {
     console.log('🚨 HEADER: User clicked sign out, sessions:', sessions.length);
     
     try {
@@ -141,9 +151,9 @@ const MultiUserHeaderComponent = ({
       // Emergency fallback - force page reload
       window.location.href = '/';
     }
-  }, [hasMultipleSessions, signOut, signOutAll, sessions.length]);
+  };
 
-  const handleSignOutAll = React.useCallback(async () => {
+  const handleSignOutAll = async () => {
     console.log('🚨 HEADER: User clicked sign out all');
     try {
       await signOutAll();
@@ -152,17 +162,11 @@ const MultiUserHeaderComponent = ({
       // Emergency fallback
       window.location.href = '/';
     }
-  }, [signOutAll]);
-
-  // Event handlers moved to memoized section above
+  };
 
   return (
     <>
-      <header className="bg-white shadow-sm border-b border-gray-100 relative z-50 transition-opacity duration-200 ease-in-out"
-              style={{ 
-                opacity: isStabilizing || isLoginInProgress ? 0.8 : 1,
-                pointerEvents: isStabilizing || isLoginInProgress ? 'none' : 'auto'
-              }}>
+      <header className="bg-white shadow-sm border-b border-gray-100 relative z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             {/* Left side - Brand */}
@@ -229,14 +233,14 @@ const MultiUserHeaderComponent = ({
                     {/* Multi-User Session Selector */}
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                         <Button
-                           variant="ghost"
-                           className="flex items-center gap-2 text-gray-700 hover:text-gray-900 hover:bg-gray-100 px-3 py-2 rounded-lg transition-colors min-h-[40px]"
-                         >
-                           <div className="flex items-center justify-center w-8 h-8 bg-blue-100 rounded-full">
-                             <User className="h-4 w-4 text-blue-600" />
-                           </div>
-                           <span className="font-medium min-w-[80px] text-left">{getDisplayName}</span>
+                        <Button
+                          variant="ghost"
+                          className="flex items-center gap-2 text-gray-700 hover:text-gray-900 hover:bg-gray-100 px-3 py-2 rounded-lg transition-colors"
+                        >
+                          <div className="flex items-center justify-center w-8 h-8 bg-blue-100 rounded-full">
+                            <User className="h-4 w-4 text-blue-600" />
+                          </div>
+                          <span className="font-medium">{getDisplayName}</span>
                           {hasMultipleSessions && (
                             <>
                               <Badge variant="secondary" className="ml-1 text-xs">
@@ -292,6 +296,11 @@ const MultiUserHeaderComponent = ({
                           </>
                         )}
                         
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={handleAddUser} className="flex items-center gap-3 px-3 py-3">
+                          <UserPlus className="h-4 w-4" />
+                          <span>Add User</span>
+                        </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
 
@@ -336,7 +345,7 @@ const MultiUserHeaderComponent = ({
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem asChild>
-                          <UserSettingsDialogTrigger 
+                          <UserSettingsDialog 
                             user={user} 
                             userProfile={userProfile} 
                             onProfileUpdated={handleProfileUpdated}
@@ -431,6 +440,20 @@ const MultiUserHeaderComponent = ({
                 )}
               </div>
 
+              {/* Session Management */}
+              {hasMultipleSessions && (
+                <div className="px-4 border-b border-gray-100 pb-3">
+                  <Button
+                    onClick={handleAddUser}
+                    variant="outline"
+                    className="w-full justify-start"
+                    size="sm"
+                  >
+                    <UserPlus className="h-4 w-4 mr-2" />
+                    Add Another User
+                  </Button>
+                </div>
+              )}
 
               {/* Quick Actions */}
               <div className="space-y-2 px-4">
@@ -512,60 +535,3 @@ const MultiUserHeaderComponent = ({
     </>
   );
 };
-
-export const MultiUserHeader = React.memo(MultiUserHeaderComponent, (prevProps, nextProps) => {
-  // Enhanced memoization to prevent flashing during auth state changes
-  const { 
-    user: prevUser, 
-    userProfile: prevProfile, 
-    sessions: prevSessions, 
-    activeSessionId: prevActiveSessionId,
-    isStabilizing: prevIsStabilizing,
-    isLoginInProgress: prevIsLoginInProgress,
-    isSigningOut: prevIsSigningOut 
-  } = prevProps as any;
-  
-  const { 
-    user: nextUser, 
-    userProfile: nextProfile, 
-    sessions: nextSessions, 
-    activeSessionId: nextActiveSessionId,
-    isStabilizing: nextIsStabilizing,
-    isLoginInProgress: nextIsLoginInProgress,
-    isSigningOut: nextIsSigningOut 
-  } = nextProps as any;
-
-  // Check basic props
-  if (prevProps.cartItems.length !== nextProps.cartItems.length ||
-      prevProps.isLoading !== nextProps.isLoading) {
-    return false;
-  }
-
-  // Check critical auth state props that cause flashing
-  if (prevUser?.id !== nextUser?.id ||
-      prevProfile?.id !== nextProfile?.id ||
-      prevActiveSessionId !== nextActiveSessionId ||
-      prevIsStabilizing !== nextIsStabilizing ||
-      prevIsLoginInProgress !== nextIsLoginInProgress ||
-      prevIsSigningOut !== nextIsSigningOut) {
-    return false;
-  }
-
-  // Deep compare sessions array
-  if (prevSessions?.length !== nextSessions?.length) {
-    return false;
-  }
-
-  // Check if session objects have changed
-  if (prevSessions && nextSessions) {
-    for (let i = 0; i < prevSessions.length; i++) {
-      if (prevSessions[i]?.id !== nextSessions[i]?.id ||
-          prevSessions[i]?.user?.id !== nextSessions[i]?.user?.id ||
-          prevSessions[i]?.userProfile?.id !== nextSessions[i]?.userProfile?.id) {
-        return false;
-      }
-    }
-  }
-
-  return true;
-});

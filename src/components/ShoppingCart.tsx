@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { ShoppingCart as CartIcon } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { usePricingContext } from '@/contexts/PricingContext';
+import { useCustomerPricing } from '@/hooks/useCustomerPricing';
 import { useConditionalServices } from '@/hooks/useConditionalServices';
 import { User } from '@supabase/supabase-js';
 import { useNavigate } from 'react-router-dom';
@@ -56,7 +56,8 @@ export const ShoppingCart = ({
   const navigate = useNavigate();
   const { getShippingCost, calculateShippingCost, clearCalculations } = useShippingCost();
   
-  const { calculateMobileHomePrice, calculateServicePrice, calculateHomeOptionPrice, calculatePrice } = usePricingContext();
+  console.log('🔍 ShoppingCart: User passed to pricing hook:', user?.id || 'undefined');
+  const { calculateMobileHomePrice, calculateServicePrice, calculateHomeOptionPrice, calculatePrice } = useCustomerPricing(user);
 
   // Fetch services
   const { data: services = [] } = useQuery({

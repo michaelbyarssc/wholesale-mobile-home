@@ -1,8 +1,7 @@
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { User } from '@supabase/supabase-js';
-import { useDebounce } from './useDebounce';
-import { useCallback, useMemo } from 'react';
 import type { Database } from '@/integrations/supabase/types';
 
 type MobileHome = Database['public']['Tables']['mobile_homes']['Row'];
@@ -10,16 +9,15 @@ type Service = Database['public']['Tables']['services']['Row'];
 type HomeOption = Database['public']['Tables']['home_options']['Row'];
 
 export const useCustomerPricing = (user: User | null) => {
-  // Debounce user changes to prevent excessive API calls during login transitions
-  const debouncedUserId = useDebounce(user?.id, 200);
-  
-  console.log('useCustomerPricing: Hook called with user:', debouncedUserId);
+  const [loading, setLoading] = useState(true);
+
+  console.log('useCustomerPricing: Hook called with user:', user?.id);
 
   // Fetch customer markup with tiered pricing info (cached for 5 minutes)
   const { data: customerMarkup, isLoading: markupLoading } = useQuery({
-    queryKey: ['customer-markup', debouncedUserId],
+    queryKey: ['customer-markup', user?.id],
     queryFn: async () => {
-      if (!debouncedUserId) {
+      if (!user) {
         return { 
           markup_percentage: 30, 
           tier_level: 'user', 
@@ -30,7 +28,7 @@ export const useCustomerPricing = (user: User | null) => {
       const { data, error } = await supabase
         .from('customer_markups')
         .select('markup_percentage, tier_level, super_admin_markup_percentage')
-        .eq('user_id', debouncedUserId)
+        .eq('user_id', user.id)
         .maybeSingle();
 
       if (error) {
@@ -48,23 +46,26 @@ export const useCustomerPricing = (user: User | null) => {
         super_admin_markup_percentage: 30 
       };
     },
-    enabled: !!debouncedUserId, // Only fetch when we have a stable user ID
+    enabled: true,
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
     gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
     refetchOnWindowFocus: false
   });
 
-  // Memoize pricing configuration to prevent recalculations
-  const pricingConfig = useMemo(() => ({
-    userMarkup: customerMarkup?.markup_percentage || 30,
-    parentMarkup: customerMarkup?.super_admin_markup_percentage || 30,
-    tierLevel: customerMarkup?.tier_level || 'user'
-  }), [customerMarkup]);
+  useEffect(() => {
+    if (!markupLoading) {
+      console.log('useCustomerPricing: Setting loading to false');
+      setLoading(false);
+    }
+  }, [markupLoading]);
 
-  const calculatePrice = useCallback((basePrice: number): number => {
+  const calculatePrice = (basePrice: number): number => {
     if (!basePrice || !customerMarkup) return 0;
     
-    const { userMarkup, parentMarkup, tierLevel } = pricingConfig;
+    const userMarkup = customerMarkup.markup_percentage || 30;
+    const parentMarkup = customerMarkup.super_admin_markup_percentage || 30;
+    const tierLevel = customerMarkup.tier_level || 'user';
+
     let finalPrice = basePrice;
 
     // Apply tiered pricing based on tier level
@@ -84,9 +85,9 @@ export const useCustomerPricing = (user: User | null) => {
 
     console.log(`🔍 calculatePrice: Base: ${basePrice}, Tier: ${tierLevel}, Parent: ${parentMarkup}%, User: ${userMarkup}%, Final: ${finalPrice}`);
     return finalPrice;
-  }, [customerMarkup, pricingConfig]);
+  };
 
-  const calculateMobileHomePrice = useCallback((mobileHome: MobileHome | null): number => {
+  const calculateMobileHomePrice = (mobileHome: MobileHome | null): number => {
     console.log('useCustomerPricing: calculateMobileHomePrice called with:', mobileHome?.id);
     
     if (!mobileHome) {
@@ -113,9 +114,9 @@ export const useCustomerPricing = (user: User | null) => {
     
     console.log('useCustomerPricing: Tiered pricing - Base cost:', baseCost, 'Tiered price:', tieredPrice, 'Min profit:', minProfitPrice, 'Final (higher):', finalPrice);
     return finalPrice;
-  }, [calculatePrice]);
+  };
 
-  const calculateServicePrice = useCallback((service: Service, mobileHome?: MobileHome | null): number => {
+  const calculateServicePrice = (service: Service, mobileHome?: MobileHome | null): number => {
     if (!service) return 0;
     
     let baseCost = service.cost || service.price || 0;
@@ -134,9 +135,9 @@ export const useCustomerPricing = (user: User | null) => {
     const finalPrice = calculatePrice(baseCost);
     console.log('useCustomerPricing: Service price calculation - Base cost:', baseCost, 'Final:', finalPrice);
     return finalPrice;
-  }, [calculatePrice]);
+  };
 
-  const calculateHomeOptionPrice = useCallback((option: HomeOption, squareFootage?: number): number => {
+  const calculateHomeOptionPrice = (option: HomeOption, squareFootage?: number): number => {
     if (!option) return 0;
     
     let baseCost = 0;
@@ -152,9 +153,9 @@ export const useCustomerPricing = (user: User | null) => {
     const finalPrice = calculatePrice(baseCost);
     console.log(`🔍 useCustomerPricing: Option ${option.name} - Base cost: ${baseCost}, Final: ${finalPrice}`);
     return finalPrice;
-  }, [calculatePrice]);
+  };
 
-  const calculateTotalPrice = useCallback((
+  const calculateTotalPrice = (
     mobileHome: MobileHome | null,
     selectedServices: Service[] = [],
     selectedHomeOptions: { option: HomeOption; quantity: number }[] = []
@@ -174,16 +175,16 @@ export const useCustomerPricing = (user: User | null) => {
     const totalPrice = homePrice + servicesPrice + optionsPrice;
     console.log('useCustomerPricing: Total price calculated:', totalPrice);
     return totalPrice;
-  }, [calculateMobileHomePrice, calculateServicePrice, calculateHomeOptionPrice]);
+  };
 
-  console.log('useCustomerPricing: Returning hook values, loading:', markupLoading);
+  console.log('useCustomerPricing: Returning hook values, loading:', loading);
 
   return {
     customerMarkup: customerMarkup?.markup_percentage || 30,
     markupPercentage: customerMarkup?.markup_percentage || 30, // Add alias for backward compatibility
     tierLevel: customerMarkup?.tier_level || 'user',
     parentMarkup: customerMarkup?.super_admin_markup_percentage || 30,
-    loading: markupLoading, // Use React Query's loading state directly
+    loading,
     calculatePrice,
     calculateMobileHomePrice,
     calculateServicePrice,

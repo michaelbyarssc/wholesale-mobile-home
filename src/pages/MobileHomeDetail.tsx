@@ -27,7 +27,7 @@ import {
 import { MobileHomeImageCarousel } from '@/components/MobileHomeImageCarousel';
 import { MobileHomeServicesDialog } from '@/components/MobileHomeServicesDialog';
 import { OptimizedImage } from '@/components/OptimizedImage';
-import { usePricingContext } from '@/contexts/PricingContext';
+import { useCustomerPricing } from '@/hooks/useCustomerPricing';
 import { MobileHomeReviews } from '@/components/reviews/MobileHomeReviews';
 import { AppointmentBookingWidget } from '@/components/appointments/AppointmentBookingWidget';
 import { useWishlist } from '@/hooks/useWishlist';
@@ -35,7 +35,7 @@ import { useHomeComparison } from '@/hooks/useHomeComparison';
 import { useShoppingCart } from '@/hooks/useShoppingCart';
 import { useAnalytics } from '@/hooks/useAnalytics';
 import { formatPrice } from '@/lib/utils';
-import { useAuth } from '@/contexts/AuthContext';
+import { User, Session } from '@supabase/supabase-js';
 import type { Database } from '@/integrations/supabase/types';
 import { SEO } from '@/components/SEO';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
@@ -57,10 +57,41 @@ export const MobileHomeDetail: React.FC = () => {
   const navigate = useNavigate();
   const [selectedHomeForServices, setSelectedHomeForServices] = useState<MobileHome | null>(null);
   
-  // Use consolidated auth
-  const { user, isLoading: isAuthLoading } = useAuth();
+  // Authentication state
+  const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
+
+  // Set up authentication listener
+  useEffect(() => {
+    let mounted = true;
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        if (mounted) {
+          setSession(session);
+          setUser(session?.user ?? null);
+          setIsAuthLoading(false);
+        }
+      }
+    );
+
+    // Check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (mounted) {
+        setSession(session);
+        setUser(session?.user ?? null);
+        setIsAuthLoading(false);
+      }
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
   
-  const { calculateMobileHomePrice, loading: pricingLoading } = usePricingContext();
+  const { calculateMobileHomePrice, loading: pricingLoading } = useCustomerPricing(user);
   const { isInWishlist, toggleWishlist } = useWishlist(user);
   const { addToComparison, isInComparison } = useHomeComparison();
   const { cartItems, addToCart } = useShoppingCart(user);

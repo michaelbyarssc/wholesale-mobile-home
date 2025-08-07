@@ -23,72 +23,9 @@ export const useSessionAwareWishlist = () => {
 
   // Load wishlist on user change (not session change) - optimized to prevent continuous calls
   const lastUserIdRef = useRef<string | null>(null);
-  
-  useEffect(() => {
-    const currentUserId = activeSession?.user?.id || null;
-    
-    // Only reload if the user ID actually changed
-    if (lastUserIdRef.current === currentUserId) {
-      return;
-    }
-    
-    lastUserIdRef.current = currentUserId;
-    
-    if (activeSession?.user) {
-      loadUserWishlist();
-    } else {
-      loadGuestWishlist();
-    }
-  }, [activeSession?.user?.id]); // Use stable user.id reference
-
-  // Load wishlist from database for logged-in users
-  const loadUserWishlist = async () => {
-    if (!activeSession?.user || !supabaseClient) return;
-    
-    setIsLoading(true);
-    try {
-      const { data, error } = await supabaseClient
-        .from('user_wishlists')
-        .select(`
-          *,
-          mobile_homes (*)
-        `)
-        .eq('user_id', activeSession.user.id);
-
-      if (error) throw error;
-
-      const homes = data?.map(item => item.mobile_homes).filter(Boolean) as MobileHome[];
-      setWishlistItems(homes || []);
-      console.log('🔍 Loaded wishlist for session:', activeSession.id, 'items:', homes?.length || 0);
-    } catch (error) {
-      console.error('Error loading user wishlist:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Load wishlist from localStorage for guests
-  const loadGuestWishlist = () => {
-    try {
-      const wishlistKey = getStorageKey(WISHLIST_STORAGE_KEY);
-      const stored = localStorage.getItem(wishlistKey);
-      console.log('🔍 Loading guest wishlist for session:', activeSession?.id || 'guest', 'key:', wishlistKey);
-      
-      if (stored) {
-        const homeIds = JSON.parse(stored) as string[];
-        // For guest users, we'll need to fetch the homes by IDs
-        fetchHomesByIds(homeIds);
-      } else {
-        setWishlistItems([]);
-      }
-    } catch (error) {
-      console.error('Error loading guest wishlist:', error);
-      setWishlistItems([]);
-    }
-  };
 
   // Fetch homes by IDs for guest wishlist
-  const fetchHomesByIds = async (homeIds: string[]) => {
+  const fetchHomesByIds = useCallback(async (homeIds: string[]) => {
     if (homeIds.length === 0) {
       setWishlistItems([]);
       return;
@@ -111,7 +48,70 @@ export const useSessionAwareWishlist = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [supabaseClient]);
+
+  // Load wishlist from database for logged-in users
+  const loadUserWishlist = useCallback(async () => {
+    if (!activeSession?.user || !supabaseClient) return;
+    
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabaseClient
+        .from('user_wishlists')
+        .select(`
+          *,
+          mobile_homes (*)
+        `)
+        .eq('user_id', activeSession.user.id);
+
+      if (error) throw error;
+
+      const homes = data?.map(item => item.mobile_homes).filter(Boolean) as MobileHome[];
+      setWishlistItems(homes || []);
+      console.log('🔍 Loaded wishlist for session:', activeSession.id, 'items:', homes?.length || 0);
+    } catch (error) {
+      console.error('Error loading user wishlist:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [activeSession?.user?.id, activeSession?.id, supabaseClient]);
+
+  // Load wishlist from localStorage for guests
+  const loadGuestWishlist = useCallback(() => {
+    try {
+      const wishlistKey = getStorageKey(WISHLIST_STORAGE_KEY);
+      const stored = localStorage.getItem(wishlistKey);
+      console.log('🔍 Loading guest wishlist for session:', activeSession?.id || 'guest', 'key:', wishlistKey);
+      
+      if (stored) {
+        const homeIds = JSON.parse(stored) as string[];
+        // For guest users, we'll need to fetch the homes by IDs
+        fetchHomesByIds(homeIds);
+      } else {
+        setWishlistItems([]);
+      }
+    } catch (error) {
+      console.error('Error loading guest wishlist:', error);
+      setWishlistItems([]);
+    }
+  }, [activeSession?.id, getStorageKey, fetchHomesByIds]);
+  
+  useEffect(() => {
+    const currentUserId = activeSession?.user?.id || null;
+    
+    // Only reload if the user ID actually changed
+    if (lastUserIdRef.current === currentUserId) {
+      return;
+    }
+    
+    lastUserIdRef.current = currentUserId;
+    
+    if (activeSession?.user) {
+      loadUserWishlist();
+    } else {
+      loadGuestWishlist();
+    }
+  }, [activeSession?.user?.id, loadUserWishlist, loadGuestWishlist]); // Add the functions to dependencies
 
   // Add home to wishlist
   const addToWishlist = useCallback(async (home: MobileHome) => {

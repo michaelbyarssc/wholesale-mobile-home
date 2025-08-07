@@ -94,15 +94,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         console.log('🔍 AUTH CHECK: Fetching profile for user:', session.user.email, 'session:', targetSessionId);
         
-        // Skip auth verification during login to avoid duplicate calls
-        if (globalLoginInProgress) {
-          console.log('🔍 AUTH CHECK: Skipping verification during login');
-        } else {
-          // Verify we have a valid session without making additional auth calls
-          if (!session.session?.access_token) {
-            console.error('❌ AUTH CHECK: No valid access token in session');
+        // First verify the client is properly authenticated
+        const { data: authSession, error: authError } = await session.supabaseClient.auth.getSession();
+      
+        if (authError || !authSession?.session?.access_token) {
+          console.error('❌ AUTH CHECK: Client not properly authenticated:', authError);
+          
+          // Try to refresh the session
+          try {
+            console.log('🔄 AUTH CHECK: Attempting to refresh session...');
+            await session.supabaseClient.auth.setSession(session.session);
+            console.log('✅ AUTH CHECK: Session refreshed successfully');
+          } catch (refreshError) {
+            console.error('❌ AUTH CHECK: Failed to refresh session:', refreshError);
             return null;
           }
+        } else {
           console.log('✅ AUTH CHECK: Client is properly authenticated');
         }
         

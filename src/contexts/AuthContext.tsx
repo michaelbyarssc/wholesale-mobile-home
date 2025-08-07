@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { useSessionManager } from '@/contexts/SessionManagerContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -250,10 +250,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [addSession, sessions, switchToSession]);
 
   // Auto-fetch profiles - SINGLE POINT OF PROFILE FETCHING
+  const shouldFetchProfile = useRef(false);
+  
   useEffect(() => {
     if (isSigningOut) return;
     
-    if (activeSession && !activeSession.userProfile) {
+    if (activeSession && !activeSession.userProfile && !shouldFetchProfile.current) {
+      shouldFetchProfile.current = true;
       console.log('🔍 PROFILE: Auto-fetching profile for active session:', activeSession.user.email);
       
       // Check localStorage cache first
@@ -263,6 +266,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (cachedProfile) {
           console.log('🔍 PROFILE: Using cached profile for instant display');
           updateSessionProfile(activeSessionId!, cachedProfile);
+          shouldFetchProfile.current = false;
           return;
         }
       } catch (error) {
@@ -270,9 +274,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       // Only fetch if no cache available
-      fetchUserProfile(activeSessionId!);
+      fetchUserProfile(activeSessionId!).finally(() => {
+        shouldFetchProfile.current = false;
+      });
     }
-  }, [activeSession, activeSessionId, fetchUserProfile, updateSessionProfile, isSigningOut]);
+    
+    // Reset flag when session changes
+    if (!activeSession) {
+      shouldFetchProfile.current = false;
+    }
+  }, [activeSession?.id, activeSessionId, isSigningOut]);
 
   const signIn = useCallback(async (email: string, password: string) => {
     setIsLoading(true);

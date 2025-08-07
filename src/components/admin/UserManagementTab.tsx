@@ -27,12 +27,12 @@ export const UserManagementTab = () => {
   const debouncedSearchQuery = useSearchDebounce(searchQuery, 300);
 
   useEffect(() => {
-    // SECURITY: Use centralized role management
-    if (!rolesLoading && currentUser) {
+    // Use centralized auth state - no independent fetching
+    if (!rolesLoading && currentUser && !loading) {
       console.log(`[SECURITY] UserManagementTab: User ${currentUser.id} isSuperAdmin: ${isSuperAdmin}`);
       fetchUserProfiles(currentUser.id, isSuperAdmin);
     }
-  }, [currentUser, isSuperAdmin, rolesLoading]);
+  }, [currentUser?.id, isSuperAdmin, rolesLoading]);
 
   const fetchUserProfiles = async (currentUserId?: string, userIsSuperAdmin?: boolean) => {
     try {

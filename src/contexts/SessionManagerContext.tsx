@@ -742,28 +742,27 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
   }, [sessions, activeSessionId]);
 
   const updateSessionProfile = useCallback((sessionId: string, profile: { first_name?: string; last_name?: string }) => {
-    console.log('🔍 DEBUG: updateSessionProfile called with sessionId:', sessionId, 'profile:', profile);
+    console.log('🔍 PROFILE UPDATE: Updating session profile for:', sessionId);
     
+    // Batch updates to prevent excessive re-renders
     setSessions(prev => {
-      const updated = prev.map(session => {
-        if (session.id === sessionId) {
-          console.log('🔍 DEBUG: Updating session profile for:', session.user.email, 'from:', session.userProfile, 'to:', profile);
-          
-          // Cache profile in localStorage for instant retrieval
-          try {
-            const profileCache = JSON.parse(localStorage.getItem('wmh_profile_cache') || '{}');
-            profileCache[session.user.id] = profile;
-            localStorage.setItem('wmh_profile_cache', JSON.stringify(profileCache));
-          } catch (error) {
-            console.warn('Failed to cache profile in localStorage:', error);
-          }
-          
-          return { ...session, userProfile: profile };
-        }
-        return session;
-      });
+      const sessionIndex = prev.findIndex(session => session.id === sessionId);
+      if (sessionIndex === -1) return prev;
       
-      console.log('🔍 DEBUG: Sessions state updated, new sessions:', updated);
+      const session = prev[sessionIndex];
+      
+      // Skip update if profile hasn't changed
+      if (JSON.stringify(session.userProfile) === JSON.stringify(profile)) {
+        console.log('🔍 PROFILE UPDATE: Profile unchanged, skipping update');
+        return prev;
+      }
+      
+      console.log('🔍 PROFILE UPDATE: Updating profile for user:', session.user.email);
+      
+      // Create new array with updated session
+      const updated = [...prev];
+      updated[sessionIndex] = { ...session, userProfile: profile };
+      
       return updated;
     });
   }, []);

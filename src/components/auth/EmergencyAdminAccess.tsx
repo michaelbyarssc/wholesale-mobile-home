@@ -4,11 +4,11 @@ import { AlertTriangle, Shield, Key } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuthUser } from '@/hooks/useAuthUser';
+import { useMultiUserAuth } from '@/hooks/useMultiUserAuth';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 export const EmergencyAdminAccess: React.FC = () => {
-  const { user } = useAuthUser();
+  const { user } = useMultiUserAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [checking, setChecking] = useState(false);

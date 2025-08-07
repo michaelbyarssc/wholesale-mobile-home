@@ -58,27 +58,6 @@ export const useUserRoles = (): RoleCheck => {
 
       if (roleError) {
         console.error('Error fetching user roles:', roleError);
-        
-        // FALLBACK: Use is_admin RPC function if role table fails
-        console.log('🔧 Attempting admin fallback using is_admin RPC...');
-        try {
-          const { data: isAdminResult, error: rpcError } = await supabase.rpc('is_admin', { user_id: userId });
-          
-          if (!rpcError && isAdminResult === true) {
-            console.log('🔧 Emergency admin access granted via RPC fallback');
-            // Create synthetic role data for emergency access
-            setUserRoles([{ 
-              id: 'emergency-admin', 
-              user_id: userId, 
-              role: 'super_admin' as const 
-            }]);
-            setError(null);
-            return;
-          }
-        } catch (rpcErr) {
-          console.error('🚨 RPC fallback also failed:', rpcErr);
-        }
-        
         setError(`Failed to fetch user roles: ${roleError.message}`);
         setUserRoles([]);
         return;
@@ -92,26 +71,6 @@ export const useUserRoles = (): RoleCheck => {
       setUserRoles(roleData || []);
     } catch (err) {
       console.error('Error in fetchUserRoles:', err);
-      
-      // FINAL FALLBACK: Direct RPC check
-      try {
-        console.log('🔧 Final fallback: Checking admin status directly...');
-        const { data: isAdminResult, error: rpcError } = await supabase.rpc('is_admin', { user_id: userId });
-        
-        if (!rpcError && isAdminResult === true) {
-          console.log('🔧 Emergency admin access granted via final fallback');
-          setUserRoles([{ 
-            id: 'emergency-admin-final', 
-            user_id: userId, 
-            role: 'super_admin' as const 
-          }]);
-          setError(null);
-          return;
-        }
-      } catch (finalErr) {
-        console.error('🚨 All fallbacks failed:', finalErr);
-      }
-      
       setError('Failed to fetch user roles');
       setUserRoles([]);
     } finally {
@@ -119,33 +78,19 @@ export const useUserRoles = (): RoleCheck => {
     }
   }, []);
 
-  // Effect to fetch roles when user changes - delayed during login to prevent API spam
-  const lastUserIdRef = useRef<string | null>(null);
-  const lastAuthLoadingRef = useRef<boolean>(true);
-  
+  // Effect to fetch roles when user changes - coordinated after login completes
   useEffect(() => {
-    const currentUserId = user?.id || null;
-    
-    // Only fetch if user ID changed or auth loading state changed meaningfully
-    if (lastUserIdRef.current === currentUserId && lastAuthLoadingRef.current === authLoading) {
-      return;
-    }
-    
-    lastUserIdRef.current = currentUserId;
-    lastAuthLoadingRef.current = authLoading;
-    
     if (!authLoading && user && !isLoginInProgress) {
-      // Delay role fetching by 1 second after login to allow auth to settle
-      const delay = lastUserIdRef.current !== currentUserId ? 1000 : 0;
+      // Add delay to ensure profile is fetched first
       setTimeout(() => {
         fetchUserRoles(user.id);
-      }, delay);
+      }, 400);
     } else if (!authLoading && !user) {
       // Clear roles when user logs out
       setUserRoles([]);
       setError(null);
     }
-  }, [user?.id, authLoading, isLoginInProgress, fetchUserRoles]); // Use stable user.id reference
+  }, [user?.id, authLoading, isLoginInProgress, fetchUserRoles]);
 
   // Role checking functions
   const hasRole = useCallback((role: 'admin' | 'super_admin' | 'user' | 'driver') => {

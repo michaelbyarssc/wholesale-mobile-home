@@ -19,6 +19,7 @@ interface AuthContextType {
   activeSession: any | null;
   activeSessionId: string | null;
   hasMultipleSessions: boolean;
+  supabaseClient: any; // For backward compatibility
   
   // Auth methods
   signIn: (email: string, password: string) => Promise<{ data: any, error: any }>;
@@ -29,144 +30,75 @@ interface AuthContextType {
   switchToSessionSafe: (sessionId: string) => Promise<void>;
   
   // Profile methods
-  fetchUserProfile: (sessionId?: string, forceRefresh?: boolean) => Promise<any | null>;
+  fetchUserProfile: (sessionId?: string) => Promise<any>;
   
-  // Utility methods
-  getCurrentSession: () => Session | null;
+  // Session methods
+  getSupabaseClient: (sessionId?: string) => any;
+  getCurrentSession: () => any;
   getCurrentUser: () => User | null;
-  getCurrentUserProfile: () => any | null;
-  getSupabaseClient: () => any;
-  supabaseClient: any;
+  getCurrentProfile: () => any;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [isLoginInProgress, setIsLoginInProgress] = useState(false);
-  const {
-    sessions,
-    activeSession,
-    activeSessionId,
-    addSession,
-    removeSession,
-    switchToSession,
-    clearAllSessions,
-    getSessionClient,
-    updateSessionProfile
-  } = useSessionManager();
-  
   const [isLoading, setIsLoading] = useState(true);
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [isLoginInProgress, setIsLoginInProgress] = useState(false); // Replace window global
+  
+  const {
+    sessions,
+    activeSessionId,
+    addSession,
+    switchToSession: sessionManagerSwitchToSession,
+    updateSessionProfile,
+    removeSession,
+    clearAllSessions,
+    activeSession
+  } = useSessionManager();
+
+  // Derived state
+  const hasMultipleSessions = sessions.length > 1;
+
   const navigate = useNavigate();
   const { validateSession } = useSessionValidation();
 
-  // Centralized profile fetching with deduplication
-  const [ongoingRequests, setOngoingRequests] = useState<Map<string, Promise<any>>>(new Map());
-
-  const fetchUserProfile = useCallback(async (sessionId?: string, forceRefresh = false) => {
-    const targetSessionId = sessionId || activeSessionId;
+  // Simple profile fetching without complex deduplication
+  const fetchUserProfile = useCallback(async (targetSessionId?: string) => {
+    const sessionId = targetSessionId || activeSessionId;
+    const session = sessions.find(s => s.id === sessionId);
     
-    if (!targetSessionId) {
+    if (!session || !session.user) {
+      console.log('🔍 PROFILE: No valid session for profile fetch');
       return null;
     }
 
-    const session = sessions.find(s => s.id === targetSessionId);
-    if (!session?.user?.id) {
-      return null;
-    }
+    try {
+      console.log('🔍 PROFILE FETCH: Querying profiles table for user_id:', session.user.id);
+      const { data, error } = await session.supabaseClient
+        .from('profiles')
+        .select('first_name, last_name, email, phone_number')
+        .eq('user_id', session.user.id)
+        .maybeSingle();
 
-    // Request deduplication - check if already fetching for this user
-    const requestKey = `profile_${session.user.id}`;
-    if (!forceRefresh && ongoingRequests.has(requestKey)) {
-      console.log('🔍 PROFILE: Deduplicating request for user:', session.user.email);
-      return ongoingRequests.get(requestKey);
-    }
-
-    // Check if profile is already cached and not forcing refresh
-    if (!forceRefresh && session.userProfile) {
-      console.log('🔍 PROFILE: Using cached profile for user:', session.user.email);
-      return session.userProfile;
-    }
-
-    // Create the fetch promise and store it for deduplication
-    const fetchPromise = (async () => {
-      try {
-        console.log('🔍 AUTH CHECK: Fetching profile for user:', session.user.email, 'session:', targetSessionId);
-        
-        // First verify the client is properly authenticated
-        const { data: authSession, error: authError } = await session.supabaseClient.auth.getSession();
-      
-        if (authError || !authSession?.session?.access_token) {
-          console.error('❌ AUTH CHECK: Client not properly authenticated:', authError);
-          
-          // Try to refresh the session
-          try {
-            console.log('🔄 AUTH CHECK: Attempting to refresh session...');
-            await session.supabaseClient.auth.setSession(session.session);
-            console.log('✅ AUTH CHECK: Session refreshed successfully');
-          } catch (refreshError) {
-            console.error('❌ AUTH CHECK: Failed to refresh session:', refreshError);
-            return null;
-          }
-        } else {
-          console.log('✅ AUTH CHECK: Client is properly authenticated');
-        }
-        
-        // Now attempt to fetch the profile
-        console.log('🔍 PROFILE FETCH: Querying profiles table for user_id:', session.user.id);
-        const { data, error } = await session.supabaseClient
-          .from('profiles')
-          .select('first_name, last_name, email, phone_number')
-          .eq('user_id', session.user.id)
-          .maybeSingle();
-
-        if (error) {
-          console.error('❌ PROFILE FETCH: Database error:', {
-            code: error.code,
-            message: error.message,
-            details: error.details,
-            hint: error.hint
-          });
-          return null;
-        }
-
-        console.log('✅ PROFILE FETCH: Profile fetched successfully:', data);
-        
-        if (data) {
-          updateSessionProfile(targetSessionId, data);
-          console.log('✅ PROFILE UPDATE: Session profile updated');
-          
-          // Cache in localStorage for instant retrieval
-          try {
-            const profileCache = JSON.parse(localStorage.getItem('wmh_profile_cache') || '{}');
-            profileCache[session.user.id] = data;
-            localStorage.setItem('wmh_profile_cache', JSON.stringify(profileCache));
-          } catch (error) {
-            console.warn('Failed to cache profile in localStorage:', error);
-          }
-        } else {
-          console.log('ℹ️ PROFILE FETCH: No profile data found for user, this may be normal for new users');
-        }
-        
-        return data;
-      } catch (error) {
-        console.error('❌ PROFILE FETCH: Unexpected exception:', error);
+      if (error) {
+        console.error('❌ PROFILE FETCH: Database error:', error);
         return null;
-      } finally {
-        // Remove from ongoing requests when done
-        setOngoingRequests(prev => {
-          const newMap = new Map(prev);
-          newMap.delete(requestKey);
-          return newMap;
-        });
       }
-    })();
 
-    // Store the promise for deduplication
-    setOngoingRequests(prev => new Map(prev.set(requestKey, fetchPromise)));
-    
-    return fetchPromise;
-  }, [activeSessionId, sessions, updateSessionProfile, ongoingRequests]);
+      console.log('✅ PROFILE FETCH: Profile fetched successfully:', data);
+      
+      if (data) {
+        updateSessionProfile(sessionId, data);
+        console.log('✅ PROFILE UPDATE: Session profile updated');
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('❌ PROFILE FETCH: Unexpected exception:', error);
+      return null;
+    }
+  }, [activeSessionId, sessions, updateSessionProfile]);
 
   // Initialize auth - SINGLE POINT OF AUTH INITIALIZATION
   useEffect(() => {
@@ -178,151 +110,114 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.log('🔒 Preventing duplicate auth initialization (StrictMode protection)');
         return;
       }
+      
       initialized = true;
+      console.log('🚀 AUTH INIT: Starting auth initialization...');
       
       try {
-        console.log('🔐 Initializing centralized auth...');
-        
-        // Set up auth state listener ONLY (no duplicate getSession call)
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(
-          (event, session) => {
-            console.log('🔐 Auth state change:', event, session?.user?.email);
+        // Set up auth state listener FIRST
+        authSubscription = supabase.auth.onAuthStateChange(async (event, session) => {
+          console.log('🔄 AUTH STATE CHANGE:', event, session ? `User: ${session.user?.email}` : 'No session');
+          
+          if (event === 'SIGNED_IN' && session?.user) {
+            console.log('✅ AUTH STATE: User signed in:', session.user.email, 'Event:', event);
             
-            // Mark login as complete when we get a signed in event
-            if (event === 'SIGNED_IN') {
-              console.log('🔐 Login complete - clearing login state');
-              setIsLoginInProgress(false);
-            }
+            await addSession(session.user, session);
+            setIsLoginInProgress(false);
             
-            // Simplified timeout to prevent excessive session creation
-            const authEventKey = `auth_${event}_${session?.user?.id || 'none'}`;
-            
-            if ((window as any)[authEventKey]) {
-              clearTimeout((window as any)[authEventKey]);
-            }
-            
-            (window as any)[authEventKey] = setTimeout(async () => {
-              if (event === 'SIGNED_IN' && session?.user) {
-                try {
-                  const existingSession = sessions.find(s => s.user.id === session.user.id);
-                  if (!existingSession) {
-                    console.log('🔐 Creating new session for user:', session.user.email);
-                    await addSession(session.user, session);
-                    // Immediately fetch profile after session creation
-                    setTimeout(() => {
-                      fetchUserProfile();
-                    }, 100);
-                  } else {
-                    console.log('🔐 Session already exists for user, switching to it');
-                    switchToSession(existingSession.id);
-                    // Immediately fetch profile for existing session
-                    setTimeout(() => {
-                      fetchUserProfile();
-                    }, 100);
-                  }
-                } catch (error) {
-                  console.error('🔐 Error adding session on auth change:', error);
-                }
-              } else if (event === 'SIGNED_OUT') {
-                console.log('🔐 User signed out via auth change');
-                setIsLoginInProgress(false);
-              }
-              
-              delete (window as any)[authEventKey];
-            }, 200);
+            // Profile will be fetched by the auto-fetch effect below
+          } else if (event === 'SIGNED_OUT') {
+            console.log('🚪 AUTH STATE: User signed out, clearing sessions');
+            clearAllSessions();
+            setIsLoginInProgress(false);
+          } else if (event === 'TOKEN_REFRESHED' && session?.user) {
+            console.log('🔄 AUTH STATE: Token refreshed for user:', session.user.email);
+            await addSession(session.user, session);
+          } else {
+            console.log('❌ AUTH STATE: No user session, signing out');
+            setIsLoginInProgress(false);
           }
-        );
+        });
+
+        // THEN check for existing session
+        console.log('🔍 AUTH INIT: Checking for existing session...');
+        const { data: { session }, error } = await supabase.auth.getSession();
         
-        authSubscription = subscription;
-        
-        // No duplicate getSession() call - auth state listener handles everything
+        if (error) {
+          console.error('❌ AUTH INIT: Error getting session:', error);
+          setIsLoading(false);
+          return;
+        }
+
+        if (session?.user) {
+          console.log('✅ AUTH INIT: Found existing session for:', session.user.email);
+          await addSession(session.user, session);
+        } else {
+          console.log('ℹ️ AUTH INIT: No existing session found');
+        }
         
       } catch (error) {
-        console.error('Error initializing auth:', error);
+        console.error('❌ AUTH INIT: Initialization error:', error);
       } finally {
         setIsLoading(false);
+        console.log('✅ AUTH INIT: Initialization complete');
       }
     };
 
     initializeAuth();
-    
+
+    // Cleanup function
     return () => {
-      if (authSubscription) {
-        authSubscription.unsubscribe();
+      console.log('🧹 AUTH CLEANUP: Cleaning up auth subscription');
+      if (authSubscription?.subscription) {
+        authSubscription.subscription.unsubscribe();
       }
-      initialized = false;
     };
-  }, [addSession, sessions, switchToSession, activeSessionId]);
+  }, []); // Empty dependency array to prevent re-initialization
 
-  // Auto-fetch profiles - SINGLE POINT OF PROFILE FETCHING (disabled during login)
-  const shouldFetchProfile = useRef(false);
-  
+  // Auto-fetch profile for active session when user changes or session becomes available
   useEffect(() => {
-    if (isSigningOut || isLoginInProgress) return; // Skip during login
+    const currentSession = activeSession;
     
-    if (activeSession && !activeSession.userProfile && !shouldFetchProfile.current) {
-      shouldFetchProfile.current = true;
-      console.log('🔍 PROFILE: Auto-fetching profile for active session:', activeSession.user.email);
-      
-      // Check localStorage cache first
-      try {
-        const profileCache = JSON.parse(localStorage.getItem('wmh_profile_cache') || '{}');
-        const cachedProfile = profileCache[activeSession.user.id];
-        if (cachedProfile) {
-          console.log('🔍 PROFILE: Using cached profile for instant display');
-          updateSessionProfile(activeSessionId!, cachedProfile);
-          shouldFetchProfile.current = false;
-          return;
-        }
-      } catch (error) {
-        console.warn('Failed to load cached profile:', error);
-      }
-      
-      // Only fetch if no cache available and not during login
-      fetchUserProfile(activeSessionId!).finally(() => {
-        shouldFetchProfile.current = false;
-      });
+    if (currentSession?.user && !currentSession.userProfile && !isLoginInProgress) {
+      console.log('📱 AUTO-FETCH: Fetching profile for active user:', currentSession.user.email);
+      // Add small delay to ensure login process is complete
+      setTimeout(() => {
+        fetchUserProfile();
+      }, 200);
     }
-    
-    // Reset flag when session changes
-    if (!activeSession) {
-      shouldFetchProfile.current = false;
-    }
-  }, [activeSession?.id, activeSessionId, isSigningOut]);
+  }, [activeSession?.user?.id, activeSession?.userProfile, isLoginInProgress, fetchUserProfile]);
 
+  // Auth methods
   const signIn = useCallback(async (email: string, password: string) => {
-    console.log('🔐 Attempting sign in...');
+    console.log('🔐 SIGN IN: Starting sign in for:', email);
     setIsLoginInProgress(true);
     
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
-        password
+        password,
       });
 
-      if (data.user && data.session) {
-        try {
-          const sessionId = await addSession(data.user, data.session);
-          console.log('🔐 Sign in successful, session ID:', sessionId);
-          return { data, error: null };
-        } catch (sessionError: any) {
-          if (sessionError.message?.includes('Session creation is temporarily locked')) {
-            return { data: null, error: { message: 'Please wait a moment and try again.' } };
-          }
-          throw sessionError;
-        }
+      if (error) {
+        console.error('❌ SIGN IN: Error:', error);
+        setIsLoginInProgress(false);
+        return { data: null, error };
       }
 
+      console.log('✅ SIGN IN: Success for:', email);
       return { data, error: null };
-    } catch (error: any) {
-      console.error('🔐 Sign in error:', error);
+    } catch (error) {
+      console.error('❌ SIGN IN: Exception:', error);
       setIsLoginInProgress(false);
       return { data: null, error };
     }
-  }, [addSession]);
+  }, []);
 
   const signUp = useCallback(async (email: string, password: string, metadata?: any) => {
-    setIsLoading(true);
+    console.log('📝 SIGN UP: Starting sign up for:', email);
+    setIsLoginInProgress(true);
+    
     try {
       const redirectUrl = `${window.location.origin}/`;
       
@@ -335,151 +230,112 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       });
 
-      if (error) throw error;
-
-      if (data.user && data.session) {
-        const sessionId = await addSession(data.user, data.session);
-        console.log('🔐 Sign up successful, session ID:', sessionId);
+      if (error) {
+        console.error('❌ SIGN UP: Error:', error);
+        setIsLoginInProgress(false);
+        return { data: null, error };
       }
 
+      console.log('✅ SIGN UP: Success for:', email);
       return { data, error: null };
-    } catch (error: any) {
-      console.error('🔐 Sign up error:', error);
+    } catch (error) {
+      console.error('❌ SIGN UP: Exception:', error);
+      setIsLoginInProgress(false);
       return { data: null, error };
-    } finally {
-      setIsLoading(false);
     }
-  }, [addSession]);
+  }, []);
 
   const signOut = useCallback(async (sessionId?: string) => {
     const targetSessionId = sessionId || activeSessionId;
-    if (!targetSessionId) {
-      console.warn('🔐 No session to sign out');
-      return;
-    }
-
-    const session = sessions.find(s => s.id === targetSessionId);
-    if (!session) {
-      console.warn('🔐 Session not found for logout:', targetSessionId);
-      return;
-    }
-
-    console.log('🚨 SIGN OUT: Starting logout for session:', targetSessionId, 'user:', session.user.email);
     
+    console.log('🚪 SIGN OUT: Starting sign out for session:', targetSessionId);
+    setIsSigningOut(true);
+
     try {
-      setIsSigningOut(true);
-      setIsLoading(true);
-      
-      // Immediate cleanup
-      const userId = session.user.id;
-      const keysToRemove = Object.keys(localStorage).filter(key => 
-        key.includes(userId) || 
-        key.startsWith(`wmh_session_${userId}`) ||
-        key.includes(`auth-token`) && key.includes(userId)
-      );
-      
-      keysToRemove.forEach(key => {
-        try {
-          localStorage.removeItem(key);
-          console.log('🚨 Removed stale key:', key);
-        } catch (error) {
-          console.warn('🚨 Failed to remove key:', key, error);
+      if (targetSessionId) {
+        const session = sessions.find(s => s.id === targetSessionId);
+        
+        if (session?.supabaseClient) {
+          await session.supabaseClient.auth.signOut();
         }
-      });
-      
-      removeSession(targetSessionId);
-      
-      try {
-        await Promise.race([
-          session.supabaseClient.auth.signOut(),
-          new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Logout timeout')), 1000)
-          )
-        ]);
-        console.log('🚨 SIGN OUT: Supabase logout completed');
-      } catch (logoutError) {
-        console.warn('🚨 SIGN OUT: Supabase logout failed or timed out:', logoutError);
+        
+        removeSession(targetSessionId);
+      } else {
+        await supabase.auth.signOut();
       }
-      
-      navigate('/auth');
-      
+
+      console.log('✅ SIGN OUT: Complete');
     } catch (error) {
-      console.error('🚨 SIGN OUT ERROR:', error);
-      removeSession(targetSessionId);
-      navigate('/auth');
+      console.error('❌ SIGN OUT: Error:', error);
     } finally {
       setIsSigningOut(false);
-      setIsLoading(false);
     }
-  }, [activeSessionId, sessions, removeSession, navigate]);
+  }, [activeSessionId, sessions, removeSession]);
 
   const signOutAll = useCallback(async () => {
-    console.log('🚨 SIGN OUT ALL: Starting logout for', sessions.length, 'sessions');
-    
+    console.log('🚪 SIGN OUT ALL: Starting...');
+    setIsSigningOut(true);
+
     try {
-      setIsSigningOut(true);
-      setIsLoading(true);
-      
-      const logoutPromises = sessions.map((session) => {
-        return Promise.race([
-          session.supabaseClient.auth.signOut(),
-          new Promise(resolve => setTimeout(resolve, 1500))
-        ]);
-      });
-      
-      await Promise.allSettled(logoutPromises);
+      await supabase.auth.signOut({ scope: 'global' });
       clearAllSessions();
-      
-      try {
-        localStorage.removeItem('wmh_sessions');
-        localStorage.removeItem('wmh_active_session');
-        Object.keys(localStorage).forEach(key => {
-          if (key.includes('sb-') || key.includes('auth-token')) {
-            localStorage.removeItem(key);
-          }
-        });
-      } catch (storageError) {
-        console.error('🚨 Storage cleanup error:', storageError);
-      }
-      
-      navigate('/');
-      
+      console.log('✅ SIGN OUT ALL: Complete');
     } catch (error) {
-      console.error('🚨 SIGN OUT ALL ERROR:', error);
-      clearAllSessions();
-      navigate('/');
+      console.error('❌ SIGN OUT ALL: Error:', error);
     } finally {
       setIsSigningOut(false);
     }
-  }, [sessions, clearAllSessions, navigate]);
+  }, [clearAllSessions]);
+
+  const switchToSession = useCallback((sessionId: string) => {
+    console.log('🔄 SWITCH SESSION: Switching to session:', sessionId);
+    sessionManagerSwitchToSession(sessionId);
+  }, [sessionManagerSwitchToSession]);
 
   const switchToSessionSafe = useCallback(async (sessionId: string) => {
-    try {
-      const session = sessions.find(s => s.id === sessionId);
-      if (!session) {
-        throw new Error('Session not found');
-      }
-
-      const isValid = await validateSession(sessionId);
-      if (!isValid) {
-        throw new Error('Session validation failed');
-      }
-
-      switchToSession(sessionId);
-      console.log('🔄 Switched to session:', sessionId);
-    } catch (error) {
-      console.error('🔄 Failed to switch session:', error);
+    console.log('🔄 SWITCH SESSION SAFE: Switching to session:', sessionId);
+    
+    const targetSession = sessions.find(s => s.id === sessionId);
+    if (!targetSession) {
+      console.error('❌ SWITCH SESSION: Session not found:', sessionId);
+      return;
     }
-  }, [sessions, validateSession, switchToSession]);
 
-  // Utility methods
-  const getCurrentSession = useCallback(() => activeSession?.session || null, [activeSession]);
-  const getCurrentUser = useCallback(() => activeSession?.user || null, [activeSession]);
-  const getCurrentUserProfile = useCallback(() => activeSession?.userProfile || null, [activeSession]);
-  const getSupabaseClient = useCallback(() => {
-    return activeSession ? getSessionClient(activeSession.id) : supabase;
-  }, [activeSession, getSessionClient]);
+    try {
+      const isValid = await validateSession(sessionId);
+      if (isValid) {
+        sessionManagerSwitchToSession(sessionId);
+        console.log('✅ SWITCH SESSION: Successfully switched to:', sessionId);
+      } else {
+        console.log('❌ SWITCH SESSION: Session invalid, removing:', sessionId);
+        removeSession(sessionId);
+      }
+    } catch (error) {
+      console.error('❌ SWITCH SESSION: Error validating session:', error);
+      removeSession(sessionId);
+    }
+  }, [sessions, validateSession, sessionManagerSwitchToSession, removeSession]);
 
+  // Helper methods
+  const getSupabaseClient = useCallback((sessionId?: string) => {
+    const targetSessionId = sessionId || activeSessionId;
+    const session = sessions.find(s => s.id === targetSessionId);
+    return session?.supabaseClient || supabase;
+  }, [activeSessionId, sessions]);
+
+  const getCurrentSession = useCallback(() => {
+    return activeSession;
+  }, [activeSession]);
+
+  const getCurrentUser = useCallback(() => {
+    return activeSession?.user || null;
+  }, [activeSession]);
+
+  const getCurrentProfile = useCallback(() => {
+    return activeSession?.userProfile || null;
+  }, [activeSession]);
+
+  // Context value
   const value: AuthContextType = {
     // Current auth state
     user: activeSession?.user || null,
@@ -493,7 +349,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     sessions,
     activeSession,
     activeSessionId,
-    hasMultipleSessions: sessions.length > 1,
+    hasMultipleSessions,
+    supabaseClient: getSupabaseClient(), // For backward compatibility
     
     // Auth methods
     signIn,
@@ -506,12 +363,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Profile methods
     fetchUserProfile,
     
-    // Utility methods
+    // Session methods
+    getSupabaseClient,
     getCurrentSession,
     getCurrentUser,
-    getCurrentUserProfile,
-    getSupabaseClient,
-    supabaseClient: getSupabaseClient(),
+    getCurrentProfile
   };
 
   return (
@@ -521,7 +377,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   );
 };
 
-export const useAuth = () => {
+export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');

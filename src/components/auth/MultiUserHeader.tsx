@@ -69,7 +69,7 @@ const MultiUserHeaderComponent = ({
     isStabilizing
   } = useAuth();
 
-  // Stable display name with login state handling
+  // Stable display name with login state handling  
   const getDisplayName = React.useMemo(() => {
     // Handle various loading and transitional states
     if (isSigningOut) {
@@ -223,14 +223,14 @@ const MultiUserHeaderComponent = ({
                     {/* Multi-User Session Selector */}
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          className="flex items-center gap-2 text-gray-700 hover:text-gray-900 hover:bg-gray-100 px-3 py-2 rounded-lg transition-colors"
-                        >
-                          <div className="flex items-center justify-center w-8 h-8 bg-blue-100 rounded-full">
-                            <User className="h-4 w-4 text-blue-600" />
-                          </div>
-                          <span className="font-medium">{getDisplayName}</span>
+                         <Button
+                           variant="ghost"
+                           className="flex items-center gap-2 text-gray-700 hover:text-gray-900 hover:bg-gray-100 px-3 py-2 rounded-lg transition-colors min-h-[40px]"
+                         >
+                           <div className="flex items-center justify-center w-8 h-8 bg-blue-100 rounded-full">
+                             <User className="h-4 w-4 text-blue-600" />
+                           </div>
+                           <span className="font-medium min-w-[80px] text-left">{getDisplayName}</span>
                           {hasMultipleSessions && (
                             <>
                               <Badge variant="secondary" className="ml-1 text-xs">

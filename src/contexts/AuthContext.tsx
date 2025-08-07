@@ -11,10 +11,12 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   userProfile: any | null;
+  userRoles: any[];
   isLoading: boolean;
   isSigningOut: boolean;
   isLoginInProgress: boolean;
   isStabilizing: boolean;
+  isUserDataReady: boolean;
   
   // Session management
   sessions: any[];
@@ -22,6 +24,11 @@ interface AuthContextType {
   activeSessionId: string | null;
   hasMultipleSessions: boolean;
   supabaseClient: any;
+  
+  // Role management
+  isAdmin: boolean;
+  isSuperAdmin: boolean;
+  hasRole: (role: 'admin' | 'super_admin' | 'user' | 'driver') => boolean;
   
   // Auth methods
   signIn: (email: string, password: string) => Promise<{ data: any, error: any }>;
@@ -48,7 +55,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [isLoginInProgress, setIsLoginInProgress] = useState(false);
   const [isProfileLoading, setIsProfileLoading] = useState(false);
+  const [isRolesLoading, setIsRolesLoading] = useState(false);
   const [isStabilizing, setIsStabilizing] = useState(false);
+  const [userRoles, setUserRoles] = useState<any[]>([]);
+  const [isUserDataReady, setIsUserDataReady] = useState(false);
   
   const {
     sessions,
@@ -71,6 +81,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const profileFetchInProgress = useRef(false);
   const hasProfileBeenFetched = useRef(new Set<string>());
   const profileRequestPromises = useRef(new Map<string, Promise<any>>());
+  
+  // Role request deduplication refs  
+  const rolesFetchInProgress = useRef(false);
+  const hasRoleBeenFetched = useRef(new Set<string>());
+  const roleRequestPromises = useRef(new Map<string, Promise<any>>());
   
   // Auth event deduplication ref
   const lastProcessedEvent = useRef<{event: string, userId?: string, timestamp: number} | null>(null);
@@ -139,6 +154,69 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return profilePromise;
   }, [activeSessionId, sessions, updateSessionProfile]);
 
+  // Centralized role fetching
+  const fetchUserRoles = useCallback(async (targetSessionId?: string) => {
+    const sessionId = targetSessionId || activeSessionId;
+    const session = sessions.find(s => s.id === sessionId);
+    
+    if (!session?.user) {
+      console.log('🔐 ROLES: No valid session for role fetch');
+      setUserRoles([]);
+      return [];
+    }
+
+    const userId = session.user.id;
+    const requestId = `${userId}-${Date.now()}`;
+    
+    // Check if we already fetched for this user
+    if (hasRoleBeenFetched.current.has(userId)) {
+      console.log(`🔐 ROLES [${requestId}]: Already fetched for user ${userId}, returning cached`);
+      return userRoles;
+    }
+
+    // Return existing promise if request is in progress
+    if (roleRequestPromises.current.has(userId)) {
+      console.log(`🔐 ROLES [${requestId}]: Request already in progress for user ${userId}, returning existing promise`);
+      return roleRequestPromises.current.get(userId);
+    }
+
+    // Mark as fetched and create new promise
+    hasRoleBeenFetched.current.add(userId);
+    setIsRolesLoading(true);
+    
+    const rolePromise = (async () => {
+      try {
+        console.log(`🔐 ROLES FETCH [${requestId}]: Querying user_roles table for user_id:`, userId);
+        const { data, error } = await session.supabaseClient
+          .from('user_roles')
+          .select('id, user_id, role')
+          .eq('user_id', userId);
+
+        if (error) {
+          console.error(`❌ ROLES FETCH [${requestId}]: Database error:`, error);
+          setUserRoles([]);
+          return [];
+        }
+
+        console.log(`✅ ROLES FETCH [${requestId}]: Roles fetched successfully:`, data?.map(r => r.role) || []);
+        
+        const roles = data || [];
+        setUserRoles(roles);
+        return roles;
+      } catch (error) {
+        console.error(`❌ ROLES FETCH [${requestId}]: Unexpected exception:`, error);
+        setUserRoles([]);
+        return [];
+      } finally {
+        roleRequestPromises.current.delete(userId);
+        setIsRolesLoading(false);
+      }
+    })();
+
+    roleRequestPromises.current.set(userId, rolePromise);
+    return rolePromise;
+  }, [activeSessionId, sessions, userRoles]);
+
   // Initialize auth
   useEffect(() => {
     let initialized = false;
@@ -179,6 +257,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (event === 'SIGNED_IN' && session?.user) {
             console.log('✅ AUTH STATE: User signed in:', session.user.email, 'Event:', event);
             setIsStabilizing(true);
+            setIsUserDataReady(false);
             await addSession(session.user, session);
             setIsLoginInProgress(false);
             
@@ -191,6 +270,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             clearAllSessions();
             hasProfileBeenFetched.current.clear();
             profileRequestPromises.current.clear();
+            hasRoleBeenFetched.current.clear();
+            roleRequestPromises.current.clear();
+            setUserRoles([]);
+            setIsUserDataReady(false);
             setIsLoginInProgress(false);
           } else if (event === 'TOKEN_REFRESHED' && session?.user) {
             console.log('🔄 AUTH STATE: Token refreshed for user:', session.user.email);
@@ -243,21 +326,43 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
-  // Auto-fetch profile for active session with debouncing
+  // Coordinated data fetching - profile then roles then ready state
   useEffect(() => {
     const currentSession = activeSession;
     
-    if (currentSession?.user && !currentSession.userProfile && !isLoginInProgress && !isProfileLoading) {
-      console.log('📱 AUTO-FETCH: Debounced profile fetch for active user:', currentSession.user.email);
+    if (currentSession?.user && !isLoginInProgress && !isStabilizing) {
+      console.log('📱 COORDINATED FETCH: Starting data fetch sequence for user:', currentSession.user.email);
       
-      // Add 300ms delay to prevent rapid successive profile fetches during login transitions
-      const fetchTimer = setTimeout(() => {
-        fetchUserProfile();
-      }, 300);
+      // Sequential loading: profile first, then roles, then mark ready
+      const fetchDataSequence = async () => {
+        try {
+          // Step 1: Fetch profile if needed
+          if (!currentSession.userProfile && !isProfileLoading) {
+            console.log('📱 STEP 1: Fetching profile...');
+            await fetchUserProfile();
+          }
+          
+          // Step 2: Fetch roles if needed  
+          if (userRoles.length === 0 && !isRolesLoading) {
+            console.log('📱 STEP 2: Fetching roles...');
+            await fetchUserRoles();
+          }
+          
+          // Step 3: Mark user data as ready
+          if (!isUserDataReady && !isProfileLoading && !isRolesLoading) {
+            console.log('📱 STEP 3: Marking user data as ready');
+            setIsUserDataReady(true);
+          }
+        } catch (error) {
+          console.error('📱 COORDINATED FETCH: Error in data sequence:', error);
+        }
+      };
       
+      // Add delay to prevent rapid fetches during transitions
+      const fetchTimer = setTimeout(fetchDataSequence, 200);
       return () => clearTimeout(fetchTimer);
     }
-  }, [activeSession?.user?.id, isLoginInProgress, isProfileLoading]);
+  }, [activeSession?.user?.id, isLoginInProgress, isStabilizing, isProfileLoading, isRolesLoading, userRoles.length, isUserDataReady]);
 
   // Auth methods
   const signIn = useCallback(async (email: string, password: string) => {
@@ -406,16 +511,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return activeSession?.userProfile || null;
   }, [activeSession]);
 
+  // Role checking functions
+  const hasRole = useCallback((role: 'admin' | 'super_admin' | 'user' | 'driver') => {
+    return userRoles.some(userRole => userRole.role === role);
+  }, [userRoles]);
+
+  const isAdmin = hasRole('admin') || hasRole('super_admin');
+  const isSuperAdmin = hasRole('super_admin');
+
   // Context value
   const value: AuthContextType = {
     // Current auth state
     user: activeSession?.user || null,
     session: activeSession?.session || null,
     userProfile: activeSession?.userProfile || null,
+    userRoles,
     isLoading,
     isSigningOut,
     isLoginInProgress,
     isStabilizing,
+    isUserDataReady,
     
     // Session management
     sessions,
@@ -423,6 +538,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     activeSessionId,
     hasMultipleSessions,
     supabaseClient: getSupabaseClient(),
+    
+    // Role management
+    isAdmin,
+    isSuperAdmin,
+    hasRole,
     
     // Auth methods
     signIn,

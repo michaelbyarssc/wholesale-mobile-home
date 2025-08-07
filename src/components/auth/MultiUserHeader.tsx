@@ -64,7 +64,24 @@ export const MultiUserHeader = ({
     hasMultipleSessions
   } = useMultiUserAuth();
 
-  const displayName = userProfile?.first_name || 'User';
+  const getDisplayName = (profile?: { first_name?: string; last_name?: string } | null) => {
+    if (!profile) return 'User';
+    
+    const firstName = profile.first_name || '';
+    const lastName = profile.last_name || '';
+    
+    if (firstName && lastName) {
+      return `${firstName} ${lastName}`;
+    } else if (firstName) {
+      return firstName;
+    } else if (lastName) {
+      return lastName;
+    }
+    
+    return 'User';
+  };
+
+  const displayName = getDisplayName(userProfile);
 
   const handleChangePassword = () => {
     setIsPasswordDialogOpen(true);
@@ -242,7 +259,7 @@ export const MultiUserHeader = ({
                                   </div>
                                   <div className="flex-1">
                                     <div className="font-medium text-gray-900">
-                                      {session.userProfile?.first_name || 'User'}
+                                      {getDisplayName(session.userProfile)}
                                     </div>
                                     <div className="text-sm text-gray-500">{session.user.email}</div>
                                   </div>
@@ -375,7 +392,7 @@ export const MultiUserHeader = ({
           </div>
 
           {/* Mobile Menu with Multi-User Support */}
-          {user && isMobileMenuOpen && (
+          {isMobileMenuOpen && (
             <div className="lg:hidden border-t border-gray-200 py-4 space-y-3 animate-fade-in">
               {/* Current User Info */}
               <div className="flex items-center justify-between px-4">

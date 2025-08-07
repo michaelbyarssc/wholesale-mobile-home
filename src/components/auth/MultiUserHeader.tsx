@@ -67,31 +67,74 @@ export const MultiUserHeader = ({
     supabaseClient
   } = useMultiUserAuth();
 
-  // Ensure profile is fetched when component mounts or user changes
+  // Profile loading state to prevent flashing
+  const [isProfileLoading, setIsProfileLoading] = useState(false);
+  const [cachedProfiles, setCachedProfiles] = useState<Map<string, any>>(new Map());
+  
+  // Cache profile data in component state
   React.useEffect(() => {
-    console.log('🔍 HEADER: Effect triggered - user:', !!user, 'activeSessionId:', !!activeSessionId, 'userProfile:', userProfile);
-    if (user && activeSessionId) {
-      console.log('🔍 HEADER: Fetching profile for user:', user.email, 'current profile:', userProfile);
-      fetchUserProfile(activeSessionId);
+    if (userProfile && user?.id) {
+      setCachedProfiles(prev => new Map(prev.set(user.id, userProfile)));
       
-      // Also try a direct test query to debug RLS and permissions
-      setTimeout(async () => {
-        try {
-          console.log('🔍 HEADER: Testing direct profile query...');
-          const { data, error } = await supabaseClient
-            .from('profiles')
-            .select('first_name, last_name, email')
-            .eq('user_id', user.id)
-            .maybeSingle();
-          console.log('🔍 HEADER: Direct query result:', { data, error });
-        } catch (err) {
-          console.error('🔍 HEADER: Direct query failed:', err);
-        }
-      }, 2000);
+      // Also cache in localStorage for persistence
+      try {
+        const profileCache = JSON.parse(localStorage.getItem('wmh_profile_cache') || '{}');
+        profileCache[user.id] = userProfile;
+        localStorage.setItem('wmh_profile_cache', JSON.stringify(profileCache));
+      } catch (error) {
+        console.warn('Failed to cache profile in localStorage:', error);
+      }
     }
-  }, [user, activeSessionId, fetchUserProfile, userProfile, supabaseClient]);
+  }, [userProfile, user?.id]);
 
-  const getDisplayName = (profile?: { first_name?: string; last_name?: string } | null, email?: string) => {
+  // Load cached profile on user change
+  React.useEffect(() => {
+    if (user?.id && !userProfile) {
+      // Check component cache first
+      const componentCached = cachedProfiles.get(user.id);
+      if (componentCached) {
+        return; // Profile is already cached
+      }
+      
+      // Check localStorage cache
+      try {
+        const profileCache = JSON.parse(localStorage.getItem('wmh_profile_cache') || '{}');
+        const cachedProfile = profileCache[user.id];
+        if (cachedProfile) {
+          setCachedProfiles(prev => new Map(prev.set(user.id, cachedProfile)));
+          return; // Use cached profile
+        }
+      } catch (error) {
+        console.warn('Failed to load cached profile:', error);
+      }
+      
+      // Only fetch if we have no cached profile and user is available
+      if (activeSessionId) {
+        setIsProfileLoading(true);
+        fetchUserProfile(activeSessionId).finally(() => {
+          setIsProfileLoading(false);
+        });
+      }
+    }
+  }, [user?.id, userProfile, activeSessionId, fetchUserProfile, cachedProfiles]);
+
+  const getDisplayName = (profile?: { first_name?: string; last_name?: string } | null, email?: string, isLoading?: boolean) => {
+    // If still loading profile, show loading placeholder
+    if (isLoading) {
+      return 'Loading...';
+    }
+    
+    // Check cached profile first
+    if (user?.id && cachedProfiles.has(user.id)) {
+      const cached = cachedProfiles.get(user.id);
+      if (cached?.first_name) {
+        return cached.last_name ? `${cached.first_name} ${cached.last_name}` : cached.first_name;
+      }
+      if (cached?.last_name) {
+        return cached.last_name;
+      }
+    }
+    
     // If we have profile data, prioritize first_name
     if (profile?.first_name) {
       return profile.last_name ? `${profile.first_name} ${profile.last_name}` : profile.first_name;
@@ -102,11 +145,16 @@ export const MultiUserHeader = ({
       return profile.last_name;
     }
     
-    // Fallback to email prefix only if no profile data exists
+    // If we're just switching sessions and expect a profile soon, show loading
+    if (!profile && user?.id && activeSessionId) {
+      return 'Loading...';
+    }
+    
+    // Final fallback to email prefix
     return email ? email.split('@')[0] : 'User';
   };
 
-  const displayName = getDisplayName(userProfile, user?.email);
+  const displayName = getDisplayName(userProfile, user?.email, isProfileLoading);
   
   // Debug logging for user profile
   console.log('🔍 DEBUG: MultiUserHeader - user:', user?.email, 'userProfile:', userProfile, 'displayName:', displayName);

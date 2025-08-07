@@ -748,6 +748,16 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
       const updated = prev.map(session => {
         if (session.id === sessionId) {
           console.log('🔍 DEBUG: Updating session profile for:', session.user.email, 'from:', session.userProfile, 'to:', profile);
+          
+          // Cache profile in localStorage for instant retrieval
+          try {
+            const profileCache = JSON.parse(localStorage.getItem('wmh_profile_cache') || '{}');
+            profileCache[session.user.id] = profile;
+            localStorage.setItem('wmh_profile_cache', JSON.stringify(profileCache));
+          } catch (error) {
+            console.warn('Failed to cache profile in localStorage:', error);
+          }
+          
           return { ...session, userProfile: profile };
         }
         return session;

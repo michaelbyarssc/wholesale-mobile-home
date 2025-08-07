@@ -19,9 +19,6 @@ export const AuthNavigation: React.FC<AuthNavigationProps> = ({
   isForgotPassword,
   onToggleAuthMode,
   onToggleForgotPassword,
-  currentUser,
-  isAdmin,
-  onShowPasswordChange,
 }) => {
   const navigate = useNavigate();
 
@@ -72,19 +69,6 @@ export const AuthNavigation: React.FC<AuthNavigationProps> = ({
           Back to Home
         </Button>
       </div>
-
-      {/* Show change password button if user is logged in */}
-      {currentUser && (
-        <div className="space-y-2 text-center">
-          <Button
-            variant="outline"
-            onClick={onShowPasswordChange}
-            className="w-full bg-yellow-50 border-yellow-200 text-yellow-700 hover:bg-yellow-100"
-          >
-            Change Password
-          </Button>
-        </div>
-      )}
     </div>
   );
 };

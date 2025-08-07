@@ -19,6 +19,7 @@ export const useMultiUserAuth = () => {
   } = useSessionManager();
   
   const [isLoading, setIsLoading] = useState(true);
+  const [isSigningOut, setIsSigningOut] = useState(false);
   const navigate = useNavigate();
   const { validateSession } = useSessionValidation();
 
@@ -213,8 +214,10 @@ export const useMultiUserAuth = () => {
     };
   }, [addSession, sessions, fetchUserProfile]);
 
-  // Auto-fetch profiles with caching and immediate loading
+  // Auto-fetch profiles with caching and immediate loading - skip during sign out
   useEffect(() => {
+    if (isSigningOut) return; // Prevent profile fetching during logout
+    
     if (activeSession && !activeSession.userProfile) {
       console.log('🔍 DEBUG: Fetching profile for active session:', activeSession.user.email);
       
@@ -236,7 +239,7 @@ export const useMultiUserAuth = () => {
         fetchUserProfile(activeSessionId!);
       }, 0);
     }
-  }, [activeSession, activeSessionId, fetchUserProfile, updateSessionProfile]);
+  }, [activeSession, activeSessionId, fetchUserProfile, updateSessionProfile, isSigningOut]);
 
   const signIn = useCallback(async (email: string, password: string) => {
     setIsLoading(true);
@@ -320,6 +323,8 @@ export const useMultiUserAuth = () => {
     console.log('🚨 SIGN OUT: Starting enhanced logout for session:', targetSessionId, 'user:', session.user.email);
     
     try {
+      // Set signing out state immediately to prevent UI flashing
+      setIsSigningOut(true);
       setIsLoading(true);
       
       // Step 1: Immediate localStorage cleanup for this user
@@ -379,7 +384,7 @@ export const useMultiUserAuth = () => {
       
       // Step 5: Navigate to auth page
       console.log('🚨 SIGN OUT: Step 5 - Navigating to auth page');
-      window.location.href = '/auth';
+      navigate('/auth');
       
     } catch (error) {
       console.error('🚨 SIGN OUT ERROR: Emergency cleanup:', error);
@@ -394,16 +399,18 @@ export const useMultiUserAuth = () => {
         console.error('🚨 Emergency storage clear failed:', clearError);
       }
       
-      window.location.href = '/auth';
+      navigate('/auth');
     } finally {
+      setIsSigningOut(false);
       setIsLoading(false);
     }
-  }, [activeSessionId, sessions, removeSession]);
+  }, [activeSessionId, sessions, removeSession, navigate]);
 
   const signOutAll = useCallback(async () => {
     console.log('🚨 SIGN OUT ALL: Starting logout for', sessions.length, 'sessions');
     
     try {
+      setIsSigningOut(true);
       setIsLoading(true);
       
       console.log('🚨 SIGN OUT ALL: Step 1 - Calling logout for all sessions');
@@ -441,7 +448,7 @@ export const useMultiUserAuth = () => {
       
       // Force page reload immediately for complete cleanup
       console.log('🚨 SIGN OUT ALL: Step 5 - Forcing immediate page reload');
-      window.location.href = '/';
+      navigate('/');
       
     } catch (error) {
       console.error('🚨 SIGN OUT ALL ERROR: Forcing emergency cleanup:', error);
@@ -452,9 +459,11 @@ export const useMultiUserAuth = () => {
       } catch (clearError) {
         console.error('🚨 EMERGENCY: Failed to clear localStorage:', clearError);
       }
-      window.location.href = '/';
+      navigate('/');
+    } finally {
+      setIsSigningOut(false);
     }
-  }, [sessions, clearAllSessions]);
+  }, [sessions, clearAllSessions, navigate]);
 
   const switchToSessionSafe = useCallback(async (sessionId: string) => {
     // Enhanced session switching with better validation
@@ -528,6 +537,7 @@ export const useMultiUserAuth = () => {
     session: getCurrentSession()?.session || null,
     userProfile: getCurrentUserProfile(),
     isLoading,
+    isSigningOut,
     
     // Auth methods
     signIn,

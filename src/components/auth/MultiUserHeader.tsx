@@ -64,7 +64,8 @@ export const MultiUserHeader = ({
     hasMultipleSessions,
     fetchUserProfile,
     activeSessionId,
-    supabaseClient
+    supabaseClient,
+    isSigningOut
   } = useMultiUserAuth();
 
   // Profile loading state to prevent flashing
@@ -87,8 +88,10 @@ export const MultiUserHeader = ({
     }
   }, [userProfile, user?.id]);
 
-  // Load cached profile on user change
+  // Load cached profile on user change - skip during sign out
   React.useEffect(() => {
+    if (isSigningOut) return; // Prevent profile fetching during logout
+    
     if (user?.id && !userProfile) {
       // Check component cache first
       const componentCached = cachedProfiles.get(user.id);
@@ -116,9 +119,14 @@ export const MultiUserHeader = ({
         });
       }
     }
-  }, [user?.id, userProfile, activeSessionId, fetchUserProfile, cachedProfiles]);
+  }, [user?.id, userProfile, activeSessionId, fetchUserProfile, cachedProfiles, isSigningOut]);
 
   const getDisplayName = (profile?: { first_name?: string; last_name?: string } | null, email?: string, isLoading?: boolean) => {
+    // If signing out, show signing out message
+    if (isSigningOut) {
+      return 'Signing out...';
+    }
+    
     // If still loading profile, show loading placeholder
     if (isLoading) {
       return 'Loading...';
@@ -404,14 +412,14 @@ export const MultiUserHeader = ({
                           Change Password
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={handleSignOut} disabled={isLoading} className="hover:bg-gray-50">
+                        <DropdownMenuItem onClick={handleSignOut} disabled={isLoading || isSigningOut} className="hover:bg-gray-50">
                           <LogOut className="h-4 w-4 mr-2" />
-                          {hasMultipleSessions ? 'Sign Out User' : 'Sign Out'}
+                          {isSigningOut ? 'Signing out...' : (hasMultipleSessions ? 'Sign Out User' : 'Sign Out')}
                         </DropdownMenuItem>
                         {hasMultipleSessions && (
-                          <DropdownMenuItem onClick={handleSignOutAll} disabled={isLoading} className="hover:bg-red-50 text-red-600">
+                          <DropdownMenuItem onClick={handleSignOutAll} disabled={isLoading || isSigningOut} className="hover:bg-red-50 text-red-600">
                             <Users className="h-4 w-4 mr-2" />
-                            Sign Out All
+                            {isSigningOut ? 'Signing out...' : 'Sign Out All'}
                           </DropdownMenuItem>
                         )}
                       </DropdownMenuContent>
@@ -549,12 +557,12 @@ export const MultiUserHeader = ({
                     handleSignOut();
                     setIsMobileMenuOpen(false);
                   }}
-                  disabled={isLoading}
+                  disabled={isLoading || isSigningOut}
                   variant="ghost"
                   className="w-full justify-start text-left p-3 hover:bg-gray-50"
                 >
                   <LogOut className="h-4 w-4 mr-3" />
-                  {hasMultipleSessions ? 'Sign Out User' : 'Sign Out'}
+                  {isSigningOut ? 'Signing out...' : (hasMultipleSessions ? 'Sign Out User' : 'Sign Out')}
                 </Button>
                 {hasMultipleSessions && (
                   <Button
@@ -562,12 +570,12 @@ export const MultiUserHeader = ({
                       handleSignOutAll();
                       setIsMobileMenuOpen(false);
                     }}
-                    disabled={isLoading}
+                    disabled={isLoading || isSigningOut}
                     variant="ghost"
                     className="w-full justify-start text-left p-3 hover:bg-red-50 text-red-600"
                   >
                     <Users className="h-4 w-4 mr-3" />
-                    Sign Out All Users
+                    {isSigningOut ? 'Signing out...' : 'Sign Out All Users'}
                   </Button>
                 )}
               </div>

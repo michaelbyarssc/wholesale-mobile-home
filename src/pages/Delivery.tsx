@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
-import { useMultiUserAuth } from "@/hooks/useMultiUserAuth";
+import { useAuth } from "@/contexts/AuthContext";
 import { useUserRoles } from "@/hooks/useUserRoles";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
@@ -30,7 +30,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const Delivery = () => {
-  const { user, userProfile, signOut } = useMultiUserAuth();
+  const { user, userProfile, signOut } = useAuth();
 
   const handleLogout = async () => {
     await signOut();

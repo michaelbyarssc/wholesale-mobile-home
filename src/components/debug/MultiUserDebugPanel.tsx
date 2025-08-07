@@ -1,5 +1,5 @@
 import React from 'react';
-import { useMultiUserAuth } from '@/hooks/useMultiUserAuth';
+import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -10,9 +10,8 @@ export const MultiUserDebugPanel = () => {
     activeSession, 
     activeSessionId, 
     switchToSession, 
-    hasMultipleSessions,
-    sessionCount 
-  } = useMultiUserAuth();
+    hasMultipleSessions
+  } = useAuth();
 
   if (process.env.NODE_ENV === 'production') {
     return null; // Don't show in production
@@ -26,7 +25,7 @@ export const MultiUserDebugPanel = () => {
       <CardContent className="space-y-2">
         <div className="flex justify-between text-xs">
           <span>Total Sessions:</span>
-          <Badge variant="outline">{sessionCount}</Badge>
+          <Badge variant="outline">{sessions.length}</Badge>
         </div>
         
         <div className="flex justify-between text-xs">

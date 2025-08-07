@@ -3,14 +3,14 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, RefreshCw, LogOut, Database } from 'lucide-react';
-import { useMultiUserAuth } from '@/hooks/useMultiUserAuth';
+import { useAuth } from '@/contexts/AuthContext';
 import { useUserRoles } from '@/hooks/useUserRoles';
 import { useSessionRecovery } from '@/hooks/useSessionRecovery';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
 export const AdminRecoveryPanel: React.FC = () => {
-  const { user } = useMultiUserAuth();
+  const { user } = useAuth();
   const { isAdmin, isSuperAdmin, forceRefreshRoles, userRoles } = useUserRoles();
   const { emergencyCleanup } = useSessionRecovery();
   const { toast } = useToast();

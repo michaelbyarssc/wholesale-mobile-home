@@ -8,7 +8,7 @@ import { Separator } from '@/components/ui/separator';
 import { X, Heart, ShoppingCart, Scale, Bed, Bath, Maximize, Ruler } from 'lucide-react';
 import { MobileHomeImageCarousel } from './MobileHomeImageCarousel';
 import { useCustomerPricing } from '@/hooks/useCustomerPricing';
-import { useMultiUserAuth } from '@/hooks/useMultiUserAuth';
+import { useAuth } from '@/contexts/AuthContext';
 import { formatPrice } from '@/lib/utils';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -48,7 +48,7 @@ export const WishlistModal: React.FC<WishlistModalProps> = ({
   isInComparison
 }) => {
   const navigate = useNavigate();
-  const { user } = useMultiUserAuth();
+  const { user } = useAuth();
   const { calculateMobileHomePrice, loading: pricingLoading } = useCustomerPricing(user);
 
   const getHomeImages = (homeId: string) => {

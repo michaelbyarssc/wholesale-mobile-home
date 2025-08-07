@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Database } from '@/integrations/supabase/types';
-import { useMultiUserAuth } from '@/hooks/useMultiUserAuth';
+import { useAuth } from '@/contexts/AuthContext';
 
 type HomeOption = Database['public']['Tables']['home_options']['Row'];
 
@@ -24,7 +24,8 @@ export type CartItem = {
 };
 
 export const useSessionAwareShoppingCart = () => {
-  const { activeSession, supabaseClient } = useMultiUserAuth();
+  const { activeSession, getSupabaseClient } = useAuth();
+  const supabaseClient = getSupabaseClient();
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [deliveryAddress, setDeliveryAddress] = useState<DeliveryAddress | null>(null);
   const [isCartOpen, setIsCartOpen] = useState(false);

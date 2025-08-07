@@ -6,7 +6,7 @@ import { FinancingCalculator } from '@/components/financing/FinancingCalculator'
 import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
 import { useSessionAwareShoppingCart } from '@/hooks/useSessionAwareShoppingCart';
-import { useMultiUserAuth } from '@/hooks/useMultiUserAuth';
+import { useAuth } from '@/contexts/AuthContext';
 import { useOptimizedPerformanceMonitor } from '@/hooks/useOptimizedPerformanceMonitor';
 import { useViewportSize } from '@/hooks/useViewportSize';
 import { MultiUserHeader } from '@/components/auth/MultiUserHeader';
@@ -40,7 +40,7 @@ const Index = () => {
   const { isMobile, isTablet } = useViewportSize();
   
   // Multi-user authentication
-  const { user, userProfile, isLoading } = useMultiUserAuth();
+  const { user, userProfile, isLoading } = useAuth();
   const { isAdmin } = useUserRoles();
   
   const [showTestimonialForm, setShowTestimonialForm] = useState(false);
@@ -64,7 +64,7 @@ const Index = () => {
   
   console.log('Index component: All hooks initialized', { user: user?.id, isLoading, cartItems: cartItems.length });
 
-  // Authentication is now handled by useMultiUserAuth hook
+  // Authentication is now handled by useAuth hook
 
   console.log('Index component: About to render, isLoading:', isLoading, 'cartLoading:', cartLoading);
 

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useMultiUserAuth } from '@/hooks/useMultiUserAuth';
+import { useAuth } from '@/contexts/AuthContext';
 import type { Database } from '@/integrations/supabase/types';
 
 type MobileHome = Database['public']['Tables']['mobile_homes']['Row'];
@@ -7,7 +7,8 @@ type MobileHome = Database['public']['Tables']['mobile_homes']['Row'];
 const WISHLIST_STORAGE_KEY = 'mobile-home-wishlist';
 
 export const useSessionAwareWishlist = () => {
-  const { activeSession, supabaseClient } = useMultiUserAuth();
+  const { activeSession, getSupabaseClient } = useAuth();
+  const supabaseClient = getSupabaseClient();
   const [wishlistItems, setWishlistItems] = useState<MobileHome[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 

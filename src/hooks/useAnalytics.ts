@@ -1,6 +1,6 @@
 import { useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useMultiUserAuth } from '@/hooks/useMultiUserAuth';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface AnalyticsSession {
   sessionId: string;
@@ -292,7 +292,7 @@ class AnalyticsTracker {
 const analytics = new AnalyticsTracker();
 
 export function useAnalytics() {
-  const { user } = useMultiUserAuth();
+  const { user } = useAuth();
   const initialized = useRef(false);
 
   useEffect(() => {

@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { useMultiUserAuth } from '@/hooks/useMultiUserAuth';
+import { useAuth } from '@/contexts/AuthContext';
 import { useSessionManager } from '@/contexts/SessionManagerContext';
 import { useStorageCorruptionRecovery } from '@/hooks/useStorageCorruptionRecovery';
 import { useSessionAwareShoppingCart } from '@/hooks/useSessionAwareShoppingCart';
@@ -29,9 +29,8 @@ export const MultiUserInfrastructureTest: React.FC = () => {
     signIn,
     signOut,
     switchToSession,
-    hasMultipleSessions,
-    sessionCount
-  } = useMultiUserAuth();
+    hasMultipleSessions
+  } = useAuth();
 
   const { clearAllSessions } = useSessionManager();
   const { checkStorageIntegrity, cleanupOrphanedStorage } = useStorageCorruptionRecovery();
@@ -256,7 +255,7 @@ export const MultiUserInfrastructureTest: React.FC = () => {
         {/* Session Status */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="text-center">
-            <div className="text-2xl font-bold">{sessionCount}</div>
+            <div className="text-2xl font-bold">{sessions.length}</div>
             <div className="text-sm text-muted-foreground">Total Sessions</div>
           </div>
           <div className="text-center">

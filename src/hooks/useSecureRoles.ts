@@ -1,13 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useMultiUserAuth } from './useMultiUserAuth';
+import { useAuth } from '@/contexts/AuthContext';
 
 /**
  * Ultra-secure role hook that uses database functions only
  * For critical security operations where client-side role checking isn't sufficient
  */
 export const useSecureRoles = () => {
-  const { user, isLoading: authLoading } = useMultiUserAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const [isSecureAdmin, setIsSecureAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [sessionId] = useState(() => Math.random().toString(36).substring(7));

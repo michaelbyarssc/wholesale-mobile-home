@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { useUserRoles } from '@/hooks/useUserRoles';
-import { useMultiUserAuth } from '@/hooks/useMultiUserAuth';
+import { useAuth } from '@/contexts/AuthContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { MobileHomesTab } from '@/components/admin/MobileHomesTab';
 import { SalesTab } from '@/components/admin/SalesTab';
@@ -28,7 +28,7 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 const Admin = () => {
-  const { user, activeSession, isLoading: authLoading, signOut } = useMultiUserAuth();
+  const { user, activeSession, isLoading: authLoading, signOut } = useAuth();
   const { isAdmin, isSuperAdmin, isLoading: rolesLoading, userRoles, verifyAdminAccess } = useUserRoles();
   const [activeTab, setActiveTab] = useState('users');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);

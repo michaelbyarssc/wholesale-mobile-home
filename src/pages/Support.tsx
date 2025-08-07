@@ -2,17 +2,17 @@ import React from 'react';
 import { ChatInterface } from '@/components/chat/ChatInterface';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
-import { useMultiUserAuth } from '@/hooks/useMultiUserAuth';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Support = () => {
-  const { user, userProfile, isLoading, signOut } = useMultiUserAuth();
+  const { user, userProfile, isLoading, signOut } = useAuth();
 
   const handleLogout = async () => {
     await signOut();
   };
 
   const handleProfileUpdated = () => {
-    // Force profile refresh - useMultiUserAuth will automatically re-fetch
+    // Force profile refresh - useAuth will automatically re-fetch
     console.log('Profile update requested');
   };
 

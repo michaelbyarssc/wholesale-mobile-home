@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { useUserRoles } from '@/hooks/useUserRoles';
-import { useAuthUser } from '@/hooks/useAuthUser';
+import { useMultiUserAuth } from '@/hooks/useMultiUserAuth';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { MobileHomesTab } from '@/components/admin/MobileHomesTab';
 import { SalesTab } from '@/components/admin/SalesTab';
@@ -28,8 +28,8 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 const Admin = () => {
-  const { user, session, isLoading: authLoading, handleLogout, forceRefreshAuth } = useAuthUser();
-  const { isAdmin, isSuperAdmin, isLoading: rolesLoading, userRoles, verifyAdminAccess, forceRefreshRoles } = useUserRoles();
+  const { user, activeSession, isLoading: authLoading, signOut } = useMultiUserAuth();
+  const { isAdmin, isSuperAdmin, isLoading: rolesLoading, userRoles, verifyAdminAccess } = useUserRoles();
   const [activeTab, setActiveTab] = useState('users');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { toast } = useToast();
@@ -58,7 +58,7 @@ const Admin = () => {
   }, [isSuperAdmin, authLoading, rolesLoading, isAdmin]);
 
   const handleSignOut = async () => {
-    await handleLogout();
+    await signOut();
     navigate('/');
   };
 
@@ -215,7 +215,7 @@ const Admin = () => {
                       <div className="mt-3 p-3 bg-muted/50 rounded-lg">
                         <p className="text-xs text-muted-foreground">Signed in as</p>
                         <p className="text-sm font-medium truncate">
-                          {user?.email || session?.user?.email} • {isSuperAdmin ? 'Super Admin' : 'Admin'}
+                          {user?.email || activeSession?.user?.email} • {isSuperAdmin ? 'Super Admin' : 'Admin'}
                         </p>
                       </div>
                     </div>
@@ -241,7 +241,7 @@ const Admin = () => {
               {/* User Info - Desktop */}
               <div className="hidden lg:flex flex-col items-end text-right min-w-0">
                 <p className="text-sm font-medium text-foreground truncate max-w-[200px]">
-                  {user?.email || session?.user?.email}
+                  {user?.email || activeSession?.user?.email}
                 </p>
                 <p className="text-xs text-muted-foreground">
                   {isSuperAdmin ? 'Super Admin' : 'Admin'}
@@ -259,12 +259,11 @@ const Admin = () => {
                 size="sm"
                 onClick={async () => {
                   console.log('Manual refresh triggered');
-                  await forceRefreshAuth();
-                  await forceRefreshRoles();
                   toast({
                     title: "Refreshed",
-                    description: "Auth and roles have been refreshed. Check console for debug info.",
+                    description: "Page will reload to refresh auth state.",
                   });
+                  window.location.reload();
                 }}
                 className="hidden sm:flex text-xs"
               >

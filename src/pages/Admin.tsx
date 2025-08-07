@@ -21,6 +21,7 @@ import { ComprehensiveTestSuite } from '@/components/admin/ComprehensiveTestSuit
 import { ComprehensiveTestRunner } from '@/components/ComprehensiveTestRunner';
 import { SecurityTestDashboard } from '@/components/SecurityTestDashboard';
 import { SecurityOverhaulVerification } from '@/components/SecurityOverhaulVerification';
+import { ForceLogoutButton } from '@/components/auth/ForceLogoutButton';
 
 import { Menu, X } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -286,14 +287,20 @@ const Admin = () => {
               >
                 Site
               </Button>
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={handleSignOut}
-                className="text-destructive hover:text-destructive"
-              >
-                Sign Out
-              </Button>
+               <Button 
+                 variant="outline" 
+                 size="sm"
+                 onClick={handleSignOut}
+                 className="text-destructive hover:text-destructive"
+               >
+                 Sign Out
+               </Button>
+               
+               {/* Emergency Force Logout - Hidden but accessible */}
+               <ForceLogoutButton 
+                 className="hidden"
+                 size="sm"
+               />
             </div>
           </div>
         </div>

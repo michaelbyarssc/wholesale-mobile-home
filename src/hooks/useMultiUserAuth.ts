@@ -181,67 +181,105 @@ export const useMultiUserAuth = () => {
       return;
     }
 
-    console.log('🔐 Starting logout for session:', targetSessionId, 'user:', session.user.email);
+    console.log('🚨 SIGN OUT: Starting logout for session:', targetSessionId, 'user:', session.user.email);
     
     try {
-      // Set logout state to prevent interference
+      // Set logout state immediately to show feedback
       setIsLoading(true);
       
-      // Force client logout with timeout
+      console.log('🚨 SIGN OUT: Step 1 - Calling Supabase auth.signOut()');
+      
+      // Force client logout with reduced timeout
       const logoutPromise = session.supabaseClient.auth.signOut();
       const timeoutPromise = new Promise((resolve) => 
         setTimeout(() => {
-          console.warn('🔐 Logout timeout, proceeding with cleanup');
+          console.warn('🚨 SIGN OUT: Timeout reached, proceeding with cleanup');
           resolve(null);
-        }, 3000)
+        }, 2000) // Reduced to 2 seconds
       );
       
       await Promise.race([logoutPromise, timeoutPromise]);
+      console.log('🚨 SIGN OUT: Step 2 - Supabase logout completed or timed out');
       
-      // Remove session after client logout
+      // Remove session from state immediately
+      console.log('🚨 SIGN OUT: Step 3 - Removing session from state');
       removeSession(targetSessionId);
       
-      console.log('🔐 Successfully signed out session:', targetSessionId);
+      console.log('🚨 SIGN OUT: Step 4 - Session removed successfully:', targetSessionId);
+      
+      // Force page reload after a short delay to ensure complete cleanup
+      setTimeout(() => {
+        console.log('🚨 SIGN OUT: Step 5 - Forcing page reload for complete state cleanup');
+        window.location.reload();
+      }, 500);
       
     } catch (error) {
-      console.error('🔐 Sign out error, forcing cleanup:', error);
+      console.error('🚨 SIGN OUT ERROR: Forcing emergency cleanup:', error);
       // Force cleanup even if logout fails
       removeSession(targetSessionId);
+      
+      // Emergency page reload
+      setTimeout(() => {
+        console.log('🚨 EMERGENCY: Forcing page reload due to sign out error');
+        window.location.reload();
+      }, 100);
     } finally {
       setIsLoading(false);
     }
   }, [activeSessionId, sessions, removeSession]);
 
   const signOutAll = useCallback(async () => {
-    console.log('🔐 Starting sign out all for', sessions.length, 'sessions');
+    console.log('🚨 SIGN OUT ALL: Starting logout for', sessions.length, 'sessions');
     
     try {
       setIsLoading(true);
       
-      // Force logout all clients with timeout
-      const logoutPromises = sessions.map(session => 
-        Promise.race([
+      console.log('🚨 SIGN OUT ALL: Step 1 - Calling logout for all sessions');
+      
+      // Force logout all clients with reduced timeout
+      const logoutPromises = sessions.map((session, index) => {
+        console.log(`🚨 SIGN OUT ALL: Logging out session ${index + 1}/${sessions.length} - ${session.user.email}`);
+        return Promise.race([
           session.supabaseClient.auth.signOut(),
-          new Promise(resolve => setTimeout(resolve, 2000)) // 2s timeout per session
-        ])
-      );
+          new Promise(resolve => setTimeout(resolve, 1500)) // 1.5s timeout per session
+        ]);
+      });
       
       await Promise.allSettled(logoutPromises);
+      console.log('🚨 SIGN OUT ALL: Step 2 - All logout promises settled');
       
-      // Clear all sessions and force page reload for complete cleanup
+      // Clear all sessions immediately
+      console.log('🚨 SIGN OUT ALL: Step 3 - Clearing all sessions from state');
       clearAllSessions();
       
-      // Force page reload to clear all state
-      setTimeout(() => {
-        window.location.href = '/';
-      }, 100);
+      // Clear all localStorage data immediately
+      console.log('🚨 SIGN OUT ALL: Step 4 - Clearing localStorage');
+      try {
+        localStorage.removeItem('wmh_sessions');
+        localStorage.removeItem('wmh_active_session');
+        // Clear any auth tokens
+        Object.keys(localStorage).forEach(key => {
+          if (key.includes('sb-') || key.includes('auth-token')) {
+            localStorage.removeItem(key);
+          }
+        });
+      } catch (storageError) {
+        console.error('🚨 SIGN OUT ALL: Storage cleanup error:', storageError);
+      }
       
-      console.log('🔐 Signed out all sessions and reloading');
+      // Force page reload immediately for complete cleanup
+      console.log('🚨 SIGN OUT ALL: Step 5 - Forcing immediate page reload');
+      window.location.href = '/';
       
     } catch (error) {
-      console.error('🔐 Sign out all error, forcing cleanup:', error);
-      // Force cleanup even if logout fails
+      console.error('🚨 SIGN OUT ALL ERROR: Forcing emergency cleanup:', error);
+      // Emergency cleanup - clear everything and reload
       clearAllSessions();
+      try {
+        localStorage.clear();
+      } catch (clearError) {
+        console.error('🚨 EMERGENCY: Failed to clear localStorage:', clearError);
+      }
       window.location.href = '/';
     }
   }, [sessions, clearAllSessions]);

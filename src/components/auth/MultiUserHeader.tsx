@@ -22,6 +22,7 @@ import {
 import { CartItem } from '@/hooks/useShoppingCart';
 import { PasswordChangeDialog } from '@/components/auth/PasswordChangeDialog';
 import { UserSettingsDialog } from '@/components/auth/UserSettingsDialog';
+import { ForceLogoutButton } from '@/components/auth/ForceLogoutButton';
 import { useBusinessInfo } from '@/hooks/useBusinessInfo';
 import { usePWA } from '@/hooks/usePWA';
 import { useMultiUserAuth } from '@/hooks/useMultiUserAuth';
@@ -92,17 +93,32 @@ export const MultiUserHeader = ({
   };
 
   const handleSignOut = async () => {
-    if (hasMultipleSessions) {
-      await signOut();
-    } else {
-      await signOutAll();
-      navigate('/');
+    console.log('🚨 HEADER: User clicked sign out, sessions:', sessions.length);
+    
+    try {
+      if (hasMultipleSessions) {
+        console.log('🚨 HEADER: Multiple sessions detected, signing out current user');
+        await signOut();
+      } else {
+        console.log('🚨 HEADER: Single session, signing out all');
+        await signOutAll();
+      }
+    } catch (error) {
+      console.error('🚨 HEADER: Sign out error, forcing page reload:', error);
+      // Emergency fallback - force page reload
+      window.location.href = '/';
     }
   };
 
   const handleSignOutAll = async () => {
-    await signOutAll();
-    navigate('/');
+    console.log('🚨 HEADER: User clicked sign out all');
+    try {
+      await signOutAll();
+    } catch (error) {
+      console.error('🚨 HEADER: Sign out all error, forcing page reload:', error);
+      // Emergency fallback
+      window.location.href = '/';
+    }
   };
 
   return (
@@ -461,6 +477,14 @@ export const MultiUserHeader = ({
                     Sign Out All Users
                   </Button>
                 )}
+                
+                {/* Emergency Force Logout */}
+                <div className="border-t border-gray-200 pt-2 mt-2">
+                  <ForceLogoutButton 
+                    className="w-full justify-start text-left p-3" 
+                    variant="destructive"
+                  />
+                </div>
               </div>
             </div>
           )}

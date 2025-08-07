@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuthUser } from './useAuthUser';
+import { useMultiUserAuth } from './useMultiUserAuth';
 
 export interface UserRole {
   id: string;
@@ -25,7 +25,7 @@ export interface RoleCheck {
  * Uses the secure is_admin() database function when possible
  */
 export const useUserRoles = (): RoleCheck => {
-  const { user, isLoading: authLoading } = useAuthUser();
+  const { user, isLoading: authLoading } = useMultiUserAuth();
   const [userRoles, setUserRoles] = useState<UserRole[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

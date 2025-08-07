@@ -193,8 +193,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             
             // Mark login as complete when we get a signed in event
             if (event === 'SIGNED_IN') {
-              globalLoginInProgress = false;
-              (window as any).globalLoginInProgress = false;
+              // Add a small delay to ensure all auth state is settled before clearing flag
+              setTimeout(() => {
+                globalLoginInProgress = false;
+                (window as any).globalLoginInProgress = false;
+                console.log('🔐 Login complete - clearing global login state');
+              }, 2000); // 2 second delay to ensure all auth flows are complete
             }
             
             // Simplified timeout to prevent excessive session creation

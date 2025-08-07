@@ -75,17 +75,22 @@ export const MultiUserHeader = ({
   }, [user, activeSessionId, userProfile, fetchUserProfile]);
 
   const getDisplayName = (profile?: { first_name?: string; last_name?: string } | null, email?: string) => {
-    // If we have profile data, prioritize first_name
-    if (profile?.first_name) {
-      return profile.last_name ? `${profile.first_name} ${profile.last_name}` : profile.first_name;
+    // Prioritize showing full name from profile
+    if (profile?.first_name && profile?.last_name) {
+      return `${profile.first_name} ${profile.last_name}`;
     }
     
-    // If we only have last_name
+    // Show just first name if that's all we have
+    if (profile?.first_name) {
+      return profile.first_name;
+    }
+    
+    // Show just last name if that's all we have
     if (profile?.last_name) {
       return profile.last_name;
     }
     
-    // Fallback to email prefix only if no profile data exists
+    // Only fallback to email prefix if no profile name data exists at all
     return email ? email.split('@')[0] : 'User';
   };
 

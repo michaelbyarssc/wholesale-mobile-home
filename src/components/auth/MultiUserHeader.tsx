@@ -15,7 +15,6 @@ import {
   Calendar, 
   Home, 
   FileText, 
-  UserPlus,
   Users,
   ChevronDown
 } from 'lucide-react';
@@ -127,9 +126,6 @@ export const MultiUserHeader = ({
     }
   };
 
-  const handleAddUser = () => {
-    navigate('/auth?mode=add');
-  };
 
   const handleSwitchSession = (sessionId: string) => {
     switchToSession(sessionId);
@@ -296,11 +292,6 @@ export const MultiUserHeader = ({
                           </>
                         )}
                         
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={handleAddUser} className="flex items-center gap-3 px-3 py-3">
-                          <UserPlus className="h-4 w-4" />
-                          <span>Add User</span>
-                        </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
 
@@ -440,20 +431,6 @@ export const MultiUserHeader = ({
                 )}
               </div>
 
-              {/* Session Management */}
-              {hasMultipleSessions && (
-                <div className="px-4 border-b border-gray-100 pb-3">
-                  <Button
-                    onClick={handleAddUser}
-                    variant="outline"
-                    className="w-full justify-start"
-                    size="sm"
-                  >
-                    <UserPlus className="h-4 w-4 mr-2" />
-                    Add Another User
-                  </Button>
-                </div>
-              )}
 
               {/* Quick Actions */}
               <div className="space-y-2 px-4">

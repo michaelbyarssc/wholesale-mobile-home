@@ -27,7 +27,7 @@ import {
   Settings,
   KeyRound,
   Play,
-  FlagCheckered
+  Flag
 } from "lucide-react";
 import { DeliveryPhotoCapture } from "./DeliveryPhotoCapture";
 import { DeliveryIssueReporter } from "./DeliveryIssueReporter";
@@ -620,7 +620,7 @@ export const EnhancedDriverPortal = ({ driverProfile }: EnhancedDriverPortalProp
                     }}
                     disabled={updateAssignmentStatusMutation.isPending}
                   >
-                    <FlagCheckered className="h-4 w-4 mr-2" />
+                    <Flag className="h-4 w-4 mr-2" />
                     Complete Assignment
                   </Button>
                 )}

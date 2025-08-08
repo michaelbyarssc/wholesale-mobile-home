@@ -113,10 +113,13 @@ const Admin = () => {
   };
 
   const handleTabChange = (value: string) => {
-    setActiveTab(value);
-    setMobileMenuOpen(false); // Close mobile menu when tab changes
+    const superAdminTabs = ['mobile-homes', 'sales', 'users', 'crm', 'analytics', 'social-proof', 'faq', 'delivery', 'testing', 'settings', 'reviews']
+    const adminTabs = ['sales', 'users', 'crm']
+    const allowed = isSuperAdmin ? superAdminTabs : adminTabs
+    const next = allowed.includes(value) ? value : (isSuperAdmin ? 'mobile-homes' : 'sales')
+    setActiveTab(next)
+    setMobileMenuOpen(false) // Close mobile menu when tab changes
   };
-
   // SECURITY: Show loading while verifying authentication and roles
   if (authLoading || rolesLoading) {
     return (
@@ -354,7 +357,7 @@ const Admin = () => {
       <main className="container mx-auto px-2 sm:px-4 py-4 sm:py-6 lg:py-8">
         <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4 sm:space-y-6">
           {/* Desktop Tab Navigation */}
-          {!isMobile && (
+          {!isMobile && isSuperAdmin && (
             <div className="border rounded-lg p-1 bg-muted/30 overflow-x-auto">
               <TabsList className="grid w-full grid-cols-10 h-12 bg-transparent min-w-[900px]">
                 <TabsTrigger 

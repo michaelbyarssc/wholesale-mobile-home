@@ -110,12 +110,17 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
           console.log(`[ADMIN_CHECK] Checking admin access - isAdmin=${isAdmin}, isSuperAdmin=${isSuperAdmin}`);
           console.log(`[ADMIN_CHECK] User roles:`, userRoles.map(r => r.role));
 
+          // Use local verified flag to avoid race conditions with state updates
+          let adminVerified = isAdmin;
+
           // If hook says not admin, verify with database
-          if (adminOnly && !isAdmin) {
+          if (adminOnly && !adminVerified) {
             console.log('[FALLBACK] Hook says not admin, checking database directly...');
             const dbAdminStatus = await verifyAdminDirectly(user.id);
+            console.log(`[FALLBACK] DB admin status: ${dbAdminStatus}`);
             if (dbAdminStatus) {
               console.warn('[OVERRIDE] DB verified admin; allowing access while roles refresh');
+              adminVerified = true;
               setAllowAdmin(true);
             }
           }
@@ -129,7 +134,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
             return;
           }
           
-          if (adminOnly && !isAdmin && !allowAdmin) {
+          if (adminOnly && !adminVerified) {
             console.warn(`[ACCESS_DENIED] Admin required but user ${user.id} is not admin`);
             logDebugInfo('ADMIN_DENIED');
             navigate('/');

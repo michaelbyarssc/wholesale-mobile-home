@@ -75,20 +75,23 @@ const Admin = () => {
     initializeAdminPanel();
   }, []); // Only run once on mount
 
-  // SECURITY: Verify admin access with database function
+  // SECURITY: Verify admin access with database function (no auto-logout; UI will handle)
   useEffect(() => {
     const verifyAccess = async () => {
       if (user && !authLoading && !rolesLoading) {
         const isVerifiedAdmin = await verifyAdminAccess();
         if (!isVerifiedAdmin) {
-          console.error('🚨 SECURITY: Admin access verification failed');
-          await handleLogout();
+          console.warn('⚠️ Admin access verification failed - keeping session, showing limited UI');
+          toast({
+            title: 'Access check',
+            description: 'Admin privileges not verified yet. Try refresh or contact support.',
+            duration: 4000,
+          });
         }
       }
     };
-    
     verifyAccess();
-  }, [user, authLoading, rolesLoading, verifyAdminAccess, handleLogout]);
+  }, [user, authLoading, rolesLoading, verifyAdminAccess, toast]);
 
   // Initialize default tab based on role (ProtectedRoute already handles auth)
   useEffect(() => {
@@ -126,9 +129,8 @@ const Admin = () => {
     );
   }
 
-  // SECURITY: Enhanced authentication check with session validation
-  if (!user || !session || !isSecureAdmin) {
-    console.error('🚨 SECURITY: Invalid admin access attempt');
+  // SECURITY: Only redirect to auth when not logged in; otherwise let ProtectedRoute handle access
+  if (!user || !session) {
     navigate('/auth');
     return null;
   }

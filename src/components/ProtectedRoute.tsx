@@ -25,6 +25,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   const [authChecked, setAuthChecked] = useState(false);
   const [debugInfo, setDebugInfo] = useState<any>({});
   const [retryCount, setRetryCount] = useState(0);
+  const [allowAdmin, setAllowAdmin] = useState(false);
 
   // Comprehensive debugging function
   const logDebugInfo = (stage: string) => {
@@ -39,6 +40,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
       userRoles: userRoles.map(r => r.role),
       authChecked,
       retryCount,
+      allowAdmin,
       requireAuth,
       adminOnly,
       superAdminOnly,
@@ -101,6 +103,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
         }
 
         logDebugInfo('USER_FOUND');
+        setAllowAdmin(false);
 
         // For admin routes, do comprehensive checking
         if (adminOnly || superAdminOnly) {
@@ -108,16 +111,12 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
           console.log(`[ADMIN_CHECK] User roles:`, userRoles.map(r => r.role));
 
           // If hook says not admin, verify with database
-          if (!isAdmin && retryCount < 2) {
+          if (adminOnly && !isAdmin) {
             console.log('[FALLBACK] Hook says not admin, checking database directly...');
             const dbAdminStatus = await verifyAdminDirectly(user.id);
-            
-            if (dbAdminStatus && !isAdmin) {
-              console.warn('[MISMATCH] Database says admin but hook says not admin - forcing role refresh');
-              setRetryCount(prev => prev + 1);
-              // Force a role refresh by not setting authChecked
-              clearTimeout(timeoutId);
-              return;
+            if (dbAdminStatus) {
+              console.warn('[OVERRIDE] DB verified admin; allowing access while roles refresh');
+              setAllowAdmin(true);
             }
           }
 
@@ -130,7 +129,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
             return;
           }
           
-          if (adminOnly && !isAdmin) {
+          if (adminOnly && !isAdmin && !allowAdmin) {
             console.warn(`[ACCESS_DENIED] Admin required but user ${user.id} is not admin`);
             logDebugInfo('ADMIN_DENIED');
             navigate('/');
@@ -159,7 +158,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     checkAuthAndRoles();
 
     return () => clearTimeout(timeoutId);
-  }, [user, isAdmin, isSuperAdmin, authLoading, rolesLoading, requireAuth, adminOnly, superAdminOnly, navigate, retryCount]);
+  }, [user, isAdmin, isSuperAdmin, authLoading, rolesLoading, requireAuth, adminOnly, superAdminOnly, navigate, retryCount, allowAdmin]);
 
   // Show loading while checking auth and roles with debug info
   if (authLoading || rolesLoading || !authChecked) {
@@ -190,7 +189,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     return null; // Redirect handled in useEffect
   }
 
-  if (adminOnly && !isAdmin) {
+  if (adminOnly && !isAdmin && !allowAdmin) {
     return null; // Redirect handled in useEffect
   }
 

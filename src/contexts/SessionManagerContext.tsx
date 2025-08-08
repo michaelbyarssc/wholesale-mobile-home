@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import { User, Session } from '@supabase/supabase-js';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/integrations/supabase/types';
-import { useStorageCorruptionRecovery } from '@/hooks/useStorageCorruptionRecovery';
+import { useStorageMaintenance } from '@/hooks/useStorageMaintenance';
 
 const SUPABASE_URL = "https://vgdreuwmisludqxphsph.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZnZHJldXdtaXNsdWRxeHBoc3BoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA3MDk2OTgsImV4cCI6MjA2NjI4NTY5OH0.gnJ83GgBWV4tb-cwWJXY0pPG2bGAyTK3T2IojP4llR8";
@@ -41,7 +41,7 @@ export const useSessionManager = () => {
 export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [sessions, setSessions] = useState<SessionData[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
-  const { checkStorageIntegrity, cleanupOrphanedStorage } = useStorageCorruptionRecovery();
+  const { checkStorageIntegrity, cleanupOrphanedStorage } = useStorageMaintenance();
   
   // Client cache to prevent excessive recreation
   const clientCache = useRef<Map<string, SupabaseClient<Database>>>(new Map());

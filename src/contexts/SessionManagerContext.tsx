@@ -274,6 +274,16 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
     }
   }, []);
 
+  const broadcastRoleInvalidate = useCallback(() => {
+    try {
+      if (broadcastChannelRef.current) {
+        broadcastChannelRef.current.postMessage({ type: 'role_cache_invalidate' });
+      }
+    } catch (error) {
+      console.error('Error broadcasting role cache invalidation:', error);
+    }
+  }, []);
+
   const addSession = useCallback(async (user: User, session: Session): Promise<string> => {
     // Check for existing session for this user first
     const existingSession = sessions.find(s => s.user.id === user.id);
@@ -343,6 +353,7 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
       setSessions([newSession]);
       setActiveSessionId(sessionId);
       broadcastSessionChange();
+      broadcastRoleInvalidate();
       
       console.log('🔐 Added new session:', sessionId, 'for user:', user.email);
       return sessionId;
@@ -400,16 +411,18 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
     }
 
     broadcastSessionChange();
-  }, [activeSessionId, broadcastSessionChange]);
+    broadcastRoleInvalidate();
+  }, [activeSessionId, broadcastSessionChange, broadcastRoleInvalidate]);
 
   const switchToSession = useCallback((sessionId: string) => {
     const session = sessions.find(s => s.id === sessionId);
     if (session) {
       setActiveSessionId(sessionId);
       broadcastSessionChange();
+      broadcastRoleInvalidate();
       console.log('🔐 Switched to session:', sessionId, 'for user:', session.user.email);
     }
-  }, [sessions, broadcastSessionChange]);
+  }, [sessions, broadcastSessionChange, broadcastRoleInvalidate]);
 
   const clearAllSessions = useCallback(() => {
     sessions.forEach(session => {
@@ -436,8 +449,9 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
     localStorage.removeItem('wmh_sessions');
     localStorage.removeItem('wmh_active_session');
     broadcastSessionChange();
+    broadcastRoleInvalidate();
     console.log('🔐 Cleared all sessions and storage');
-  }, [sessions, broadcastSessionChange]);
+  }, [sessions, broadcastSessionChange, broadcastRoleInvalidate]);
 
   const getSessionClient = useCallback((sessionId?: string): SupabaseClient<Database> | null => {
     const id = sessionId || activeSessionId;

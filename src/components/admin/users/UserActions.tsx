@@ -138,7 +138,7 @@ export const UserActions = ({ profile, onUserUpdated }: UserActionsProps) => {
     }
   };
 
-  const updateUserRole = async (userId: string, newRole: 'admin' | 'user' | 'super_admin') => {
+  const updateUserRole = async (userId: string, newRole: 'admin' | 'user' | 'super_admin' | 'driver') => {
     try {
       const { data: existingRole } = await supabase
         .from('user_roles')
@@ -257,7 +257,7 @@ export const UserActions = ({ profile, onUserUpdated }: UserActionsProps) => {
       {isSuperAdmin && (
         <Select
           value={profile.role || 'none'}
-          onValueChange={(newRole: 'admin' | 'user' | 'super_admin' | 'none') => {
+          onValueChange={(newRole: 'admin' | 'user' | 'super_admin' | 'driver' | 'none') => {
             if (newRole === 'none') {
               removeUserRole(profile.user_id);
             } else {
@@ -271,6 +271,7 @@ export const UserActions = ({ profile, onUserUpdated }: UserActionsProps) => {
           <SelectContent>
             <SelectItem value="none">None</SelectItem>
             <SelectItem value="user">User</SelectItem>
+            <SelectItem value="driver">Driver</SelectItem>
             <SelectItem value="admin">Admin</SelectItem>
             <SelectItem value="super_admin">Super Admin</SelectItem>
           </SelectContent>

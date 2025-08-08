@@ -164,10 +164,13 @@ serve(async (req) => {
         // Add driver role
         const { error: roleError } = await supabaseAdmin
           .from('user_roles')
-          .insert({
-            user_id: newUser.user.id,
-            role: 'driver'
-          })
+          .upsert(
+            {
+              user_id: newUser.user.id,
+              role: 'driver'
+            },
+            { onConflict: 'user_id' }
+          )
 
         if (roleError) {
           console.error(`Failed to assign driver role for driver ${driver.id}:`, roleError)

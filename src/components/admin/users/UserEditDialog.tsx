@@ -80,7 +80,7 @@ export const UserEditDialog = ({ profile, onUserUpdated }: UserEditDialogProps) 
       // Update role if user is super admin
       if (isSuperAdmin) {
         // Ensure the role is a valid enum value
-        const validRole = formData.role as 'user' | 'admin' | 'super_admin';
+        const validRole = formData.role as 'user' | 'admin' | 'super_admin' | 'driver';
         
         // First, delete existing roles for this user
         const { error: deleteError } = await supabase
@@ -183,6 +183,7 @@ export const UserEditDialog = ({ profile, onUserUpdated }: UserEditDialogProps) 
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="user">User</SelectItem>
+                  <SelectItem value="driver">Driver</SelectItem>
                   <SelectItem value="admin">Admin</SelectItem>
                   <SelectItem value="super_admin">Super Admin</SelectItem>
                 </SelectContent>

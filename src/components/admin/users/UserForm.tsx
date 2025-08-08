@@ -18,9 +18,9 @@ export const UserForm = ({ onUserCreated }: UserFormProps) => {
   const [newUserFirstName, setNewUserFirstName] = useState('');
   const [newUserLastName, setNewUserLastName] = useState('');
   const [newUserPhoneNumber, setNewUserPhoneNumber] = useState('');
-  const [newUserRole, setNewUserRole] = useState<'admin' | 'user'>('user');
+  const [newUserRole, setNewUserRole] = useState<'admin' | 'user' | 'driver'>('user');
   const [creatingUser, setCreatingUser] = useState(false);
-  const { isSuperAdmin } = useUserRoles();
+  const { isSuperAdmin, isAdmin } = useUserRoles();
   const { toast } = useToast();
 
   // SECURITY: Role information now comes from centralized hook
@@ -198,12 +198,15 @@ export const UserForm = ({ onUserCreated }: UserFormProps) => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label htmlFor="role">Role</Label>
-              <Select value={newUserRole} onValueChange={(value: 'admin' | 'user') => setNewUserRole(value)}>
+              <Select value={newUserRole} onValueChange={(value: 'admin' | 'user' | 'driver') => setNewUserRole(value)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="user">User</SelectItem>
+                  {(isAdmin || isSuperAdmin) && (
+                    <SelectItem value="driver">Driver</SelectItem>
+                  )}
                   {isSuperAdmin && (
                     <SelectItem value="admin">Admin</SelectItem>
                   )}

@@ -5843,6 +5843,10 @@ export type Database = {
           last_gps_update: string
         }[]
       }
+      get_driver_id_for_user: {
+        Args: { _user_id: string }
+        Returns: string
+      }
       get_popular_mobile_homes: {
         Args: { days_back?: number; limit_count?: number }
         Returns: {
@@ -5861,12 +5865,27 @@ export type Database = {
         Args: { p_user_id?: string; p_date_range_days?: number }
         Returns: Json
       }
+      has_role: {
+        Args: {
+          _user_id: string
+          _role: Database["public"]["Enums"]["app_role"]
+        }
+        Returns: boolean
+      }
       increment_post_views: {
         Args: { post_id: string }
         Returns: undefined
       }
       is_admin: {
         Args: { user_id?: string }
+        Returns: boolean
+      }
+      is_driver_for_delivery: {
+        Args: { _user_id: string; _delivery_id: string }
+        Returns: boolean
+      }
+      is_own_driver_record: {
+        Args: { _driver_id: string }
         Returns: boolean
       }
       log_security_event: {

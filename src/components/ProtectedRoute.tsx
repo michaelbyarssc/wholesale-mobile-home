@@ -121,9 +121,6 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
             }
           }
 
-          // Always require a fresh secure DB verification before granting admin access
-          const verifiedAdmin = await verifyAdminAccess();
-
           if (superAdminOnly && !isSuperAdmin) {
             console.warn(`[ACCESS_DENIED] Super admin required but user ${user.id} is not super admin`);
             logDebugInfo('SUPER_ADMIN_DENIED');
@@ -133,8 +130,8 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
             return;
           }
           
-          if (adminOnly && (!isAdmin || !verifiedAdmin)) {
-            console.warn(`[ACCESS_DENIED] Admin required but user ${user.id} is not verified admin (hook=${isAdmin}, verified=${verifiedAdmin})`);
+          if (adminOnly && !isAdmin) {
+            console.warn(`[ACCESS_DENIED] Admin required but user ${user.id} is not admin`);
             logDebugInfo('ADMIN_DENIED');
             navigate('/');
             setAuthChecked(true);

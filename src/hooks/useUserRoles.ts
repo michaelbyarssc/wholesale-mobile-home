@@ -95,9 +95,6 @@ export const useUserRoles = (): RoleCheck => {
   // Effect to fetch roles when user changes
   useEffect(() => {
     if (!authLoading && user) {
-      // Reset roles immediately to avoid leakage between users
-      setUserRoles([]);
-      setError(null);
       fetchUserRoles(user.id);
     } else if (!authLoading && !user) {
       // Clear roles when user logs out
@@ -105,42 +102,6 @@ export const useUserRoles = (): RoleCheck => {
       setError(null);
     }
   }, [user, authLoading, fetchUserRoles]);
-
-  // Subscribe to auth state changes to immediately reset roles on sign-in/out
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN') {
-        setUserRoles([]);
-        setError(null);
-        if (session?.user) {
-          fetchUserRoles(session.user.id);
-        }
-      } else if (event === 'SIGNED_OUT') {
-        setUserRoles([]);
-        setError(null);
-      }
-    });
-    return () => subscription.unsubscribe();
-  }, [fetchUserRoles]);
-
-  // Cross-tab/session role cache invalidation
-  useEffect(() => {
-    const bc = new BroadcastChannel('wmh_session_sync');
-    const onMessage = (event: MessageEvent) => {
-      if (event.data?.type === 'role_cache_invalidate') {
-        setUserRoles([]);
-        setError(null);
-        if (user?.id) {
-          fetchUserRoles(user.id);
-        }
-      }
-    };
-    bc.addEventListener('message', onMessage);
-    return () => {
-      bc.removeEventListener('message', onMessage);
-      bc.close();
-    };
-  }, [user?.id, fetchUserRoles]);
 
   // Role checking functions
   const hasRole = useCallback((role: 'admin' | 'super_admin' | 'user' | 'driver') => {
@@ -166,15 +127,9 @@ export const useUserRoles = (): RoleCheck => {
       const dbResult = data === true;
       const hookResult = isAdmin;
       
-      // SECURITY: Log mismatches for audit and force a refresh
+      // SECURITY: Log mismatches for audit
       if (dbResult !== hookResult) {
         console.warn(`[SECURITY WARNING] Role mismatch for user ${user.id}: DB=${dbResult}, Hook=${hookResult}`);
-        // Force refresh roles in background and deny until refreshed
-        if (user?.id) {
-          setTimeout(() => {
-            fetchUserRoles(user.id);
-          }, 0);
-        }
       }
       
       return dbResult;
@@ -182,7 +137,7 @@ export const useUserRoles = (): RoleCheck => {
       console.error('[SECURITY] Error in verifyAdminAccess:', err);
       return false;
     }
-  }, [user, isAdmin, fetchUserRoles]);
+  }, [user, isAdmin]);
 
   // Force refresh roles - useful for clearing cache issues
   const forceRefreshRoles = useCallback(async () => {

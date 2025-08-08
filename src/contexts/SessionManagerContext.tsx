@@ -99,31 +99,40 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
         if (storedSessions) {
           const sessionData = JSON.parse(storedSessions);
           
-          // Filter out any duplicate user sessions
+          // Deduplicate by user id
           const uniqueSessionData = sessionData.filter((session: any, index: number, array: any[]) => 
-            index === array.findIndex(s => s.user.id === session.user.id)
+            index === array.findIndex((s: any) => s.user.id === session.user.id)
           );
           
-          // Recreate sessions with cached clients
-            const recreatedSessions = uniqueSessionData.map((sessionInfo: any) => {
-              const timestamp = new Date(sessionInfo.createdAt).getTime();
-              const storageKey = `wmh_session_${sessionInfo.user.id}_${timestamp}`;
-              const client = getCachedClient(storageKey, sessionInfo.user.id, timestamp);
-              
-              return {
-                ...sessionInfo,
-                supabaseClient: client,
-                createdAt: new Date(sessionInfo.createdAt)
-              };
-            });
-          
-          setSessions(recreatedSessions);
-          
-          // Validate active session exists
+          // Enforce single-session mode: keep only the active or most recent session
+          let selectedSessionData: any[] = [];
           if (storedActiveId && uniqueSessionData.some((s: any) => s.id === storedActiveId)) {
-            setActiveSessionId(storedActiveId);
+            selectedSessionData = uniqueSessionData.filter((s: any) => s.id === storedActiveId);
           } else if (uniqueSessionData.length > 0) {
-            setActiveSessionId(uniqueSessionData[0].id);
+            const sorted = [...uniqueSessionData].sort((a: any, b: any) => 
+              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+            );
+            selectedSessionData = [sorted[0]];
+          }
+          
+          // Recreate only the selected session with cached client
+          if (selectedSessionData.length > 0) {
+            const sessionInfo = selectedSessionData[0];
+            const timestamp = new Date(sessionInfo.createdAt).getTime();
+            const storageKey = `wmh_session_${sessionInfo.user.id}_${timestamp}`;
+            const client = getCachedClient(storageKey, sessionInfo.user.id, timestamp);
+            
+            const recreatedSession = {
+              ...sessionInfo,
+              supabaseClient: client,
+              createdAt: new Date(sessionInfo.createdAt)
+            } as SessionData;
+            
+            setSessions([recreatedSession]);
+            setActiveSessionId(recreatedSession.id);
+          } else {
+            setSessions([]);
+            setActiveSessionId(null);
           }
         }
       } catch (error) {
@@ -189,25 +198,36 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
           if (storedSessions) {
             const sessionData = JSON.parse(storedSessions);
             
-            // Filter duplicates and use cached clients
+            // Filter duplicates
             const uniqueSessionData = sessionData.filter((session: any, index: number, array: any[]) => 
-              index === array.findIndex(s => s.user.id === session.user.id)
+              index === array.findIndex((s: any) => s.user.id === session.user.id)
             );
             
-            const recreatedSessions = uniqueSessionData.map((sessionInfo: any) => {
-              const timestamp = new Date(sessionInfo.createdAt).getTime();
-              const storageKey = `wmh_session_${sessionInfo.user.id}_${timestamp}`;
-              const client = getCachedClient(storageKey);
-              
-              return {
-                ...sessionInfo,
-                supabaseClient: client,
-                createdAt: new Date(sessionInfo.createdAt)
-              };
-            });
+            // Enforce single-session: choose active or most recent only
+            let selectedSessionData: any | null = null;
+            if (storedActiveId && uniqueSessionData.some((s: any) => s.id === storedActiveId)) {
+              selectedSessionData = uniqueSessionData.find((s: any) => s.id === storedActiveId);
+            } else if (uniqueSessionData.length > 0) {
+              selectedSessionData = [...uniqueSessionData].sort((a: any, b: any) => 
+                new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+              )[0];
+            }
             
-            setSessions(recreatedSessions);
-            setActiveSessionId(storedActiveId);
+            if (selectedSessionData) {
+              const timestamp = new Date(selectedSessionData.createdAt).getTime();
+              const storageKey = `wmh_session_${selectedSessionData.user.id}_${timestamp}`;
+              const client = getCachedClient(storageKey);
+              const recreatedSession = {
+                ...selectedSessionData,
+                supabaseClient: client,
+                createdAt: new Date(selectedSessionData.createdAt)
+              };
+              setSessions([recreatedSession]);
+              setActiveSessionId(recreatedSession.id);
+            } else {
+              setSessions([]);
+              setActiveSessionId(null);
+            }
           }
         } catch (error) {
           console.error('Error syncing sessions:', error);
@@ -263,6 +283,27 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
       return existingSession.id;
     }
     
+    // Single-session mode: replace any existing session
+    if (sessions.length > 0) {
+      sessions.forEach(prevSession => {
+        const ts = new Date(prevSession.createdAt).getTime();
+        const prevKey = `wmh_session_${prevSession.user.id}_${ts}`;
+        // Remove from client cache
+        clientCache.current.delete(prevKey);
+        // Remove any cache entries for same user
+        const userPattern = `wmh_session_${prevSession.user.id}_`;
+        for (const key of clientCache.current.keys()) {
+          if (key.startsWith(userPattern)) clientCache.current.delete(key);
+        }
+        // Clean up storage keys for previous session
+        Object.keys(localStorage).forEach(k => {
+          if (k.includes(`${prevSession.user.id}_${ts}`)) {
+            localStorage.removeItem(k);
+          }
+        });
+      });
+    }
+    
     const timestamp = Date.now();
     const sessionId = `session_${user.id}_${timestamp}`;
     const storageKey = `wmh_session_${user.id}_${timestamp}`;
@@ -299,7 +340,7 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
         createdAt: new Date()
       };
 
-      setSessions(prev => [...prev, newSession]);
+      setSessions([newSession]);
       setActiveSessionId(sessionId);
       broadcastSessionChange();
       

@@ -25,7 +25,9 @@ import {
   AlertCircle,
   Timer,
   Settings,
-  KeyRound
+  KeyRound,
+  Play,
+  FlagCheckered
 } from "lucide-react";
 import { DeliveryPhotoCapture } from "./DeliveryPhotoCapture";
 import { DeliveryIssueReporter } from "./DeliveryIssueReporter";
@@ -62,7 +64,7 @@ export const EnhancedDriverPortal = ({ driverProfile }: EnhancedDriverPortalProp
           )
         `)
         .eq("driver_id", driverProfile.id)
-        .in("assignment_status", ["pending", "accepted"])
+        .in("assignment_status", ["pending", "accepted", "in_progress", "started"])
         .order("assigned_at", { ascending: false });
       
       if (error) throw error;
@@ -124,6 +126,28 @@ export const EnhancedDriverPortal = ({ driverProfile }: EnhancedDriverPortalProp
     },
     onError: (error) => {
       toast.error(`Failed to decline assignment: ${error.message}`);
+    }
+  });
+
+  // NEW: Update assignment status (start/finish)
+  const updateAssignmentStatusMutation = useMutation({
+    mutationFn: async ({ assignmentId, status }: { assignmentId: string; status: 'in_progress' | 'started' | 'completed' }) => {
+      console.log('[DriverPortal] Updating assignment status', { assignmentId, status });
+      const { error } = await supabase
+        .from("delivery_assignments")
+        .update({ assignment_status: status })
+        .eq("id", assignmentId);
+
+      if (error) throw error;
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["driver-assignments"] });
+      const label = variables.status === 'completed' ? 'completed' : 'started';
+      toast.success(`Assignment ${label}.`);
+    },
+    onError: (error: any) => {
+      console.error('[DriverPortal] Failed to update assignment status:', error);
+      toast.error(error?.message || "Failed to update assignment");
     }
   });
 
@@ -261,7 +285,10 @@ export const EnhancedDriverPortal = ({ driverProfile }: EnhancedDriverPortalProp
     const variants = {
       pending: "outline",
       accepted: "default",
-      declined: "destructive"
+      declined: "destructive",
+      in_progress: "secondary",
+      started: "secondary",
+      completed: "default"
     };
     
     return (
@@ -279,7 +306,7 @@ export const EnhancedDriverPortal = ({ driverProfile }: EnhancedDriverPortalProp
   }
 
   const pendingAssignments = assignments?.filter(a => a.assignment_status === 'pending') || [];
-  const activeAssignments = assignments?.filter(a => a.assignment_status === 'accepted') || [];
+  const activeAssignments = assignments?.filter(a => ['accepted', 'in_progress', 'started'].includes(a.assignment_status)) || [];
 
   return (
     <div className="space-y-6">
@@ -561,6 +588,44 @@ export const EnhancedDriverPortal = ({ driverProfile }: EnhancedDriverPortalProp
               </div>
             </CardHeader>
             <CardContent className="space-y-6">
+              {/* NEW: Assignment Controls */}
+              <div className="flex flex-wrap gap-2">
+                {assignment.assignment_status === 'accepted' && (
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={() => {
+                      const confirmed = window.confirm("Start this assignment now?");
+                      if (confirmed) {
+                        // Prefer 'in_progress', fall back to 'started' if needed
+                        updateAssignmentStatusMutation.mutate({ assignmentId: assignment.id, status: 'in_progress' });
+                      }
+                    }}
+                    disabled={updateAssignmentStatusMutation.isPending}
+                  >
+                    <Play className="h-4 w-4 mr-2" />
+                    Start Assignment
+                  </Button>
+                )}
+
+                {['in_progress', 'started'].includes(assignment.assignment_status) && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const confirmed = window.confirm("Mark this assignment as completed?");
+                      if (confirmed) {
+                        updateAssignmentStatusMutation.mutate({ assignmentId: assignment.id, status: 'completed' });
+                      }
+                    }}
+                    disabled={updateAssignmentStatusMutation.isPending}
+                  >
+                    <FlagCheckered className="h-4 w-4 mr-2" />
+                    Complete Assignment
+                  </Button>
+                )}
+              </div>
+
               {/* Mileage Tracking */}
               {assignment.assignment_status === 'accepted' && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg">

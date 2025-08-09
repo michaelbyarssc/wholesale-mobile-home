@@ -27,13 +27,15 @@ import {
   Settings,
   KeyRound,
   Play,
-  Flag
+  Flag,
+  ClipboardList
 } from "lucide-react";
 import { DeliveryPhotoCapture } from "./DeliveryPhotoCapture";
 import { DeliveryIssueReporter } from "./DeliveryIssueReporter";
 import { GPSTracker } from "./GPSTracker";
 import { QualityControl } from "./QualityControl";
 import { PasswordChangeDialog } from "@/components/auth/PasswordChangeDialog";
+import { DriverChecklistWizard } from "./DriverChecklistWizard";
 
 interface EnhancedDriverPortalProps {
   driverProfile: any;
@@ -47,6 +49,7 @@ export const EnhancedDriverPortal = ({ driverProfile }: EnhancedDriverPortalProp
   const [gpsAccuracy, setGpsAccuracy] = useState<number | null>(null);
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [checklistDeliveryId, setChecklistDeliveryId] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
   // Get pending and active assignments
@@ -624,6 +627,16 @@ export const EnhancedDriverPortal = ({ driverProfile }: EnhancedDriverPortalProp
                     Complete Assignment
                   </Button>
                 )}
+
+                {/* Start Guided Checklist */}
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setChecklistDeliveryId(assignment.deliveries.id)}
+                >
+                  <ClipboardList className="h-4 w-4 mr-2" />
+                  Start Guided Checklist
+                </Button>
               </div>
 
               {/* Mileage Tracking */}
@@ -748,6 +761,13 @@ export const EnhancedDriverPortal = ({ driverProfile }: EnhancedDriverPortalProp
                   assignmentId={assignment.id}
                 />
               </div>
+              <DriverChecklistWizard
+                open={checklistDeliveryId === assignment.deliveries.id}
+                onClose={() => setChecklistDeliveryId(null)}
+                deliveryId={assignment.deliveries.id}
+                driverId={driverProfile.id}
+                currentStatus={assignment.deliveries.status}
+              />
             </CardContent>
           </Card>
         ))}

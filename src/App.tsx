@@ -57,6 +57,7 @@ const Support = lazyWithErrorBoundary(() => import("./pages/Support"), "Support"
 const Appointments = lazyWithErrorBoundary(() => import("./pages/Appointments"), "Appointments");
 const CalendarAuthCallback = lazyWithErrorBoundary(() => import("./pages/CalendarAuthCallback"), "Calendar Auth");
 const Delivery = lazyWithErrorBoundary(() => import("./pages/Delivery"), "Delivery");
+const DriverApp = lazyWithErrorBoundary(() => import("./pages/DriverApp"), "Driver App");
 const TransactionDetails = lazyWithErrorBoundary(() => import("./pages/TransactionDetails"), "Transaction Details");
 
 const queryClient = new QueryClient({
@@ -119,6 +120,9 @@ function AppRoutes() {
         <Route path="/delivery" element={<Delivery />} />
         <Route path="/delivery/:token" element={<Delivery />} />
         <Route path="/delivery/:trackingToken" element={<Delivery />} />
+        {/* Driver App landing and short links */}
+        <Route path="/driver" element={<DriverApp />} />
+        <Route path="/drivers" element={<Navigate to="/driver" replace />} />
         {/* Redirect old URLs to unified delivery page */}
         <Route path="/track-delivery" element={<Navigate to="/delivery" replace />} />
         <Route path="/delivery-portal/:token" element={<DeliveryPortalRedirect />} />

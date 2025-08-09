@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useNavigate, Link } from 'react-router-dom';
-import { ShoppingCart as CartIcon, LogOut, User, Lock, Menu, Phone, Mail, X, Download, Calendar, Home, FileText } from 'lucide-react';
+import { ShoppingCart as CartIcon, LogOut, User, Lock, Menu, Phone, Mail, X, Download, Calendar, Home, FileText, Truck } from 'lucide-react';
 import { User as SupabaseUser } from '@supabase/supabase-js';
 import { CartItem } from '@/hooks/useShoppingCart';
 import { PasswordChangeDialog } from '@/components/auth/PasswordChangeDialog';
@@ -85,6 +85,13 @@ export const Header = ({
                 >
                   <Home className="h-4 w-4" />
                   <span className="font-medium">Track Delivery</span>
+                </Link>
+                <Link 
+                  to="/driver"
+                  className="flex items-center gap-2 text-sm text-gray-600 hover:text-blue-600 transition-colors"
+                >
+                  <Truck className="h-4 w-4" />
+                  <span className="font-medium">Driver App</span>
                 </Link>
                 <a 
                   href="tel:864-680-4030"
@@ -273,6 +280,14 @@ export const Header = ({
                 >
                   <FileText className="h-4 w-4" />
                   <span className="font-medium">My Transactions</span>
+                </Link>
+                <Link
+                  to="/driver"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center gap-3 p-3 text-gray-600 hover:text-blue-600 hover:bg-gray-50 rounded-lg transition-colors"
+                >
+                  <Truck className="h-4 w-4" />
+                  <span className="font-medium">Driver App</span>
                 </Link>
                 <Link
                   to="/faq"

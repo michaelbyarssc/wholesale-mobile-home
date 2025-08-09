@@ -36,6 +36,8 @@ import { GPSTracker } from "./GPSTracker";
 import { QualityControl } from "./QualityControl";
 import { PasswordChangeDialog } from "@/components/auth/PasswordChangeDialog";
 import { DriverChecklistWizard } from "./DriverChecklistWizard";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import DeliveryDetailsView from "./DeliveryDetailsView";
 
 interface EnhancedDriverPortalProps {
   driverProfile: any;
@@ -49,7 +51,8 @@ export const EnhancedDriverPortal = ({ driverProfile }: EnhancedDriverPortalProp
   const [gpsAccuracy, setGpsAccuracy] = useState<number | null>(null);
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [checklistDeliveryId, setChecklistDeliveryId] = useState<string | null>(null);
+const [checklistDeliveryId, setChecklistDeliveryId] = useState<string | null>(null);
+  const [selectedDelivery, setSelectedDelivery] = useState<any | null>(null);
   const queryClient = useQueryClient();
 
   // Get pending and active assignments
@@ -440,7 +443,7 @@ export const EnhancedDriverPortal = ({ driverProfile }: EnhancedDriverPortalProp
           
           {pendingAssignments.map((assignment) => (
             <Card key={assignment.id} className="border-amber-200 bg-amber-50/50">
-              <CardHeader>
+              <CardHeader onClick={() => setSelectedDelivery(assignment.deliveries)} className="cursor-pointer">
                 <div className="flex items-center justify-between">
                   <div>
                     <CardTitle className="text-lg">
@@ -574,7 +577,7 @@ export const EnhancedDriverPortal = ({ driverProfile }: EnhancedDriverPortalProp
         
         {activeAssignments.map((assignment) => (
           <Card key={assignment.id}>
-            <CardHeader>
+            <CardHeader onClick={() => setSelectedDelivery(assignment.deliveries)} className="cursor-pointer">
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle className="text-lg">
@@ -784,6 +787,17 @@ export const EnhancedDriverPortal = ({ driverProfile }: EnhancedDriverPortalProp
           </Card>
         )}
       </div>
+
+      <Dialog open={!!selectedDelivery} onOpenChange={(open) => !open && setSelectedDelivery(null)}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              Delivery Details - {selectedDelivery?.transaction_number || selectedDelivery?.delivery_number || selectedDelivery?.customer_name}
+            </DialogTitle>
+          </DialogHeader>
+          {selectedDelivery && <DeliveryDetailsView delivery={selectedDelivery} />}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

@@ -3,7 +3,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CRMDashboard } from './CRMDashboard';
 import { AdminCalendarDashboard } from './calendar/AdminCalendarDashboard';
 import { DocuSignTemplatesTab } from './DocuSignTemplatesTab';
-import { Calendar, Users, FileSignature } from 'lucide-react';
+import { CRMAutomationWrapper } from './automation/CRMAutomationWrapper';
+import { Calendar, Users, FileSignature, Zap } from 'lucide-react';
 
 interface CombinedCRMTabProps {
   userRole: 'admin' | 'super_admin';
@@ -23,7 +24,7 @@ export const CombinedCRMTab = ({ userRole, currentUserId }: CombinedCRMTabProps)
       </div>
 
       <Tabs defaultValue="leads" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="leads" className="flex items-center gap-2">
             <Users className="h-4 w-4" />
             Leads & CRM
@@ -35,6 +36,10 @@ export const CombinedCRMTab = ({ userRole, currentUserId }: CombinedCRMTabProps)
           <TabsTrigger value="docusign" className="flex items-center gap-2">
             <FileSignature className="h-4 w-4" />
             DocuSign
+          </TabsTrigger>
+          <TabsTrigger value="automation" className="flex items-center gap-2">
+            <Zap className="h-4 w-4" />
+            Automation
           </TabsTrigger>
         </TabsList>
 
@@ -54,6 +59,10 @@ export const CombinedCRMTab = ({ userRole, currentUserId }: CombinedCRMTabProps)
 
         <TabsContent value="docusign" className="space-y-4">
           <DocuSignTemplatesTab />
+        </TabsContent>
+
+        <TabsContent value="automation" className="space-y-4">
+          <CRMAutomationWrapper />
         </TabsContent>
       </Tabs>
     </div>

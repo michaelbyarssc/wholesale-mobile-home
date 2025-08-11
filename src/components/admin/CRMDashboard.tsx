@@ -44,6 +44,7 @@ import { FollowUpForm } from './crm/FollowUpForm';
 import { AnonymousChatUsers } from './AnonymousChatUsers';
 import { ChatLeadsReview } from './crm/ChatLeadsReview';
 import { CRMAutomationWrapper } from './automation/CRMAutomationWrapper';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 interface Lead {
   id: string;
@@ -473,24 +474,32 @@ export const CRMDashboard = ({ userRole, currentUserId }: CRMDashboardProps) => 
                     </div>
 
                     <div className="flex items-center gap-2">
-                      <Dialog open={showLeadDetailsDialog} onOpenChange={setShowLeadDetailsDialog}>
-                        <DialogTrigger asChild>
-                          <Button 
-                            variant="ghost" 
-                            size="sm"
-                            onClick={() => {
-                              setSelectedLead(lead);
-                              setShowLeadDetailsDialog(true);
-                            }}
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                        </DialogTrigger>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => {
+                          setSelectedLead(lead);
+                          setShowLeadDetailsDialog(true);
+                          console.log('Opening lead details dialog for lead', lead.id);
+                        }}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+
+                      <Dialog 
+                        open={showLeadDetailsDialog && selectedLead?.id === lead.id} 
+                        onOpenChange={(open) => {
+                          if (!open) setShowLeadDetailsDialog(false);
+                        }}
+                      >
                         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
                           <DialogHeader>
                             <DialogTitle>Lead Details</DialogTitle>
+                            <DialogDescription className="sr-only">
+                              Detailed information about this lead including contact, status, budget, and notes.
+                            </DialogDescription>
                           </DialogHeader>
-                          {selectedLead && (
+                          {selectedLead && selectedLead.id === lead.id && (
                             <div className="space-y-6">
                               {/* Basic Info */}
                               <div className="grid grid-cols-2 gap-4">
@@ -612,9 +621,46 @@ export const CRMDashboard = ({ userRole, currentUserId }: CRMDashboardProps) => 
                           )}
                         </DialogContent>
                       </Dialog>
-                      <Button variant="ghost" size="sm">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
+
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm" aria-label="Open actions menu">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-44">
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setSelectedLead(lead);
+                              setShowLeadDialog(true);
+                              console.log('Edit Lead selected for', lead.id);
+                            }}
+                          >
+                            <Edit className="h-4 w-4 mr-2" />
+                            Edit Lead
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setSelectedLead(lead);
+                              setShowInteractionDialog(true);
+                              console.log('Log Interaction for', lead.id);
+                            }}
+                          >
+                            <MessageSquare className="h-4 w-4 mr-2" />
+                            Log Interaction
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setSelectedLead(lead);
+                              setShowFollowUpDialog(true);
+                              console.log('Schedule Follow-up for', lead.id);
+                            }}
+                          >
+                            <Clock className="h-4 w-4 mr-2" />
+                            Schedule Follow-up
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </div>
                 </CardContent>

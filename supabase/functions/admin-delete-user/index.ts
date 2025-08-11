@@ -95,24 +95,56 @@ serve(async (req) => {
 
     console.log('User exists in auth system:', userExistsInAuth)
 
-    // Always clean up user data from public tables first
+    // Reassign or nullify references before deleting related records
     try {
-      // Delete from profiles table
-      const { error: profileError } = await supabaseAdmin.from('profiles').delete().eq('user_id', user_id)
-      if (profileError) console.error('Error deleting profile:', profileError)
-      
-      // Delete from user_roles table
-      const { error: roleError } = await supabaseAdmin.from('user_roles').delete().eq('user_id', user_id)
-      if (roleError) console.error('Error deleting user role:', roleError)
-      
-      // Delete from customer_markups table
-      const { error: markupError } = await supabaseAdmin.from('customer_markups').delete().eq('user_id', user_id)
-      if (markupError) console.error('Error deleting customer markup:', markupError)
-      
+      // Resolve default admin for reassignment (fallback: set to NULL if not found)
+      const { data: defaultAdmin, error: defaultAdminErr } = await supabaseAdmin
+        .from('profiles')
+        .select('user_id')
+        .eq('email', 'michaelbyarssc@gmail.com')
+        .maybeSingle();
+
+      if (defaultAdminErr) {
+        console.warn('Could not resolve default admin for reassignment:', defaultAdminErr.message)
+      }
+
+      const reassignmentId = defaultAdmin?.user_id ?? null
+
+      // Reassign references pointing to this user (idempotent)
+      const updates = [
+        supabaseAdmin.from('transactions').update({ assigned_admin_id: reassignmentId }).eq('assigned_admin_id', user_id),
+        supabaseAdmin.from('chat_sessions').update({ agent_id: reassignmentId }).eq('agent_id', user_id),
+        supabaseAdmin.from('appointments').update({ agent_id: reassignmentId }).eq('agent_id', user_id),
+        supabaseAdmin.from('profiles').update({ assigned_admin_id: reassignmentId }).eq('assigned_admin_id', user_id),
+      ]
+
+      const results = await Promise.allSettled(updates)
+      results.forEach((r, i) => {
+        if (r.status === 'rejected') {
+          console.error('Reassignment update failed for index', i, r.reason)
+        }
+      })
+
+      console.log('Reassignment completed with default admin:', reassignmentId)
+
+      // Now clean up user data from public tables (idempotent)
+      const deletions = [
+        supabaseAdmin.from('profiles').delete().eq('user_id', user_id),
+        supabaseAdmin.from('user_roles').delete().eq('user_id', user_id),
+        supabaseAdmin.from('customer_markups').delete().eq('user_id', user_id),
+      ]
+
+      const deletionResults = await Promise.allSettled(deletions)
+      deletionResults.forEach((r, i) => {
+        if (r.status === 'rejected') {
+          console.error('Cleanup delete failed for index', i, r.reason)
+        }
+      })
+
       console.log('Cleaned up user data from public tables')
     } catch (dbError) {
-      console.error('Error deleting user data from public tables:', dbError)
-      // Continue with auth user deletion even if some public table deletions fail
+      console.error('Error reassigning/cleaning user data from public tables:', dbError)
+      // Continue with auth user deletion even if some operations fail
     }
 
     // Only try to delete from auth if user exists there

@@ -5944,6 +5944,10 @@ export type Database = {
           conversion_rate: number
         }[]
       }
+      get_request_header: {
+        Args: { name: string }
+        Returns: string
+      }
       get_timezone_abbrev: {
         Args: { address: string }
         Returns: string

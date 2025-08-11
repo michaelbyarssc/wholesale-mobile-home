@@ -4,6 +4,7 @@ import { AutomationTemplateManager } from './AutomationTemplateManager';
 import { MessageTemplateManager } from './MessageTemplateManager';
 import { AutomationExecutions } from './AutomationExecutions';
 import { AutomationSettings } from './AutomationSettings';
+import { AutomationMatrix } from './AutomationMatrix';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -75,13 +76,18 @@ export const CRMAutomationWrapper = () => {
         <p className="text-muted-foreground">Set up automated emails and SMS for lead follow-ups, reminders, and nurturing campaigns.</p>
       </div>
       
-      <Tabs defaultValue="templates" className="w-full">
+      <Tabs defaultValue="quick" className="w-full">
         <TabsList>
+          <TabsTrigger value="quick">Quick Setup</TabsTrigger>
           <TabsTrigger value="templates">Automation Rules</TabsTrigger>
           <TabsTrigger value="messages">Message Templates</TabsTrigger>
           <TabsTrigger value="executions">Executions</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="quick" className="mt-4">
+          <AutomationMatrix />
+        </TabsContent>
 
         <TabsContent value="templates" className="mt-4">
           <AutomationTemplateManager />

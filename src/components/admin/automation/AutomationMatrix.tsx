@@ -6,7 +6,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Mail, MessageSquare } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Loader2, Mail, MessageSquare, RefreshCw, PlusCircle } from "lucide-react";
 
 // Simple, kid-friendly matrix to turn on Email/SMS per event and pick a template
 // Writes immediately on change to keep UX simple
@@ -59,7 +61,7 @@ interface CellState {
   templateId?: string;
 }
 
-export function AutomationMatrix() {
+export function AutomationMatrix({ onGoToMessageTemplates }: { onGoToMessageTemplates?: () => void }) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [emailTemplates, setEmailTemplates] = useState<MessageTemplate[]>([]);
@@ -202,12 +204,37 @@ export function AutomationMatrix() {
     );
   }
 
+  const noEmail = emailTemplates.length === 0;
+  const noSms = smsTemplates.length === 0;
+
   return (
     <div className="space-y-4">
-      <div>
-        <h3 className="text-lg font-semibold">Quick Automations</h3>
-        <p className="text-muted-foreground">Flip a switch and pick a template. That’s it.</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-lg font-semibold">Quick Automations</h3>
+          <p className="text-muted-foreground">Flip a switch and pick a template. That’s it.</p>
+        </div>
+        <Button variant="outline" size="sm" onClick={load} className="shrink-0">
+          <RefreshCw className="h-4 w-4 mr-2" /> Refresh
+        </Button>
       </div>
+
+      {(!emailTemplates.length || !smsTemplates.length) && (
+        <Alert>
+          <AlertTitle>No active templates</AlertTitle>
+          <AlertDescription>
+            You need at least one active {noEmail && noSms ? 'Email and SMS' : (noEmail ? 'Email' : 'SMS')} template to enable automations.
+            <div className="mt-3 flex items-center gap-2">
+              <Button size="sm" onClick={onGoToMessageTemplates}>
+                <PlusCircle className="h-4 w-4 mr-2" /> Create template
+              </Button>
+              <Button size="sm" variant="outline" onClick={load}>
+                <RefreshCw className="h-4 w-4 mr-2" /> Refresh
+              </Button>
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
 
       <Card>
         <Table>
@@ -246,7 +273,7 @@ export function AutomationMatrix() {
                       <SelectTrigger className="w-[240px]">
                         <SelectValue placeholder="Choose email template" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="z-[60] bg-popover">
                         {emailTemplates.map((t) => (
                           <SelectItem key={t.id} value={t.id}>
                             {t.name}
@@ -277,7 +304,7 @@ export function AutomationMatrix() {
                       <SelectTrigger className="w-[240px]">
                         <SelectValue placeholder="Choose SMS template" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="z-[60] bg-popover">
                         {smsTemplates.map((t) => (
                           <SelectItem key={t.id} value={t.id}>
                             {t.name}

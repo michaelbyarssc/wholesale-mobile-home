@@ -13,6 +13,7 @@ export const CRMAutomationWrapper = () => {
   const [messageTemplates, setMessageTemplates] = useState([]);
   const [executions, setExecutions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState<string>('quick');
 
   const fetchData = async () => {
     try {
@@ -76,7 +77,7 @@ export const CRMAutomationWrapper = () => {
         <p className="text-muted-foreground">Set up automated emails and SMS for lead follow-ups, reminders, and nurturing campaigns.</p>
       </div>
       
-      <Tabs defaultValue="quick" className="w-full">
+      <Tabs value={tab} onValueChange={setTab} className="w-full">
         <TabsList>
           <TabsTrigger value="quick">Quick Setup</TabsTrigger>
           <TabsTrigger value="templates">Automation Rules</TabsTrigger>
@@ -86,7 +87,7 @@ export const CRMAutomationWrapper = () => {
         </TabsList>
 
         <TabsContent value="quick" className="mt-4">
-          <AutomationMatrix />
+          <AutomationMatrix onGoToMessageTemplates={() => setTab('messages')} />
         </TabsContent>
 
         <TabsContent value="templates" className="mt-4">

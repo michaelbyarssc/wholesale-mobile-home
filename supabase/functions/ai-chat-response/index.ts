@@ -1,3 +1,4 @@
+
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
@@ -8,6 +9,9 @@ const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
+
+// Default assignee for unassigned chat sessions
+const DEFAULT_ASSIGNEE_EMAIL = 'michaelbyarssc@gmail.com';
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -34,6 +38,41 @@ serve(async (req) => {
       throw new Error('Session not found')
     }
 
+    // Resolve default assignee's user_id from profiles
+    let defaultAssigneeId: string | null = null;
+    try {
+      const { data: assigneeProfile, error: assigneeErr } = await supabase
+        .from('profiles')
+        .select('user_id')
+        .eq('email', DEFAULT_ASSIGNEE_EMAIL)
+        .single();
+
+      if (assigneeErr) {
+        console.warn('Assignee lookup error:', assigneeErr.message);
+      }
+      defaultAssigneeId = assigneeProfile?.user_id ?? null;
+      console.log('Default assignee user_id:', defaultAssigneeId);
+    } catch (e) {
+      console.warn('Failed to resolve default assignee:', e);
+    }
+
+    // Auto-assign the session if it doesn't have an agent yet
+    if (!session.agent_id && defaultAssigneeId) {
+      const { error: assignErr } = await supabase
+        .from('chat_sessions')
+        .update({ agent_id: defaultAssigneeId })
+        .eq('id', session.id)
+        .is('agent_id', null);
+
+      if (assignErr) {
+        console.warn('Failed to auto-assign chat session:', assignErr.message);
+      } else {
+        console.log('Chat session assigned to default agent:', defaultAssigneeId);
+        // Refresh session object locally
+        session.agent_id = defaultAssigneeId;
+      }
+    }
+
     // Analyze user message and generate appropriate response
     const response = await generateOpenAIResponse(userMessage, chatHistory, session, supabase)
 
@@ -48,7 +87,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in ai-chat-response:', error)
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: (error as Error).message }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 400,

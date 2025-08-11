@@ -11,6 +11,9 @@ const openAIApiKey = Deno.env.get('OPENAI_API_KEY')
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
+// Default assignee for chat-generated leads and sessions
+const DEFAULT_ASSIGNEE_EMAIL = 'michaelbyarssc@gmail.com';
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
@@ -25,6 +28,24 @@ serve(async (req) => {
 
     if (!openAIApiKey) {
       throw new Error('OpenAI API key not configured')
+    }
+
+    // Resolve default assignee's user_id from profiles
+    let defaultAssigneeId: string | null = null;
+    try {
+      const { data: assigneeProfile, error: assigneeErr } = await supabase
+        .from('profiles')
+        .select('user_id')
+        .eq('email', DEFAULT_ASSIGNEE_EMAIL)
+        .single();
+
+      if (assigneeErr) {
+        console.warn('Assignee lookup error:', assigneeErr.message);
+      }
+      defaultAssigneeId = assigneeProfile?.user_id ?? null;
+      console.log('Default assignee user_id:', defaultAssigneeId);
+    } catch (e) {
+      console.warn('Failed to resolve default assignee:', e);
     }
 
     // Get extraction settings
@@ -120,6 +141,8 @@ Only extract data that is explicitly mentioned. Use null for missing data.`
           estimated_budget: extractedData.budget ? parseFloat(extractedData.budget.replace(/[^0-9.-]+/g, '')) : null,
           estimated_timeline: extractedData.timeframe,
           notes: `Lead generated from ${leadSource}`,
+          // Assign to the specified user so it appears in their CRM
+          assigned_to: defaultAssigneeId || null,
         })
         .select('id')
         .single()
@@ -163,6 +186,21 @@ Only extract data that is explicitly mentioned. Use null for missing data.`
 
     console.log('Created customer interaction:', interaction.id)
 
+    // Ensure the chat session is assigned to the default agent if unassigned
+    if (chatSessionId && defaultAssigneeId) {
+      const { error: assignSessionErr } = await supabase
+        .from('chat_sessions')
+        .update({ agent_id: defaultAssigneeId })
+        .eq('id', chatSessionId)
+        .is('agent_id', null);
+
+      if (assignSessionErr) {
+        console.warn('Failed to auto-assign chat session:', assignSessionErr.message);
+      } else {
+        console.log('Chat session assigned to default agent:', defaultAssigneeId);
+      }
+    }
+
     return new Response(
       JSON.stringify({ 
         success: true, 
@@ -176,7 +214,7 @@ Only extract data that is explicitly mentioned. Use null for missing data.`
   } catch (error) {
     console.error('Error in extract-chat-data function:', error)
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: (error as Error).message }),
       { 
         status: 500, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 

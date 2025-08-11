@@ -55,6 +55,8 @@ export const useChatSupport = (userId?: string) => {
 
       // Create new session
       const sessionToken = `chat_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      // Attach chat token header for RLS policies (no-op if unsupported)
+      try { (supabase as any).headers?.set?.('x-chat-token', sessionToken); } catch {}
       
       const sessionMetadata = customerInfo ? {
         anonymous: true

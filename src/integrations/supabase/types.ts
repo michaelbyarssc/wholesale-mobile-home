@@ -740,6 +740,51 @@ export type Database = {
           },
         ]
       }
+      automation_events: {
+        Row: {
+          customer_email: string | null
+          customer_phone: string | null
+          entity_id: string
+          entity_type: string
+          error: string | null
+          event_name: string
+          id: string
+          occurred_at: string
+          payload: Json
+          processed: boolean
+          processed_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          customer_email?: string | null
+          customer_phone?: string | null
+          entity_id: string
+          entity_type: string
+          error?: string | null
+          event_name: string
+          id?: string
+          occurred_at?: string
+          payload?: Json
+          processed?: boolean
+          processed_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          customer_email?: string | null
+          customer_phone?: string | null
+          entity_id?: string
+          entity_type?: string
+          error?: string | null
+          event_name?: string
+          id?: string
+          occurred_at?: string
+          payload?: Json
+          processed?: boolean
+          processed_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       automation_executions: {
         Row: {
           automation_template_id: string
@@ -5706,6 +5751,18 @@ export type Database = {
           p_timeline?: string
           p_additional_requirements?: string
           p_transaction_type?: Database["public"]["Enums"]["transaction_type"]
+        }
+        Returns: string
+      }
+      emit_automation_event: {
+        Args: {
+          p_event_name: string
+          p_entity_type: string
+          p_entity_id: string
+          p_user_id?: string
+          p_customer_email?: string
+          p_customer_phone?: string
+          p_payload?: Json
         }
         Returns: string
       }

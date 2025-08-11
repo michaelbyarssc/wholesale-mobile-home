@@ -237,17 +237,12 @@ export const useChatSupport = (userId?: string) => {
         let customerInfo = null;
         
         if (anonymousUser) {
-          // For anonymous users, get info from anonymous_chat_users table
-          const { data: anonUser } = await supabase
-            .from('anonymous_chat_users')
-            .select('customer_name, customer_phone')
-            .eq('session_id', currentSession.id)
-            .single();
-          
-          if (anonUser) {
+          // Use session metadata captured at chat start to avoid reading PII from DB
+          const meta = (currentSession as any).metadata || {};
+          if (meta.customer_name || meta.customer_phone) {
             customerInfo = {
-              name: anonUser.customer_name,
-              phone: anonUser.customer_phone,
+              name: meta.customer_name || 'Anonymous',
+              phone: meta.customer_phone || null,
               email: null
             };
           }

@@ -738,6 +738,13 @@ export type Database = {
             referencedRelation: "appointment_slots"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "fk_appointments_agent"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
         ]
       }
       automation_events: {
@@ -1408,7 +1415,15 @@ export type Database = {
           updated_at?: string
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_chat_sessions_agent"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
       }
       companies: {
         Row: {
@@ -4463,7 +4478,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_profiles_assigned_admin"
+            columns: ["assigned_admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
       }
       push_subscriptions: {
         Row: {
@@ -5471,6 +5494,13 @@ export type Database = {
           user_notes?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_transactions_assigned_admin"
+            columns: ["assigned_admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
           {
             foreignKeyName: "transactions_estimate_id_fkey"
             columns: ["estimate_id"]

@@ -21,6 +21,7 @@ import { ComprehensiveTestSuite } from '@/components/admin/ComprehensiveTestSuit
 import { ComprehensiveTestRunner } from '@/components/ComprehensiveTestRunner';
 import { SecurityTestDashboard } from '@/components/SecurityTestDashboard';
 import { SecurityOverhaulVerification } from '@/components/SecurityOverhaulVerification';
+import { CRMAutomationWrapper } from '@/components/admin/automation/CRMAutomationWrapper';
 
 import { Menu, X } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -113,8 +114,8 @@ const Admin = () => {
   };
 
   const handleTabChange = (value: string) => {
-    const superAdminTabs = ['mobile-homes', 'sales', 'users', 'crm', 'analytics', 'social-proof', 'faq', 'delivery', 'testing', 'settings', 'reviews']
-    const adminTabs = ['sales', 'users', 'crm']
+    const superAdminTabs = ['mobile-homes', 'sales', 'users', 'crm', 'automation', 'analytics', 'social-proof', 'faq', 'delivery', 'testing', 'settings', 'reviews']
+    const adminTabs = ['sales', 'users', 'crm', 'automation']
     const allowed = isSuperAdmin ? superAdminTabs : adminTabs
     const next = allowed.includes(value) ? value : (isSuperAdmin ? 'mobile-homes' : 'sales')
     setActiveTab(next)
@@ -147,6 +148,7 @@ const Admin = () => {
       'social-proof': 'Social Proof',
       'analytics': 'Analytics',
       'crm': 'CRM',
+      'automation': 'Automation',
       'delivery': 'Delivery',
       'testing': 'Testing',
       'settings': 'Settings'
@@ -187,6 +189,13 @@ const Admin = () => {
         onClick={() => handleTabChange('crm')}
       >
         📊 CRM
+      </Button>
+      <Button
+        variant={activeTab === 'automation' ? 'default' : 'ghost'}
+        className={`${mobile ? 'justify-start w-full h-11 text-base font-medium' : ''} text-xs sm:text-sm`}
+        onClick={() => handleTabChange('automation')}
+      >
+        ⚡ Automation
       </Button>
       {isSuperAdmin && (
         <Button
@@ -359,7 +368,7 @@ const Admin = () => {
           {/* Desktop Tab Navigation */}
           {!isMobile && isSuperAdmin && (
             <div className="border rounded-lg p-1 bg-muted/30 overflow-x-auto">
-              <TabsList className="grid w-full grid-cols-10 h-12 bg-transparent min-w-[900px]">
+              <TabsList className="grid w-full grid-cols-11 h-12 bg-transparent min-w-[900px]">
                 <TabsTrigger 
                   value="mobile-homes" 
                   className="text-xs sm:text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm px-2"
@@ -383,6 +392,12 @@ const Admin = () => {
                   className="text-xs sm:text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm px-2"
                 >
                   CRM
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="automation" 
+                  className="text-xs sm:text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm px-2"
+                >
+                  Automation
                 </TabsTrigger>
                 <TabsTrigger 
                   value="analytics" 
@@ -426,7 +441,7 @@ const Admin = () => {
           
           {!isMobile && !isSuperAdmin && (
             <div className="border rounded-lg p-1 bg-muted/30">
-              <TabsList className="grid w-full grid-cols-3 h-12 bg-transparent">
+              <TabsList className="grid w-full grid-cols-4 h-12 bg-transparent">
                 <TabsTrigger 
                   value="sales" 
                   className="text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm"
@@ -444,6 +459,12 @@ const Admin = () => {
                   className="text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm"
                 >
                   CRM
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="automation" 
+                  className="text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm"
+                >
+                  Automation
                 </TabsTrigger>
               </TabsList>
             </div>
@@ -472,6 +493,10 @@ const Admin = () => {
                 userRole={isSuperAdmin ? 'super_admin' : 'admin'} 
                 currentUserId={user?.id} 
               />
+            </TabsContent>
+
+            <TabsContent value="automation" className="p-3 sm:p-6 m-0">
+              <CRMAutomationWrapper />
             </TabsContent>
 
             {isSuperAdmin && (

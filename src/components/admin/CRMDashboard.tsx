@@ -45,6 +45,7 @@ import { AnonymousChatUsers } from './AnonymousChatUsers';
 import { ChatLeadsReview } from './crm/ChatLeadsReview';
 import { CRMAutomationWrapper } from './automation/CRMAutomationWrapper';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 interface Lead {
   id: string;
@@ -106,6 +107,8 @@ export const CRMDashboard = ({ userRole, currentUserId }: CRMDashboardProps) => 
   const [showFollowUpDialog, setShowFollowUpDialog] = useState(false);
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const updateLeadStatus = async (leadId: string, newStatus: string) => {
     try {
@@ -144,6 +147,45 @@ export const CRMDashboard = ({ userRole, currentUserId }: CRMDashboardProps) => 
     const newStatus = destination.droppableId;
     
     updateLeadStatus(draggableId, newStatus);
+  };
+
+  const handleDeleteLead = async () => {
+    if (!selectedLead) return;
+    try {
+      setDeleting(true);
+      // Delete related follow-ups first
+      const { error: followUpsError } = await supabase
+        .from('follow_ups')
+        .delete()
+        .eq('lead_id', selectedLead.id);
+      if (followUpsError) console.warn('Delete follow-ups warning:', followUpsError);
+
+      // Delete related interactions
+      const { error: interactionsError } = await supabase
+        .from('customer_interactions')
+        .delete()
+        .eq('lead_id', selectedLead.id);
+      if (interactionsError) console.warn('Delete interactions warning:', interactionsError);
+
+      // Finally delete the lead
+      const { error: leadError } = await supabase
+        .from('leads')
+        .delete()
+        .eq('id', selectedLead.id);
+      if (leadError) throw leadError;
+
+      toast({ title: 'Lead deleted', description: 'The lead was deleted successfully.' });
+
+      // Refresh data to keep UI in sync
+      await fetchData();
+    } catch (err) {
+      console.error('Error deleting lead:', err);
+      toast({ title: 'Error', description: 'Failed to delete lead', variant: 'destructive' });
+    } finally {
+      setDeleting(false);
+      setShowDeleteDialog(false);
+      setSelectedLead(null);
+    }
   };
 
   const leadStatuses = [
@@ -659,6 +701,17 @@ export const CRMDashboard = ({ userRole, currentUserId }: CRMDashboardProps) => 
                             <Clock className="h-4 w-4 mr-2" />
                             Schedule Follow-up
                           </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="text-destructive"
+                            onClick={() => {
+                              setSelectedLead(lead);
+                              setShowDeleteDialog(true);
+                              console.log('Delete Lead requested for', lead.id);
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete Lead
+                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
@@ -667,6 +720,23 @@ export const CRMDashboard = ({ userRole, currentUserId }: CRMDashboardProps) => 
               </Card>
             ))}
           </div>
+
+          <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete this lead?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently delete the lead{selectedLead ? ` ${selectedLead.first_name} ${selectedLead.last_name}` : ''} and all related follow-ups and interactions. This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDeleteLead} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                  {deleting ? 'Deleting...' : 'Delete'}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </TabsContent>
 
         <TabsContent value="interactions" className="space-y-4">

@@ -17,6 +17,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { CustomerAvatar } from '@/components/CustomerAvatar';
 import { TransactionGroup } from '@/components/TransactionGroup';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { SEO } from '@/components/SEO';
 
 interface UnifiedRecord {
   id: string;
@@ -28,7 +30,11 @@ interface UnifiedRecord {
   created_at: string;
   transaction_number?: string;
   customer_email?: string;
+  user_id?: string | null;
+  assigned_admin_id?: string | null;
+  assigned_admin_name?: string | null;
 }
+
 
 interface CustomerGroup {
   customerName: string;
@@ -115,8 +121,7 @@ export const TransactionHistory = () => {
           .from('estimates')
           .select('*')
           .order('created_at', { ascending: false });
-        
-        estimates?.forEach(estimate => {
+        estimates?.forEach((estimate: any) => {
           records.push({
             id: estimate.id,
             type: 'estimate',
@@ -126,7 +131,8 @@ export const TransactionHistory = () => {
             status: estimate.status,
             created_at: estimate.created_at,
             transaction_number: estimate.transaction_number,
-            customer_email: estimate.customer_email
+            customer_email: estimate.customer_email,
+            user_id: estimate.user_id || null,
           });
         });
       } else {
@@ -135,8 +141,7 @@ export const TransactionHistory = () => {
           .select('*')
           .eq('user_id', user.id)
           .order('created_at', { ascending: false });
-        
-        estimates?.forEach(estimate => {
+        estimates?.forEach((estimate: any) => {
           records.push({
             id: estimate.id,
             type: 'estimate',
@@ -146,7 +151,8 @@ export const TransactionHistory = () => {
             status: estimate.status,
             created_at: estimate.created_at,
             transaction_number: estimate.transaction_number,
-            customer_email: estimate.customer_email
+            customer_email: estimate.customer_email,
+            user_id: user.id,
           });
         });
       }
@@ -157,8 +163,7 @@ export const TransactionHistory = () => {
           .from('invoices')
           .select('*')
           .order('created_at', { ascending: false });
-        
-        invoices?.forEach(invoice => {
+        invoices?.forEach((invoice: any) => {
           records.push({
             id: invoice.id,
             type: 'invoice',
@@ -168,7 +173,8 @@ export const TransactionHistory = () => {
             status: invoice.status,
             created_at: invoice.created_at,
             transaction_number: invoice.transaction_number,
-            customer_email: invoice.customer_email
+            customer_email: invoice.customer_email,
+            user_id: invoice.user_id || null,
           });
         });
       } else {
@@ -177,8 +183,7 @@ export const TransactionHistory = () => {
           .select('*')
           .eq('user_id', user.id)
           .order('created_at', { ascending: false });
-        
-        invoices?.forEach(invoice => {
+        invoices?.forEach((invoice: any) => {
           records.push({
             id: invoice.id,
             type: 'invoice',
@@ -188,7 +193,8 @@ export const TransactionHistory = () => {
             status: invoice.status,
             created_at: invoice.created_at,
             transaction_number: invoice.transaction_number,
-            customer_email: invoice.customer_email
+            customer_email: invoice.customer_email,
+            user_id: user.id,
           });
         });
       }
@@ -197,20 +203,46 @@ export const TransactionHistory = () => {
       if (isAdmin || isSuperAdmin) {
         const { data: deliveries } = await supabase
           .from('deliveries')
-          .select('*')
+          .select(`
+            *,
+            invoices:invoices!left(id, user_id, customer_name, customer_email)
+          `)
           .order('created_at', { ascending: false });
-        
-        deliveries?.forEach(delivery => {
+        deliveries?.forEach((delivery: any) => {
           records.push({
             id: delivery.id,
             type: 'delivery',
             number: delivery.transaction_number || delivery.delivery_number,
-            customer_name: delivery.customer_name,
+            customer_name: delivery.customer_name || delivery.invoices?.customer_name,
             amount: delivery.total_delivery_cost || 0,
             status: delivery.status,
             created_at: delivery.created_at,
             transaction_number: delivery.transaction_number,
-            customer_email: delivery.customer_email
+            customer_email: delivery.customer_email || delivery.invoices?.customer_email,
+            user_id: delivery.invoices?.user_id || delivery.user_id || null,
+          });
+        });
+      } else {
+        const { data: deliveries } = await supabase
+          .from('deliveries')
+          .select(`
+            *,
+            invoices:invoices!inner(user_id, customer_name, customer_email)
+          `)
+          .eq('invoices.user_id', user.id)
+          .order('created_at', { ascending: false });
+        deliveries?.forEach((delivery: any) => {
+          records.push({
+            id: delivery.id,
+            type: 'delivery',
+            number: delivery.transaction_number || delivery.delivery_number,
+            customer_name: delivery.customer_name || delivery.invoices?.customer_name,
+            amount: delivery.total_delivery_cost || 0,
+            status: delivery.status,
+            created_at: delivery.created_at,
+            transaction_number: delivery.transaction_number,
+            customer_email: delivery.customer_email || delivery.invoices?.customer_email,
+            user_id: user.id,
           });
         });
       }
@@ -221,11 +253,10 @@ export const TransactionHistory = () => {
           .from('payments')
           .select(`
             *,
-            invoices!inner(customer_name, customer_email)
+            invoices!inner(customer_name, customer_email, user_id)
           `)
           .order('created_at', { ascending: false });
-        
-        payments?.forEach(payment => {
+        payments?.forEach((payment: any) => {
           records.push({
             id: payment.id,
             type: 'payment',
@@ -235,7 +266,8 @@ export const TransactionHistory = () => {
             status: 'completed',
             created_at: payment.created_at,
             transaction_number: payment.transaction_number,
-            customer_email: payment.invoices.customer_email
+            customer_email: payment.invoices.customer_email,
+            user_id: payment.invoices.user_id || null,
           });
         });
       } else {
@@ -247,8 +279,7 @@ export const TransactionHistory = () => {
           `)
           .eq('invoices.user_id', user.id)
           .order('created_at', { ascending: false });
-        
-        payments?.forEach(payment => {
+        payments?.forEach((payment: any) => {
           records.push({
             id: payment.id,
             type: 'payment',
@@ -258,13 +289,49 @@ export const TransactionHistory = () => {
             status: 'completed',
             created_at: payment.created_at,
             transaction_number: payment.transaction_number,
-            customer_email: payment.invoices.customer_email
+            customer_email: payment.invoices.customer_email,
+            user_id: user.id,
           });
         });
       }
 
+      // Enrich with profiles to determine assigned admins for grouping
+      const userIds = Array.from(new Set(records.map(r => r.user_id).filter(Boolean))) as string[];
+      let userProfiles: any[] = [];
+      if (userIds.length) {
+        const { data: up } = await supabase
+          .from('profiles')
+          .select('user_id, assigned_admin_id')
+          .in('user_id', userIds);
+        userProfiles = up || [];
+      }
+      const adminIds = Array.from(new Set(userProfiles.map(p => p.assigned_admin_id).filter(Boolean))) as string[];
+      let adminProfiles: any[] = [];
+      if (adminIds.length) {
+        const { data: ap } = await supabase
+          .from('profiles')
+          .select('user_id, first_name, last_name, email')
+          .in('user_id', adminIds);
+        adminProfiles = ap || [];
+      }
+      const userProfileMap = new Map(userProfiles.map(p => [p.user_id, p]));
+      const adminProfileMap = new Map(adminProfiles.map(p => [p.user_id, p]));
+
+      const annotatedRecords: UnifiedRecord[] = records.map(r => {
+        const p = r.user_id ? userProfileMap.get(r.user_id) : null;
+        const assignedId = p?.assigned_admin_id || null;
+        let adminName: string | null = null;
+        if (assignedId) {
+          const ap = adminProfileMap.get(assignedId);
+          adminName = ap ? ([ap.first_name, ap.last_name].filter(Boolean).join(' ') || ap.email || assignedId) : 'Unassigned';
+        } else {
+          adminName = 'Unassigned';
+        }
+        return { ...r, assigned_admin_id: assignedId, assigned_admin_name: adminName };
+      });
+
       // Apply filters
-      let filteredRecords = records;
+      let filteredRecords = annotatedRecords;
 
       // Apply type filter
       if (selectedType !== 'all') {

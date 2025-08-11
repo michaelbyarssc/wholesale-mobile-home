@@ -57,8 +57,6 @@ export const useChatSupport = (userId?: string) => {
       const sessionToken = `chat_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       
       const sessionMetadata = customerInfo ? {
-        customer_name: customerInfo.name,
-        customer_phone: customerInfo.phone,
         anonymous: true
       } : {};
 
@@ -237,15 +235,12 @@ export const useChatSupport = (userId?: string) => {
         let customerInfo = null;
         
         if (anonymousUser) {
-          // Use session metadata captured at chat start to avoid reading PII from DB
-          const meta = (currentSession as any).metadata || {};
-          if (meta.customer_name || meta.customer_phone) {
-            customerInfo = {
-              name: meta.customer_name || 'Anonymous',
-              phone: meta.customer_phone || null,
-              email: null
-            };
-          }
+          // Avoid using PII from DB or metadata for anonymous users
+          customerInfo = {
+            name: 'Anonymous',
+            phone: null,
+            email: null
+          };
         } else if (userId) {
           // For authenticated users, we could get more info from profiles
           customerInfo = {

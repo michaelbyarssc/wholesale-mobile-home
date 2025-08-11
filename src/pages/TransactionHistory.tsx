@@ -1,9 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useUserRoles } from '@/hooks/useUserRoles';
-import { Search, Download, FileText, Receipt, Truck, DollarSign, Calendar, User, ChevronDown, ChevronUp } from 'lucide-react';
+import { Search, Download, FileText, Receipt, Truck, DollarSign, Calendar, User, ChevronDown, ChevronUp, Home } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
@@ -19,7 +19,7 @@ import { CustomerAvatar } from '@/components/CustomerAvatar';
 import { TransactionGroup } from '@/components/TransactionGroup';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { SEO } from '@/components/SEO';
-
+import { Breadcrumbs } from '@/components/Breadcrumbs';
 interface UnifiedRecord {
   id: string;
   type: 'estimate' | 'invoice' | 'delivery' | 'payment';
@@ -519,6 +519,13 @@ export const TransactionHistory = () => {
 
   return (
     <div className="container mx-auto p-4 space-y-6">
+      <SEO
+        title="Transaction History"
+        description="View all estimates, invoices, deliveries and payments in one place."
+        type="website"
+      />
+
+      <Breadcrumbs />
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
@@ -527,10 +534,18 @@ export const TransactionHistory = () => {
             View and manage all your transaction records
           </p>
         </div>
-        <Button onClick={exportRecords} className="flex items-center gap-2">
-          <Download className="h-4 w-4" />
-          Export
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" asChild>
+            <Link to="/">
+              <Home className="h-4 w-4" />
+              <span>Home</span>
+            </Link>
+          </Button>
+          <Button onClick={exportRecords} className="flex items-center gap-2">
+            <Download className="h-4 w-4" />
+            Export
+          </Button>
+        </div>
       </div>
 
       {/* Search and Filters */}

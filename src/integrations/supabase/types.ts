@@ -5944,7 +5944,15 @@ export type Database = {
           conversion_rate: number
         }[]
       }
+      get_query_eq_value: {
+        Args: { name: string }
+        Returns: string
+      }
       get_request_header: {
+        Args: { name: string }
+        Returns: string
+      }
+      get_request_query: {
         Args: { name: string }
         Returns: string
       }

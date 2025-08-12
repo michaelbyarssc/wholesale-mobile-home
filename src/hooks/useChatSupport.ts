@@ -55,7 +55,6 @@ export const useChatSupport = (userId?: string) => {
 
       // Create new session
       const sessionToken = `chat_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      // Persist token for RLS header injection
       try { if (typeof sessionStorage !== 'undefined') sessionStorage.setItem('chat_session_token', sessionToken); } catch {}
 
       const sessionId = (typeof window !== 'undefined' && (window as any).crypto && typeof (window as any).crypto.randomUUID === 'function')
@@ -78,7 +77,7 @@ export const useChatSupport = (userId?: string) => {
 
       const { error } = await supabase
         .from('chat_sessions')
-        .insert({
+        .insert([{
           id: sessionId,
           user_id: userId || null,
           session_token: sessionToken,
@@ -86,35 +85,33 @@ export const useChatSupport = (userId?: string) => {
           department: department || 'general',
           status: 'active',
           metadata: sessionMetadata
-        } as any, { returning: 'minimal' });
+        } as any]);
 
       if (error) throw error;
 
-      // Store anonymous user information in dedicated table if provided
       if (customerInfo) {
         await supabase
           .from('anonymous_chat_users')
-          .insert({
+          .insert([{
             session_id: sessionId,
             customer_name: customerInfo.name,
             customer_phone: customerInfo.phone
-          } as any, { returning: 'minimal' });
+          } as any]);
       }
 
-      // Send welcome message after session is created
       const welcomeMessage = customerInfo 
         ? `Hello ${customerInfo.name}! How can we help you today?`
         : "Hello! How can we help you today?";
       
       await supabase
         .from('chat_messages')
-        .insert({
+        .insert([{
           session_id: sessionId,
           sender_type: 'system',
           sender_id: null,
           content: welcomeMessage,
           message_type: 'text'
-        } as any, { returning: 'minimal' });
+        } as any]);
 
       const newSession = {
         id: sessionId,
@@ -160,20 +157,17 @@ export const useChatSupport = (userId?: string) => {
       console.log('Sending message for session:', currentSession.id, 'user:', userId, 'content:', content.substring(0, 50) + '...');
       const { error } = await supabase
         .from('chat_messages')
-        .insert({
+        .insert([{
           session_id: currentSession.id,
           sender_type: senderType,
           sender_id: senderType === 'user' ? userId || null : null,
           content: content.trim(),
           message_type: 'text'
-        } as any, { returning: 'minimal' });
+        } as any]);
 
       if (error) throw error;
       console.log('Message sent successfully');
 
-      // Optimistic UI can be added; realtime subscription will append the message
-
-      // If this is a user message and we have AI enabled, trigger AI response
       if (senderType === 'user' && content.trim()) {
         setTimeout(() => {
           handleAIResponse(content);
@@ -190,13 +184,12 @@ export const useChatSupport = (userId?: string) => {
       });
       return null;
     }
-  }, [currentSession, userId, toast]);
+  }, [currentSession, userId, toast, handleAIResponse]);
 
   // Handle AI response with duplicate prevention
   const handleAIResponse = useCallback(async (userMessage: string) => {
     if (!currentSession) return;
 
-    // Prevent AI from responding to AI or system messages
     const recentMessages = messages.slice(-2);
     const lastMessage = recentMessages[recentMessages.length - 1];
     if (lastMessage && (lastMessage.sender_type === 'ai' || lastMessage.sender_type === 'system')) {
@@ -204,50 +197,46 @@ export const useChatSupport = (userId?: string) => {
     }
 
     try {
-      // Call edge function for AI response
       const { data, error } = await supabase.functions.invoke('ai-chat-response', {
         body: {
           sessionId: currentSession.id,
           userMessage,
-          chatHistory: messages.slice(-5) // Last 5 messages for context
+          chatHistory: messages.slice(-5)
         }
       });
 
       if (error) throw error;
 
       if (data?.response) {
-        // Send AI response without triggering another AI response
         await supabase
           .from('chat_messages')
-          .insert({
+          .insert([{
             session_id: currentSession.id,
             sender_type: 'ai',
             sender_id: null,
             content: data.response,
             message_type: 'text'
-          } as any, { returning: 'minimal' });
+          } as any]);
       }
     } catch (error) {
       console.error('Error getting AI response:', error);
-      // Fallback to predefined responses
       const fallbackResponses = [
         "Thank you for your message. An agent will be with you shortly.",
         "I understand you need assistance. Let me connect you with someone who can help.",
         "Your inquiry is important to us. Please hold while I find the best person to assist you."
       ];
       const randomResponse = fallbackResponses[Math.floor(Math.random() * fallbackResponses.length)];
-      // Send fallback response without triggering another AI response
       await supabase
         .from('chat_messages')
-        .insert({
+        .insert([{
           session_id: currentSession.id,
           sender_type: 'ai',
           sender_id: null,
           content: randomResponse,
           message_type: 'text'
-        } as any, { returning: 'minimal' });
+        } as any]);
     }
-  }, [currentSession, messages, sendMessage]);
+  }, [currentSession, messages]);
 
   // End chat session
   const endChat = useCallback(async () => {
@@ -300,7 +289,7 @@ export const useChatSupport = (userId?: string) => {
         .update({
           status: 'ended',
           ended_at: new Date().toISOString()
-        }, { returning: 'minimal' })
+        } as any)
         .eq('id', currentSession.id);
 
       setCurrentSession(null);

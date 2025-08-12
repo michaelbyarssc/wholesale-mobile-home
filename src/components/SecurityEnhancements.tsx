@@ -19,13 +19,14 @@ export const SecurityEnhancements: React.FC<SecurityEnhancementsProps> = ({ chil
         cspMeta.setAttribute('http-equiv', 'Content-Security-Policy');
         cspMeta.setAttribute('content', 
           "default-src 'self'; " +
-          "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://esm.sh; " +
-          "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+          "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://esm.sh https://api.mapbox.com; " +
+          "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://api.mapbox.com; " +
           "font-src 'self' https://fonts.gstatic.com; " +
-          "img-src 'self' data: https:; " +
-          "connect-src 'self' https://vgdreuwmisludqxphsph.supabase.co wss://vgdreuwmisludqxphsph.supabase.co; " +
+          "img-src 'self' data: https: blob:; " +
+          "connect-src 'self' https://vgdreuwmisludqxphsph.supabase.co wss://vgdreuwmisludqxphsph.supabase.co https://api.mapbox.com https://events.mapbox.com https://*.tiles.mapbox.com; " +
           "frame-ancestors 'none'; " +
-          "base-uri 'self';"
+          "base-uri 'self'; " +
+          "worker-src 'self' blob:;"
         );
         document.head.appendChild(cspMeta);
       }
@@ -91,28 +92,6 @@ export const SecurityEnhancements: React.FC<SecurityEnhancementsProps> = ({ chil
       });
     };
 
-    // Disable right-click context menu in production
-    const disableContextMenu = (e: MouseEvent) => {
-      if (import.meta.env.PROD) {
-        e.preventDefault();
-      }
-    };
-
-    // Disable common developer shortcuts in production
-    const disableDevShortcuts = (e: KeyboardEvent) => {
-      if (import.meta.env.PROD) {
-        // Disable F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U
-        if (
-          e.key === 'F12' ||
-          (e.ctrlKey && e.shiftKey && e.key === 'I') ||
-          (e.ctrlKey && e.shiftKey && e.key === 'J') ||
-          (e.ctrlKey && e.key === 'U')
-        ) {
-          e.preventDefault();
-        }
-      }
-    };
-
     // Initialize security measures
     addSecurityHeaders();
     generateCSRFToken();
@@ -124,15 +103,9 @@ export const SecurityEnhancements: React.FC<SecurityEnhancementsProps> = ({ chil
     setupFormProtection();
     const formInterval = setInterval(setupFormProtection, 5000);
 
-    // Add event listeners
-    document.addEventListener('contextmenu', disableContextMenu);
-    document.addEventListener('keydown', disableDevShortcuts);
-
     // Cleanup
     return () => {
       clearInterval(formInterval);
-      document.removeEventListener('contextmenu', disableContextMenu);
-      document.removeEventListener('keydown', disableDevShortcuts);
     };
   }, []);
 

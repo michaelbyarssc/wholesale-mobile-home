@@ -107,30 +107,19 @@ export const GPSMap = ({ deliveryId, height = "400px", showControls = true }: GP
 
   // Initialize map
   useEffect(() => {
-    console.log('GPSMap: Map initialization effect triggered', { mapContainer: !!mapContainer.current, mapboxToken });
-    
     if (!mapContainer.current || !mapboxToken) {
-      console.log('GPSMap: Skipping initialization - container or token missing', { 
-        hasContainer: !!mapContainer.current, 
-        hasToken: !!mapboxToken 
-      });
       return;
     }
 
-    console.log('GPSMap: Starting map initialization with token:', mapboxToken.substring(0, 10) + '...');
-    
     try {
       mapboxgl.accessToken = mapboxToken;
-      
-      console.log('GPSMap: Creating map instance');
+
       map.current = new mapboxgl.Map({
         container: mapContainer.current,
         style: 'mapbox://styles/mapbox/streets-v12',
         center: [-98.5795, 39.8283], // Center of US
         zoom: 4,
       });
-
-      console.log('GPSMap: Map created successfully');
 
       map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
       map.current.addControl(new mapboxgl.GeolocateControl({
@@ -141,22 +130,12 @@ export const GPSMap = ({ deliveryId, height = "400px", showControls = true }: GP
         showUserHeading: true
       }), 'top-right');
 
-      console.log('GPSMap: Map controls added');
-
-      map.current.on('load', () => {
-        console.log('GPSMap: Map fully loaded');
-      });
-
-      map.current.on('error', (e) => {
-        console.error('GPSMap: Map error:', e);
-      });
-
     } catch (error) {
-      console.error('GPSMap: Error during map initialization:', error);
+      // Swallow map init errors to avoid leaking details
+      console.error('GPSMap: Error during map initialization');
     }
 
     return () => {
-      console.log('GPSMap: Cleaning up map');
       map.current?.remove();
     };
   }, [mapboxToken]);
@@ -272,12 +251,18 @@ export const GPSMap = ({ deliveryId, height = "400px", showControls = true }: GP
           </div>
         `;
 
-        const pickupPopup = new mapboxgl.Popup({ offset: [0, -15] }).setHTML(`
-          <div class="p-2">
-            <div class="font-semibold text-sm text-blue-600">Pickup Location</div>
-            <div class="text-xs text-gray-600">${delivery.pickup_address}</div>
-          </div>
-        `);
+        const pickupPopupEl = document.createElement('div');
+        pickupPopupEl.className = 'p-2';
+        const pickupTitle = document.createElement('div');
+        pickupTitle.className = 'font-semibold text-sm text-blue-600';
+        pickupTitle.textContent = 'Pickup Location';
+        const pickupAddr = document.createElement('div');
+        pickupAddr.className = 'text-xs text-gray-600';
+        pickupAddr.textContent = delivery.pickup_address || '';
+        pickupPopupEl.appendChild(pickupTitle);
+        pickupPopupEl.appendChild(pickupAddr);
+
+        const pickupPopup = new mapboxgl.Popup({ offset: [0, -15] }).setDOMContent(pickupPopupEl);
 
         new mapboxgl.Marker(pickupMarker)
           .setLngLat(pickupCoords)
@@ -297,13 +282,22 @@ export const GPSMap = ({ deliveryId, height = "400px", showControls = true }: GP
           </div>
         `;
 
-        const deliveryPopup = new mapboxgl.Popup({ offset: [0, -15] }).setHTML(`
-          <div class="p-2">
-            <div class="font-semibold text-sm text-green-600">Delivery Destination</div>
-            <div class="text-xs text-gray-600">${delivery.delivery_address}</div>
-            <div class="text-xs text-gray-500 mt-1">Customer: ${delivery.customer_name}</div>
-          </div>
-        `);
+        const deliveryPopupEl = document.createElement('div');
+        deliveryPopupEl.className = 'p-2';
+        const delTitle = document.createElement('div');
+        delTitle.className = 'font-semibold text-sm text-green-600';
+        delTitle.textContent = 'Delivery Destination';
+        const delAddr = document.createElement('div');
+        delAddr.className = 'text-xs text-gray-600';
+        delAddr.textContent = delivery.delivery_address || '';
+        const cust = document.createElement('div');
+        cust.className = 'text-xs text-gray-500 mt-1';
+        cust.textContent = `Customer: ${delivery.customer_name || ''}`;
+        deliveryPopupEl.appendChild(delTitle);
+        deliveryPopupEl.appendChild(delAddr);
+        deliveryPopupEl.appendChild(cust);
+
+        const deliveryPopup = new mapboxgl.Popup({ offset: [0, -15] }).setDOMContent(deliveryPopupEl);
 
         new mapboxgl.Marker(deliveryMarker)
           .setLngLat(deliveryCoords)
@@ -325,24 +319,40 @@ export const GPSMap = ({ deliveryId, height = "400px", showControls = true }: GP
             </div>
           `;
 
-          const driverPopup = new mapboxgl.Popup({ offset: [0, -15] }).setHTML(`
-            <div class="p-3 min-w-64">
-              <div class="flex items-center justify-between mb-2">
-                <h3 class="font-semibold text-sm text-red-600">${delivery.delivery_number}</h3>
-                <span class="text-xs px-2 py-1 bg-red-100 text-red-800 rounded-full">
-                  LIVE
-                </span>
-              </div>
-              <div class="space-y-1 text-xs text-gray-600">
-                <p><strong>Driver:</strong> ${delivery.current_location.driver_name}</p>
-                ${delivery.current_location.speed_mph ? 
-                  `<p><strong>Speed:</strong> ${Math.round(delivery.current_location.speed_mph)} mph</p>` : 
-                  ''
-                }
-                <p><strong>Last Update:</strong> ${new Date(delivery.current_location.timestamp).toLocaleTimeString()}</p>
-              </div>
-            </div>
-          `);
+          const driverPopupEl = document.createElement('div');
+          driverPopupEl.className = 'p-3 min-w-64';
+
+          const header = document.createElement('div');
+          header.className = 'flex items-center justify-between mb-2';
+          const h3 = document.createElement('h3');
+          h3.className = 'font-semibold text-sm text-red-600';
+          h3.textContent = delivery.delivery_number || '';
+          const live = document.createElement('span');
+          live.className = 'text-xs px-2 py-1 bg-red-100 text-red-800 rounded-full';
+          live.textContent = 'LIVE';
+          header.appendChild(h3);
+          header.appendChild(live);
+
+          const info = document.createElement('div');
+          info.className = 'space-y-1 text-xs text-gray-600';
+          const pDriver = document.createElement('p');
+          pDriver.innerHTML = '<strong>Driver:</strong> ';
+          const driverNameNode = document.createTextNode(delivery.current_location.driver_name || '');
+          pDriver.appendChild(driverNameNode);
+          info.appendChild(pDriver);
+          if (delivery.current_location.speed_mph) {
+            const pSpeed = document.createElement('p');
+            pSpeed.innerHTML = '<strong>Speed:</strong> ' + Math.round(delivery.current_location.speed_mph) + ' mph';
+            info.appendChild(pSpeed);
+          }
+          const pTime = document.createElement('p');
+          pTime.innerHTML = '<strong>Last Update:</strong> ' + new Date(delivery.current_location.timestamp).toLocaleTimeString();
+          info.appendChild(pTime);
+
+          driverPopupEl.appendChild(header);
+          driverPopupEl.appendChild(info);
+
+          const driverPopup = new mapboxgl.Popup({ offset: [0, -15] }).setDOMContent(driverPopupEl);
 
           const driverMarkerInstance = new mapboxgl.Marker(driverMarker)
             .setLngLat([delivery.current_location.longitude, delivery.current_location.latitude])
@@ -389,14 +399,8 @@ export const GPSMap = ({ deliveryId, height = "400px", showControls = true }: GP
         console.log('GPSMap: Could not fetch token from Supabase secrets:', error);
       }
 
-      // Finally try environment variable
-      const envToken = import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN;
-      if (envToken && envToken !== 'your-token-here') {
-        console.log('GPSMap: Using env token');
-        setMapboxToken(envToken);
-      } else {
-        console.log('GPSMap: No valid token found');
-      }
+      // Finally, no env var fallback for security; prompt user input if not found
+      console.log('GPSMap: No valid token found');
     };
 
     fetchMapboxToken();

@@ -24,12 +24,7 @@ interface Estimate {
   total_amount: number;
   status: string;
   created_at: string;
-  mobile_homes: {
-    manufacturer: string;
-    series: string;
-    model: string;
-    price: number;
-  } | null;
+  mobile_home_id: string;
   selected_services: string[] | null;
 }
 
@@ -76,15 +71,7 @@ const MyEstimates = () => {
       
       const { data, error } = await supabase
         .from('estimates')
-        .select(`
-          *,
-          mobile_homes (
-            manufacturer,
-            series,
-            model,
-            price
-          )
-        `)
+        .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
       
@@ -94,16 +81,26 @@ const MyEstimates = () => {
     enabled: !!user
   });
 
-  // Fetch services to display names
+// Fetch services to display names
   const { data: services = [] } = useQuery({
-    queryKey: ['services'],
+    queryKey: ['services-public'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('services')
-        .select('id, name, price');
+      const { data, error } = await (supabase as any)
+        .rpc('get_public_services');
       
       if (error) throw error;
-      return data as Service[];
+      return (data as any[]) || [];
+    }
+  });
+
+  // Fetch public mobile homes for display details
+  const { data: publicHomes = [] } = useQuery({
+    queryKey: ['public-mobile-homes'],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .rpc('get_public_mobile_homes');
+      if (error) throw error;
+      return (data as any[]) || [];
     }
   });
 
@@ -246,19 +243,23 @@ const MyEstimates = () => {
                     {/* Mobile Home Info */}
                     <div>
                       <h4 className="font-medium text-gray-900 mb-2">Mobile Home</h4>
-                      {estimate.mobile_homes ? (
-                        <div className="bg-gray-50 p-3 rounded-lg">
-                          <p className="font-medium text-sm">
-                            {estimate.mobile_homes.manufacturer} {estimate.mobile_homes.series}
-                          </p>
-                          <p className="text-gray-600 text-sm">{estimate.mobile_homes.model}</p>
-                          <p className="text-green-600 font-semibold text-sm">
-                            ${estimate.mobile_homes.price.toLocaleString()}
-                          </p>
-                        </div>
-                      ) : (
-                        <p className="text-gray-500 text-sm">Mobile home details not available</p>
-                      )}
+                      {(() => {
+                        const home = (publicHomes as any[]).find((h: any) => h.id === (estimate as any).mobile_home_id);
+                        if (home) {
+                          return (
+                            <div className="bg-gray-50 p-3 rounded-lg">
+                              <p className="font-medium text-sm">
+                                {home.manufacturer} {home.series}
+                              </p>
+                              <p className="text-gray-600 text-sm">{home.model}</p>
+                              <p className="text-green-600 font-semibold text-sm">
+                                ${home.price?.toLocaleString?.() || Number(home.price || 0).toLocaleString()}
+                              </p>
+                            </div>
+                          );
+                        }
+                        return <p className="text-gray-500 text-sm">Mobile home details not available</p>;
+                      })()}
                     </div>
 
                     {/* Additional Services */}

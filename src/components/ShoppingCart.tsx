@@ -59,18 +59,15 @@ export const ShoppingCart = ({
   console.log('🔍 ShoppingCart: User passed to pricing hook:', user?.id || 'undefined');
   const { calculateMobileHomePrice, calculateServicePrice, calculateHomeOptionPrice, calculatePrice } = useCustomerPricing(user);
 
-  // Fetch services
+// Fetch services
   const { data: services = [] } = useQuery({
-    queryKey: ['services'],
+    queryKey: ['services-public'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('services')
-        .select('*')
-        .eq('active', true)
-        .order('name', { ascending: true });
+      const { data, error } = await (supabase as any)
+        .rpc('get_public_services');
       
       if (error) throw error;
-      return data;
+      return (data as any[]) || [];
     }
   });
 

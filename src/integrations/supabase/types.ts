@@ -5998,6 +5998,21 @@ export type Database = {
           updated_at: string
         }[]
       }
+      get_public_services: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          name: string
+          description: string
+          active: boolean
+          price: number
+          single_wide_price: number
+          double_wide_price: number
+          dependencies: Json
+          applicable_manufacturers: Json
+          applicable_series: Json
+        }[]
+      }
       get_query_eq_value: {
         Args: { name: string }
         Returns: string

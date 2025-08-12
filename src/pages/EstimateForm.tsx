@@ -85,11 +85,10 @@ const EstimateForm = () => {
     }
   };
 
-  const fetchServices = async () => {
+const fetchServices = async () => {
     try {
-      const { data, error } = await supabase
-        .from('services')
-        .select('*');
+      const { data, error } = await (supabase as any)
+        .rpc('get_public_services');
 
       if (error) {
         console.error('Error fetching services:', error);
@@ -99,7 +98,7 @@ const EstimateForm = () => {
           variant: "destructive",
         });
       } else {
-        setServices(data || []);
+        setServices(((data as any[]) || []));
       }
     } catch (error) {
       console.error('Error fetching services:', error);

@@ -45,18 +45,16 @@ export const MobileHomeServicesDialog = ({
 
   // Fetch all services
   const { data: allServices = [] } = useQuery({
-    queryKey: ['services'],
+    queryKey: ['services-public'],
     queryFn: async () => {
-      console.log('MobileHomeServicesDialog: Fetching services');
-      const { data, error } = await supabase
-        .from('services')
-        .select('*')
-        .eq('active', true)
-        .order('name');
+      console.log('MobileHomeServicesDialog: Fetching services via RPC');
+      const { data, error } = await (supabase as any)
+        .rpc('get_public_services');
       
       if (error) throw error;
-      console.log('MobileHomeServicesDialog: Services fetched:', data?.length);
-      return data as Service[];
+      const list = (data as any[]) || [];
+      console.log('MobileHomeServicesDialog: Services fetched:', list?.length);
+      return list as any[];
     }
   });
 

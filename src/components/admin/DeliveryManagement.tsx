@@ -1348,7 +1348,7 @@ export const DeliveryManagement = () => {
                 <div className="space-y-3">
                   <div className="flex justify-between items-center py-2 border-b border-gray-200">
                     <span className="font-medium text-gray-600">Scheduled Pickup:</span>
-                    <span className="text-gray-900">{getFormattedDate(delivery.scheduled_pickup_date_tz) || 'Not scheduled'}</span>
+                    <span className="text-gray-900">{getFormattedDate(delivery.scheduled_pickup_date_tz) || (delivery.scheduled_pickup_date ? format(new Date(delivery.scheduled_pickup_date), 'MM/dd/yyyy') : 'Not scheduled')}</span>
                   </div>
                 </div>
                 <div className="space-y-3">
@@ -1517,7 +1517,7 @@ export const DeliveryManagement = () => {
                     </div>
                   </TableCell>
                   <TableCell>{getStatusBadge(delivery.status)}</TableCell>
-                  <TableCell>{getFormattedDate(delivery.scheduled_pickup_date_tz)}</TableCell>
+                  <TableCell>{getFormattedDate(delivery.scheduled_pickup_date_tz) || (delivery.scheduled_pickup_date ? format(new Date(delivery.scheduled_pickup_date), 'MM/dd/yyyy') : 'Not scheduled')}</TableCell>
                   <TableCell>
                     <div className="flex space-x-2">
                       <Button 

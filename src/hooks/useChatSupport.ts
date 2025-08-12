@@ -40,7 +40,7 @@ export const useChatSupport = (userId?: string) => {
           .select('*, chat_messages(*)')
           .eq('user_id', userId)
           .eq('status', 'active')
-          .order('created_at', { referencedTable: 'chat_messages', ascending: true })
+          .order('created_at', { foreignTable: 'chat_messages', ascending: true })
           .maybeSingle();
 
         console.log('Existing session found:', existingSession);
@@ -417,7 +417,7 @@ export const useChatSupport = (userId?: string) => {
           .select('*, chat_messages(*)')
           .eq('user_id', userId)
           .eq('status', 'active')
-          .order('created_at', { referencedTable: 'chat_messages', ascending: true })
+          .order('created_at', { foreignTable: 'chat_messages', ascending: true })
           .maybeSingle();
 
         console.log('Found existing session:', session);

@@ -74,7 +74,7 @@ export const DeliveryScheduler = () => {
       const { data, error } = await supabase
         .from('deliveries')
         .select('*')
-        .in('status', ['pending_payment', 'factory_pickup_scheduled'])
+        .in('status', ['scheduled', 'factory_pickup_scheduled', 'pending_payment'])
         .order('created_at', { ascending: false });
       
       if (error) throw error;
@@ -117,10 +117,9 @@ export const DeliveryScheduler = () => {
 
       if (error) throw error;
       const result = data as any;
-      if (!result?.success) {
-        throw new Error(result?.error || 'Failed to schedule factory pickup');
+      if (result && typeof result === 'object' && 'error' in result && result.error) {
+        throw new Error((result as any).error || 'Failed to schedule factory pickup');
       }
-
       return result;
     },
     onSuccess: () => {
@@ -134,7 +133,7 @@ export const DeliveryScheduler = () => {
       console.error('Scheduling error:', err);
       toast({
         title: 'Failed to schedule factory pickup',
-        description: 'Please try again.',
+        description: err?.message ? String(err.message) : 'Please try again.',
         variant: 'destructive' as any,
       });
     },

@@ -362,7 +362,7 @@ const Admin = () => {
           {/* Desktop Tab Navigation */}
           {!isMobile && isSuperAdmin && (
             <div className="border rounded-lg p-1 bg-muted/30 overflow-x-auto">
-              <TabsList className="flex flex-wrap gap-2 justify-start items-center h-auto bg-transparent w-full">
+              <TabsList className="grid w-full grid-cols-10 h-12 bg-transparent min-w-[900px]">
                 <TabsTrigger 
                   value="mobile-homes" 
                   className="text-xs sm:text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm px-2"
@@ -422,12 +422,6 @@ const Admin = () => {
                   className="text-xs sm:text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm px-2"
                 >
                   Settings
-                </TabsTrigger>
-                <TabsTrigger 
-                  value="reviews" 
-                  className="text-xs sm:text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm px-2"
-                >
-                  Reviews
                 </TabsTrigger>
               </TabsList>
             </div>

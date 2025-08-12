@@ -41,4 +41,4 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.delivery-tracking-ws]
-verify_jwt = false
+verify_jwt = true

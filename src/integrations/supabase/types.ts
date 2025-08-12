@@ -5784,6 +5784,10 @@ export type Database = {
         }
         Returns: string
       }
+      current_user_email: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       emit_automation_event: {
         Args: {
           p_event_name: string

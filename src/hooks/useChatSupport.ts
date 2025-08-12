@@ -86,7 +86,7 @@ export const useChatSupport = (userId?: string) => {
           department: department || 'general',
           status: 'active',
           metadata: sessionMetadata
-        } as any);
+        } as any, { returning: 'minimal' });
 
       if (error) throw error;
 
@@ -98,7 +98,7 @@ export const useChatSupport = (userId?: string) => {
             session_id: sessionId,
             customer_name: customerInfo.name,
             customer_phone: customerInfo.phone
-          } as any);
+          } as any, { returning: 'minimal' });
       }
 
       // Send welcome message after session is created
@@ -106,7 +106,6 @@ export const useChatSupport = (userId?: string) => {
         ? `Hello ${customerInfo.name}! How can we help you today?`
         : "Hello! How can we help you today?";
       
-      // Send the welcome message directly without using the sendMessage callback
       await supabase
         .from('chat_messages')
         .insert({
@@ -115,7 +114,7 @@ export const useChatSupport = (userId?: string) => {
           sender_id: null,
           content: welcomeMessage,
           message_type: 'text'
-        } as any);
+        } as any, { returning: 'minimal' });
 
       const newSession = {
         id: sessionId,
@@ -167,7 +166,7 @@ export const useChatSupport = (userId?: string) => {
           sender_id: senderType === 'user' ? userId || null : null,
           content: content.trim(),
           message_type: 'text'
-        } as any);
+        } as any, { returning: 'minimal' });
 
       if (error) throw error;
       console.log('Message sent successfully');
@@ -226,7 +225,7 @@ export const useChatSupport = (userId?: string) => {
             sender_id: null,
             content: data.response,
             message_type: 'text'
-          });
+          } as any, { returning: 'minimal' });
       }
     } catch (error) {
       console.error('Error getting AI response:', error);
@@ -246,7 +245,7 @@ export const useChatSupport = (userId?: string) => {
           sender_id: null,
           content: randomResponse,
           message_type: 'text'
-        });
+        } as any, { returning: 'minimal' });
     }
   }, [currentSession, messages, sendMessage]);
 
@@ -301,7 +300,7 @@ export const useChatSupport = (userId?: string) => {
         .update({
           status: 'ended',
           ended_at: new Date().toISOString()
-        })
+        }, { returning: 'minimal' })
         .eq('id', currentSession.id);
 
       setCurrentSession(null);

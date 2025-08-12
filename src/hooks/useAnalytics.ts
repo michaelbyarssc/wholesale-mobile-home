@@ -156,7 +156,7 @@ class AnalyticsTracker {
           browser,
           os,
           ...utmParams,
-        } as any);
+        } as any, { returning: 'minimal' });
 
       this.isInitialized = true;
 
@@ -190,7 +190,7 @@ class AnalyticsTracker {
         referrer: data.referrer,
         search_query: data.searchQuery,
         filters_applied: data.filtersApplied || {},
-      });
+      }, { returning: 'minimal' });
 
       // Track conversion funnel
       await this.trackConversion({
@@ -215,7 +215,7 @@ class AnalyticsTracker {
         element_text: data.elementText,
         properties: data.properties || {},
         value: data.value,
-      });
+      }, { returning: 'minimal' });
     } catch (error) {
       console.error('Error tracking event:', error);
     }
@@ -235,7 +235,7 @@ class AnalyticsTracker {
         features_clicked: data.featuresClicked || [],
         price_checked: data.priceChecked || false,
         contact_clicked: data.contactClicked || false,
-      });
+      }, { returning: 'minimal' });
 
       // Track conversion funnel
       await this.trackConversion({
@@ -260,7 +260,7 @@ class AnalyticsTracker {
         result_clicked: data.resultClicked || false,
         clicked_position: data.clickedPosition,
         clicked_mobile_home_id: data.clickedMobileHomeId,
-      });
+      }, { returning: 'minimal' });
     } catch (error) {
       console.error('Error tracking search:', error);
     }
@@ -279,7 +279,7 @@ class AnalyticsTracker {
         appointment_id: data.appointmentId,
         value: data.value,
         metadata: data.metadata || {},
-      });
+      }, { returning: 'minimal' });
     } catch (error) {
       console.error('Error tracking conversion:', error);
     }
@@ -296,7 +296,7 @@ class AnalyticsTracker {
         .update({
           ended_at: new Date().toISOString(),
           duration_seconds: sessionDuration,
-        })
+        }, { returning: 'minimal' })
         .eq('id', this.sessionDbId);
     } catch (error) {
       console.error('Error ending session:', error);

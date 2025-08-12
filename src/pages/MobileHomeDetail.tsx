@@ -102,12 +102,13 @@ export const MobileHomeDetail: React.FC = () => {
     queryFn: async () => {
       if (!id) throw new Error('Home ID is required');
       
-      const { data, error } = await supabase
-        .from('mobile_homes')
-        .select('*')
-        .eq('id', id)
-        .eq('active', true)
-        .single();
+      const { data, error } = await (supabase as any)
+        .rpc('get_public_mobile_home', { p_id: id });
+      
+      if (error) throw error;
+      const home = Array.isArray(data) ? data[0] : data;
+      if (!home) throw new Error('Home not found');
+      return home as MobileHome;
       
       if (error) throw error;
       return data as MobileHome;

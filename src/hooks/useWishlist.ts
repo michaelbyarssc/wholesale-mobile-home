@@ -28,16 +28,18 @@ export const useWishlist = (user?: User | null) => {
     try {
       const { data, error } = await supabase
         .from('user_wishlists')
-        .select(`
-          *,
-          mobile_homes (*)
-        `)
+        .select('mobile_home_id')
         .eq('user_id', user.id);
 
       if (error) throw error;
 
-      const homes = data?.map(item => item.mobile_homes).filter(Boolean) as MobileHome[];
-      setWishlistItems(homes || []);
+      const ids = (data || []).map((d: any) => d.mobile_home_id);
+      const { data: publicHomes, error: homesError } = await (supabase as any).rpc('get_public_mobile_homes');
+      if (homesError) throw homesError;
+
+      const list = (publicHomes as any[]) || [];
+      const homes = list.filter((h: any) => ids.includes(h.id));
+      setWishlistItems(homes as MobileHome[]);
     } catch (error) {
       console.error('Error loading user wishlist:', error);
     } finally {
@@ -71,14 +73,13 @@ export const useWishlist = (user?: User | null) => {
 
     setIsLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('mobile_homes')
-        .select('*')
-        .in('id', homeIds)
-        .eq('active', true);
+      const { data, error } = await (supabase as any)
+        .rpc('get_public_mobile_homes');
 
       if (error) throw error;
-      setWishlistItems(data || []);
+      const list = (data as any[]) || [];
+      const homes = list.filter((h: any) => homeIds.includes(h.id));
+      setWishlistItems(homes as MobileHome[]);
     } catch (error) {
       console.error('Error fetching homes by IDs:', error);
       setWishlistItems([]);

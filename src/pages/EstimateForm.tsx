@@ -113,10 +113,8 @@ const EstimateForm = () => {
 
   const fetchMobileHomes = async () => {
     try {
-      const { data, error } = await supabase
-        .from('mobile_homes')
-        .select('*')
-        .eq('active', true);
+      const { data, error } = await (supabase as any)
+        .rpc('get_public_mobile_homes');
 
       if (error) {
         console.error('Error fetching mobile homes:', error);
@@ -126,7 +124,7 @@ const EstimateForm = () => {
           variant: "destructive",
         });
       } else {
-        setMobileHomes(data || []);
+        setMobileHomes(((data as any[]) || []));
       }
     } catch (error) {
       console.error('Error fetching mobile homes:', error);

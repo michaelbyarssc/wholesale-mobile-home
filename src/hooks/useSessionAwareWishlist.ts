@@ -37,16 +37,18 @@ export const useSessionAwareWishlist = () => {
     try {
       const { data, error } = await supabaseClient
         .from('user_wishlists')
-        .select(`
-          *,
-          mobile_homes (*)
-        `)
+        .select('mobile_home_id')
         .eq('user_id', activeSession.user.id);
 
       if (error) throw error;
 
-      const homes = data?.map(item => item.mobile_homes).filter(Boolean) as MobileHome[];
-      setWishlistItems(homes || []);
+      const ids = (data || []).map((d: any) => d.mobile_home_id);
+      const { data: publicHomes, error: homesError } = await (supabaseClient as any).rpc('get_public_mobile_homes');
+      if (homesError) throw homesError;
+
+      const list = (publicHomes as any[]) || [];
+      const homes = list.filter((h: any) => ids.includes(h.id));
+      setWishlistItems(homes as MobileHome[]);
       console.log('🔍 Loaded wishlist for session:', activeSession.id, 'items:', homes?.length || 0);
     } catch (error) {
       console.error('Error loading user wishlist:', error);
@@ -85,14 +87,13 @@ export const useSessionAwareWishlist = () => {
     setIsLoading(true);
     try {
       const client = supabaseClient || (await import('@/integrations/supabase/client')).supabase;
-      const { data, error } = await client
-        .from('mobile_homes')
-        .select('*')
-        .in('id', homeIds)
-        .eq('active', true);
+      const { data, error } = await (client as any)
+        .rpc('get_public_mobile_homes');
 
       if (error) throw error;
-      setWishlistItems(data || []);
+      const list = (data as any[]) || [];
+      const homes = list.filter((h: any) => homeIds.includes(h.id));
+      setWishlistItems(homes as MobileHome[]);
     } catch (error) {
       console.error('Error fetching homes by IDs:', error);
       setWishlistItems([]);

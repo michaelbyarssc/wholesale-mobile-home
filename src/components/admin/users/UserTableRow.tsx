@@ -86,6 +86,13 @@ export const UserTableRow = ({ profile, onUserUpdated, mobileView = false, isSup
             Admin
           </Badge>
         );
+      case 'driver':
+        return (
+          <Badge variant="secondary" className="text-xs py-0 px-1">
+            <Truck className="h-2.5 w-2.5 mr-0.5" />
+            Driver
+          </Badge>
+        );
       default:
         return (
           <Badge variant="secondary" className="text-xs py-0 px-1">

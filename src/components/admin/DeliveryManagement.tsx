@@ -233,6 +233,17 @@ type Delivery = {
       last_name: string;
     };
   }>;
+  delivery_schedules?: Array<{
+    id: string;
+    pickup_scheduled_date: string | null;
+    pickup_scheduled_time_start: string | null;
+    pickup_scheduled_time_end: string | null;
+    pickup_timezone: string | null;
+    delivery_scheduled_date: string | null;
+    delivery_scheduled_time_start: string | null;
+    delivery_scheduled_time_end: string | null;
+    delivery_timezone: string | null;
+  }>;
 };
 
 const statusColors: Record<string, string> = {
@@ -402,6 +413,17 @@ export const DeliveryManagement = () => {
               first_name,
               last_name
             )
+          ),
+          delivery_schedules (
+            id,
+            pickup_scheduled_date,
+            pickup_scheduled_time_start,
+            pickup_scheduled_time_end,
+            pickup_timezone,
+            delivery_scheduled_date,
+            delivery_scheduled_time_start,
+            delivery_scheduled_time_end,
+            delivery_timezone
           )
         `);
       
@@ -863,6 +885,31 @@ export const DeliveryManagement = () => {
     return formatDateTimeForDisplay(dateString);
   };
 
+  const getPickupScheduleDisplay = (delivery: Delivery) => {
+    const s = delivery.delivery_schedules?.[0];
+    if (s?.pickup_scheduled_date) {
+      const datePart = format(new Date(s.pickup_scheduled_date), 'MM/dd/yyyy');
+      const timeStart = s.pickup_scheduled_time_start || '';
+      const timeEnd = s.pickup_scheduled_time_end || '';
+      const timeRange = timeStart && timeEnd ? `${timeStart} - ${timeEnd}` : (timeStart || timeEnd);
+      const tz = s.pickup_timezone ? ` (${s.pickup_timezone})` : '';
+      return `${datePart}${timeRange ? ' ' + timeRange : ''}${tz}`;
+    }
+    return null;
+  };
+
+  const getDeliveryScheduleDisplay = (delivery: Delivery) => {
+    const s = delivery.delivery_schedules?.[0];
+    if (s?.delivery_scheduled_date) {
+      const datePart = format(new Date(s.delivery_scheduled_date), 'MM/dd/yyyy');
+      const timeStart = s.delivery_scheduled_time_start || '';
+      const timeEnd = s.delivery_scheduled_time_end || '';
+      const timeRange = timeStart && timeEnd ? `${timeStart} - ${timeEnd}` : (timeStart || timeEnd);
+      const tz = s.delivery_timezone ? ` (${s.delivery_timezone})` : '';
+      return `${datePart}${timeRange ? ' ' + timeRange : ''}${tz}`;
+    }
+    return null;
+  };
   const ScheduleDeliveryDialog = () => (
     <Dialog open={scheduleDialogOpen} onOpenChange={setScheduleDialogOpen}>
       <DialogContent className="max-w-md">
@@ -1348,13 +1395,13 @@ export const DeliveryManagement = () => {
                 <div className="space-y-3">
                   <div className="flex justify-between items-center py-2 border-b border-gray-200">
                     <span className="font-medium text-gray-600">Scheduled Pickup:</span>
-                    <span className="text-gray-900">{getFormattedDate(delivery.scheduled_pickup_date_tz) || (delivery.scheduled_pickup_date ? format(new Date(delivery.scheduled_pickup_date), 'MM/dd/yyyy') : 'Not scheduled')}</span>
+                    <span className="text-gray-900">{getPickupScheduleDisplay(delivery) || getFormattedDate(delivery.scheduled_pickup_date_tz) || (delivery.scheduled_pickup_date ? format(new Date(delivery.scheduled_pickup_date), 'MM/dd/yyyy') : 'Not scheduled')}</span>
                   </div>
                 </div>
                 <div className="space-y-3">
                   <div className="flex justify-between items-center py-2 border-b border-gray-200">
                     <span className="font-medium text-gray-600">Scheduled Delivery:</span>
-                    <span className="text-gray-900">{getFormattedDate(delivery.scheduled_delivery_date_tz) || 'Not scheduled'}</span>
+                    <span className="text-gray-900">{getDeliveryScheduleDisplay(delivery) || getFormattedDate(delivery.scheduled_delivery_date_tz) || (delivery.scheduled_delivery_date ? format(new Date(delivery.scheduled_delivery_date), 'MM/dd/yyyy') : 'Not scheduled')}</span>
                   </div>
                 </div>
               </div>
@@ -1517,7 +1564,7 @@ export const DeliveryManagement = () => {
                     </div>
                   </TableCell>
                   <TableCell>{getStatusBadge(delivery.status)}</TableCell>
-                  <TableCell>{getFormattedDate(delivery.scheduled_pickup_date_tz) || (delivery.scheduled_pickup_date ? format(new Date(delivery.scheduled_pickup_date), 'MM/dd/yyyy') : 'Not scheduled')}</TableCell>
+                  <TableCell>{getPickupScheduleDisplay(delivery) || getFormattedDate(delivery.scheduled_pickup_date_tz) || (delivery.scheduled_pickup_date ? format(new Date(delivery.scheduled_pickup_date), 'MM/dd/yyyy') : 'Not scheduled')}</TableCell>
                   <TableCell>
                     <div className="flex space-x-2">
                       <Button 

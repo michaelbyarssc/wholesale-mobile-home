@@ -468,47 +468,37 @@ export const DeliveryManagement = () => {
       scheduledPickupDateTz: string;
       notes: string;
     }) => {
-      console.log('📅 Scheduling pickup with timezone-aware date:', {
+      console.log('📅 Scheduling pickup via RPC:', {
         deliveryId,
         driverId,
         scheduledPickupDateTz,
         notes
       });
 
-      // Update delivery with timezone-aware scheduled pickup date and status
-      const { error: deliveryError } = await supabase
-        .from('deliveries')
-        .update({
-          scheduled_pickup_date_tz: scheduledPickupDateTz,
-          status: 'factory_pickup_scheduled',
-          special_instructions: notes
-        })
-        .eq('id', deliveryId);
+      // Use secure RPC to schedule factory pickup and assign drivers atomically
+      const { data, error } = await supabase.rpc('schedule_factory_pickup', {
+        p_delivery_id: deliveryId,
+        p_driver_ids: [driverId],
+        p_scheduled_pickup: scheduledPickupDateTz,
+        p_scheduled_delivery: null,
+        p_pickup_address: selectedDelivery?.pickup_address ?? null,
+        p_delivery_address: selectedDelivery?.delivery_address ?? null,
+        p_special_instructions: notes || null,
+      });
 
-      if (deliveryError) {
-        console.error('❌ Delivery update error:', deliveryError);
-        throw deliveryError;
+      if (error) {
+        console.error('❌ RPC error:', error);
+        throw error;
       }
 
-      // Create or update delivery assignment
-      const { error: assignmentError } = await supabase
-        .from('delivery_assignments')
-        .upsert({
-          delivery_id: deliveryId,
-          driver_id: driverId,
-          role: 'driver',
-          notes: notes,
-          assigned_by: (await supabase.auth.getUser()).data.user?.id
-        }, {
-          onConflict: 'delivery_id,driver_id,role'
-        });
-
-      if (assignmentError) {
-        console.error('❌ Assignment error:', assignmentError);
-        throw assignmentError;
+      const result = data as any;
+      if (result && typeof result === 'object' && result.success === false) {
+        console.error('❌ RPC result error:', result);
+        throw new Error(result.error || 'Failed to schedule factory pickup');
       }
 
-      console.log('✅ Pickup scheduled successfully');
+      console.log('✅ RPC scheduling succeeded:', result);
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['deliveries'] });
@@ -524,10 +514,10 @@ export const DeliveryManagement = () => {
         description: "The factory pickup has been successfully scheduled with the driver."
       });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast({
-        title: "Error",
-        description: "Failed to schedule factory pickup. Please try again.",
+        title: "Failed to schedule factory pickup",
+        description: error?.message ? String(error.message) : "Please try again.",
         variant: "destructive"
       });
       console.error('Error scheduling delivery:', error);

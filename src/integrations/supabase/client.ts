@@ -8,4 +8,22 @@ const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiO
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
-export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+  global: {
+    fetch: (input: RequestInfo, init?: RequestInit) => {
+      try {
+        const headers = new Headers(init?.headers || {});
+        // Inject chat/session security headers dynamically if present
+        if (typeof sessionStorage !== 'undefined') {
+          const chatToken = sessionStorage.getItem('chat_session_token');
+          const csrfToken = sessionStorage.getItem('csrf_token');
+          if (chatToken) headers.set('x-chat-token', chatToken);
+          if (csrfToken) headers.set('x-csrf-token', csrfToken);
+        }
+        return fetch(input, { ...init, headers });
+      } catch {
+        return fetch(input, init as any);
+      }
+    }
+  }
+});

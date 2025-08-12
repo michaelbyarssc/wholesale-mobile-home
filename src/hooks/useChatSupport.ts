@@ -55,25 +55,38 @@ export const useChatSupport = (userId?: string) => {
 
       // Create new session
       const sessionToken = `chat_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      // Attach chat token header for RLS policies (no-op if unsupported)
-      try { (supabase as any).headers?.set?.('x-chat-token', sessionToken); } catch {}
-      
-      const sessionMetadata = customerInfo ? {
-        anonymous: true
-      } : {};
+      // Persist token for RLS header injection
+      try { if (typeof sessionStorage !== 'undefined') sessionStorage.setItem('chat_session_token', sessionToken); } catch {}
 
-      const { data: newSession, error } = await supabase
+      const sessionId = (typeof window !== 'undefined' && (window as any).crypto && typeof (window as any).crypto.randomUUID === 'function')
+        ? (window as any).crypto.randomUUID()
+        : (() => {
+            const w = typeof window !== 'undefined' ? (window as any) : undefined;
+            const bytes = new Uint8Array(16);
+            if (w && w.crypto && typeof w.crypto.getRandomValues === 'function') {
+              w.crypto.getRandomValues(bytes);
+            } else {
+              for (let i = 0; i < 16; i++) bytes[i] = Math.floor(Math.random() * 256);
+            }
+            bytes[6] = (bytes[6] & 0x0f) | 0x40;
+            bytes[8] = (bytes[8] & 0x3f) | 0x80;
+            const hex = Array.from(bytes).map((b) => b.toString(16).padStart(2, '0'));
+            return `${hex[0]}${hex[1]}${hex[2]}${hex[3]}-${hex[4]}${hex[5]}-${hex[6]}${hex[7]}-${hex[8]}${hex[9]}-${hex[10]}${hex[11]}${hex[12]}${hex[13]}${hex[14]}${hex[15]}`;
+          })();
+      
+      const sessionMetadata = customerInfo ? { anonymous: true } : {};
+
+      const { error } = await supabase
         .from('chat_sessions')
         .insert({
+          id: sessionId,
           user_id: userId || null,
           session_token: sessionToken,
           subject: subject || 'General Inquiry',
           department: department || 'general',
           status: 'active',
           metadata: sessionMetadata
-        })
-        .select('*, chat_messages(*)')
-        .single();
+        } as any);
 
       if (error) throw error;
 
@@ -82,10 +95,10 @@ export const useChatSupport = (userId?: string) => {
         await supabase
           .from('anonymous_chat_users')
           .insert({
-            session_id: newSession.id,
+            session_id: sessionId,
             customer_name: customerInfo.name,
             customer_phone: customerInfo.phone
-          });
+          } as any);
       }
 
       // Send welcome message after session is created
@@ -97,12 +110,25 @@ export const useChatSupport = (userId?: string) => {
       await supabase
         .from('chat_messages')
         .insert({
-          session_id: newSession.id,
+          session_id: sessionId,
           sender_type: 'system',
           sender_id: null,
           content: welcomeMessage,
           message_type: 'text'
-        });
+        } as any);
+
+      const newSession = {
+        id: sessionId,
+        user_id: userId || null,
+        session_token: sessionToken,
+        subject: subject || 'General Inquiry',
+        department: department || 'general',
+        status: 'active',
+        metadata: sessionMetadata,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        chat_messages: []
+      } as unknown as ChatSessionWithMessages;
 
       setCurrentSession(newSession);
       setMessages(newSession.chat_messages || []);
@@ -133,7 +159,7 @@ export const useChatSupport = (userId?: string) => {
 
     try {
       console.log('Sending message for session:', currentSession.id, 'user:', userId, 'content:', content.substring(0, 50) + '...');
-      const { data: message, error } = await supabase
+      const { error } = await supabase
         .from('chat_messages')
         .insert({
           session_id: currentSession.id,
@@ -141,22 +167,21 @@ export const useChatSupport = (userId?: string) => {
           sender_id: senderType === 'user' ? userId || null : null,
           content: content.trim(),
           message_type: 'text'
-        })
-        .select()
-        .single();
+        } as any);
 
       if (error) throw error;
-      console.log('Message sent successfully:', message.id);
+      console.log('Message sent successfully');
+
+      // Optimistic UI can be added; realtime subscription will append the message
 
       // If this is a user message and we have AI enabled, trigger AI response
       if (senderType === 'user' && content.trim()) {
-        // Small delay to make conversation feel natural
         setTimeout(() => {
           handleAIResponse(content);
         }, 1000);
       }
 
-      return message;
+      return true;
     } catch (error) {
       console.error('Error sending message:', error);
       toast({

@@ -77,6 +77,26 @@ class AnalyticsTracker {
     return `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
 
+  // Generate a UUID v4 client-side to avoid SELECT after INSERT
+  private generateUUID(): string {
+    const w = typeof window !== 'undefined' ? window : undefined as any;
+    if (w && w.crypto && typeof w.crypto.randomUUID === 'function') {
+      return w.crypto.randomUUID();
+    }
+    // Fallback UUID generator
+    const bytes = new Uint8Array(16);
+    if (w && w.crypto && typeof w.crypto.getRandomValues === 'function') {
+      w.crypto.getRandomValues(bytes);
+    } else {
+      for (let i = 0; i < 16; i++) bytes[i] = Math.floor(Math.random() * 256);
+    }
+    // Per RFC 4122 v4
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, '0'));
+    return `${hex[0]}${hex[1]}${hex[2]}${hex[3]}-${hex[4]}${hex[5]}-${hex[6]}${hex[7]}-${hex[8]}${hex[9]}-${hex[10]}${hex[11]}${hex[12]}${hex[13]}${hex[14]}${hex[15]}`;
+  }
+
   private getDeviceInfo() {
     const userAgent = navigator.userAgent;
     let deviceType = 'desktop';
@@ -121,9 +141,13 @@ class AnalyticsTracker {
     const utmParams = this.getUtmParams();
 
     try {
-      const { data, error } = await supabase
+      // Pre-generate session UUID to avoid SELECT after INSERT
+      this.sessionDbId = this.generateUUID();
+
+      await supabase
         .from('analytics_sessions')
         .insert({
+          id: this.sessionDbId as any, // explicit id to skip returning select
           session_id: this.sessionId,
           user_id: this.userId,
           user_agent: navigator.userAgent,
@@ -132,16 +156,8 @@ class AnalyticsTracker {
           browser,
           os,
           ...utmParams,
-        })
-        .select('id')
-        .single();
+        } as any);
 
-      if (error) {
-        console.error('Failed to initialize analytics session:', error);
-        return;
-      }
-
-      this.sessionDbId = data.id;
       this.isInitialized = true;
 
       // Track initial page view

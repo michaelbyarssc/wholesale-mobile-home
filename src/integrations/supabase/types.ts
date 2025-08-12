@@ -6110,6 +6110,25 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      schedule_factory_pickup: {
+        Args:
+          | {
+              p_delivery_id: string
+              p_driver_id: string
+              p_scheduled_pickup_tz: string
+              p_notes?: string
+            }
+          | {
+              p_delivery_id: string
+              p_driver_ids: string[]
+              p_scheduled_pickup?: string
+              p_scheduled_delivery?: string
+              p_pickup_address?: string
+              p_delivery_address?: string
+              p_special_instructions?: string
+            }
+        Returns: Json
+      }
       send_delivery_notifications: {
         Args: { delivery_id_param: string }
         Returns: Json

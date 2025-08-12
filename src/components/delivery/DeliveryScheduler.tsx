@@ -13,6 +13,7 @@ import * as z from 'zod';
 import { CalendarIcon, Plus, Truck, UserCheck } from 'lucide-react';
 import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 type Driver = {
@@ -99,61 +100,44 @@ export const DeliveryScheduler = () => {
   // Handle driver assignment to delivery
   const assignDriversMutation = useMutation({
     mutationFn: async (values: z.infer<typeof scheduleFormSchema>) => {
-      // First update the delivery with scheduled dates
-      const { data: updatedDelivery, error: deliveryError } = await supabase
-        .from('deliveries')
-        .update({
-          status: 'scheduled',
-          scheduled_pickup_date: values.scheduled_pickup_date?.toISOString(),
-          scheduled_delivery_date: values.scheduled_delivery_date.toISOString(),
-          special_instructions: values.special_instructions,
-          pickup_address: values.pickup_address,
-          delivery_address: values.delivery_address
-        })
-        .eq('id', values.delivery_id)
-        .select();
-      
-      if (deliveryError) throw deliveryError;
+      // Use secure RPC to schedule factory pickup and assign drivers atomically
+      const { data, error } = await supabase.rpc('schedule_factory_pickup', {
+        p_delivery_id: values.delivery_id,
+        p_driver_ids: values.driver_ids,
+        p_scheduled_pickup: values.scheduled_pickup_date
+          ? values.scheduled_pickup_date.toISOString()
+          : null,
+        p_scheduled_delivery: values.scheduled_delivery_date
+          ? values.scheduled_delivery_date.toISOString()
+          : null,
+        p_pickup_address: values.pickup_address,
+        p_delivery_address: values.delivery_address,
+        p_special_instructions: values.special_instructions || null,
+      });
 
-      // Then assign drivers
-      const driverAssignments = values.driver_ids.map(driverId => ({
-        delivery_id: values.delivery_id,
-        driver_id: driverId,
-        assigned_at: new Date().toISOString(),
-        assigned_by: null, // This would ideally be the current user ID
-        active: true,
-        role: 'driver'
-      }));
-
-      const { data: assignmentData, error: assignmentError } = await supabase
-        .from('delivery_assignments')
-        .insert(driverAssignments)
-        .select();
-
-      if (assignmentError) throw assignmentError;
-
-      // Create calendar events for each driver if Google Calendar is connected
-      try {
-        // This would call an edge function to create Google Calendar events
-        // await supabase.functions.invoke('sync-delivery-calendar', {
-        //   body: { 
-        //     delivery_id: values.delivery_id, 
-        //     driver_ids: values.driver_ids 
-        //   }
-        // });
-      } catch (e) {
-        console.error('Failed to sync with calendar:', e);
-        // Continue with the scheduling process even if calendar sync fails
+      if (error) throw error;
+      const result = data as any;
+      if (!result?.success) {
+        throw new Error(result?.error || 'Failed to schedule factory pickup');
       }
 
-      return { delivery: updatedDelivery, assignments: assignmentData };
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pending-deliveries'] });
       queryClient.invalidateQueries({ queryKey: ['scheduled-deliveries'] });
+      toast({ title: 'Factory pickup scheduled', description: 'Drivers assigned and dates updated.' });
       setOpen(false);
       form.reset();
-    }
+    },
+    onError: (err: any) => {
+      console.error('Scheduling error:', err);
+      toast({
+        title: 'Failed to schedule factory pickup',
+        description: 'Please try again.',
+        variant: 'destructive' as any,
+      });
+    },
   });
 
   const onDeliverySelect = (delivery: Delivery) => {

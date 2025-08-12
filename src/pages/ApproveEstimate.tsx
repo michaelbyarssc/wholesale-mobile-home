@@ -39,48 +39,24 @@ const ApproveEstimate = () => {
 
   const fetchEstimate = async () => {
     try {
-      const { data, error } = await supabase
-        .from('estimates')
-        .select(`
-          *,
-          mobile_homes (
-            manufacturer,
-            series,
-            model,
-            display_name,
-            price,
-            bedrooms,
-            bathrooms,
-            square_footage
-          )
-        `)
-        .eq('approval_token', token)
-        .single();
+      const { data, error } = await supabase.functions.invoke('get-estimate-by-token', {
+        body: { token },
+      });
 
       if (error || !data) {
         setError('Estimate not found or link has expired');
         return;
       }
 
-      if (data.approved_at) {
+      if ((data as any).alreadyApproved) {
         setApproved(true);
         setError('This estimate has already been approved');
         return;
       }
 
-      setEstimate(data);
-
-      // Fetch selected services
-      if (data.selected_services && data.selected_services.length > 0) {
-        const { data: servicesData, error: servicesError } = await supabase
-          .from('services')
-          .select('*')
-          .in('id', data.selected_services);
-
-        if (!servicesError) {
-          setServices(servicesData || []);
-        }
-      }
+      const resp = data as any;
+      setEstimate(resp.estimate);
+      setServices(resp.services || []);
     } catch (err) {
       console.error('Error fetching estimate:', err);
       setError('Failed to load estimate');
@@ -95,7 +71,7 @@ const ApproveEstimate = () => {
     setApproving(true);
     try {
       const { data, error } = await supabase.functions.invoke(`approve-estimate?token=${token}`, {
-        method: 'GET',
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -107,15 +83,15 @@ const ApproveEstimate = () => {
 
       setApproved(true);
       toast({
-        title: "Estimate Approved!",
-        description: "Your estimate has been approved and converted to an invoice. You should receive an email confirmation shortly.",
+        title: 'Estimate Approved!',
+        description: 'Your estimate has been approved and converted to an invoice. You should receive an email confirmation shortly.',
       });
     } catch (err) {
       console.error('Approval error:', err);
       toast({
-        title: "Approval Failed",
-        description: err instanceof Error ? err.message : "Failed to approve estimate",
-        variant: "destructive",
+        title: 'Approval Failed',
+        description: err instanceof Error ? err.message : 'Failed to approve estimate',
+        variant: 'destructive',
       });
     } finally {
       setApproving(false);

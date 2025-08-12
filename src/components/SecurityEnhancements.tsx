@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { generateCSRFToken as genCSRFUtil, validateCSRFToken as validateCSRFUtil } from '@/utils/security';
 
 interface SecurityEnhancementsProps {
   children: React.ReactNode;
@@ -19,7 +20,7 @@ export const SecurityEnhancements: React.FC<SecurityEnhancementsProps> = ({ chil
         cspMeta.setAttribute('http-equiv', 'Content-Security-Policy');
         cspMeta.setAttribute('content', 
           "default-src 'self'; " +
-          "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://esm.sh https://api.mapbox.com; " +
+          "script-src 'self' 'unsafe-inline'; " +
           "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://api.mapbox.com; " +
           "font-src 'self' https://fonts.gstatic.com; " +
           "img-src 'self' data: https: blob:; " +
@@ -68,9 +69,11 @@ export const SecurityEnhancements: React.FC<SecurityEnhancementsProps> = ({ chil
       }
     };
 
-    // Generate and store CSRF token for form submissions
-    const generateCSRFToken = () => {
-      const token = 'csrf_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
+    // Generate or retrieve a secure CSRF token using crypto
+    const generateOrGetCSRFToken = () => {
+      const existing = sessionStorage.getItem('csrf_token');
+      if (existing) return existing;
+      const token = genCSRFUtil();
       sessionStorage.setItem('csrf_token', token);
       return token;
     };
@@ -78,7 +81,7 @@ export const SecurityEnhancements: React.FC<SecurityEnhancementsProps> = ({ chil
     // Add CSRF token to forms
     const addCSRFToForms = () => {
       const forms = document.querySelectorAll('form');
-      const csrfToken = sessionStorage.getItem('csrf_token') || generateCSRFToken();
+      const csrfToken = generateOrGetCSRFToken();
       
       forms.forEach(form => {
         let csrfInput = form.querySelector('input[name="csrf_token"]') as HTMLInputElement;
@@ -88,13 +91,15 @@ export const SecurityEnhancements: React.FC<SecurityEnhancementsProps> = ({ chil
           csrfInput.name = 'csrf_token';
           csrfInput.value = csrfToken;
           form.appendChild(csrfInput);
+        } else {
+          csrfInput.value = csrfToken;
         }
       });
     };
 
     // Initialize security measures
     addSecurityHeaders();
-    generateCSRFToken();
+    generateOrGetCSRFToken();
     
     // Set up form protection with a slight delay to catch dynamically added forms
     const setupFormProtection = () => {
@@ -114,8 +119,8 @@ export const SecurityEnhancements: React.FC<SecurityEnhancementsProps> = ({ chil
 
 // CSRF token validation utility
 export const validateCSRFToken = (token: string): boolean => {
-  const sessionToken = sessionStorage.getItem('csrf_token');
-  return token === sessionToken && token.startsWith('csrf_');
+  const sessionToken = sessionStorage.getItem('csrf_token') || '';
+  return validateCSRFUtil(token, sessionToken);
 };
 
 // Secure form submission wrapper

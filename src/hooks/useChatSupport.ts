@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -149,43 +150,6 @@ export const useChatSupport = (userId?: string) => {
     }
   }, [userId, toast]);
 
-  // Send message
-  const sendMessage = useCallback(async (content: string, senderType: 'user' | 'agent' | 'ai' | 'system' = 'user') => {
-    if (!currentSession || !content.trim()) return null;
-
-    try {
-      console.log('Sending message for session:', currentSession.id, 'user:', userId, 'content:', content.substring(0, 50) + '...');
-      const { error } = await supabase
-        .from('chat_messages')
-        .insert([{
-          session_id: currentSession.id,
-          sender_type: senderType,
-          sender_id: senderType === 'user' ? userId || null : null,
-          content: content.trim(),
-          message_type: 'text'
-        } as any]);
-
-      if (error) throw error;
-      console.log('Message sent successfully');
-
-      if (senderType === 'user' && content.trim()) {
-        setTimeout(() => {
-          handleAIResponse(content);
-        }, 1000);
-      }
-
-      return true;
-    } catch (error) {
-      console.error('Error sending message:', error);
-      toast({
-        title: "Error",
-        description: "Failed to send message. Please try again.",
-        variant: "destructive"
-      });
-      return null;
-    }
-  }, [currentSession, userId, toast, handleAIResponse]);
-
   // Handle AI response with duplicate prevention
   const handleAIResponse = useCallback(async (userMessage: string) => {
     if (!currentSession) return;
@@ -237,6 +201,43 @@ export const useChatSupport = (userId?: string) => {
         } as any]);
     }
   }, [currentSession, messages]);
+
+  // Send message (moved below handleAIResponse to avoid TS2448)
+  const sendMessage = useCallback(async (content: string, senderType: 'user' | 'agent' | 'ai' | 'system' = 'user') => {
+    if (!currentSession || !content.trim()) return null;
+
+    try {
+      console.log('Sending message for session:', currentSession.id, 'user:', userId, 'content:', content.substring(0, 50) + '...');
+      const { error } = await supabase
+        .from('chat_messages')
+        .insert([{
+          session_id: currentSession.id,
+          sender_type: senderType,
+          sender_id: senderType === 'user' ? userId || null : null,
+          content: content.trim(),
+          message_type: 'text'
+        } as any]);
+
+      if (error) throw error;
+      console.log('Message sent successfully');
+
+      if (senderType === 'user' && content.trim()) {
+        setTimeout(() => {
+          handleAIResponse(content);
+        }, 1000);
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error sending message:', error);
+      toast({
+        title: "Error",
+        description: "Failed to send message. Please try again.",
+        variant: "destructive"
+      });
+      return null;
+    }
+  }, [currentSession, userId, toast, handleAIResponse]);
 
   // End chat session
   const endChat = useCallback(async () => {

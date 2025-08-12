@@ -5948,6 +5948,56 @@ export type Database = {
           conversion_rate: number
         }[]
       }
+      get_public_mobile_home: {
+        Args: { p_id: string }
+        Returns: {
+          id: string
+          manufacturer: string
+          series: string
+          model: string
+          display_name: string
+          description: string
+          price: number
+          retail_price: number
+          bedrooms: number
+          bathrooms: number
+          square_footage: number
+          length_feet: number
+          width_feet: number
+          features: Json
+          exterior_image_url: string
+          floor_plan_image_url: string
+          active: boolean
+          display_order: number
+          created_at: string
+          updated_at: string
+        }[]
+      }
+      get_public_mobile_homes: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          manufacturer: string
+          series: string
+          model: string
+          display_name: string
+          description: string
+          price: number
+          retail_price: number
+          bedrooms: number
+          bathrooms: number
+          square_footage: number
+          length_feet: number
+          width_feet: number
+          features: Json
+          exterior_image_url: string
+          floor_plan_image_url: string
+          active: boolean
+          display_order: number
+          created_at: string
+          updated_at: string
+        }[]
+      }
       get_query_eq_value: {
         Args: { name: string }
         Returns: string

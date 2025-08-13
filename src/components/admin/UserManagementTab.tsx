@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useMemo, useCallback, memo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -14,7 +14,7 @@ import { FixProfilesButton } from './users/FixProfilesButton';
 import { UserProfile } from './users/UserEditDialog';
 import { LoadingSpinner } from '@/components/loading/LoadingSpinner';
 
-export const UserManagementTab = memo(() => {
+export const UserManagementTab = () => {
   const [userProfiles, setUserProfiles] = useState<UserProfile[]>([]);
   const [pendingApprovals, setPendingApprovals] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -26,19 +26,31 @@ export const UserManagementTab = memo(() => {
   
   const debouncedSearchQuery = useSearchDebounce(searchQuery, 300);
 
-  const fetchUserProfiles = useCallback(async (currentUserId?: string, userIsSuperAdmin?: boolean) => {
+  useEffect(() => {
+    // SECURITY: Use centralized role management
+    if (!rolesLoading && currentUser) {
+      console.log(`[SECURITY] UserManagementTab: User ${currentUser.id} isSuperAdmin: ${isSuperAdmin}`);
+      fetchUserProfiles(currentUser.id, isSuperAdmin);
+    }
+  }, [currentUser, isSuperAdmin, rolesLoading]);
+
+  const fetchUserProfiles = async (currentUserId?: string, userIsSuperAdmin?: boolean) => {
     try {
       setLoading(true);
       setIsDataReady(false);
+      console.log(`[SECURITY] Fetching user profiles for user: ${currentUserId}, isSuperAdmin: ${userIsSuperAdmin}`);
       
       // Get profiles data with proper filtering
       let profilesQuery = supabase
         .from('profiles')
         .select('*');
 
-      // Filter based on user role - super admins see all, others see only their created users
+      // SECURITY: Filter based on user role - super admins see all, others see only their created users
       if (!userIsSuperAdmin && currentUserId) {
         profilesQuery = profilesQuery.eq('created_by', currentUserId);
+      } else if (userIsSuperAdmin) {
+        // Super admin sees all profiles
+        console.log('[SECURITY] Super admin accessing all profiles');
       }
 
       // Fetch all data simultaneously using Promise.all for better performance
@@ -62,8 +74,10 @@ export const UserManagementTab = memo(() => {
       }
 
       if (rolesError) {
-        console.error('Error fetching roles:', rolesError);
+        console.error('[SECURITY] Error fetching roles:', rolesError);
       }
+
+      console.log('Data fetched - Profiles:', profiles?.length || 0, 'Markups:', customerMarkups?.length || 0, 'Roles:', allRoles?.length || 0);
 
       // Transform profiles data into UserProfile format
       const combinedProfiles: UserProfile[] = profiles?.map(profile => {
@@ -107,13 +121,16 @@ export const UserManagementTab = memo(() => {
       const approvedUsers = combinedProfiles.filter(profile => profile.approved === true);
       const pendingUsers = combinedProfiles.filter(profile => profile.approved === false || profile.approved === null);
 
+      console.log('Approved users:', approvedUsers.length);
+      console.log('Pending users:', pendingUsers.length);
+
       setUserProfiles(approvedUsers);
       setPendingApprovals(pendingUsers);
       
       // Mark data as ready after all processing is complete
       setIsDataReady(true);
     } catch (error) {
-      console.error('Error fetching user profiles:', error);
+      console.error('[SECURITY] Error fetching user profiles:', error);
       toast({
         title: "Error",
         description: "Failed to fetch user profiles",
@@ -122,13 +139,7 @@ export const UserManagementTab = memo(() => {
     } finally {
       setLoading(false);
     }
-  }, [toast]);
-
-  useEffect(() => {
-    if (!rolesLoading && currentUser) {
-      fetchUserProfiles(currentUser.id, isSuperAdmin);
-    }
-  }, [currentUser, isSuperAdmin, rolesLoading, fetchUserProfiles]);
+  };
 
   // Filter users based on search query
   const filteredUserProfiles = useMemo(() => {
@@ -148,11 +159,12 @@ export const UserManagementTab = memo(() => {
     });
   }, [userProfiles, debouncedSearchQuery]);
 
-  const handleUserUpdated = useCallback(() => {
+  const handleUserUpdated = () => {
+    console.log('[SECURITY] User updated, refreshing profiles');
     if (currentUser) {
       fetchUserProfiles(currentUser.id, isSuperAdmin);
     }
-  }, [currentUser, isSuperAdmin, fetchUserProfiles]);
+  };
 
   // Show loading state until all data is ready
   if (loading || rolesLoading || !isDataReady) {
@@ -206,4 +218,4 @@ export const UserManagementTab = memo(() => {
       </Card>
     </div>
   );
-});
+};

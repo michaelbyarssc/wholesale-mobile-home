@@ -41,11 +41,4 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.delivery-tracking-ws]
-verify_jwt = true
-
-# Public endpoints for customer estimate flow
-[functions.approve-estimate]
-verify_jwt = false
-
-[functions.get-estimate-by-token]
 verify_jwt = false

@@ -4,8 +4,6 @@ import { useSessionManager } from '@/contexts/SessionManagerContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { useSessionValidation } from '@/hooks/useSessionValidation';
-import { AuthStabilizer } from '@/utils/authStabilizer';
-import { devLog, devError } from '@/utils/environmentUtils';
 
 export const useMultiUserAuth = () => {
   const {
@@ -24,33 +22,34 @@ export const useMultiUserAuth = () => {
   const navigate = useNavigate();
   const { validateSession } = useSessionValidation();
 
-  // Initialize by checking for existing session - React Strict Mode compatible
+  // Initialize by checking for existing session - stable approach
   useEffect(() => {
-    const cleanup = AuthStabilizer.createStrictModeCompatibleEffect(
-      async () => {
+    let initialized = false;
+    let authSubscription: any = null;
+    
+    const initializeAuth = async () => {
+      if (initialized) return;
+      initialized = true;
+      
+      try {
         // Set up auth state listener first - stable callback without dependencies
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
           async (event, session) => {
             if (event === 'SIGNED_IN' && session?.user) {
-              // Use debounced initialization to prevent React Strict Mode issues
-              AuthStabilizer.debouncedInitialization(
-                session.user.id,
-                async () => {
-                  // Use a separate check to avoid dependency on sessions array
-                  const storedSessions = localStorage.getItem('wmh_sessions');
-                  const existingSessions = storedSessions ? JSON.parse(storedSessions) : [];
-                  const hasExistingSession = existingSessions.some((s: any) => s.user.id === session.user.id);
-                  
-                  if (!hasExistingSession) {
-                    devLog('🔐 Auth state change: adding new session for user:', session.user.email);
-                    return await addSession(session.user, session);
-                  }
-                  return '';
-                }
-              );
+              // Use a separate check to avoid dependency on sessions array
+              const storedSessions = localStorage.getItem('wmh_sessions');
+              const existingSessions = storedSessions ? JSON.parse(storedSessions) : [];
+              const hasExistingSession = existingSessions.some((s: any) => s.user.id === session.user.id);
+              
+              if (!hasExistingSession) {
+                console.log('🔐 Auth state change: adding new session for user:', session.user.email);
+                await addSession(session.user, session);
+              }
             }
           }
         );
+        
+        authSubscription = subscription;
 
         // Then check for existing session
         const { data: { session } } = await supabase.auth.getSession();
@@ -59,21 +58,25 @@ export const useMultiUserAuth = () => {
           const existingSessions = storedSessions ? JSON.parse(storedSessions) : [];
           
           if (existingSessions.length === 0) {
-            devLog('🔐 Initializing auth with existing session for user:', session.user.email);
+            console.log('🔐 Initializing auth with existing session for user:', session.user.email);
             await addSession(session.user, session);
           }
         }
         
-        setIsLoading(false);
-        return subscription;
-      },
-      () => {
-        // Cleanup function
+      } catch (error) {
+        console.error('Error initializing auth:', error);
+      } finally {
         setIsLoading(false);
       }
-    );
+    };
 
-    return cleanup;
+    initializeAuth();
+    
+    return () => {
+      if (authSubscription) {
+        authSubscription.unsubscribe();
+      }
+    };
   }, [addSession]); // Only depend on addSession
 
   const signIn = useCallback(async (email: string, password: string) => {
@@ -88,13 +91,13 @@ export const useMultiUserAuth = () => {
 
       if (data.user && data.session) {
         const sessionId = await addSession(data.user, data.session);
-        devLog('🔐 Sign in successful, session ID:', sessionId);
+        console.log('🔐 Sign in successful, session ID:', sessionId);
         return { data, error: null };
       }
 
       return { data, error: null };
     } catch (error: any) {
-      devError('🔐 Sign in error:', error);
+      console.error('🔐 Sign in error:', error);
       return { data: null, error };
     } finally {
       setIsLoading(false);
@@ -119,12 +122,12 @@ export const useMultiUserAuth = () => {
 
       if (data.user && data.session) {
         const sessionId = await addSession(data.user, data.session);
-        devLog('🔐 Sign up successful, session ID:', sessionId);
+        console.log('🔐 Sign up successful, session ID:', sessionId);
       }
 
       return { data, error: null };
     } catch (error: any) {
-      devError('🔐 Sign up error:', error);
+      console.error('🔐 Sign up error:', error);
       return { data: null, error };
     } finally {
       setIsLoading(false);
@@ -142,9 +145,9 @@ export const useMultiUserAuth = () => {
       // Sign out from the specific session's client
       await session.supabaseClient.auth.signOut();
       removeSession(targetSessionId);
-      devLog('🔐 Signed out session:', targetSessionId);
+      console.log('🔐 Signed out session:', targetSessionId);
     } catch (error) {
-      devError('🔐 Sign out error:', error);
+      console.error('🔐 Sign out error:', error);
     }
   }, [activeSessionId, sessions, removeSession]);
 
@@ -156,9 +159,9 @@ export const useMultiUserAuth = () => {
       ));
       clearAllSessions();
       navigate('/');
-      devLog('🔐 Signed out all sessions');
+      console.log('🔐 Signed out all sessions');
     } catch (error) {
-      devError('🔐 Sign out all error:', error);
+      console.error('🔐 Sign out all error:', error);
     }
   }, [sessions, clearAllSessions, navigate]);
 
@@ -173,10 +176,10 @@ export const useMultiUserAuth = () => {
         try {
           const isValid = await validateSession(sessionId);
           if (!isValid) {
-            devError('🔐 Session validation failed after switch:', sessionId);
+            console.warn('🔐 Session validation failed after switch:', sessionId);
           }
         } catch (error) {
-          devError('🔐 Session validation error:', error);
+          console.error('🔐 Session validation error:', error);
         }
       }, 0);
     }
@@ -202,7 +205,7 @@ export const useMultiUserAuth = () => {
 
       return profile;
     } catch (error) {
-      devError('Error fetching user profile:', error);
+      console.error('Error fetching user profile:', error);
       return null;
     }
   }, [activeSessionId, sessions, updateSessionProfile]);

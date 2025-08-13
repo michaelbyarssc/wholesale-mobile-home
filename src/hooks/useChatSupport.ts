@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -41,7 +40,7 @@ export const useChatSupport = (userId?: string) => {
           .select('*, chat_messages(*)')
           .eq('user_id', userId)
           .eq('status', 'active')
-          .order('created_at', { foreignTable: 'chat_messages', ascending: true })
+          .order('created_at', { referencedTable: 'chat_messages', ascending: true })
           .maybeSingle();
 
         console.log('Existing session found:', existingSession);
@@ -56,76 +55,54 @@ export const useChatSupport = (userId?: string) => {
 
       // Create new session
       const sessionToken = `chat_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      try { if (typeof sessionStorage !== 'undefined') sessionStorage.setItem('chat_session_token', sessionToken); } catch {}
-
-      const sessionId = (typeof window !== 'undefined' && (window as any).crypto && typeof (window as any).crypto.randomUUID === 'function')
-        ? (window as any).crypto.randomUUID()
-        : (() => {
-            const w = typeof window !== 'undefined' ? (window as any) : undefined;
-            const bytes = new Uint8Array(16);
-            if (w && w.crypto && typeof w.crypto.getRandomValues === 'function') {
-              w.crypto.getRandomValues(bytes);
-            } else {
-              for (let i = 0; i < 16; i++) bytes[i] = Math.floor(Math.random() * 256);
-            }
-            bytes[6] = (bytes[6] & 0x0f) | 0x40;
-            bytes[8] = (bytes[8] & 0x3f) | 0x80;
-            const hex = Array.from(bytes).map((b) => b.toString(16).padStart(2, '0'));
-            return `${hex[0]}${hex[1]}${hex[2]}${hex[3]}-${hex[4]}${hex[5]}-${hex[6]}${hex[7]}-${hex[8]}${hex[9]}-${hex[10]}${hex[11]}${hex[12]}${hex[13]}${hex[14]}${hex[15]}`;
-          })();
       
-      const sessionMetadata = customerInfo ? { anonymous: true } : {};
+      const sessionMetadata = customerInfo ? {
+        customer_name: customerInfo.name,
+        customer_phone: customerInfo.phone,
+        anonymous: true
+      } : {};
 
-      const { error } = await supabase
+      const { data: newSession, error } = await supabase
         .from('chat_sessions')
-        .insert([{
-          id: sessionId,
+        .insert({
           user_id: userId || null,
           session_token: sessionToken,
           subject: subject || 'General Inquiry',
           department: department || 'general',
           status: 'active',
           metadata: sessionMetadata
-        } as any]);
+        })
+        .select('*, chat_messages(*)')
+        .single();
 
       if (error) throw error;
 
+      // Store anonymous user information in dedicated table if provided
       if (customerInfo) {
         await supabase
           .from('anonymous_chat_users')
-          .insert([{
-            session_id: sessionId,
+          .insert({
+            session_id: newSession.id,
             customer_name: customerInfo.name,
             customer_phone: customerInfo.phone
-          } as any]);
+          });
       }
 
+      // Send welcome message after session is created
       const welcomeMessage = customerInfo 
         ? `Hello ${customerInfo.name}! How can we help you today?`
         : "Hello! How can we help you today?";
       
+      // Send the welcome message directly without using the sendMessage callback
       await supabase
         .from('chat_messages')
-        .insert([{
-          session_id: sessionId,
+        .insert({
+          session_id: newSession.id,
           sender_type: 'system',
           sender_id: null,
           content: welcomeMessage,
           message_type: 'text'
-        } as any]);
-
-      const newSession = {
-        id: sessionId,
-        user_id: userId || null,
-        session_token: sessionToken,
-        subject: subject || 'General Inquiry',
-        department: department || 'general',
-        status: 'active',
-        metadata: sessionMetadata,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        chat_messages: []
-      } as unknown as ChatSessionWithMessages;
+        });
 
       setCurrentSession(newSession);
       setMessages(newSession.chat_messages || []);
@@ -150,84 +127,36 @@ export const useChatSupport = (userId?: string) => {
     }
   }, [userId, toast]);
 
-  // Handle AI response with duplicate prevention
-  const handleAIResponse = useCallback(async (userMessage: string) => {
-    if (!currentSession) return;
-
-    const recentMessages = messages.slice(-2);
-    const lastMessage = recentMessages[recentMessages.length - 1];
-    if (lastMessage && (lastMessage.sender_type === 'ai' || lastMessage.sender_type === 'system')) {
-      return;
-    }
-
-    try {
-      const { data, error } = await supabase.functions.invoke('ai-chat-response', {
-        body: {
-          sessionId: currentSession.id,
-          userMessage,
-          chatHistory: messages.slice(-5)
-        }
-      });
-
-      if (error) throw error;
-
-      if (data?.response) {
-        await supabase
-          .from('chat_messages')
-          .insert([{
-            session_id: currentSession.id,
-            sender_type: 'ai',
-            sender_id: null,
-            content: data.response,
-            message_type: 'text'
-          } as any]);
-      }
-    } catch (error) {
-      console.error('Error getting AI response:', error);
-      const fallbackResponses = [
-        "Thank you for your message. An agent will be with you shortly.",
-        "I understand you need assistance. Let me connect you with someone who can help.",
-        "Your inquiry is important to us. Please hold while I find the best person to assist you."
-      ];
-      const randomResponse = fallbackResponses[Math.floor(Math.random() * fallbackResponses.length)];
-      await supabase
-        .from('chat_messages')
-        .insert([{
-          session_id: currentSession.id,
-          sender_type: 'ai',
-          sender_id: null,
-          content: randomResponse,
-          message_type: 'text'
-        } as any]);
-    }
-  }, [currentSession, messages]);
-
-  // Send message (moved below handleAIResponse to avoid TS2448)
+  // Send message
   const sendMessage = useCallback(async (content: string, senderType: 'user' | 'agent' | 'ai' | 'system' = 'user') => {
     if (!currentSession || !content.trim()) return null;
 
     try {
       console.log('Sending message for session:', currentSession.id, 'user:', userId, 'content:', content.substring(0, 50) + '...');
-      const { error } = await supabase
+      const { data: message, error } = await supabase
         .from('chat_messages')
-        .insert([{
+        .insert({
           session_id: currentSession.id,
           sender_type: senderType,
           sender_id: senderType === 'user' ? userId || null : null,
           content: content.trim(),
           message_type: 'text'
-        } as any]);
+        })
+        .select()
+        .single();
 
       if (error) throw error;
-      console.log('Message sent successfully');
+      console.log('Message sent successfully:', message.id);
 
+      // If this is a user message and we have AI enabled, trigger AI response
       if (senderType === 'user' && content.trim()) {
+        // Small delay to make conversation feel natural
         setTimeout(() => {
           handleAIResponse(content);
         }, 1000);
       }
 
-      return true;
+      return message;
     } catch (error) {
       console.error('Error sending message:', error);
       toast({
@@ -237,7 +166,64 @@ export const useChatSupport = (userId?: string) => {
       });
       return null;
     }
-  }, [currentSession, userId, toast, handleAIResponse]);
+  }, [currentSession, userId, toast]);
+
+  // Handle AI response with duplicate prevention
+  const handleAIResponse = useCallback(async (userMessage: string) => {
+    if (!currentSession) return;
+
+    // Prevent AI from responding to AI or system messages
+    const recentMessages = messages.slice(-2);
+    const lastMessage = recentMessages[recentMessages.length - 1];
+    if (lastMessage && (lastMessage.sender_type === 'ai' || lastMessage.sender_type === 'system')) {
+      return;
+    }
+
+    try {
+      // Call edge function for AI response
+      const { data, error } = await supabase.functions.invoke('ai-chat-response', {
+        body: {
+          sessionId: currentSession.id,
+          userMessage,
+          chatHistory: messages.slice(-5) // Last 5 messages for context
+        }
+      });
+
+      if (error) throw error;
+
+      if (data?.response) {
+        // Send AI response without triggering another AI response
+        await supabase
+          .from('chat_messages')
+          .insert({
+            session_id: currentSession.id,
+            sender_type: 'ai',
+            sender_id: null,
+            content: data.response,
+            message_type: 'text'
+          });
+      }
+    } catch (error) {
+      console.error('Error getting AI response:', error);
+      // Fallback to predefined responses
+      const fallbackResponses = [
+        "Thank you for your message. An agent will be with you shortly.",
+        "I understand you need assistance. Let me connect you with someone who can help.",
+        "Your inquiry is important to us. Please hold while I find the best person to assist you."
+      ];
+      const randomResponse = fallbackResponses[Math.floor(Math.random() * fallbackResponses.length)];
+      // Send fallback response without triggering another AI response
+      await supabase
+        .from('chat_messages')
+        .insert({
+          session_id: currentSession.id,
+          sender_type: 'ai',
+          sender_id: null,
+          content: randomResponse,
+          message_type: 'text'
+        });
+    }
+  }, [currentSession, messages, sendMessage]);
 
   // End chat session
   const endChat = useCallback(async () => {
@@ -251,12 +237,20 @@ export const useChatSupport = (userId?: string) => {
         let customerInfo = null;
         
         if (anonymousUser) {
-          // Avoid using PII from DB or metadata for anonymous users
-          customerInfo = {
-            name: 'Anonymous',
-            phone: null,
-            email: null
-          };
+          // For anonymous users, get info from anonymous_chat_users table
+          const { data: anonUser } = await supabase
+            .from('anonymous_chat_users')
+            .select('customer_name, customer_phone')
+            .eq('session_id', currentSession.id)
+            .single();
+          
+          if (anonUser) {
+            customerInfo = {
+              name: anonUser.customer_name,
+              phone: anonUser.customer_phone,
+              email: null
+            };
+          }
         } else if (userId) {
           // For authenticated users, we could get more info from profiles
           customerInfo = {
@@ -290,7 +284,7 @@ export const useChatSupport = (userId?: string) => {
         .update({
           status: 'ended',
           ended_at: new Date().toISOString()
-        } as any)
+        })
         .eq('id', currentSession.id);
 
       setCurrentSession(null);
@@ -406,7 +400,7 @@ export const useChatSupport = (userId?: string) => {
           .select('*, chat_messages(*)')
           .eq('user_id', userId)
           .eq('status', 'active')
-          .order('created_at', { foreignTable: 'chat_messages', ascending: true })
+          .order('created_at', { referencedTable: 'chat_messages', ascending: true })
           .maybeSingle();
 
         console.log('Found existing session:', session);

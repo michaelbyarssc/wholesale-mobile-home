@@ -8,8 +8,9 @@ import { useQuery } from '@tanstack/react-query';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
-// Mapbox token will be provided via Supabase Edge Function or user input where needed
-const MAPBOX_TOKEN = "";
+// Note: You would need to get a Mapbox token and add it to your environment variables
+// For now using a placeholder, this would need to be set up in Supabase secrets
+const MAPBOX_TOKEN = "pk.your_mapbox_token";
 
 type DriverLocation = {
   id: string;
@@ -67,11 +68,10 @@ export const DriverTrackingMap = ({ deliveryId }: { deliveryId?: string }) => {
   // Set up the map
   useEffect(() => {
     if (!mapContainer.current || map.current) return;
-    // Note: token should be set before initializing this component
-    if (!MAPBOX_TOKEN) return;
+    
     mapboxgl.accessToken = MAPBOX_TOKEN;
     map.current = new mapboxgl.Map({
-      container: mapContainer.current!,
+      container: mapContainer.current,
       style: 'mapbox://styles/mapbox/streets-v12',
       center: [-95.7129, 37.0902], // Default to US center
       zoom: 3.5
@@ -111,29 +111,17 @@ export const DriverTrackingMap = ({ deliveryId }: { deliveryId?: string }) => {
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-white"><rect x="1" y="3" width="15" height="13" rx="2" ry="2"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
         </div>`;
         
-        // Create popup content safely without HTML injection
-        const popupEl = document.createElement('div');
-        popupEl.className = 'p-2';
-        const driverDiv = document.createElement('div');
-        driverDiv.className = 'font-bold';
-        driverDiv.textContent = location.driver_name || 'Driver';
-        popupEl.appendChild(driverDiv);
-        const deliveryDiv = document.createElement('div');
-        deliveryDiv.className = 'text-sm';
-        deliveryDiv.textContent = location.delivery_number || '';
-        popupEl.appendChild(deliveryDiv);
-        if (location.speed_mph) {
-          const speedDiv = document.createElement('div');
-          speedDiv.className = 'text-sm';
-          speedDiv.textContent = `Speed: ${location.speed_mph} mph`;
-          popupEl.appendChild(speedDiv);
-        }
-        const timeDiv = document.createElement('div');
-        timeDiv.className = 'text-xs text-muted-foreground';
-        timeDiv.textContent = `Last updated: ${new Date(location.timestamp).toLocaleTimeString()}`;
-        popupEl.appendChild(timeDiv);
-
-        const popup = new mapboxgl.Popup({ offset: 25 }).setDOMContent(popupEl);
+        // Create popup
+        const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(`
+          <div class="p-2">
+            <div class="font-bold">${location.driver_name}</div>
+            <div class="text-sm">${location.delivery_number}</div>
+            ${location.speed_mph ? `<div class="text-sm">Speed: ${location.speed_mph} mph</div>` : ''}
+            <div class="text-xs text-muted-foreground">
+              Last updated: ${new Date(location.timestamp).toLocaleTimeString()}
+            </div>
+          </div>
+        `);
 
         // Add marker to map
         markers.current[driverId] = new mapboxgl.Marker(el)

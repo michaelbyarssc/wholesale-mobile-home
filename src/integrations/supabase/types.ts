@@ -5784,10 +5784,6 @@ export type Database = {
         }
         Returns: string
       }
-      current_user_email: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
       emit_automation_event: {
         Args: {
           p_event_name: string
@@ -5948,83 +5944,6 @@ export type Database = {
           conversion_rate: number
         }[]
       }
-      get_public_mobile_home: {
-        Args: { p_id: string }
-        Returns: {
-          id: string
-          manufacturer: string
-          series: string
-          model: string
-          display_name: string
-          description: string
-          price: number
-          retail_price: number
-          bedrooms: number
-          bathrooms: number
-          square_footage: number
-          length_feet: number
-          width_feet: number
-          features: Json
-          exterior_image_url: string
-          floor_plan_image_url: string
-          active: boolean
-          display_order: number
-          created_at: string
-          updated_at: string
-        }[]
-      }
-      get_public_mobile_homes: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          id: string
-          manufacturer: string
-          series: string
-          model: string
-          display_name: string
-          description: string
-          price: number
-          retail_price: number
-          bedrooms: number
-          bathrooms: number
-          square_footage: number
-          length_feet: number
-          width_feet: number
-          features: Json
-          exterior_image_url: string
-          floor_plan_image_url: string
-          active: boolean
-          display_order: number
-          created_at: string
-          updated_at: string
-        }[]
-      }
-      get_public_services: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          id: string
-          name: string
-          description: string
-          active: boolean
-          price: number
-          single_wide_price: number
-          double_wide_price: number
-          dependencies: Json
-          applicable_manufacturers: Json
-          applicable_series: Json
-        }[]
-      }
-      get_query_eq_value: {
-        Args: { name: string }
-        Returns: string
-      }
-      get_request_header: {
-        Args: { name: string }
-        Returns: string
-      }
-      get_request_query: {
-        Args: { name: string }
-        Returns: string
-      }
       get_timezone_abbrev: {
         Args: { address: string }
         Returns: string
@@ -6109,25 +6028,6 @@ export type Database = {
       refresh_analytics_views: {
         Args: Record<PropertyKey, never>
         Returns: undefined
-      }
-      schedule_factory_pickup: {
-        Args:
-          | {
-              p_delivery_id: string
-              p_driver_id: string
-              p_scheduled_pickup_tz: string
-              p_notes?: string
-            }
-          | {
-              p_delivery_id: string
-              p_driver_ids: string[]
-              p_scheduled_pickup?: string
-              p_scheduled_delivery?: string
-              p_pickup_address?: string
-              p_delivery_address?: string
-              p_special_instructions?: string
-            }
-        Returns: Json
       }
       send_delivery_notifications: {
         Args: { delivery_id_param: string }

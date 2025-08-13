@@ -38,13 +38,42 @@ const Admin = () => {
   // SECURITY: Enhanced admin validation with session checks
   const isSecureAdmin = isAdmin && user && session && user.id === session.user.id;
   
-  // Alert on session mismatch
+  // SECURITY: Enhanced debug logging with session validation
+  console.log('🔐 Admin Panel State:', {
+    userEmail: user?.email,
+    userId: user?.id,
+    sessionUserId: session?.user?.id,
+    sessionUserEmail: session?.user?.email,
+    isAdmin,
+    isSuperAdmin,
+    isSecureAdmin,
+    userRoles: userRoles.map(r => r.role),
+    authLoading,
+    rolesLoading,
+    sessionMatch: user?.id === session?.user?.id,
+    timestamp: new Date().toISOString()
+  });
+
+  // SECURITY: Alert on session mismatch
   if (user && session && user.id !== session.user.id) {
-    console.error('SECURITY ALERT: User/Session mismatch in Admin panel!');
+    console.error('🚨 SECURITY ALERT: User/Session mismatch in Admin panel!', {
+      userId: user.id,
+      sessionUserId: session.user.id,
+      userEmail: user.email,
+      sessionUserEmail: session.user.email
+    });
   }
 
-  // SECURITY: Removed automatic refresh to prevent infinite loops
-  // Authentication and roles are now managed by their respective hooks
+  // SECURITY: Force auth and role refresh on mount to prevent stale data
+  useEffect(() => {
+    const initializeAdminPanel = async () => {
+      console.log('🔐 Initializing admin panel...');
+      await forceRefreshAuth();
+      await forceRefreshRoles();
+    };
+    
+    initializeAdminPanel();
+  }, []); // Only run once on mount
 
   // SECURITY: Verify admin access with database function (no auto-logout; UI will handle)
   useEffect(() => {
@@ -52,6 +81,7 @@ const Admin = () => {
       if (user && !authLoading && !rolesLoading) {
         const isVerifiedAdmin = await verifyAdminAccess();
         if (!isVerifiedAdmin) {
+          console.warn('⚠️ Admin access verification failed - keeping session, showing limited UI');
           toast({
             title: 'Access check',
             description: 'Admin privileges not verified yet. Try refresh or contact support.',
@@ -69,8 +99,10 @@ const Admin = () => {
       // Set default tab based on role
       if (isSuperAdmin) {
         setActiveTab('mobile-homes');
+        console.log('🔐 Admin: Super admin detected, setting tab to mobile-homes');
       } else {
         setActiveTab('sales');
+        console.log('🔐 Admin: Regular admin detected, setting tab to sales');
       }
     }
   }, [isSuperAdmin, authLoading, rolesLoading, isSecureAdmin]);
@@ -210,6 +242,9 @@ const Admin = () => {
     </div>
   );
 
+  // Debug final render state
+  console.log('Admin: RENDER - isSuperAdmin:', isSuperAdmin, 'isMobile:', isMobile, 'activeTab:', activeTab);
+  console.log('Admin: RENDER - user:', user?.email);
 
   return (
     <div className="min-h-screen bg-background">
@@ -274,7 +309,23 @@ const Admin = () => {
               
               <NotificationCenter />
               
-              {/* Removed manual refresh button to prevent infinite loops */}
+              {/* Debug: Force Refresh Button */}
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={async () => {
+                  console.log('Manual refresh triggered');
+                  await forceRefreshAuth();
+                  await forceRefreshRoles();
+                  toast({
+                    title: "Refreshed",
+                    description: "Auth and roles have been refreshed. Check console for debug info.",
+                  });
+                }}
+                className="hidden sm:flex text-xs"
+              >
+                🔄 Refresh
+              </Button>
               
               <Button 
                 variant="outline" 

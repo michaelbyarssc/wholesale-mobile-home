@@ -233,17 +233,6 @@ type Delivery = {
       last_name: string;
     };
   }>;
-  delivery_schedules?: Array<{
-    id: string;
-    pickup_scheduled_date: string | null;
-    pickup_scheduled_time_start: string | null;
-    pickup_scheduled_time_end: string | null;
-    pickup_timezone: string | null;
-    delivery_scheduled_date: string | null;
-    delivery_scheduled_time_start: string | null;
-    delivery_scheduled_time_end: string | null;
-    delivery_timezone: string | null;
-  }>;
 };
 
 const statusColors: Record<string, string> = {
@@ -413,17 +402,6 @@ export const DeliveryManagement = () => {
               first_name,
               last_name
             )
-          ),
-          delivery_schedules (
-            id,
-            pickup_scheduled_date,
-            pickup_scheduled_time_start,
-            pickup_scheduled_time_end,
-            pickup_timezone,
-            delivery_scheduled_date,
-            delivery_scheduled_time_start,
-            delivery_scheduled_time_end,
-            delivery_timezone
           )
         `);
       
@@ -490,37 +468,47 @@ export const DeliveryManagement = () => {
       scheduledPickupDateTz: string;
       notes: string;
     }) => {
-      console.log('📅 Scheduling pickup via RPC:', {
+      console.log('📅 Scheduling pickup with timezone-aware date:', {
         deliveryId,
         driverId,
         scheduledPickupDateTz,
         notes
       });
 
-      // Use secure RPC to schedule factory pickup and assign drivers atomically
-      const { data, error } = await supabase.rpc('schedule_factory_pickup', {
-        p_delivery_id: deliveryId,
-        p_driver_ids: [driverId],
-        p_scheduled_pickup: scheduledPickupDateTz,
-        p_scheduled_delivery: null,
-        p_pickup_address: selectedDelivery?.pickup_address ?? null,
-        p_delivery_address: selectedDelivery?.delivery_address ?? null,
-        p_special_instructions: notes || null,
-      });
+      // Update delivery with timezone-aware scheduled pickup date and status
+      const { error: deliveryError } = await supabase
+        .from('deliveries')
+        .update({
+          scheduled_pickup_date_tz: scheduledPickupDateTz,
+          status: 'factory_pickup_scheduled',
+          special_instructions: notes
+        })
+        .eq('id', deliveryId);
 
-      if (error) {
-        console.error('❌ RPC error:', error);
-        throw error;
+      if (deliveryError) {
+        console.error('❌ Delivery update error:', deliveryError);
+        throw deliveryError;
       }
 
-      const result = data as any;
-      if (result && typeof result === 'object' && result.success === false) {
-        console.error('❌ RPC result error:', result);
-        throw new Error(result.error || 'Failed to schedule factory pickup');
+      // Create or update delivery assignment
+      const { error: assignmentError } = await supabase
+        .from('delivery_assignments')
+        .upsert({
+          delivery_id: deliveryId,
+          driver_id: driverId,
+          role: 'driver',
+          notes: notes,
+          assigned_by: (await supabase.auth.getUser()).data.user?.id
+        }, {
+          onConflict: 'delivery_id,driver_id,role'
+        });
+
+      if (assignmentError) {
+        console.error('❌ Assignment error:', assignmentError);
+        throw assignmentError;
       }
 
-      console.log('✅ RPC scheduling succeeded:', result);
-      return result;
+      console.log('✅ Pickup scheduled successfully');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['deliveries'] });
@@ -536,10 +524,10 @@ export const DeliveryManagement = () => {
         description: "The factory pickup has been successfully scheduled with the driver."
       });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
-        title: "Failed to schedule factory pickup",
-        description: error?.message ? String(error.message) : "Please try again.",
+        title: "Error",
+        description: "Failed to schedule factory pickup. Please try again.",
         variant: "destructive"
       });
       console.error('Error scheduling delivery:', error);
@@ -885,31 +873,6 @@ export const DeliveryManagement = () => {
     return formatDateTimeForDisplay(dateString);
   };
 
-  const getPickupScheduleDisplay = (delivery: Delivery) => {
-    const s = delivery.delivery_schedules?.[0];
-    if (s?.pickup_scheduled_date) {
-      const datePart = format(new Date(s.pickup_scheduled_date), 'MM/dd/yyyy');
-      const timeStart = s.pickup_scheduled_time_start || '';
-      const timeEnd = s.pickup_scheduled_time_end || '';
-      const timeRange = timeStart && timeEnd ? `${timeStart} - ${timeEnd}` : (timeStart || timeEnd);
-      const tz = s.pickup_timezone ? ` (${s.pickup_timezone})` : '';
-      return `${datePart}${timeRange ? ' ' + timeRange : ''}${tz}`;
-    }
-    return null;
-  };
-
-  const getDeliveryScheduleDisplay = (delivery: Delivery) => {
-    const s = delivery.delivery_schedules?.[0];
-    if (s?.delivery_scheduled_date) {
-      const datePart = format(new Date(s.delivery_scheduled_date), 'MM/dd/yyyy');
-      const timeStart = s.delivery_scheduled_time_start || '';
-      const timeEnd = s.delivery_scheduled_time_end || '';
-      const timeRange = timeStart && timeEnd ? `${timeStart} - ${timeEnd}` : (timeStart || timeEnd);
-      const tz = s.delivery_timezone ? ` (${s.delivery_timezone})` : '';
-      return `${datePart}${timeRange ? ' ' + timeRange : ''}${tz}`;
-    }
-    return null;
-  };
   const ScheduleDeliveryDialog = () => (
     <Dialog open={scheduleDialogOpen} onOpenChange={setScheduleDialogOpen}>
       <DialogContent className="max-w-md">
@@ -1090,7 +1053,7 @@ export const DeliveryManagement = () => {
             if (!invoiceError && invoice?.selected_services?.length > 0) {
               const { data: servicesData, error: servicesError } = await supabase
                 .from('services')
-                .select('name, description')
+                .select('name, description, category')
                 .in('id', invoice.selected_services);
 
               if (!servicesError) {
@@ -1299,6 +1262,9 @@ export const DeliveryManagement = () => {
                         {service.description && (
                           <p className="text-sm text-gray-600">{service.description}</p>
                         )}
+                        {service.category && (
+                          <p className="text-xs text-gray-500 mt-1 capitalize">{service.category}</p>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -1392,13 +1358,13 @@ export const DeliveryManagement = () => {
                 <div className="space-y-3">
                   <div className="flex justify-between items-center py-2 border-b border-gray-200">
                     <span className="font-medium text-gray-600">Scheduled Pickup:</span>
-                    <span className="text-gray-900">{getPickupScheduleDisplay(delivery) || getFormattedDate(delivery.scheduled_pickup_date_tz) || (delivery.scheduled_pickup_date ? format(new Date(delivery.scheduled_pickup_date), 'MM/dd/yyyy') : 'Not scheduled')}</span>
+                    <span className="text-gray-900">{getFormattedDate(delivery.scheduled_pickup_date_tz) || 'Not scheduled'}</span>
                   </div>
                 </div>
                 <div className="space-y-3">
                   <div className="flex justify-between items-center py-2 border-b border-gray-200">
                     <span className="font-medium text-gray-600">Scheduled Delivery:</span>
-                    <span className="text-gray-900">{getDeliveryScheduleDisplay(delivery) || getFormattedDate(delivery.scheduled_delivery_date_tz) || (delivery.scheduled_delivery_date ? format(new Date(delivery.scheduled_delivery_date), 'MM/dd/yyyy') : 'Not scheduled')}</span>
+                    <span className="text-gray-900">{getFormattedDate(delivery.scheduled_delivery_date_tz) || 'Not scheduled'}</span>
                   </div>
                 </div>
               </div>
@@ -1561,7 +1527,7 @@ export const DeliveryManagement = () => {
                     </div>
                   </TableCell>
                   <TableCell>{getStatusBadge(delivery.status)}</TableCell>
-                  <TableCell>{getPickupScheduleDisplay(delivery) || getFormattedDate(delivery.scheduled_pickup_date_tz) || (delivery.scheduled_pickup_date ? format(new Date(delivery.scheduled_pickup_date), 'MM/dd/yyyy') : 'Not scheduled')}</TableCell>
+                  <TableCell>{getFormattedDate(delivery.scheduled_pickup_date_tz)}</TableCell>
                   <TableCell>
                     <div className="flex space-x-2">
                       <Button 

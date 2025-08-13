@@ -461,7 +461,7 @@ export const InvoiceManagement = () => {
       console.error('Payment processing error:', error);
       toast({
         title: "Payment Failed",
-        description: typeof error?.message === 'string' ? error.message : "Failed to record payment. Please try again.",
+        description: "Failed to record payment. Please try again.",
         variant: "destructive",
       });
     },

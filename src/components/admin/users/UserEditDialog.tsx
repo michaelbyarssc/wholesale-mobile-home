@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, memo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,7 +31,7 @@ interface UserEditDialogProps {
   onUserUpdated: () => void;
 }
 
-const UserEditDialogComponent = ({ profile, onUserUpdated }: UserEditDialogProps) => {
+export const UserEditDialog = ({ profile, onUserUpdated }: UserEditDialogProps) => {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const { isSuperAdmin } = useUserRoles();
@@ -44,6 +44,9 @@ const UserEditDialogComponent = ({ profile, onUserUpdated }: UserEditDialogProps
   const { toast } = useToast();
 
   // SECURITY: Role information now comes from centralized hook
+  useEffect(() => {
+    console.log(`[SECURITY] UserEditDialog: User isSuperAdmin: ${isSuperAdmin}`);
+  }, [isSuperAdmin]);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -200,6 +203,3 @@ const UserEditDialogComponent = ({ profile, onUserUpdated }: UserEditDialogProps
     </Dialog>
   );
 };
-
-// Memoized export to prevent unnecessary re-renders
-export const UserEditDialog = memo(UserEditDialogComponent);

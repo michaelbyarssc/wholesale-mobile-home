@@ -77,39 +77,24 @@ class AnalyticsTracker {
     return `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
 
-  // Generate a UUID v4 client-side to avoid SELECT after INSERT
-  private generateUUID(): string {
-    const w = typeof window !== 'undefined' ? window : (undefined as any);
-    if (w && w.crypto && typeof w.crypto.randomUUID === 'function') {
-      return w.crypto.randomUUID();
-    }
-    const bytes = new Uint8Array(16);
-    if (w && w.crypto && typeof w.crypto.getRandomValues === 'function') {
-      w.crypto.getRandomValues(bytes);
-    } else {
-      for (let i = 0; i < 16; i++) bytes[i] = Math.floor(Math.random() * 256);
-    }
-    bytes[6] = (bytes[6] & 0x0f) | 0x40;
-    bytes[8] = (bytes[8] & 0x3f) | 0x80;
-    const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, '0'));
-    return `${hex[0]}${hex[1]}${hex[2]}${hex[3]}-${hex[4]}${hex[5]}-${hex[6]}${hex[7]}-${hex[8]}${hex[9]}-${hex[10]}${hex[11]}${hex[12]}${hex[13]}${hex[14]}${hex[15]}`;
-  }
-
   private getDeviceInfo() {
     const userAgent = navigator.userAgent;
     let deviceType = 'desktop';
     let browser = 'unknown';
     let os = 'unknown';
 
+    // Detect device type
     if (/Mobile|Android|iPhone|iPad/.test(userAgent)) {
       deviceType = /iPad/.test(userAgent) ? 'tablet' : 'mobile';
     }
 
+    // Detect browser
     if (userAgent.includes('Chrome')) browser = 'Chrome';
     else if (userAgent.includes('Firefox')) browser = 'Firefox';
     else if (userAgent.includes('Safari')) browser = 'Safari';
     else if (userAgent.includes('Edge')) browser = 'Edge';
 
+    // Detect OS
     if (userAgent.includes('Windows')) os = 'Windows';
     else if (userAgent.includes('Mac')) os = 'macOS';
     else if (userAgent.includes('Linux')) os = 'Linux';
@@ -119,13 +104,12 @@ class AnalyticsTracker {
     return { deviceType, browser, os };
   }
 
-  // Use snake_case keys to match DB column names
-  private getUtmParams(): { utm_source?: string; utm_medium?: string; utm_campaign?: string } {
+  private getUtmParams(): { utmSource?: string; utmMedium?: string; utmCampaign?: string } {
     const urlParams = new URLSearchParams(window.location.search);
     return {
-      utm_source: urlParams.get('utm_source') || undefined,
-      utm_medium: urlParams.get('utm_medium') || undefined,
-      utm_campaign: urlParams.get('utm_campaign') || undefined,
+      utmSource: urlParams.get('utm_source') || undefined,
+      utmMedium: urlParams.get('utm_medium') || undefined,
+      utmCampaign: urlParams.get('utm_campaign') || undefined,
     };
   }
 
@@ -137,13 +121,9 @@ class AnalyticsTracker {
     const utmParams = this.getUtmParams();
 
     try {
-      // Pre-generate session UUID to avoid SELECT after INSERT
-      this.sessionDbId = this.generateUUID();
-
-      await supabase
+      const { data, error } = await supabase
         .from('analytics_sessions')
-        .insert([{
-          id: this.sessionDbId as any,
+        .insert({
           session_id: this.sessionId,
           user_id: this.userId,
           user_agent: navigator.userAgent,
@@ -152,16 +132,26 @@ class AnalyticsTracker {
           browser,
           os,
           ...utmParams,
-        } as any]);
+        })
+        .select('id')
+        .single();
 
+      if (error) {
+        console.error('Failed to initialize analytics session:', error);
+        return;
+      }
+
+      this.sessionDbId = data.id;
       this.isInitialized = true;
 
+      // Track initial page view
       this.trackPageView({
         pagePath: window.location.pathname,
         pageTitle: document.title,
         referrer: document.referrer,
       });
 
+      // Set up beforeunload listener to update session end time
       window.addEventListener('beforeunload', this.endSession.bind(this));
     } catch (error) {
       console.error('Error initializing analytics:', error);
@@ -171,20 +161,22 @@ class AnalyticsTracker {
   async trackPageView(data: PageViewData) {
     if (!this.sessionDbId) return;
 
+    // Update previous page time if exists
     const timeOnPreviousPage = Date.now() - this.pageStartTime;
     this.pageStartTime = Date.now();
 
     try {
-      await supabase.from('analytics_page_views').insert([{
+      await supabase.from('analytics_page_views').insert({
         session_id: this.sessionDbId,
         user_id: this.userId,
         page_path: data.pagePath,
         page_title: data.pageTitle,
         referrer: data.referrer,
         search_query: data.searchQuery,
-        filters_applied: (data.filtersApplied as any) || {},
-      } as any]);
+        filters_applied: data.filtersApplied || {},
+      });
 
+      // Track conversion funnel
       await this.trackConversion({
         funnelStep: 'page_view',
       });
@@ -197,7 +189,7 @@ class AnalyticsTracker {
     if (!this.sessionDbId) return;
 
     try {
-      await supabase.from('analytics_events').insert([{
+      await supabase.from('analytics_events').insert({
         session_id: this.sessionDbId,
         user_id: this.userId,
         event_type: data.eventType,
@@ -205,9 +197,9 @@ class AnalyticsTracker {
         page_path: data.pagePath || window.location.pathname,
         element_id: data.elementId,
         element_text: data.elementText,
-        properties: (data.properties as any) || {},
+        properties: data.properties || {},
         value: data.value,
-      } as any]);
+      });
     } catch (error) {
       console.error('Error tracking event:', error);
     }
@@ -217,18 +209,19 @@ class AnalyticsTracker {
     if (!this.sessionDbId) return;
 
     try {
-      await supabase.from('analytics_mobile_home_views').insert([{
+      await supabase.from('analytics_mobile_home_views').insert({
         session_id: this.sessionDbId,
         user_id: this.userId,
         mobile_home_id: data.mobileHomeId,
         view_type: data.viewType,
         time_spent: data.timeSpent || 0,
         images_viewed: data.imagesViewed || 0,
-        features_clicked: (data.featuresClicked as any) || [],
+        features_clicked: data.featuresClicked || [],
         price_checked: data.priceChecked || false,
         contact_clicked: data.contactClicked || false,
-      } as any]);
+      });
 
+      // Track conversion funnel
       await this.trackConversion({
         funnelStep: 'mobile_home_view',
         mobileHomeId: data.mobileHomeId,
@@ -242,16 +235,16 @@ class AnalyticsTracker {
     if (!this.sessionDbId) return;
 
     try {
-      await supabase.from('analytics_searches').insert([{
+      await supabase.from('analytics_searches').insert({
         session_id: this.sessionDbId,
         user_id: this.userId,
         search_query: data.searchQuery,
-        filters: (data.filters as any) || {},
+        filters: data.filters || {},
         results_count: data.resultsCount || 0,
         result_clicked: data.resultClicked || false,
         clicked_position: data.clickedPosition,
         clicked_mobile_home_id: data.clickedMobileHomeId,
-      } as any]);
+      });
     } catch (error) {
       console.error('Error tracking search:', error);
     }
@@ -261,7 +254,7 @@ class AnalyticsTracker {
     if (!this.sessionDbId) return;
 
     try {
-      await supabase.from('analytics_conversions').insert([{
+      await supabase.from('analytics_conversions').insert({
         session_id: this.sessionDbId,
         user_id: this.userId,
         funnel_step: data.funnelStep,
@@ -269,8 +262,8 @@ class AnalyticsTracker {
         estimate_id: data.estimateId,
         appointment_id: data.appointmentId,
         value: data.value,
-        metadata: (data.metadata as any) || {},
-      } as any]);
+        metadata: data.metadata || {},
+      });
     } catch (error) {
       console.error('Error tracking conversion:', error);
     }
@@ -287,7 +280,7 @@ class AnalyticsTracker {
         .update({
           ended_at: new Date().toISOString(),
           duration_seconds: sessionDuration,
-        } as any)
+        })
         .eq('id', this.sessionDbId);
     } catch (error) {
       console.error('Error ending session:', error);

@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
-import { StorageQuotaManager } from '@/utils/storageQuotaManager';
+
+// Note: Removed global caching to prevent cross-user data contamination
 
 export const useAuthUser = () => {
   const navigate = useNavigate();
@@ -11,16 +12,10 @@ export const useAuthUser = () => {
   const [userProfile, setUserProfile] = useState<{ first_name?: string } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [sessionFingerprint, setSessionFingerprint] = useState<string | null>(null);
-  const [storageError, setStorageError] = useState<boolean>(false);
-  
-  // Add debouncing refs
-  const debounceTimeout = useRef<NodeJS.Timeout | null>(null);
-  const lastAuthCheck = useRef<number>(0);
-  const authTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const emergencyCleanupDone = useRef<boolean>(false);
 
+  // Simplified session security - only clear on actual data contamination
   const clearUserSession = async (reason: string) => {
-    console.log(`[AuthUser] Clearing session: ${reason}`);
+    console.log('🔐 Clearing session:', reason);
     
     // Clear state
     setUser(null);
@@ -36,53 +31,19 @@ export const useAuthUser = () => {
     }
   };
 
-  const emergencyAuthRecovery = useCallback(async () => {
-    try {
-      console.log('[AuthUser] Emergency auth recovery triggered');
-      
-      // Don't clean up Supabase auth tokens during recovery
-      const quotaCheck = StorageQuotaManager.checkQuota();
-      if (quotaCheck.critical) {
-        console.log('[AuthUser] Critical storage quota detected, performing selective cleanup');
-        
-        // Only cleanup non-auth related data
-        const cleanupSuccess = StorageQuotaManager.selectiveCleanup(['cart_data', 'wishlist', 'recent_searches']);
-        console.log('[AuthUser] Selective cleanup completed, success:', cleanupSuccess);
-        
-        if (cleanupSuccess) {
-          // Give Supabase time to re-establish session
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          
-          try {
-            const { data: { session: recoveredSession } } = await supabase.auth.getSession();
-            if (recoveredSession) {
-              setSession(recoveredSession);
-              setUser(recoveredSession.user);
-              setIsLoading(false);
-              return;
-            }
-          } catch (sessionError) {
-            console.error('[AuthUser] Session recovery failed:', sessionError);
-          }
-        }
-      }
-      
-      // Fallback: Clear only local session state, keep Supabase auth intact
-      console.log('[AuthUser] Using graceful fallback authentication');
-      setSession(null);
-      setUser(null);
-      setIsLoading(false);
-      
-    } catch (error) {
-      console.error('[AuthUser] Emergency recovery failed:', error);
-      setIsLoading(false);
-    }
-  }, []);
+  // Simplified debug logging
+  console.log('🔐 useAuthUser: Current state', {
+    userId: user?.id,
+    userEmail: user?.email,
+    isLoading,
+    timestamp: new Date().toISOString()
+  });
 
-  // Only check for critical mismatches
+  // Only check for critical mismatches, not fingerprints
   React.useEffect(() => {
     if (user && session && user.id !== session.user.id) {
-      clearUserSession(`User/Session ID mismatch`);
+      console.error('🚨 Critical user/session mismatch detected');
+      clearUserSession(`User/Session ID mismatch: User(${user.email}) vs Session(${session.user.email})`);
     }
   }, [user, session]);
 
@@ -90,107 +51,59 @@ export const useAuthUser = () => {
     let mounted = true;
     let initialCheckDone = false;
 
-    // Progressive timeout - allow more time for reliable auth
-    authTimeoutRef.current = setTimeout(() => {
-      if (mounted && !initialCheckDone) {
-        console.log('[AuthUser] Progressive auth timeout - checking state after 30s');
-        
-        // Only trigger emergency recovery after multiple failed attempts
-        const lastRecovery = sessionStorage.getItem('last_auth_recovery');
-        const now = Date.now();
-        const recoveryInterval = lastRecovery ? now - parseInt(lastRecovery) : Infinity;
-        
-        // Require 60 seconds between recovery attempts
-        if (recoveryInterval > 60000) {
-          console.log('[AuthUser] Triggering emergency recovery');
-          sessionStorage.setItem('last_auth_recovery', now.toString());
-          emergencyAuthRecovery();
-        } else {
-          console.log('[AuthUser] Skipping recovery - too recent, stopping loading');
-          setIsLoading(false); // Stop loading to allow manual intervention
-        }
-      }
-    }, 30000); // Increased to 30 seconds
-
+    // Simplified auth state change handler
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, newSession) => {
         if (!mounted) return;
         
-        // Clear timeout if auth resolves
-        if (authTimeoutRef.current) {
-          clearTimeout(authTimeoutRef.current);
-          authTimeoutRef.current = null;
-        }
-        
-        // Debounce rapid auth state changes
-        if (debounceTimeout.current) {
-          clearTimeout(debounceTimeout.current);
-        }
-        
-        debounceTimeout.current = setTimeout(() => {
-          try {
-            switch (event) {
-              case 'SIGNED_IN':
-                if (newSession?.user) {
-                  setUser(newSession.user);
-                  setSession(newSession);
-                  setSessionFingerprint(`session_${Date.now()}`);
-                  setStorageError(false);
-                }
-                break;
-                
-              case 'SIGNED_OUT':
-                setUser(null);
-                setSession(null);
-                setUserProfile(null);
-                setSessionFingerprint(null);
-                setStorageError(false);
-                break;
-                
-              case 'TOKEN_REFRESHED':
-                if (newSession?.user) {
-                  setSession(newSession);
-                }
-                break;
+        console.log('🔐 Auth state change:', {
+          event,
+          userId: newSession?.user?.id,
+          userEmail: newSession?.user?.email,
+          timestamp: new Date().toISOString()
+        });
+
+        switch (event) {
+          case 'SIGNED_IN':
+            if (newSession?.user) {
+              console.log('🔐 Setting new session');
+              setUser(newSession.user);
+              setSession(newSession);
+              setSessionFingerprint(`session_${Date.now()}`);
             }
+            break;
             
-            if (initialCheckDone) {
-              setIsLoading(false);
+          case 'SIGNED_OUT':
+            console.log('🔐 Clearing session on sign out');
+            setUser(null);
+            setSession(null);
+            setUserProfile(null);
+            setSessionFingerprint(null);
+            break;
+            
+          case 'TOKEN_REFRESHED':
+            if (newSession?.user) {
+              // Only update session, don't validate aggressively
+              setSession(newSession);
             }
-          } catch (error) {
-            console.error('[AuthUser] Error in auth state change:', error);
-            if (mounted) {
-              emergencyAuthRecovery();
-            }
-          }
-        }, 100); // 100ms debounce
+            break;
+        }
+        
+        if (initialCheckDone) {
+          setIsLoading(false);
+        }
       }
     );
 
     const checkAuth = async () => {
-      // Prevent rapid auth checks
-      const now = Date.now();
-      if (now - lastAuthCheck.current < 500) {
-        return;
-      }
-      lastAuthCheck.current = now;
-      
       try {
-        // Check storage quota but don't block auth
-        const quotaCheck = StorageQuotaManager.checkQuota();
-        if (quotaCheck.critical) {
-          console.log('[AuthUser] Storage quota critical, performing selective cleanup');
-          // Don't block auth - just cleanup in background
-          StorageQuotaManager.selectiveCleanup(['cart_data', 'wishlist', 'recent_searches']);
-        }
-
+        console.log('🔐 Starting auth check');
+        
         const { data: { session: initialSession }, error } = await supabase.auth.getSession();
         
         if (error) {
-          console.error('[AuthUser] Auth session error:', error);
+          console.error('Auth initialization error:', error);
           if (mounted) {
-            // Try emergency recovery for auth errors
-            await emergencyAuthRecovery();
             setIsLoading(false);
           }
           return;
@@ -199,11 +112,16 @@ export const useAuthUser = () => {
         if (!mounted) return;
         
         if (initialSession?.user) {
+          console.log('🔐 Initial session found:', {
+            userId: initialSession.user.id,
+            userEmail: initialSession.user.email
+          });
+          
           setUser(initialSession.user);
           setSession(initialSession);
           setSessionFingerprint(`session_${Date.now()}`);
-          setStorageError(false);
         } else {
+          console.log('🔐 No initial session found');
           setUser(null);
           setSession(null);
           setUserProfile(null);
@@ -212,16 +130,9 @@ export const useAuthUser = () => {
         
         initialCheckDone = true;
         setIsLoading(false);
-        
-        // Clear timeout since auth resolved
-        if (authTimeoutRef.current) {
-          clearTimeout(authTimeoutRef.current);
-          authTimeoutRef.current = null;
-        }
       } catch (error) {
-        console.error('[AuthUser] Critical auth error:', error);
+        console.error('Auth initialization failed:', error);
         if (mounted) {
-          await emergencyAuthRecovery();
           initialCheckDone = true;
           setIsLoading(false);
         }
@@ -233,14 +144,8 @@ export const useAuthUser = () => {
     return () => {
       mounted = false;
       subscription.unsubscribe();
-      if (debounceTimeout.current) {
-        clearTimeout(debounceTimeout.current);
-      }
-      if (authTimeoutRef.current) {
-        clearTimeout(authTimeoutRef.current);
-      }
     };
-  }, [emergencyAuthRecovery]);
+  }, []);
 
   const fetchUserProfile = useCallback(async (userId: string) => {
     if (!userId) {
@@ -249,6 +154,8 @@ export const useAuthUser = () => {
     }
 
     try {
+      console.log('🔐 Fetching profile for user:', userId);
+
       const { data, error } = await supabase
         .from('profiles')
         .select('first_name')
@@ -256,12 +163,15 @@ export const useAuthUser = () => {
         .maybeSingle();
 
       if (error && error.code !== 'PGRST116') {
+        console.error('Error fetching user profile:', error);
         setUserProfile(null);
         return;
       }
       
+      console.log('🔐 Profile fetched:', data);
       setUserProfile(data);
     } catch (error) {
+      console.error('Error fetching user profile:', error);
       setUserProfile(null);
     }
   }, []);
@@ -277,12 +187,21 @@ export const useAuthUser = () => {
 
   const handleLogout = async () => {
     try {
+      console.log('🔐 Starting logout...');
+      
       setUser(null);
       setSession(null);
       setUserProfile(null);
       setSessionFingerprint(null);
       
       const { error } = await supabase.auth.signOut();
+      
+      if (error) {
+        console.error('Logout error:', error);
+      } else {
+        console.log('🔐 Logout successful');
+      }
+      
       navigate('/');
     } catch (error) {
       console.error('Error during logout:', error);
@@ -296,13 +215,16 @@ export const useAuthUser = () => {
     }
   }, [user, fetchUserProfile]);
 
+  // Simplified auth refresh
   const forceRefreshAuth = useCallback(async () => {
     try {
+      console.log('🔐 Refreshing auth state...');
       setIsLoading(true);
       
       const { data: { session: freshSession }, error } = await supabase.auth.getSession();
       
       if (error) {
+        console.error('Error refreshing auth:', error);
         setUser(null);
         setSession(null);
         setUserProfile(null);
@@ -311,16 +233,19 @@ export const useAuthUser = () => {
       }
       
       if (freshSession?.user) {
+        console.log('🔐 Auth refresh successful');
         setUser(freshSession.user);
         setSession(freshSession);
         await fetchUserProfile(freshSession.user.id);
       } else {
+        console.log('🔐 No session found during refresh');
         setUser(null);
         setSession(null);
         setUserProfile(null);
       }
       setIsLoading(false);
     } catch (error) {
+      console.error('Error in forceRefreshAuth:', error);
       setUser(null);
       setSession(null);
       setUserProfile(null);
@@ -336,8 +261,6 @@ export const useAuthUser = () => {
     handleLogout,
     handleProfileUpdated,
     forceRefreshAuth,
-    sessionFingerprint,
-    storageError,
-    emergencyAuthRecovery
+    sessionFingerprint
   };
 };

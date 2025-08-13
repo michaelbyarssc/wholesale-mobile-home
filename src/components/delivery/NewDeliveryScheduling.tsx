@@ -156,9 +156,8 @@ export const NewDeliveryScheduling = () => {
       
       // Convert date and time to timestamp with timezone
       const scheduledDate = new Date(`${format(date, 'yyyy-MM-dd')}T${startTime}:00`);
-      const dateOnly = format(date, 'yyyy-MM-dd');
       
-      // Prepare schedule payload
+      // Update the delivery_schedules table
       const updateData = scheduleType === 'pickup' ? {
         pickup_scheduled_date: scheduledDate.toISOString(),
         pickup_scheduled_time_start: startTime,
@@ -173,37 +172,21 @@ export const NewDeliveryScheduling = () => {
         delivery_timezone: timezone,
       };
 
-      // Ensure a delivery_schedules row exists for this delivery
-      const { data: existingSchedule, error: existingErr } = await supabase
+      // First update the schedule
+      const { error: scheduleError } = await supabase
         .from('delivery_schedules')
-        .select('id')
-        .eq('delivery_id', deliveryId)
-        .maybeSingle();
-      if (existingErr) throw existingErr;
+        .update(updateData)
+        .eq('delivery_id', deliveryId);
 
-      if (existingSchedule) {
-        const { error } = await supabase
-          .from('delivery_schedules')
-          .update(updateData)
-          .eq('id', existingSchedule.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from('delivery_schedules')
-          .insert({ delivery_id: deliveryId, ...updateData });
-        if (error) throw error;
-      }
+      if (scheduleError) throw scheduleError;
 
-      // Update the delivery status and simple date field for fallback display
+      // Then update the delivery status
       const newStatus = scheduleType === 'pickup' ? 'pickup_scheduled' : 'delivery_scheduled';
-      const deliveryUpdate = scheduleType === 'pickup'
-        ? { status: newStatus, scheduled_pickup_date: dateOnly }
-        : { status: newStatus, scheduled_delivery_date: dateOnly };
-
       const { error: deliveryError } = await supabase
         .from('deliveries')
-        .update(deliveryUpdate as any)
+        .update({ status: newStatus })
         .eq('id', deliveryId);
+
       if (deliveryError) throw deliveryError;
 
       return { deliveryId, scheduleType };
@@ -214,7 +197,6 @@ export const NewDeliveryScheduling = () => {
         description: `${scheduleType === 'pickup' ? 'Pickup' : 'Delivery'} has been scheduled successfully.`,
       });
       queryClient.invalidateQueries({ queryKey: ['deliveries-awaiting-scheduling'] });
-      queryClient.invalidateQueries({ queryKey: ['deliveries'] });
       setIsScheduleDialogOpen(false);
       resetForm();
     },

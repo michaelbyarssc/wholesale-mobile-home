@@ -19,35 +19,11 @@ serve(async (req) => {
 
   const { socket, response } = Deno.upgradeWebSocket(req);
 
-  // Initialize Supabase clients and authenticate the caller (JWT enforced at gateway)
-  const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
-  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
-  const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
-  const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-  const authHeader = headers.get('authorization') || headers.get('Authorization') || '';
-  const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
-    global: { headers: { Authorization: authHeader } },
-  });
-
-  let authedUserId: string | null = null;
-  let isAdminUser = false;
-  try {
-    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
-    if (authError || !user) {
-      socket.close(1008, 'Unauthorized');
-    } else {
-      authedUserId = user.id;
-      const [{ data: hasAdmin }, { data: hasSuper }] = await Promise.all([
-        supabase.rpc('has_role', { _user_id: user.id, _role: 'admin' }),
-        supabase.rpc('has_role', { _user_id: user.id, _role: 'super_admin' }),
-      ]);
-      isAdminUser = Boolean(hasAdmin) || Boolean(hasSuper);
-    }
-  } catch (e) {
-    console.error('Auth error:', e);
-    socket.close(1008, 'Unauthorized');
-  }
+  // Initialize Supabase client
+  const supabase = createClient(
+    Deno.env.get('SUPABASE_URL') ?? '',
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+  );
 
   let deliveryId: string | null = null;
   let trackingInterval: number | null = null;
@@ -61,22 +37,6 @@ serve(async (req) => {
         case 'start_tracking':
           if (message.deliveryId) {
             deliveryId = message.deliveryId;
-
-            // Authorization: only admins or assigned drivers can track this delivery
-            if (!authedUserId) {
-              socket.send(JSON.stringify({ type: 'error', error: 'Unauthorized' }));
-              break;
-            }
-
-            const { data: isDriver } = await supabase.rpc('is_driver_for_delivery', {
-              _user_id: authedUserId,
-              _delivery_id: deliveryId
-            });
-
-            if (!isAdminUser && !isDriver) {
-              socket.send(JSON.stringify({ type: 'error', error: 'Forbidden' }));
-              break;
-            }
             
             // Subscribe to real-time updates for this delivery
             deliveryChannel = supabase

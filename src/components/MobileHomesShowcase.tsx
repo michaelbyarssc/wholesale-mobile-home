@@ -114,18 +114,21 @@ export const MobileHomesShowcase = ({
     queryKey: ['public-mobile-homes'],
     queryFn: async () => {
       
-      const { data, error } = await (supabase as any)
-        .rpc('get_public_mobile_homes');
+      const { data, error } = await supabase
+        .from('mobile_homes')
+        .select('*')
+        .eq('active', true)
+        .order('display_order', { ascending: true })
+        .order('created_at', { ascending: true });
       
       if (error) {
         console.error('Error fetching mobile homes:', error);
         throw error;
       }
       
-      const list = (data as any[]) || [];
-      logger.log('Mobile homes fetched:', list.length);
+      logger.log('Mobile homes fetched:', data?.length || 0);
       
-      return list as MobileHome[];
+      return data as MobileHome[];
     },
     staleTime: 3 * 60 * 1000, // Cache for 3 minutes
     gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes

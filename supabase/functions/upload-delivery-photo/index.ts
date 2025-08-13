@@ -1,11 +1,10 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.0';
 
-// Initialize Supabase clients
+// Initialize Supabase client
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 // CORS headers
 const corsHeaders = {
@@ -48,7 +47,7 @@ serve(async (req: Request) => {
     }
 
     // Validate the delivery exists
-    const { data: delivery, error: deliveryError } = await supabaseAdmin
+    const { data: delivery, error: deliveryError } = await supabase
       .from('deliveries')
       .select('id')
       .eq('id', deliveryId)
@@ -61,55 +60,6 @@ serve(async (req: Request) => {
       );
     }
 
-    // Authenticate caller and authorize action
-    const authHeader = req.headers.get('Authorization') || '';
-    if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
-      );
-    }
-
-    const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
-
-    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
-    if (authError || !user) {
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
-      );
-    }
-
-    // Check if user is admin or assigned driver for this delivery
-    const [{ data: isAdmin }, { data: isSuperAdmin }] = await Promise.all([
-      supabaseAdmin.rpc('has_role', { _user_id: user.id, _role: 'admin' }),
-      supabaseAdmin.rpc('has_role', { _user_id: user.id, _role: 'super_admin' }),
-    ]);
-
-    const { data: isDriverForDelivery } = await supabaseAdmin.rpc('is_driver_for_delivery', {
-      _user_id: user.id,
-      _delivery_id: deliveryId,
-    });
-
-    const isAuthorized = Boolean(isAdmin) || Boolean(isSuperAdmin) || Boolean(isDriverForDelivery);
-    if (!isAuthorized) {
-      return new Response(
-        JSON.stringify({ error: 'Forbidden' }),
-        { status: 403, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
-      );
-    }
-
-    // Resolve driver id if not provided
-    let driverIdToUse = driverId;
-    if (!driverIdToUse) {
-      const { data: resolvedDriverId } = await supabaseAdmin.rpc('get_driver_id_for_user', {
-        _user_id: user.id,
-      });
-      if (resolvedDriverId) driverIdToUse = resolvedDriverId as string;
-    }
-
     // Process the base64 image data
     const base64Data = photoData.replace(/^data:image\/\w+;base64,/, '');
     const buffer = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
@@ -119,7 +69,7 @@ serve(async (req: Request) => {
     const filename = `${deliveryId}/${photoType}_${timestamp}.jpg`;
     
     // Upload to Supabase Storage
-    const { data: fileData, error: uploadError } = await supabaseAdmin
+    const { data: fileData, error: uploadError } = await supabase
       .storage
       .from('delivery-photos')
       .upload(filename, buffer, {
@@ -135,17 +85,17 @@ serve(async (req: Request) => {
     }
 
     // Get the public URL for the uploaded file
-    const { data: { publicUrl } } = supabaseAdmin
+    const { data: { publicUrl } } = supabase
       .storage
       .from('delivery-photos')
       .getPublicUrl(filename);
 
     // Create a record in the delivery_photos table
-    const { data: photoRecord, error: recordError } = await supabaseAdmin
+    const { data: photoRecord, error: recordError } = await supabase
       .from('delivery_photos')
       .insert({
         delivery_id: deliveryId,
-        driver_id: driverIdToUse,
+        driver_id: driverId,
         photo_type: photoType,
         photo_url: publicUrl,
         caption: caption,
@@ -158,7 +108,7 @@ serve(async (req: Request) => {
 
     if (recordError) {
       // If we fail to create the record, try to delete the uploaded file
-      await supabaseAdmin
+      await supabase
         .storage
         .from('delivery-photos')
         .remove([filename]);
@@ -171,7 +121,7 @@ serve(async (req: Request) => {
 
     // If it's a signature photo, update the delivery record
     if (photoType === 'signature') {
-      const { error: updateError } = await supabaseAdmin
+      const { error: updateError } = await supabase
         .from('deliveries')
         .update({ 
           customer_signature_url: publicUrl,

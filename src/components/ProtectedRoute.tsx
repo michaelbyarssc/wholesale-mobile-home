@@ -1,11 +1,10 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LoadingSpinner } from '@/components/layout/LoadingSpinner';
 import { useUserRoles } from '@/hooks/useUserRoles';
 import { useAuthUser } from '@/hooks/useAuthUser';
-import { AuthDebugPanel } from '@/components/debug/AuthDebugPanel';
-import { Button } from '@/components/ui/button';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { logger } from '@/utils/logger';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -21,146 +20,182 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   superAdminOnly = false
 }) => {
   const navigate = useNavigate();
-  const { user, isLoading: authLoading, storageError, emergencyAuthRecovery } = useAuthUser();
-  const { isAdmin, isSuperAdmin, isLoading: rolesLoading } = useUserRoles();
+  const { user, isLoading: authLoading } = useAuthUser();
+  const { isAdmin, isSuperAdmin, isLoading: rolesLoading, verifyAdminAccess, userRoles } = useUserRoles();
   const [authChecked, setAuthChecked] = useState(false);
-  const [showDebugPanel, setShowDebugPanel] = useState(false);
-  const [forceTimeout, setForceTimeout] = useState(false);
-  const mountedRef = useRef(true);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [debugInfo, setDebugInfo] = useState<any>({});
+  const [retryCount, setRetryCount] = useState(0);
+  const [allowAdmin, setAllowAdmin] = useState(false);
 
-  useEffect(() => {
-    // Progressive timeout - only force after auth has had reasonable time
-    timeoutRef.current = setTimeout(() => {
-      // Only timeout if both are loading for extended period
-      if (authLoading && rolesLoading) {
-        console.log('[ProtectedRoute] Auth and roles loading timeout - forcing continuation');
-        setForceTimeout(true);
-      } else if (authLoading && !user) {
-        console.log('[ProtectedRoute] Auth loading timeout - no user found');
-        setForceTimeout(true);
-      }
-    }, 45000); // Increased to 45 seconds for better reliability
-
-    return () => {
-      mountedRef.current = false;
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
+  // Comprehensive debugging function
+  const logDebugInfo = (stage: string) => {
+    const info = {
+      stage,
+      timestamp: new Date().toISOString(),
+      user: user ? { id: user.id, email: user.email } : null,
+      authLoading,
+      rolesLoading,
+      isAdmin,
+      isSuperAdmin,
+      userRoles: userRoles.map(r => r.role),
+      authChecked,
+      retryCount,
+      allowAdmin,
+      requireAuth,
+      adminOnly,
+      superAdminOnly,
+      currentPath: window.location.pathname
     };
-  }, [authLoading, rolesLoading, user]);
+    
+    console.log(`[DEBUG] ProtectedRoute ${stage}:`, info);
+    setDebugInfo(info);
+    return info;
+  };
+
+  // Direct database verification as fallback
+  const verifyAdminDirectly = async (userId: string): Promise<boolean> => {
+    try {
+      console.log(`[FALLBACK] Checking admin status directly for user ${userId}`);
+      const { data, error } = await supabase.rpc('is_admin', { user_id: userId });
+      
+      if (error) {
+        console.error('[FALLBACK] Error in direct admin check:', error);
+        return false;
+      }
+      
+      console.log(`[FALLBACK] Direct admin check result: ${data}`);
+      return data === true;
+    } catch (err) {
+      console.error('[FALLBACK] Exception in direct admin check:', err);
+      return false;
+    }
+  };
 
   useEffect(() => {
-    const checkAccess = () => {
-      if (!mountedRef.current) return;
-
-      // Clear timeout since we're processing
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-        timeoutRef.current = null;
+    // Timeout protection
+    const timeoutId = setTimeout(() => {
+      if (!authChecked && retryCount < 3) {
+        console.warn(`[TIMEOUT] Auth check taking too long, retry ${retryCount + 1}`);
+        setRetryCount(prev => prev + 1);
+        setAuthChecked(true);
       }
+    }, 5000);
 
-      // Still loading auth or roles (unless forced timeout)
-      if ((authLoading || rolesLoading) && !forceTimeout) {
-        return;
-      }
-
-      // If force timeout, we proceed with current state
-      if (forceTimeout) {
-        console.log('[ProtectedRoute] Proceeding due to force timeout');
-      }
-
-      // No user but auth is required
-      if (requireAuth && !user) {
-        navigate('/auth');
-        return;
-      }
-
-      // User found but doesn't meet role requirements
-      if (user) {
-        if (superAdminOnly && !isSuperAdmin) {
-          navigate('/');
-          return;
-        }
+    const checkAuthAndRoles = async () => {
+      try {
+        const debugInfo = logDebugInfo('START');
         
-        if (adminOnly && !isAdmin) {
-          navigate('/');
+        // Wait a bit if still loading
+        if (authLoading || rolesLoading) {
+          console.log(`[WAIT] Still loading - authLoading=${authLoading}, rolesLoading=${rolesLoading}`);
           return;
         }
-      }
 
-      // All checks passed
-      setAuthChecked(true);
+        if (!user) {
+          logDebugInfo('NO_USER');
+          if (requireAuth) {
+            console.log('[REDIRECT] No user, redirecting to /auth');
+            navigate('/auth');
+          }
+          setAuthChecked(true);
+          clearTimeout(timeoutId);
+          return;
+        }
+
+        logDebugInfo('USER_FOUND');
+        setAllowAdmin(false);
+
+        // For admin routes, do comprehensive checking
+        if (adminOnly || superAdminOnly) {
+          console.log(`[ADMIN_CHECK] Checking admin access - isAdmin=${isAdmin}, isSuperAdmin=${isSuperAdmin}`);
+          console.log(`[ADMIN_CHECK] User roles:`, userRoles.map(r => r.role));
+
+          // Use local verified flag to avoid race conditions with state updates
+          let adminVerified = isAdmin;
+
+          // If hook says not admin, verify with database
+          if (adminOnly && !adminVerified) {
+            console.log('[FALLBACK] Hook says not admin, checking database directly...');
+            const dbAdminStatus = await verifyAdminDirectly(user.id);
+            console.log(`[FALLBACK] DB admin status: ${dbAdminStatus}`);
+            if (dbAdminStatus) {
+              console.warn('[OVERRIDE] DB verified admin; allowing access while roles refresh');
+              adminVerified = true;
+              setAllowAdmin(true);
+            }
+          }
+
+          if (superAdminOnly && !isSuperAdmin) {
+            console.warn(`[ACCESS_DENIED] Super admin required but user ${user.id} is not super admin`);
+            logDebugInfo('SUPER_ADMIN_DENIED');
+            navigate('/');
+            setAuthChecked(true);
+            clearTimeout(timeoutId);
+            return;
+          }
+          
+          if (adminOnly && !adminVerified) {
+            console.warn(`[ACCESS_DENIED] Admin required but user ${user.id} is not admin`);
+            logDebugInfo('ADMIN_DENIED');
+            navigate('/');
+            setAuthChecked(true);
+            clearTimeout(timeoutId);
+            return;
+          }
+        }
+
+        console.log(`[ACCESS_GRANTED] User ${user.id} granted access`);
+        logDebugInfo('ACCESS_GRANTED');
+        setAuthChecked(true);
+        clearTimeout(timeoutId);
+        
+      } catch (error) {
+        console.error('[ERROR] ProtectedRoute error:', error);
+        logDebugInfo('ERROR');
+        if (requireAuth) {
+          navigate('/auth');
+        }
+        setAuthChecked(true);
+        clearTimeout(timeoutId);
+      }
     };
 
-    checkAccess();
-  }, [user, isAdmin, isSuperAdmin, authLoading, rolesLoading, requireAuth, adminOnly, superAdminOnly, navigate, forceTimeout]);
+    checkAuthAndRoles();
 
-  // Show loading while auth/roles are loading or access hasn't been checked
-  if ((authLoading || rolesLoading || !authChecked) && !forceTimeout && !storageError) {
+    return () => clearTimeout(timeoutId);
+  }, [user, isAdmin, isSuperAdmin, authLoading, rolesLoading, requireAuth, adminOnly, superAdminOnly, navigate, retryCount, allowAdmin]);
+
+  // Show loading while checking auth and roles with debug info
+  if (authLoading || rolesLoading || !authChecked) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex flex-col items-center justify-center space-y-4">
         <LoadingSpinner />
+        {process.env.NODE_ENV === 'development' && (
+          <div className="text-xs text-muted-foreground max-w-md">
+            <div>Auth Loading: {authLoading ? 'Yes' : 'No'}</div>
+            <div>Roles Loading: {rolesLoading ? 'Yes' : 'No'}</div>
+            <div>Auth Checked: {authChecked ? 'Yes' : 'No'}</div>
+            <div>User: {user?.email || 'None'}</div>
+            <div>Is Admin: {isAdmin ? 'Yes' : 'No'}</div>
+            <div>Retry Count: {retryCount}</div>
+            {userRoles.length > 0 && <div>Roles: {userRoles.map(r => r.role).join(', ')}</div>}
+          </div>
+        )}
       </div>
     );
   }
 
-  // Show emergency options if there's a storage error or force timeout
-  if (storageError || forceTimeout || showDebugPanel) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <div className="space-y-4 w-full max-w-2xl">
-          {(storageError || forceTimeout) && (
-            <Alert>
-              <AlertDescription>
-                {storageError && "Storage quota exceeded. "}
-                {forceTimeout && "Authentication timeout occurred. "}
-                Emergency options available below.
-              </AlertDescription>
-            </Alert>
-          )}
-          
-          {!showDebugPanel && (
-            <div className="text-center space-y-4">
-              <Button onClick={() => setShowDebugPanel(true)}>
-                Show Debug Panel
-              </Button>
-              <Button variant="outline" onClick={emergencyAuthRecovery}>
-                Emergency Recovery
-              </Button>
-              <Button variant="outline" onClick={() => window.location.reload()}>
-                Reload Page
-              </Button>
-            </div>
-          )}
-          
-          {showDebugPanel && (
-            <div className="space-y-4">
-              <Button 
-                variant="outline" 
-                onClick={() => setShowDebugPanel(false)}
-              >
-                Hide Debug Panel
-              </Button>
-              <AuthDebugPanel />
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  // Final access control checks
+  // Access control checks
   if (requireAuth && !user) {
-    return null;
+    return null; // Redirect handled in useEffect
   }
 
   if (superAdminOnly && !isSuperAdmin) {
-    return null;
+    return null; // Redirect handled in useEffect
   }
 
-  if (adminOnly && !isAdmin) {
-    return null;
+  if (adminOnly && !isAdmin && !allowAdmin) {
+    return null; // Redirect handled in useEffect
   }
 
   return <>{children}</>;

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, memo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,7 +13,7 @@ interface UserFormProps {
   onUserCreated: () => void;
 }
 
-const UserFormComponent = ({ onUserCreated }: UserFormProps) => {
+export const UserForm = ({ onUserCreated }: UserFormProps) => {
   const [newUserEmail, setNewUserEmail] = useState('');
   const [newUserFirstName, setNewUserFirstName] = useState('');
   const [newUserLastName, setNewUserLastName] = useState('');
@@ -24,6 +24,9 @@ const UserFormComponent = ({ onUserCreated }: UserFormProps) => {
   const { toast } = useToast();
 
   // SECURITY: Role information now comes from centralized hook
+  useEffect(() => {
+    console.log(`[SECURITY] UserForm: User isSuperAdmin: ${isSuperAdmin}`);
+  }, [isSuperAdmin]);
 
   const createUserDirectly = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -228,6 +231,3 @@ const UserFormComponent = ({ onUserCreated }: UserFormProps) => {
     </Card>
   );
 };
-
-// Memoized export to prevent unnecessary re-renders
-export const UserForm = memo(UserFormComponent);

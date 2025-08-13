@@ -3,9 +3,6 @@ import { User, Session } from '@supabase/supabase-js';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/integrations/supabase/types';
 import { useStorageMaintenance } from '@/hooks/useStorageMaintenance';
-import { StorageQuotaManager } from '@/utils/storageQuotaManager';
-import { AuthStabilizer } from '@/utils/authStabilizer';
-import { devLog, devError } from '@/utils/environmentUtils';
 
 const SUPABASE_URL = "https://vgdreuwmisludqxphsph.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZnZHJldXdtaXNsdWRxeHBoc3BoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA3MDk2OTgsImV4cCI6MjA2NjI4NTY5OH0.gnJ83GgBWV4tb-cwWJXY0pPG2bGAyTK3T2IojP4llR8";
@@ -44,14 +41,14 @@ export const useSessionManager = () => {
 export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [sessions, setSessions] = useState<SessionData[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
-  const { checkStorageIntegrity, cleanupOrphanedStorage, emergencyCleanup } = useStorageMaintenance();
+  const { checkStorageIntegrity, cleanupOrphanedStorage } = useStorageMaintenance();
   
   // Client cache to prevent excessive recreation
   const clientCache = useRef<Map<string, SupabaseClient<Database>>>(new Map());
   const broadcastChannelRef = useRef<BroadcastChannel | null>(null);
   const storageValidationInterval = useRef<NodeJS.Timeout | null>(null);
 
-  // Create cached client function with quota management and instance limits
+  // Create cached client function with better key management
   const getCachedClient = useCallback((storageKey: string, userId?: string, timestamp?: number) => {
     // Try exact key first
     if (clientCache.current.has(storageKey)) {
@@ -65,56 +62,22 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
         if (key.startsWith(userPattern)) {
           // Reuse existing client for same user
           clientCache.current.set(storageKey, client);
-          devLog('🔐 Reusing cached client for user:', userId);
+          console.log('🔐 Reusing cached client for user:', userId);
           return client;
         }
       }
-      
-      // Check client instance limits
-      if (!AuthStabilizer.canCreateClientInstance(userId)) {
-        devError(`❌ Cannot create client for ${userId} - instance limit reached`);
-        return null;
-      }
     }
     
-    // Check storage quota before creating client
-    const quotaCheck = StorageQuotaManager.checkQuota();
-    if (quotaCheck.critical) {
-      devLog('🚨 Storage quota critical, performing emergency cleanup before client creation');
-      const cleanupSuccess = StorageQuotaManager.emergencyCleanup();
-      if (!cleanupSuccess) {
-        devError('❌ Failed to free storage space for new client');
-        return null;
+    const client = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+      auth: {
+        storageKey: storageKey,
+        storage: window.localStorage
       }
-    }
+    });
     
-    try {
-      const client = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
-        auth: {
-          storageKey: storageKey,
-          storage: {
-            getItem: (key: string) => localStorage.getItem(key),
-            setItem: (key: string, value: string) => {
-              const success = StorageQuotaManager.safeSetItem(key, value);
-              if (!success) {
-                throw new Error(`Failed to store ${key} - quota exceeded`);
-              }
-            },
-            removeItem: (key: string) => localStorage.removeItem(key)
-          }
-        }
-      });
-      
-      clientCache.current.set(storageKey, client);
-      if (userId) {
-        AuthStabilizer.registerClientInstance(userId);
-      }
-      devLog('🔐 Created new cached client for key:', storageKey);
-      return client;
-    } catch (error) {
-      devError('❌ Failed to create Supabase client:', error);
-      return null;
-    }
+    clientCache.current.set(storageKey, client);
+    console.log('🔐 Created new cached client for key:', storageKey);
+    return client;
   }, []);
 
   // Initialize from localStorage on mount
@@ -198,7 +161,7 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
     };
   }, [checkStorageIntegrity, cleanupOrphanedStorage, getCachedClient]);
 
-  // Save sessions to localStorage whenever they change (with quota management)
+  // Save sessions to localStorage whenever they change
   useEffect(() => {
     try {
       const sessionsToStore = sessions.map(session => ({
@@ -209,22 +172,15 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
         createdAt: session.createdAt.toISOString()
       }));
       
-      const success = StorageQuotaManager.safeSetItem('wmh_sessions', JSON.stringify(sessionsToStore));
-      if (!success) {
-        devError('❌ Failed to save sessions due to storage quota');
-        // Try emergency cleanup and retry once
-        if (StorageQuotaManager.emergencyCleanup()) {
-          StorageQuotaManager.safeSetItem('wmh_sessions', JSON.stringify(sessionsToStore));
-        }
-      }
+      localStorage.setItem('wmh_sessions', JSON.stringify(sessionsToStore));
       
       if (activeSessionId) {
-        StorageQuotaManager.safeSetItem('wmh_active_session', activeSessionId);
+        localStorage.setItem('wmh_active_session', activeSessionId);
       } else {
         localStorage.removeItem('wmh_active_session');
       }
     } catch (error) {
-      devError('Error saving sessions to localStorage:', error);
+      console.error('Error saving sessions to localStorage:', error);
     }
   }, [sessions, activeSessionId]);
 
@@ -319,17 +275,10 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
   }, []);
 
   const addSession = useCallback(async (user: User, session: Session): Promise<string> => {
-    // Check initialization guard to prevent duplicate sessions
-    if (AuthStabilizer.isInitializing(user.id)) {
-      devLog(`⏭️ Skipping session creation for ${user.email} - initialization in progress`);
-      const existingSession = sessions.find(s => s.user.id === user.id);
-      return existingSession?.id || '';
-    }
-
     // Check for existing session for this user first
     const existingSession = sessions.find(s => s.user.id === user.id);
     if (existingSession) {
-      devLog('🔐 Session already exists for user:', user.email, 'switching to existing');
+      console.log('🔐 Session already exists for user:', user.email, 'switching to existing');
       setActiveSessionId(existingSession.id);
       return existingSession.id;
     }
@@ -341,8 +290,6 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
         const prevKey = `wmh_session_${prevSession.user.id}_${ts}`;
         // Remove from client cache
         clientCache.current.delete(prevKey);
-        // Unregister client instance
-        AuthStabilizer.unregisterClientInstance(prevSession.user.id);
         // Remove any cache entries for same user
         const userPattern = `wmh_session_${prevSession.user.id}_`;
         for (const key of clientCache.current.keys()) {
@@ -361,16 +308,10 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
     const sessionId = `session_${user.id}_${timestamp}`;
     const storageKey = `wmh_session_${user.id}_${timestamp}`;
     
-    // Set initialization guard
-    AuthStabilizer.setInitializing(user.id, true);
-    
-    try {
-      // Use cached client creation
-      const client = getCachedClient(storageKey, user.id, timestamp);
-      if (!client) {
-        throw new Error('Failed to create Supabase client - quota or instance limit reached');
-      }
+    // Use cached client creation
+    const client = getCachedClient(storageKey);
 
+    try {
       // Set the session in the client
       await client.auth.setSession({
         access_token: session.access_token,
@@ -403,17 +344,13 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
       setActiveSessionId(sessionId);
       broadcastSessionChange();
       
-      devLog('🔐 Added new session:', sessionId, 'for user:', user.email);
+      console.log('🔐 Added new session:', sessionId, 'for user:', user.email);
       return sessionId;
     } catch (error) {
-      devError('🔐 Error adding session:', error);
+      console.error('🔐 Error adding session:', error);
       // Clean up cached client on error
       clientCache.current.delete(storageKey);
-      AuthStabilizer.unregisterClientInstance(user.id);
       throw error;
-    } finally {
-      // Always release initialization guard
-      AuthStabilizer.setInitializing(user.id, false);
     }
   }, [sessions, getCachedClient, broadcastSessionChange]);
 
@@ -427,9 +364,6 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
         
         // Remove from client cache - key fix
         clientCache.current.delete(storageKey);
-        
-        // Unregister client instance
-        AuthStabilizer.unregisterClientInstance(session.user.id);
         
         // Also remove any other cache entries for this user (cleanup orphaned entries)
         const userPattern = `wmh_session_${session.user.id}_`;
@@ -447,7 +381,7 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
           }
         });
         
-        devLog('🔐 Removed session:', sessionId, 'for user:', session.user.email);
+        console.log('🔐 Removed session:', sessionId, 'for user:', session.user.email);
       }
       return prev.filter(s => s.id !== sessionId);
     });
@@ -473,7 +407,7 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
     if (session) {
       setActiveSessionId(sessionId);
       broadcastSessionChange();
-      devLog('🔐 Switched to session:', sessionId, 'for user:', session.user.email);
+      console.log('🔐 Switched to session:', sessionId, 'for user:', session.user.email);
     }
   }, [sessions, broadcastSessionChange]);
 
@@ -483,9 +417,8 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
       const timestamp = new Date(session.createdAt).getTime();
       const storageKey = `wmh_session_${session.user.id}_${timestamp}`;
       
-      // Remove from client cache and unregister instance
+      // Remove from client cache
       clientCache.current.delete(storageKey);
-      AuthStabilizer.unregisterClientInstance(session.user.id);
       
       // Clean up storage keys
       Object.keys(localStorage).forEach(key => {
@@ -503,10 +436,7 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
     localStorage.removeItem('wmh_sessions');
     localStorage.removeItem('wmh_active_session');
     broadcastSessionChange();
-    // Clear auth stabilizer state
-    AuthStabilizer.cleanup();
-    
-    devLog('🔐 Cleared all sessions and storage');
+    console.log('🔐 Cleared all sessions and storage');
   }, [sessions, broadcastSessionChange]);
 
   const getSessionClient = useCallback((sessionId?: string): SupabaseClient<Database> | null => {

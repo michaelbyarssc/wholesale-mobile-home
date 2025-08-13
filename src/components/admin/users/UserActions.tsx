@@ -1,4 +1,4 @@
-import React, { useState, useEffect, memo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
@@ -13,13 +13,16 @@ interface UserActionsProps {
   onUserUpdated: () => void;
 }
 
-const UserActionsComponent = ({ profile, onUserUpdated }: UserActionsProps) => {
+export const UserActions = ({ profile, onUserUpdated }: UserActionsProps) => {
   const [resettingPassword, setResettingPassword] = useState<string | null>(null);
   const [deletingUser, setDeletingUser] = useState<string | null>(null);
   const { isSuperAdmin } = useUserRoles();
   const { toast } = useToast();
 
   // SECURITY: Role information now comes from centralized hook
+  useEffect(() => {
+    console.log(`[SECURITY] UserActions: User isSuperAdmin: ${isSuperAdmin}`);
+  }, [isSuperAdmin]);
 
   const resetUserPassword = async (userId: string, userEmail: string) => {
     try {
@@ -277,6 +280,3 @@ const UserActionsComponent = ({ profile, onUserUpdated }: UserActionsProps) => {
     </div>
   );
 };
-
-// Memoized export to prevent unnecessary re-renders
-export const UserActions = memo(UserActionsComponent);

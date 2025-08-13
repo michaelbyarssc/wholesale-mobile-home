@@ -85,10 +85,11 @@ const EstimateForm = () => {
     }
   };
 
-const fetchServices = async () => {
+  const fetchServices = async () => {
     try {
-      const { data, error } = await (supabase as any)
-        .rpc('get_public_services');
+      const { data, error } = await supabase
+        .from('services')
+        .select('*');
 
       if (error) {
         console.error('Error fetching services:', error);
@@ -98,7 +99,7 @@ const fetchServices = async () => {
           variant: "destructive",
         });
       } else {
-        setServices(((data as any[]) || []));
+        setServices(data || []);
       }
     } catch (error) {
       console.error('Error fetching services:', error);
@@ -112,8 +113,10 @@ const fetchServices = async () => {
 
   const fetchMobileHomes = async () => {
     try {
-      const { data, error } = await (supabase as any)
-        .rpc('get_public_mobile_homes');
+      const { data, error } = await supabase
+        .from('mobile_homes')
+        .select('*')
+        .eq('active', true);
 
       if (error) {
         console.error('Error fetching mobile homes:', error);
@@ -123,7 +126,7 @@ const fetchServices = async () => {
           variant: "destructive",
         });
       } else {
-        setMobileHomes(((data as any[]) || []));
+        setMobileHomes(data || []);
       }
     } catch (error) {
       console.error('Error fetching mobile homes:', error);

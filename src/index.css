@@ -154,6 +154,38 @@
   }
 }
 
+@layer utilities {
+  /* Core Web Vitals and performance optimizations */
+  .contain-layout-style-paint {
+    contain: layout style paint;
+  }
+  
+  .transform-gpu {
+    transform: translateZ(0);
+  }
+  
+  .will-change-transform {
+    will-change: transform;
+  }
+  
+  /* Optimize carousels for better performance */
+  .carousel-optimized {
+    will-change: transform;
+    contain: layout style paint;
+  }
+  
+  .carousel-optimized .embla__slide {
+    transform: translateZ(0);
+    backface-visibility: hidden;
+  }
+  
+  /* Content visibility for better rendering performance */
+  .content-visibility-auto {
+    content-visibility: auto;
+    contain-intrinsic-size: 0 500px;
+  }
+}
+
 @layer base {
   * {
     @apply border-border;

@@ -7,7 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
 import { useSessionAwareShoppingCart } from '@/hooks/useSessionAwareShoppingCart';
 import { useMultiUserAuth } from '@/hooks/useMultiUserAuth';
-import { usePerformanceMonitor } from '@/hooks/usePerformanceMonitor';
+import { useOptimizedPerformance } from '@/hooks/useOptimizedPerformance';
 import { useViewportSize } from '@/hooks/useViewportSize';
 import { MultiUserHeader } from '@/components/auth/MultiUserHeader';
 import { ChatWidget } from '@/components/chat/ChatWidget';
@@ -37,8 +37,13 @@ const Index = () => {
   
   const navigate = useNavigate();
   
-  // Performance and viewport hooks
-  const { markFeature, measureFeature } = usePerformanceMonitor();
+  // Performance optimization and viewport hooks
+  const { reoptimize } = useOptimizedPerformance({
+    enableScrollOptimization: true,
+    enableImageLazyLoading: true,
+    enableCarouselOptimization: true,
+    scrollThrottle: 16
+  });
   const { isMobile, isTablet } = useViewportSize();
   
   // Multi-user authentication

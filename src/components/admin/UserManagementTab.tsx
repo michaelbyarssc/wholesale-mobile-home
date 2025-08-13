@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, memo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -14,7 +14,7 @@ import { FixProfilesButton } from './users/FixProfilesButton';
 import { UserProfile } from './users/UserEditDialog';
 import { LoadingSpinner } from '@/components/loading/LoadingSpinner';
 
-export const UserManagementTab = () => {
+export const UserManagementTab = memo(() => {
   const [userProfiles, setUserProfiles] = useState<UserProfile[]>([]);
   const [pendingApprovals, setPendingApprovals] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -30,23 +30,15 @@ export const UserManagementTab = () => {
     try {
       setLoading(true);
       setIsDataReady(false);
-      if (process.env.NODE_ENV === 'development') {
-        console.log(`[SECURITY] Fetching user profiles for user: ${currentUserId}, isSuperAdmin: ${userIsSuperAdmin}`);
-      }
       
       // Get profiles data with proper filtering
       let profilesQuery = supabase
         .from('profiles')
         .select('*');
 
-      // SECURITY: Filter based on user role - super admins see all, others see only their created users
+      // Filter based on user role - super admins see all, others see only their created users
       if (!userIsSuperAdmin && currentUserId) {
         profilesQuery = profilesQuery.eq('created_by', currentUserId);
-      } else if (userIsSuperAdmin) {
-        // Super admin sees all profiles
-        if (process.env.NODE_ENV === 'development') {
-          console.log('[SECURITY] Super admin accessing all profiles');
-        }
       }
 
       // Fetch all data simultaneously using Promise.all for better performance
@@ -70,11 +62,7 @@ export const UserManagementTab = () => {
       }
 
       if (rolesError) {
-        console.error('[SECURITY] Error fetching roles:', rolesError);
-      }
-
-      if (process.env.NODE_ENV === 'development') {
-        console.log('Data fetched - Profiles:', profiles?.length || 0, 'Markups:', customerMarkups?.length || 0, 'Roles:', allRoles?.length || 0);
+        console.error('Error fetching roles:', rolesError);
       }
 
       // Transform profiles data into UserProfile format
@@ -119,18 +107,13 @@ export const UserManagementTab = () => {
       const approvedUsers = combinedProfiles.filter(profile => profile.approved === true);
       const pendingUsers = combinedProfiles.filter(profile => profile.approved === false || profile.approved === null);
 
-      if (process.env.NODE_ENV === 'development') {
-        console.log('Approved users:', approvedUsers.length);
-        console.log('Pending users:', pendingUsers.length);
-      }
-
       setUserProfiles(approvedUsers);
       setPendingApprovals(pendingUsers);
       
       // Mark data as ready after all processing is complete
       setIsDataReady(true);
     } catch (error) {
-      console.error('[SECURITY] Error fetching user profiles:', error);
+      console.error('Error fetching user profiles:', error);
       toast({
         title: "Error",
         description: "Failed to fetch user profiles",
@@ -142,11 +125,7 @@ export const UserManagementTab = () => {
   }, [toast]);
 
   useEffect(() => {
-    // SECURITY: Use centralized role management
     if (!rolesLoading && currentUser) {
-      if (process.env.NODE_ENV === 'development') {
-        console.log(`[SECURITY] UserManagementTab: User ${currentUser.id} isSuperAdmin: ${isSuperAdmin}`);
-      }
       fetchUserProfiles(currentUser.id, isSuperAdmin);
     }
   }, [currentUser, isSuperAdmin, rolesLoading, fetchUserProfiles]);
@@ -170,9 +149,6 @@ export const UserManagementTab = () => {
   }, [userProfiles, debouncedSearchQuery]);
 
   const handleUserUpdated = useCallback(() => {
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[SECURITY] User updated, refreshing profiles');
-    }
     if (currentUser) {
       fetchUserProfiles(currentUser.id, isSuperAdmin);
     }
@@ -230,4 +206,4 @@ export const UserManagementTab = () => {
       </Card>
     </div>
   );
-};
+});

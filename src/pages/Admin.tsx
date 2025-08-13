@@ -38,32 +38,9 @@ const Admin = () => {
   // SECURITY: Enhanced admin validation with session checks
   const isSecureAdmin = isAdmin && user && session && user.id === session.user.id;
   
-  // SECURITY: Enhanced debug logging with session validation - only in development
-  if (process.env.NODE_ENV === 'development') {
-    console.log('🔐 Admin Panel State:', {
-      userEmail: user?.email,
-      userId: user?.id,
-      sessionUserId: session?.user?.id,
-      sessionUserEmail: session?.user?.email,
-      isAdmin,
-      isSuperAdmin,
-      isSecureAdmin,
-      userRoles: userRoles.map(r => r.role),
-      authLoading,
-      rolesLoading,
-      sessionMatch: user?.id === session?.user?.id,
-      timestamp: new Date().toISOString()
-    });
-  }
-
-  // SECURITY: Alert on session mismatch
+  // Alert on session mismatch
   if (user && session && user.id !== session.user.id) {
-    console.error('🚨 SECURITY ALERT: User/Session mismatch in Admin panel!', {
-      userId: user.id,
-      sessionUserId: session.user.id,
-      userEmail: user.email,
-      sessionUserEmail: session.user.email
-    });
+    console.error('SECURITY ALERT: User/Session mismatch in Admin panel!');
   }
 
   // SECURITY: Removed automatic refresh to prevent infinite loops
@@ -75,7 +52,6 @@ const Admin = () => {
       if (user && !authLoading && !rolesLoading) {
         const isVerifiedAdmin = await verifyAdminAccess();
         if (!isVerifiedAdmin) {
-          console.warn('⚠️ Admin access verification failed - keeping session, showing limited UI');
           toast({
             title: 'Access check',
             description: 'Admin privileges not verified yet. Try refresh or contact support.',
@@ -93,10 +69,8 @@ const Admin = () => {
       // Set default tab based on role
       if (isSuperAdmin) {
         setActiveTab('mobile-homes');
-        console.log('🔐 Admin: Super admin detected, setting tab to mobile-homes');
       } else {
         setActiveTab('sales');
-        console.log('🔐 Admin: Regular admin detected, setting tab to sales');
       }
     }
   }, [isSuperAdmin, authLoading, rolesLoading, isSecureAdmin]);
@@ -236,11 +210,6 @@ const Admin = () => {
     </div>
   );
 
-  // Debug final render state - only in development
-  if (process.env.NODE_ENV === 'development') {
-    console.log('Admin: RENDER - isSuperAdmin:', isSuperAdmin, 'isMobile:', isMobile, 'activeTab:', activeTab);
-    console.log('Admin: RENDER - user:', user?.email);
-  }
 
   return (
     <div className="min-h-screen bg-background">

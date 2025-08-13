@@ -29,8 +29,9 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
   const [isLoaded, setIsLoaded] = useState(false);
   const [isError, setIsError] = useState(false);
   const [imageSrc, setImageSrc] = useState(lazy ? '' : src);
-  const imgRef = useRef<HTMLImageElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
+  const fallbackTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (!lazy) {
@@ -38,26 +39,40 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
       return;
     }
 
-    const img = imgRef.current;
-    if (!img) return;
+    const container = containerRef.current;
+    if (!container) return;
+
+    // Fallback: load image after 2 seconds if intersection observer fails
+    fallbackTimeoutRef.current = setTimeout(() => {
+      if (!imageSrc) {
+        console.log('Fallback loading image:', src);
+        setImageSrc(src);
+      }
+    }, 2000);
 
     // Create intersection observer for lazy loading
     observerRef.current = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
           setImageSrc(src);
+          if (fallbackTimeoutRef.current) {
+            clearTimeout(fallbackTimeoutRef.current);
+          }
           observerRef.current?.disconnect();
         }
       },
-      { threshold: 0.1, rootMargin: '50px' }
+      { threshold: 0.1, rootMargin: '100px' }
     );
 
-    observerRef.current.observe(img);
+    observerRef.current.observe(container);
 
     return () => {
       observerRef.current?.disconnect();
+      if (fallbackTimeoutRef.current) {
+        clearTimeout(fallbackTimeoutRef.current);
+      }
     };
-  }, [src, lazy]);
+  }, [src, lazy, imageSrc]);
 
   const handleLoad = () => {
     setIsLoaded(true);
@@ -91,15 +106,19 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
   };
 
   return (
-    <div className={cn('relative overflow-hidden', className)}>
+    <div 
+      ref={containerRef}
+      className={cn('relative overflow-hidden', className)}
+      style={{ 
+        aspectRatio: width && height ? `${width}/${height}` : undefined,
+        minHeight: height ? `${height}px` : '200px'
+      }}
+    >
       {/* Placeholder background */}
-      {!isLoaded && (
-        <div 
-          className="absolute inset-0 bg-gradient-to-br from-gray-100 to-gray-200 animate-pulse"
-          style={{ aspectRatio: width && height ? `${width}/${height}` : undefined }}
-        >
+      {!isLoaded && !isError && (
+        <div className="absolute inset-0 bg-gradient-to-br from-muted to-muted/50 animate-pulse">
           {placeholder && (
-            <div className="absolute inset-0 flex items-center justify-center text-gray-400 text-sm">
+            <div className="absolute inset-0 flex items-center justify-center text-muted-foreground text-sm">
               {placeholder}
             </div>
           )}
@@ -107,31 +126,34 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
       )}
       
       {/* Main image */}
-      <img
-        ref={imgRef}
-        src={imageSrc}
-        srcSet={imageSrc ? generateSrcSet(imageSrc) : undefined}
-        sizes={sizes || '(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw'}
-        alt={alt}
-        width={width}
-        height={height}
-        loading={lazy ? 'lazy' : 'eager'}
-        decoding="async"
-        onLoad={handleLoad}
-        onError={handleError}
-        className={cn(
-          'transition-opacity duration-300',
-          isLoaded ? 'opacity-100' : 'opacity-0',
-          isError && 'opacity-50',
-          className
-        )}
-        {...props}
-      />
+      {imageSrc && (
+        <img
+          src={imageSrc}
+          srcSet={imageSrc ? generateSrcSet(imageSrc) : undefined}
+          sizes={sizes || '(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw'}
+          alt={alt}
+          width={width}
+          height={height}
+          loading={lazy ? 'lazy' : 'eager'}
+          decoding="async"
+          onLoad={handleLoad}
+          onError={handleError}
+          className={cn(
+            'w-full h-full object-cover transition-opacity duration-300',
+            isLoaded ? 'opacity-100' : 'opacity-0',
+            isError && 'opacity-50'
+          )}
+          {...props}
+        />
+      )}
       
       {/* Error state */}
       {isError && (
-        <div className="absolute inset-0 flex items-center justify-center bg-gray-100 text-gray-500 text-sm">
-          Image failed to load
+        <div className="absolute inset-0 flex items-center justify-center bg-muted text-muted-foreground text-sm">
+          <div className="text-center">
+            <div className="text-2xl mb-2">🖼️</div>
+            <p>Image failed to load</p>
+          </div>
         </div>
       )}
     </div>

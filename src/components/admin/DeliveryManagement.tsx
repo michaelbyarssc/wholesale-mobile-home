@@ -1090,7 +1090,7 @@ export const DeliveryManagement = () => {
             if (!invoiceError && invoice?.selected_services?.length > 0) {
               const { data: servicesData, error: servicesError } = await supabase
                 .from('services')
-                .select('name, description, category')
+                .select('name, description')
                 .in('id', invoice.selected_services);
 
               if (!servicesError) {
@@ -1298,9 +1298,6 @@ export const DeliveryManagement = () => {
                         <p className="font-medium text-gray-900">{service.name}</p>
                         {service.description && (
                           <p className="text-sm text-gray-600">{service.description}</p>
-                        )}
-                        {service.category && (
-                          <p className="text-xs text-gray-500 mt-1 capitalize">{service.category}</p>
                         )}
                       </div>
                     </div>

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
+import { StorageQuotaManager } from '@/utils/storageQuotaManager';
 
 export const useAuthUser = () => {
   const navigate = useNavigate();
@@ -10,12 +11,17 @@ export const useAuthUser = () => {
   const [userProfile, setUserProfile] = useState<{ first_name?: string } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [sessionFingerprint, setSessionFingerprint] = useState<string | null>(null);
+  const [storageError, setStorageError] = useState<boolean>(false);
   
   // Add debouncing refs
   const debounceTimeout = useRef<NodeJS.Timeout | null>(null);
   const lastAuthCheck = useRef<number>(0);
+  const authTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const emergencyCleanupDone = useRef<boolean>(false);
 
   const clearUserSession = async (reason: string) => {
+    console.log(`[AuthUser] Clearing session: ${reason}`);
+    
     // Clear state
     setUser(null);
     setSession(null);
@@ -30,6 +36,34 @@ export const useAuthUser = () => {
     }
   };
 
+  const emergencyAuthRecovery = useCallback(async () => {
+    console.log('[AuthUser] Emergency auth recovery triggered');
+    
+    if (!emergencyCleanupDone.current) {
+      const cleanupSuccess = StorageQuotaManager.emergencyCleanup();
+      emergencyCleanupDone.current = true;
+      
+      if (cleanupSuccess) {
+        console.log('[AuthUser] Emergency cleanup successful, retrying auth');
+        setStorageError(false);
+        // Retry auth check after cleanup
+        setTimeout(() => {
+          if (authTimeoutRef.current) {
+            clearTimeout(authTimeoutRef.current);
+          }
+          setIsLoading(true);
+        }, 500);
+        return true;
+      }
+    }
+    
+    // If cleanup didn't work, use fallback authentication
+    console.log('[AuthUser] Using fallback authentication');
+    setStorageError(true);
+    setIsLoading(false);
+    return false;
+  }, []);
+
   // Only check for critical mismatches
   React.useEffect(() => {
     if (user && session && user.id !== session.user.id) {
@@ -41,9 +75,23 @@ export const useAuthUser = () => {
     let mounted = true;
     let initialCheckDone = false;
 
+    // Emergency timeout - if auth doesn't resolve in 10 seconds, trigger recovery
+    authTimeoutRef.current = setTimeout(() => {
+      if (mounted && !initialCheckDone) {
+        console.log('[AuthUser] Auth timeout reached, triggering emergency recovery');
+        emergencyAuthRecovery();
+      }
+    }, 10000);
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, newSession) => {
         if (!mounted) return;
+        
+        // Clear timeout if auth resolves
+        if (authTimeoutRef.current) {
+          clearTimeout(authTimeoutRef.current);
+          authTimeoutRef.current = null;
+        }
         
         // Debounce rapid auth state changes
         if (debounceTimeout.current) {
@@ -51,31 +99,40 @@ export const useAuthUser = () => {
         }
         
         debounceTimeout.current = setTimeout(() => {
-          switch (event) {
-            case 'SIGNED_IN':
-              if (newSession?.user) {
-                setUser(newSession.user);
-                setSession(newSession);
-                setSessionFingerprint(`session_${Date.now()}`);
-              }
-              break;
-              
-            case 'SIGNED_OUT':
-              setUser(null);
-              setSession(null);
-              setUserProfile(null);
-              setSessionFingerprint(null);
-              break;
-              
-            case 'TOKEN_REFRESHED':
-              if (newSession?.user) {
-                setSession(newSession);
-              }
-              break;
-          }
-          
-          if (initialCheckDone) {
-            setIsLoading(false);
+          try {
+            switch (event) {
+              case 'SIGNED_IN':
+                if (newSession?.user) {
+                  setUser(newSession.user);
+                  setSession(newSession);
+                  setSessionFingerprint(`session_${Date.now()}`);
+                  setStorageError(false);
+                }
+                break;
+                
+              case 'SIGNED_OUT':
+                setUser(null);
+                setSession(null);
+                setUserProfile(null);
+                setSessionFingerprint(null);
+                setStorageError(false);
+                break;
+                
+              case 'TOKEN_REFRESHED':
+                if (newSession?.user) {
+                  setSession(newSession);
+                }
+                break;
+            }
+            
+            if (initialCheckDone) {
+              setIsLoading(false);
+            }
+          } catch (error) {
+            console.error('[AuthUser] Error in auth state change:', error);
+            if (mounted) {
+              emergencyAuthRecovery();
+            }
           }
         }, 100); // 100ms debounce
       }
@@ -90,11 +147,26 @@ export const useAuthUser = () => {
       lastAuthCheck.current = now;
       
       try {
+        // Check storage quota before making requests
+        const quotaCheck = StorageQuotaManager.checkQuota();
+        if (!quotaCheck.canWrite && quotaCheck.metrics.usagePercentage > 0.9) {
+          console.log('[AuthUser] Storage quota critical, triggering emergency cleanup');
+          const cleanupSuccess = await emergencyAuthRecovery();
+          if (!cleanupSuccess) {
+            return; // Emergency recovery will handle loading state
+          }
+        }
+
         const { data: { session: initialSession }, error } = await supabase.auth.getSession();
         
         if (error) {
+          console.error('[AuthUser] Auth session error:', error);
           if (mounted) {
-            setIsLoading(false);
+            // Try emergency recovery for auth errors
+            const recovered = await emergencyAuthRecovery();
+            if (!recovered) {
+              setIsLoading(false);
+            }
           }
           return;
         }
@@ -105,6 +177,7 @@ export const useAuthUser = () => {
           setUser(initialSession.user);
           setSession(initialSession);
           setSessionFingerprint(`session_${Date.now()}`);
+          setStorageError(false);
         } else {
           setUser(null);
           setSession(null);
@@ -114,10 +187,20 @@ export const useAuthUser = () => {
         
         initialCheckDone = true;
         setIsLoading(false);
+        
+        // Clear timeout since auth resolved
+        if (authTimeoutRef.current) {
+          clearTimeout(authTimeoutRef.current);
+          authTimeoutRef.current = null;
+        }
       } catch (error) {
+        console.error('[AuthUser] Critical auth error:', error);
         if (mounted) {
-          initialCheckDone = true;
-          setIsLoading(false);
+          const recovered = await emergencyAuthRecovery();
+          if (!recovered) {
+            initialCheckDone = true;
+            setIsLoading(false);
+          }
         }
       }
     };
@@ -130,8 +213,11 @@ export const useAuthUser = () => {
       if (debounceTimeout.current) {
         clearTimeout(debounceTimeout.current);
       }
+      if (authTimeoutRef.current) {
+        clearTimeout(authTimeoutRef.current);
+      }
     };
-  }, []);
+  }, [emergencyAuthRecovery]);
 
   const fetchUserProfile = useCallback(async (userId: string) => {
     if (!userId) {
@@ -227,6 +313,8 @@ export const useAuthUser = () => {
     handleLogout,
     handleProfileUpdated,
     forceRefreshAuth,
-    sessionFingerprint
+    sessionFingerprint,
+    storageError,
+    emergencyAuthRecovery
   };
 };

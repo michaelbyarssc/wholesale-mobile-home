@@ -41,7 +41,7 @@ const MemoizedCarouselItem = React.memo(({
         width={400}
         height={225}
         className="w-full h-56 object-cover rounded-lg cursor-pointer hover:scale-105 transition-transform duration-300"
-        lazy={index > 0}
+        lazy={index !== 0}
         onError={() => onImageError(image.id, image.image_url)}
         onLoad={() => onImageLoad(image.id)}
         onClick={() => onImageClick(index)}

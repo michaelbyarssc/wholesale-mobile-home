@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 
@@ -31,10 +32,9 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
   const [imageSrc, setImageSrc] = useState(lazy ? '' : src);
   const containerRef = useRef<HTMLDivElement>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
-  const fallbackTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    if (!lazy) {
+    if (!lazy || !src) {
       setImageSrc(src);
       return;
     }
@@ -42,78 +42,64 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
     const container = containerRef.current;
     if (!container) {
       // If container not available, load immediately
+      console.log('No container found, loading immediately:', src);
       setImageSrc(src);
       return;
     }
 
-    // Aggressive fallback: load image after 500ms if intersection observer fails
-    fallbackTimeoutRef.current = setTimeout(() => {
+    // Immediate fallback for first image or if intersection observer isn't supported
+    const immediateTimeout = setTimeout(() => {
       if (!imageSrc) {
-        console.log('Fallback loading image after timeout:', src);
+        console.log('Immediate fallback loading image:', src);
         setImageSrc(src);
       }
-    }, 500);
+    }, 100);
 
     // Create intersection observer for lazy loading
-    observerRef.current = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          console.log('Image intersecting, loading:', src);
-          setImageSrc(src);
-          if (fallbackTimeoutRef.current) {
-            clearTimeout(fallbackTimeoutRef.current);
+    if ('IntersectionObserver' in window) {
+      observerRef.current = new IntersectionObserver(
+        ([entry]) => {
+          if (entry.isIntersecting) {
+            console.log('Image intersecting, loading:', src);
+            setImageSrc(src);
+            clearTimeout(immediateTimeout);
+            observerRef.current?.disconnect();
           }
-          observerRef.current?.disconnect();
-        }
-      },
-      { threshold: 0, rootMargin: '200px' }
-    );
+        },
+        { threshold: 0, rootMargin: '50px' }
+      );
 
-    observerRef.current.observe(container);
+      observerRef.current.observe(container);
+    } else {
+      // Fallback for browsers without Intersection Observer
+      console.log('No Intersection Observer support, loading immediately:', src);
+      setImageSrc(src);
+    }
 
     return () => {
       observerRef.current?.disconnect();
-      if (fallbackTimeoutRef.current) {
-        clearTimeout(fallbackTimeoutRef.current);
-      }
+      clearTimeout(immediateTimeout);
     };
   }, [src, lazy, imageSrc]);
 
   const handleLoad = () => {
+    console.log('Image loaded successfully:', src);
     setIsLoaded(true);
   };
 
   const handleError = () => {
+    console.log('Image failed to load:', src);
     setIsError(true);
-    setImageSrc(fallback);
-  };
-
-  // Generate responsive source set for better mobile performance
-  const generateSrcSet = (baseSrc: string) => {
-    if (!baseSrc || baseSrc.startsWith('data:')) return baseSrc;
-    
-    // Handle Unsplash images
-    if (baseSrc.includes('unsplash')) {
-      return `${baseSrc}&w=640 640w,
-              ${baseSrc}&w=750 750w,
-              ${baseSrc}&w=828 828w,
-              ${baseSrc}&w=1080 1080w,
-              ${baseSrc}&w=1200 1200w,
-              ${baseSrc}&w=1920 1920w`;
+    if (fallback && src !== fallback) {
+      setImageSrc(fallback);
+      setIsError(false);
     }
-
-    // Handle local images
-    const url = new URL(baseSrc, window.location.origin);
-    const widths = [640, 750, 828, 1080, 1200, 1920];
-    return widths
-      .map(w => `${url.toString()}?w=${w} ${w}w`)
-      .join(',');
   };
 
   return (
     <div 
       ref={containerRef}
-      className={cn('relative overflow-hidden', className)}
+      className={cn('relative overflow-hidden bg-muted', className)}
       style={{ 
         aspectRatio: width && height ? `${width}/${height}` : undefined,
         minHeight: height ? `${height}px` : '200px'
@@ -134,8 +120,6 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
       {imageSrc && (
         <img
           src={imageSrc}
-          srcSet={imageSrc ? generateSrcSet(imageSrc) : undefined}
-          sizes={sizes || '(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw'}
           alt={alt}
           width={width}
           height={height}
@@ -145,8 +129,7 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
           onError={handleError}
           className={cn(
             'w-full h-full object-cover transition-opacity duration-300',
-            isLoaded ? 'opacity-100' : 'opacity-0',
-            isError && 'opacity-50'
+            isLoaded ? 'opacity-100' : 'opacity-0'
           )}
           {...props}
         />

@@ -60,13 +60,27 @@ export const preloadResource = (href: string, as: string, type?: string) => {
   document.head.appendChild(link);
 };
 
-// Measure and log Core Web Vitals
+// Environment detection
+const isDevelopment = typeof window !== 'undefined' && 
+  (window.location.hostname === 'localhost' || 
+   window.location.hostname.includes('lovableproject.com'));
+
+// Throttled performance logging to reduce console spam
+const performanceLog = throttle((metric: string, value: number) => {
+  if (isDevelopment) {
+    console.log(`${metric}: ${Math.round(value)}ms`);
+  }
+}, 1000);
+
+// Measure and log Core Web Vitals (throttled for production)
 export const measureCoreWebVitals = () => {
+  if (!isDevelopment) return; // Skip in production
+
   // First Contentful Paint
   new PerformanceObserver((entryList) => {
     for (const entry of entryList.getEntries()) {
       if (entry.name === 'first-contentful-paint') {
-        console.log('FCP:', entry.startTime);
+        performanceLog('FCP', entry.startTime);
       }
     }
   }).observe({ entryTypes: ['paint'] });
@@ -74,7 +88,7 @@ export const measureCoreWebVitals = () => {
   // Largest Contentful Paint
   new PerformanceObserver((entryList) => {
     for (const entry of entryList.getEntries()) {
-      console.log('LCP:', entry.startTime);
+      performanceLog('LCP', entry.startTime);
     }
   }).observe({ entryTypes: ['largest-contentful-paint'] });
 
@@ -84,7 +98,9 @@ export const measureCoreWebVitals = () => {
     for (const entry of entryList.getEntries() as any[]) {
       if (!entry.hadRecentInput) {
         clsValue += entry.value;
-        console.log('CLS:', clsValue);
+        if (clsValue > 0.1) { // Only log if CLS is concerning
+          performanceLog('CLS', clsValue * 1000); // Convert to readable number
+        }
       }
     }
   }).observe({ entryTypes: ['layout-shift'] });
@@ -95,7 +111,9 @@ export const registerServiceWorker = async () => {
   if ('serviceWorker' in navigator) {
     try {
       const registration = await navigator.serviceWorker.register('/sw.js');
-      console.log('Service Worker registered successfully:', registration);
+      if (isDevelopment) {
+        console.log('Service Worker registered successfully:', registration);
+      }
       
       // Handle updates
       registration.addEventListener('updatefound', () => {
@@ -104,13 +122,17 @@ export const registerServiceWorker = async () => {
           newWorker.addEventListener('statechange', () => {
             if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
               // New content is available
-              console.log('New content available, refresh to update');
+              if (isDevelopment) {
+                console.log('New content available, refresh to update');
+              }
             }
           });
         }
       });
     } catch (error) {
-      console.error('Service Worker registration failed:', error);
+      if (isDevelopment) {
+        console.error('Service Worker registration failed:', error);
+      }
     }
   }
 };

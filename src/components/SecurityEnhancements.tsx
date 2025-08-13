@@ -6,60 +6,14 @@ interface SecurityEnhancementsProps {
 }
 
 /**
- * SecurityEnhancements component that adds client-side security headers
- * and implements CSRF protection for the application
+ * SecurityEnhancements component that implements CSRF protection
+ * Security headers are now properly handled in index.html
  */
 export const SecurityEnhancements: React.FC<SecurityEnhancementsProps> = ({ children }) => {
   useEffect(() => {
-    // Add security headers via meta tags
-    const addSecurityHeaders = () => {
-      // Content Security Policy
-      let cspMeta = document.querySelector('meta[http-equiv="Content-Security-Policy"]');
-      if (!cspMeta) {
-        cspMeta = document.createElement('meta');
-        cspMeta.setAttribute('http-equiv', 'Content-Security-Policy');
-        cspMeta.setAttribute('content', 
-          "default-src 'self'; " +
-          "script-src 'self' 'unsafe-inline'; " +
-          "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://api.mapbox.com; " +
-          "font-src 'self' https://fonts.gstatic.com; " +
-          "img-src 'self' data: https: blob:; " +
-          "connect-src 'self' https://vgdreuwmisludqxphsph.supabase.co wss://vgdreuwmisludqxphsph.supabase.co https://api.mapbox.com https://events.mapbox.com https://*.tiles.mapbox.com; " +
-          "frame-ancestors 'none'; " +
-          "base-uri 'self'; " +
-          "worker-src 'self' blob:;"
-        );
-        document.head.appendChild(cspMeta);
-      }
-
-      // X-Content-Type-Options
-      let xContentType = document.querySelector('meta[http-equiv="X-Content-Type-Options"]');
-      if (!xContentType) {
-        xContentType = document.createElement('meta');
-        xContentType.setAttribute('http-equiv', 'X-Content-Type-Options');
-        xContentType.setAttribute('content', 'nosniff');
-        document.head.appendChild(xContentType);
-      }
-
-      // X-Frame-Options
-      let xFrame = document.querySelector('meta[http-equiv="X-Frame-Options"]');
-      if (!xFrame) {
-        xFrame = document.createElement('meta');
-        xFrame.setAttribute('http-equiv', 'X-Frame-Options');
-        xFrame.setAttribute('content', 'DENY');
-        document.head.appendChild(xFrame);
-      }
-
-      // X-XSS-Protection
-      let xXSS = document.querySelector('meta[http-equiv="X-XSS-Protection"]');
-      if (!xXSS) {
-        xXSS = document.createElement('meta');
-        xXSS.setAttribute('http-equiv', 'X-XSS-Protection');
-        xXSS.setAttribute('content', '1; mode=block');
-        document.head.appendChild(xXSS);
-      }
-
-      // Referrer Policy
+    // Only add client-side security measures that actually work in meta tags
+    const addClientSideSecurity = () => {
+      // Only add referrer policy as it works via meta tag
       let referrer = document.querySelector('meta[name="referrer"]');
       if (!referrer) {
         referrer = document.createElement('meta');
@@ -98,7 +52,7 @@ export const SecurityEnhancements: React.FC<SecurityEnhancementsProps> = ({ chil
     };
 
     // Initialize security measures
-    addSecurityHeaders();
+    addClientSideSecurity();
     generateOrGetCSRFToken();
     
     // Set up form protection with a slight delay to catch dynamically added forms

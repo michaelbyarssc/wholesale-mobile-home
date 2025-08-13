@@ -31,64 +31,54 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
   const [isError, setIsError] = useState(false);
   const [imageSrc, setImageSrc] = useState(lazy ? '' : src);
   const containerRef = useRef<HTMLDivElement>(null);
-  const observerRef = useRef<IntersectionObserver | null>(null);
 
   useEffect(() => {
-    if (!lazy || !src) {
+    // Always load image immediately if not lazy or if we don't have a src yet
+    if (!lazy || !imageSrc) {
       setImageSrc(src);
       return;
     }
+  }, [src, lazy, imageSrc]);
+
+  useEffect(() => {
+    if (!lazy) return;
 
     const container = containerRef.current;
     if (!container) {
-      // If container not available, load immediately
-      console.log('No container found, loading immediately:', src);
       setImageSrc(src);
       return;
     }
 
-    // Immediate fallback for first image or if intersection observer isn't supported
-    const immediateTimeout = setTimeout(() => {
-      if (!imageSrc) {
-        console.log('Immediate fallback loading image:', src);
-        setImageSrc(src);
-      }
-    }, 100);
+    // Simple intersection observer with immediate fallback
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setImageSrc(src);
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.1, rootMargin: '100px' }
+    );
 
-    // Create intersection observer for lazy loading
-    if ('IntersectionObserver' in window) {
-      observerRef.current = new IntersectionObserver(
-        ([entry]) => {
-          if (entry.isIntersecting) {
-            console.log('Image intersecting, loading:', src);
-            setImageSrc(src);
-            clearTimeout(immediateTimeout);
-            observerRef.current?.disconnect();
-          }
-        },
-        { threshold: 0, rootMargin: '50px' }
-      );
+    observer.observe(container);
 
-      observerRef.current.observe(container);
-    } else {
-      // Fallback for browsers without Intersection Observer
-      console.log('No Intersection Observer support, loading immediately:', src);
+    // Immediate fallback after 200ms
+    const fallbackTimer = setTimeout(() => {
       setImageSrc(src);
-    }
+      observer.disconnect();
+    }, 200);
 
     return () => {
-      observerRef.current?.disconnect();
-      clearTimeout(immediateTimeout);
+      observer.disconnect();
+      clearTimeout(fallbackTimer);
     };
-  }, [src, lazy, imageSrc]);
+  }, [src, lazy]);
 
   const handleLoad = () => {
-    console.log('Image loaded successfully:', src);
     setIsLoaded(true);
   };
 
   const handleError = () => {
-    console.log('Image failed to load:', src);
     setIsError(true);
     if (fallback && src !== fallback) {
       setImageSrc(fallback);

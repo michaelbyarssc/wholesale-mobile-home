@@ -30,13 +30,17 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    // Force timeout after 15 seconds if auth is still loading
+    // Progressive timeout - only force after auth has had reasonable time
     timeoutRef.current = setTimeout(() => {
-      if (authLoading || rolesLoading) {
-        console.log('[ProtectedRoute] Forcing timeout due to prolonged loading');
+      // Only timeout if both are loading for extended period
+      if (authLoading && rolesLoading) {
+        console.log('[ProtectedRoute] Auth and roles loading timeout - forcing continuation');
+        setForceTimeout(true);
+      } else if (authLoading && !user) {
+        console.log('[ProtectedRoute] Auth loading timeout - no user found');
         setForceTimeout(true);
       }
-    }, 15000);
+    }, 45000); // Increased to 45 seconds for better reliability
 
     return () => {
       mountedRef.current = false;
@@ -44,7 +48,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
         clearTimeout(timeoutRef.current);
       }
     };
-  }, [authLoading, rolesLoading]);
+  }, [authLoading, rolesLoading, user]);
 
   useEffect(() => {
     const checkAccess = () => {

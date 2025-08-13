@@ -37,31 +37,46 @@ export const useAuthUser = () => {
   };
 
   const emergencyAuthRecovery = useCallback(async () => {
-    console.log('[AuthUser] Emergency auth recovery triggered');
-    
-    if (!emergencyCleanupDone.current) {
-      const cleanupSuccess = StorageQuotaManager.emergencyCleanup();
-      emergencyCleanupDone.current = true;
+    try {
+      console.log('[AuthUser] Emergency auth recovery triggered');
       
-      if (cleanupSuccess) {
-        console.log('[AuthUser] Emergency cleanup successful, retrying auth');
-        setStorageError(false);
-        // Retry auth check after cleanup
-        setTimeout(() => {
-          if (authTimeoutRef.current) {
-            clearTimeout(authTimeoutRef.current);
+      // Don't clean up Supabase auth tokens during recovery
+      const quotaCheck = StorageQuotaManager.checkQuota();
+      if (quotaCheck.critical) {
+        console.log('[AuthUser] Critical storage quota detected, performing selective cleanup');
+        
+        // Only cleanup non-auth related data
+        const cleanupSuccess = StorageQuotaManager.selectiveCleanup(['cart_data', 'wishlist', 'recent_searches']);
+        console.log('[AuthUser] Selective cleanup completed, success:', cleanupSuccess);
+        
+        if (cleanupSuccess) {
+          // Give Supabase time to re-establish session
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
+          try {
+            const { data: { session: recoveredSession } } = await supabase.auth.getSession();
+            if (recoveredSession) {
+              setSession(recoveredSession);
+              setUser(recoveredSession.user);
+              setIsLoading(false);
+              return;
+            }
+          } catch (sessionError) {
+            console.error('[AuthUser] Session recovery failed:', sessionError);
           }
-          setIsLoading(true);
-        }, 500);
-        return true;
+        }
       }
+      
+      // Fallback: Clear only local session state, keep Supabase auth intact
+      console.log('[AuthUser] Using graceful fallback authentication');
+      setSession(null);
+      setUser(null);
+      setIsLoading(false);
+      
+    } catch (error) {
+      console.error('[AuthUser] Emergency recovery failed:', error);
+      setIsLoading(false);
     }
-    
-    // If cleanup didn't work, use fallback authentication
-    console.log('[AuthUser] Using fallback authentication');
-    setStorageError(true);
-    setIsLoading(false);
-    return false;
   }, []);
 
   // Only check for critical mismatches
@@ -75,13 +90,27 @@ export const useAuthUser = () => {
     let mounted = true;
     let initialCheckDone = false;
 
-    // Emergency timeout - if auth doesn't resolve in 10 seconds, trigger recovery
+    // Progressive timeout - allow more time for reliable auth
     authTimeoutRef.current = setTimeout(() => {
       if (mounted && !initialCheckDone) {
-        console.log('[AuthUser] Auth timeout reached, triggering emergency recovery');
-        emergencyAuthRecovery();
+        console.log('[AuthUser] Progressive auth timeout - checking state after 30s');
+        
+        // Only trigger emergency recovery after multiple failed attempts
+        const lastRecovery = sessionStorage.getItem('last_auth_recovery');
+        const now = Date.now();
+        const recoveryInterval = lastRecovery ? now - parseInt(lastRecovery) : Infinity;
+        
+        // Require 60 seconds between recovery attempts
+        if (recoveryInterval > 60000) {
+          console.log('[AuthUser] Triggering emergency recovery');
+          sessionStorage.setItem('last_auth_recovery', now.toString());
+          emergencyAuthRecovery();
+        } else {
+          console.log('[AuthUser] Skipping recovery - too recent, stopping loading');
+          setIsLoading(false); // Stop loading to allow manual intervention
+        }
       }
-    }, 10000);
+    }, 30000); // Increased to 30 seconds
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, newSession) => {
@@ -147,14 +176,12 @@ export const useAuthUser = () => {
       lastAuthCheck.current = now;
       
       try {
-        // Check storage quota before making requests
+        // Check storage quota but don't block auth
         const quotaCheck = StorageQuotaManager.checkQuota();
-        if (!quotaCheck.canWrite && quotaCheck.metrics.usagePercentage > 0.9) {
-          console.log('[AuthUser] Storage quota critical, triggering emergency cleanup');
-          const cleanupSuccess = await emergencyAuthRecovery();
-          if (!cleanupSuccess) {
-            return; // Emergency recovery will handle loading state
-          }
+        if (quotaCheck.critical) {
+          console.log('[AuthUser] Storage quota critical, performing selective cleanup');
+          // Don't block auth - just cleanup in background
+          StorageQuotaManager.selectiveCleanup(['cart_data', 'wishlist', 'recent_searches']);
         }
 
         const { data: { session: initialSession }, error } = await supabase.auth.getSession();
@@ -163,10 +190,8 @@ export const useAuthUser = () => {
           console.error('[AuthUser] Auth session error:', error);
           if (mounted) {
             // Try emergency recovery for auth errors
-            const recovered = await emergencyAuthRecovery();
-            if (!recovered) {
-              setIsLoading(false);
-            }
+            await emergencyAuthRecovery();
+            setIsLoading(false);
           }
           return;
         }
@@ -196,11 +221,9 @@ export const useAuthUser = () => {
       } catch (error) {
         console.error('[AuthUser] Critical auth error:', error);
         if (mounted) {
-          const recovered = await emergencyAuthRecovery();
-          if (!recovered) {
-            initialCheckDone = true;
-            setIsLoading(false);
-          }
+          await emergencyAuthRecovery();
+          initialCheckDone = true;
+          setIsLoading(false);
         }
       }
     };

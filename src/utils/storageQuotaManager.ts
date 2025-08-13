@@ -235,11 +235,17 @@ export class StorageQuotaManager {
    */
   private static cleanupNonEssentialData(): number {
     let cleaned = 0;
-    const essentialKeys = ['wmh_sessions', 'wmh_active_session'];
+    // Protected keys that should never be cleaned up
+    const essentialKeys = [
+      'wmh_sessions', 
+      'wmh_active_session',
+      'sb-vgdreuwmisludqxphsph-auth-token',
+      'supabase.auth.token'
+    ];
     
     for (let i = localStorage.length - 1; i >= 0; i--) {
       const key = localStorage.key(i);
-      if (key && !essentialKeys.includes(key)) {
+      if (key && !essentialKeys.some(essential => key.includes(essential))) {
         const value = localStorage.getItem(key);
         if (value) {
           const size = (key.length + value.length) * 2;
@@ -251,6 +257,48 @@ export class StorageQuotaManager {
     }
     
     return cleaned;
+  }
+
+  /**
+   * Selective cleanup targeting specific patterns
+   */
+  static selectiveCleanup(patterns: string[]): boolean {
+    let cleaned = 0;
+    
+    try {
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const key = localStorage.key(i);
+        if (!key) continue;
+
+        // Skip Supabase auth tokens and session data
+        const isProtected = key.includes('sb-') && key.includes('auth') || 
+                           key.includes('wmh_sessions') || 
+                           key.includes('wmh_active_session');
+        
+        if (isProtected) continue;
+
+        // Check if key matches any cleanup pattern
+        const shouldRemove = patterns.some(pattern => 
+          key.toLowerCase().includes(pattern.toLowerCase())
+        );
+        
+        if (shouldRemove) {
+          const value = localStorage.getItem(key);
+          if (value) {
+            const size = (key.length + value.length) * 2;
+            localStorage.removeItem(key);
+            cleaned += size;
+            devLog(`🗑️ Selective cleanup removed: ${key}`);
+          }
+        }
+      }
+      
+      devLog(`🧹 Selective cleanup completed: ${this.formatBytes(cleaned)} freed`);
+      return cleaned > 0;
+    } catch (error) {
+      devError('❌ Selective cleanup failed:', error);
+      return false;
+    }
   }
   
   /**

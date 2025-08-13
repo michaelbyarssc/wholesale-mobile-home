@@ -34,14 +34,14 @@ const MemoizedCarouselItem = React.memo(({
   onImageClick: (index: number) => void;
 }) => (
   <CarouselItem key={image.id}>
-    <div className="relative will-change-transform contain-layout-style-paint">
+    <div className="relative">
       <OptimizedImage
         src={image.image_url}
         alt={image.alt_text || `${homeModel} ${image.image_type} view`}
         width={400}
         height={225}
-        className="w-full h-56 object-cover rounded-lg cursor-pointer hover:scale-105 transition-transform duration-300 transform-gpu"
-        lazy={index > 2}
+        className="w-full h-56 object-cover rounded-lg cursor-pointer hover:scale-105 transition-transform duration-300"
+        lazy={index > 0}
         onError={() => onImageError(image.id, image.image_url)}
         onLoad={() => onImageLoad(image.id)}
         onClick={() => onImageClick(index)}
@@ -119,7 +119,7 @@ export const OptimizedImageCarousel = React.memo(({ images, homeModel }: Optimiz
 
   return (
     <>
-      <div className="will-change-transform contain-layout-style-paint">
+      <div className="w-full">
         <Carousel 
           className="w-full"
           opts={{

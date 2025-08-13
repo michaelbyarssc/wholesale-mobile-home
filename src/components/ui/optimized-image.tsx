@@ -40,20 +40,25 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
     }
 
     const container = containerRef.current;
-    if (!container) return;
+    if (!container) {
+      // If container not available, load immediately
+      setImageSrc(src);
+      return;
+    }
 
-    // Fallback: load image after 2 seconds if intersection observer fails
+    // Aggressive fallback: load image after 500ms if intersection observer fails
     fallbackTimeoutRef.current = setTimeout(() => {
       if (!imageSrc) {
-        console.log('Fallback loading image:', src);
+        console.log('Fallback loading image after timeout:', src);
         setImageSrc(src);
       }
-    }, 2000);
+    }, 500);
 
     // Create intersection observer for lazy loading
     observerRef.current = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
+          console.log('Image intersecting, loading:', src);
           setImageSrc(src);
           if (fallbackTimeoutRef.current) {
             clearTimeout(fallbackTimeoutRef.current);
@@ -61,7 +66,7 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
           observerRef.current?.disconnect();
         }
       },
-      { threshold: 0.1, rootMargin: '100px' }
+      { threshold: 0, rootMargin: '200px' }
     );
 
     observerRef.current.observe(container);

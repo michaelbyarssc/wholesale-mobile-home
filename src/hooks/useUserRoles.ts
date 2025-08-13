@@ -30,14 +30,16 @@ export const useUserRoles = (): RoleCheck => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Debug logging for role state
-  console.log('useUserRoles: Current state', { 
-    userEmail: user?.email, 
-    userRoles: userRoles.map(r => r.role), 
-    authLoading, 
-    isLoading, 
-    error 
-  });
+  // Debug logging for role state - only in development
+  if (process.env.NODE_ENV === 'development') {
+    console.log('useUserRoles: Current state', { 
+      userEmail: user?.email, 
+      userRoles: userRoles.map(r => r.role), 
+      authLoading, 
+      isLoading, 
+      error 
+    });
+  }
 
   const fetchUserRoles = useCallback(async (userId: string) => {
     if (!userId) {

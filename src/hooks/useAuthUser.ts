@@ -31,13 +31,15 @@ export const useAuthUser = () => {
     }
   };
 
-  // Simplified debug logging
-  console.log('🔐 useAuthUser: Current state', {
-    userId: user?.id,
-    userEmail: user?.email,
-    isLoading,
-    timestamp: new Date().toISOString()
-  });
+  // Simplified debug logging - only in development
+  if (process.env.NODE_ENV === 'development') {
+    console.log('🔐 useAuthUser: Current state', {
+      userId: user?.id,
+      userEmail: user?.email,
+      isLoading,
+      timestamp: new Date().toISOString()
+    });
+  }
 
   // Only check for critical mismatches, not fingerprints
   React.useEffect(() => {
@@ -56,12 +58,14 @@ export const useAuthUser = () => {
       async (event, newSession) => {
         if (!mounted) return;
         
-        console.log('🔐 Auth state change:', {
-          event,
-          userId: newSession?.user?.id,
-          userEmail: newSession?.user?.email,
-          timestamp: new Date().toISOString()
-        });
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔐 Auth state change:', {
+            event,
+            userId: newSession?.user?.id,
+            userEmail: newSession?.user?.email,
+            timestamp: new Date().toISOString()
+          });
+        }
 
         switch (event) {
           case 'SIGNED_IN':
@@ -97,7 +101,9 @@ export const useAuthUser = () => {
 
     const checkAuth = async () => {
       try {
-        console.log('🔐 Starting auth check');
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔐 Starting auth check');
+        }
         
         const { data: { session: initialSession }, error } = await supabase.auth.getSession();
         

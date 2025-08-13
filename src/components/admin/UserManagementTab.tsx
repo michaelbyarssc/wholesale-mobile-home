@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -26,19 +26,13 @@ export const UserManagementTab = () => {
   
   const debouncedSearchQuery = useSearchDebounce(searchQuery, 300);
 
-  useEffect(() => {
-    // SECURITY: Use centralized role management
-    if (!rolesLoading && currentUser) {
-      console.log(`[SECURITY] UserManagementTab: User ${currentUser.id} isSuperAdmin: ${isSuperAdmin}`);
-      fetchUserProfiles(currentUser.id, isSuperAdmin);
-    }
-  }, [currentUser, isSuperAdmin, rolesLoading]);
-
-  const fetchUserProfiles = async (currentUserId?: string, userIsSuperAdmin?: boolean) => {
+  const fetchUserProfiles = useCallback(async (currentUserId?: string, userIsSuperAdmin?: boolean) => {
     try {
       setLoading(true);
       setIsDataReady(false);
-      console.log(`[SECURITY] Fetching user profiles for user: ${currentUserId}, isSuperAdmin: ${userIsSuperAdmin}`);
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`[SECURITY] Fetching user profiles for user: ${currentUserId}, isSuperAdmin: ${userIsSuperAdmin}`);
+      }
       
       // Get profiles data with proper filtering
       let profilesQuery = supabase
@@ -50,7 +44,9 @@ export const UserManagementTab = () => {
         profilesQuery = profilesQuery.eq('created_by', currentUserId);
       } else if (userIsSuperAdmin) {
         // Super admin sees all profiles
-        console.log('[SECURITY] Super admin accessing all profiles');
+        if (process.env.NODE_ENV === 'development') {
+          console.log('[SECURITY] Super admin accessing all profiles');
+        }
       }
 
       // Fetch all data simultaneously using Promise.all for better performance
@@ -77,7 +73,9 @@ export const UserManagementTab = () => {
         console.error('[SECURITY] Error fetching roles:', rolesError);
       }
 
-      console.log('Data fetched - Profiles:', profiles?.length || 0, 'Markups:', customerMarkups?.length || 0, 'Roles:', allRoles?.length || 0);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Data fetched - Profiles:', profiles?.length || 0, 'Markups:', customerMarkups?.length || 0, 'Roles:', allRoles?.length || 0);
+      }
 
       // Transform profiles data into UserProfile format
       const combinedProfiles: UserProfile[] = profiles?.map(profile => {
@@ -121,8 +119,10 @@ export const UserManagementTab = () => {
       const approvedUsers = combinedProfiles.filter(profile => profile.approved === true);
       const pendingUsers = combinedProfiles.filter(profile => profile.approved === false || profile.approved === null);
 
-      console.log('Approved users:', approvedUsers.length);
-      console.log('Pending users:', pendingUsers.length);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Approved users:', approvedUsers.length);
+        console.log('Pending users:', pendingUsers.length);
+      }
 
       setUserProfiles(approvedUsers);
       setPendingApprovals(pendingUsers);
@@ -139,7 +139,17 @@ export const UserManagementTab = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
+
+  useEffect(() => {
+    // SECURITY: Use centralized role management
+    if (!rolesLoading && currentUser) {
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`[SECURITY] UserManagementTab: User ${currentUser.id} isSuperAdmin: ${isSuperAdmin}`);
+      }
+      fetchUserProfiles(currentUser.id, isSuperAdmin);
+    }
+  }, [currentUser, isSuperAdmin, rolesLoading, fetchUserProfiles]);
 
   // Filter users based on search query
   const filteredUserProfiles = useMemo(() => {
@@ -159,12 +169,14 @@ export const UserManagementTab = () => {
     });
   }, [userProfiles, debouncedSearchQuery]);
 
-  const handleUserUpdated = () => {
-    console.log('[SECURITY] User updated, refreshing profiles');
+  const handleUserUpdated = useCallback(() => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[SECURITY] User updated, refreshing profiles');
+    }
     if (currentUser) {
       fetchUserProfiles(currentUser.id, isSuperAdmin);
     }
-  };
+  }, [currentUser, isSuperAdmin, fetchUserProfiles]);
 
   // Show loading state until all data is ready
   if (loading || rolesLoading || !isDataReady) {

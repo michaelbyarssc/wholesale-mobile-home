@@ -362,7 +362,7 @@ const Admin = () => {
           {/* Desktop Tab Navigation */}
           {!isMobile && isSuperAdmin && (
             <div className="border rounded-lg p-1 bg-muted/30 overflow-x-auto">
-              <TabsList className="inline-flex h-12 w-max bg-transparent space-x-1 p-1">
+              <TabsList className="flex h-12 w-full bg-transparent justify-evenly p-1">
                 <TabsTrigger 
                   value="mobile-homes" 
                   className="text-xs sm:text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm px-3 py-2 whitespace-nowrap"

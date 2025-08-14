@@ -22,10 +22,11 @@ export const SecurityEnhancements: React.FC<SecurityEnhancementsProps> = ({ chil
           "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://esm.sh; " +
           "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
           "font-src 'self' https://fonts.gstatic.com; " +
-          "img-src 'self' data: https:; " +
-          "connect-src 'self' https://vgdreuwmisludqxphsph.supabase.co wss://vgdreuwmisludqxphsph.supabase.co; " +
+          "img-src 'self' data: https: !https://*.facebook.com !https://*.facebook.net; " +
+          "connect-src 'self' https://vgdreuwmisludqxphsph.supabase.co wss://vgdreuwmisludqxphsph.supabase.co !https://*.facebook.com !https://*.facebook.net; " +
           "frame-ancestors 'none'; " +
-          "base-uri 'self';"
+          "base-uri 'self'; " +
+          "object-src 'none';"
         );
         document.head.appendChild(cspMeta);
       }
@@ -64,6 +65,24 @@ export const SecurityEnhancements: React.FC<SecurityEnhancementsProps> = ({ chil
         referrer.setAttribute('name', 'referrer');
         referrer.setAttribute('content', 'strict-origin-when-cross-origin');
         document.head.appendChild(referrer);
+      }
+
+      // Tracking Protection Headers
+      let trackingProtection = document.querySelector('meta[http-equiv="Tk"]');
+      if (!trackingProtection) {
+        trackingProtection = document.createElement('meta');
+        trackingProtection.setAttribute('http-equiv', 'Tk');
+        trackingProtection.setAttribute('content', 'N');
+        document.head.appendChild(trackingProtection);
+      }
+
+      // Facebook Pixel Blocking
+      let fbBlock = document.querySelector('meta[name="facebook-domain-verification"]');
+      if (!fbBlock) {
+        fbBlock = document.createElement('meta');
+        fbBlock.setAttribute('name', 'facebook-domain-verification');
+        fbBlock.setAttribute('content', 'blocked');
+        document.head.appendChild(fbBlock);
       }
     };
 
@@ -113,9 +132,46 @@ export const SecurityEnhancements: React.FC<SecurityEnhancementsProps> = ({ chil
       }
     };
 
+    // Block Facebook tracking requests
+    const blockFacebookTracking = () => {
+      // Override fetch to block Facebook requests
+      const originalFetch = window.fetch;
+      window.fetch = async (input, init) => {
+        const url = typeof input === 'string' ? input : (input instanceof Request ? input.url : input.toString());
+        if (url.includes('facebook.com') || url.includes('facebook.net')) {
+          console.warn('Blocked Facebook tracking request:', url);
+          return new Response('Blocked', { status: 204 });
+        }
+        return originalFetch(input, init);
+      };
+
+      // Block image requests to Facebook
+      const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+          if (mutation.type === 'childList') {
+            mutation.addedNodes.forEach((node) => {
+              if (node.nodeType === Node.ELEMENT_NODE) {
+                const element = node as Element;
+                if (element.tagName === 'IMG' || element.tagName === 'IFRAME') {
+                  const src = element.getAttribute('src');
+                  if (src && (src.includes('facebook.com') || src.includes('facebook.net'))) {
+                    element.remove();
+                    console.warn('Blocked Facebook tracking element:', src);
+                  }
+                }
+              }
+            });
+          }
+        });
+      });
+      observer.observe(document.body, { childList: true, subtree: true });
+      return observer;
+    };
+
     // Initialize security measures
     addSecurityHeaders();
     generateCSRFToken();
+    const trackingObserver = blockFacebookTracking();
     
     // Set up form protection with a slight delay to catch dynamically added forms
     const setupFormProtection = () => {
@@ -133,6 +189,7 @@ export const SecurityEnhancements: React.FC<SecurityEnhancementsProps> = ({ chil
       clearInterval(formInterval);
       document.removeEventListener('contextmenu', disableContextMenu);
       document.removeEventListener('keydown', disableDevShortcuts);
+      trackingObserver?.disconnect();
     };
   }, []);
 

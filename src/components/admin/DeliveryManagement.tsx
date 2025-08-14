@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -54,7 +55,7 @@ const DeliveryManagement = () => {
       
       console.log('Admin access function result:', { adminCheck, adminError });
 
-      // Now try to load deliveries with detailed error logging
+      // Now try to load deliveries with detailed error logging and schedule information
       const { data, error: deliveryError } = await supabase
         .from('deliveries')
         .select(`
@@ -72,6 +73,33 @@ const DeliveryManagement = () => {
             city,
             state,
             zip_code
+          ),
+          delivery_schedules (
+            id,
+            pickup_scheduled_date,
+            pickup_scheduled_time_start,
+            pickup_scheduled_time_end,
+            pickup_driver_id,
+            pickup_timezone,
+            delivery_scheduled_date,
+            delivery_scheduled_time_start,
+            delivery_scheduled_time_end,
+            delivery_driver_id,
+            delivery_timezone,
+            pickup_driver:drivers!pickup_driver_id (
+              id,
+              first_name,
+              last_name,
+              phone,
+              email
+            ),
+            delivery_driver:drivers!delivery_driver_id (
+              id,
+              first_name,
+              last_name,
+              phone,
+              email
+            )
           )
         `)
         .order('created_at', { ascending: false });
@@ -246,84 +274,167 @@ const DeliveryManagement = () => {
                 </div>
               ) : (
                 <div className="grid gap-4">
-                  {deliveries.map((delivery: any) => (
-                    <Card key={delivery.id} className="p-4">
-                      <div className="space-y-4">
-                        <div className="flex justify-between items-start">
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2">
-                              <h3 className="font-semibold">
-                                {delivery.delivery_number || 'No delivery number'}
-                              </h3>
-                              {getStatusBadge(delivery.status || 'unknown')}
+                  {deliveries.map((delivery: any) => {
+                    const schedule = delivery.delivery_schedules?.[0];
+                    
+                    return (
+                      <Card key={delivery.id} className="p-4">
+                        <div className="space-y-4">
+                          <div className="flex justify-between items-start">
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2">
+                                <h3 className="font-semibold">
+                                  {delivery.delivery_number || 'No delivery number'}
+                                </h3>
+                                {getStatusBadge(delivery.status || 'unknown')}
+                              </div>
+                              <p className="text-sm text-muted-foreground">
+                                Customer: {delivery.customer_name || 'Unknown'}
+                              </p>
                             </div>
-                            <p className="text-sm text-muted-foreground">
-                              Customer: {delivery.customer_name || 'Unknown'}
-                            </p>
+                            <div className="text-right">
+                              <p className="text-sm text-muted-foreground">
+                                {delivery.mobile_home_type?.replace(/_/g, ' ') || 'Unknown type'}
+                              </p>
+                            </div>
                           </div>
-                          <div className="text-right">
-                            <p className="text-sm text-muted-foreground">
-                              {delivery.mobile_home_type?.replace(/_/g, ' ') || 'Unknown type'}
-                            </p>
-                          </div>
-                        </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {delivery.customer_email && (
-                            <div className="flex items-center gap-2 text-sm">
-                              <Mail className="h-4 w-4 text-muted-foreground" />
-                              <span>{delivery.customer_email}</span>
-                            </div>
-                          )}
-                          {delivery.customer_phone && (
-                            <div className="flex items-center gap-2 text-sm">
-                              <Phone className="h-4 w-4 text-muted-foreground" />
-                              <span>{delivery.customer_phone}</span>
-                            </div>
-                          )}
-                          {(delivery.pickup_address || delivery.factories) && (
-                            <div className="flex items-center gap-2 text-sm">
-                              <Truck className="h-4 w-4 text-muted-foreground" />
-                              <span className="truncate">
-                                {delivery.factories && delivery.factories.name ? 
-                                  `${delivery.factories.name} - ${delivery.factories.street_address}, ${delivery.factories.city}, ${delivery.factories.state} ${delivery.factories.zip_code}` :
-                                  delivery.pickup_address
-                                }
-                              </span>
-                            </div>
-                          )}
-                          {delivery.delivery_address && (
-                            <div className="flex items-center gap-2 text-sm">
-                              <MapPin className="h-4 w-4 text-muted-foreground" />
-                              <span className="truncate">{delivery.delivery_address}</span>
-                            </div>
-                          )}
-                        </div>
-
-                        {(delivery.scheduled_pickup_date || delivery.scheduled_delivery_date) && (
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t">
-                            {delivery.scheduled_pickup_date && (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {delivery.customer_email && (
                               <div className="flex items-center gap-2 text-sm">
-                                <Calendar className="h-4 w-4 text-muted-foreground" />
-                                <span>Pickup: {new Date(delivery.scheduled_pickup_date).toLocaleDateString()}</span>
-                                {delivery.factories && (
-                                  <span className="text-muted-foreground">
-                                    from {delivery.factories.name}, {delivery.factories.city}, {delivery.factories.state}
-                                  </span>
+                                <Mail className="h-4 w-4 text-muted-foreground" />
+                                <span>{delivery.customer_email}</span>
+                              </div>
+                            )}
+                            {delivery.customer_phone && (
+                              <div className="flex items-center gap-2 text-sm">
+                                <Phone className="h-4 w-4 text-muted-foreground" />
+                                <span>{delivery.customer_phone}</span>
+                              </div>
+                            )}
+                            {(delivery.pickup_address || delivery.factories) && (
+                              <div className="flex items-center gap-2 text-sm">
+                                <Truck className="h-4 w-4 text-muted-foreground" />
+                                <span className="truncate">
+                                  {delivery.factories && delivery.factories.name ? 
+                                    `${delivery.factories.name} - ${delivery.factories.street_address}, ${delivery.factories.city}, ${delivery.factories.state} ${delivery.factories.zip_code}` :
+                                    delivery.pickup_address
+                                  }
+                                </span>
+                              </div>
+                            )}
+                            {delivery.delivery_address && (
+                              <div className="flex items-center gap-2 text-sm">
+                                <MapPin className="h-4 w-4 text-muted-foreground" />
+                                <span className="truncate">{delivery.delivery_address}</span>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Schedule Information - Enhanced Display */}
+                          {schedule && (
+                            <div className="mt-6 pt-4 border-t">
+                              <h4 className="font-medium text-sm mb-3">Schedule Details</h4>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {/* Pickup Schedule */}
+                                {schedule.pickup_scheduled_date && (
+                                  <div className="space-y-3">
+                                    <div className="flex items-center gap-2">
+                                      <Truck className="h-4 w-4 text-blue-500" />
+                                      <h5 className="font-medium text-sm">Factory Pickup</h5>
+                                    </div>
+                                    <div className="pl-6 space-y-2">
+                                      <div className="flex items-center gap-2 text-sm">
+                                        <Calendar className="h-3 w-3 text-muted-foreground" />
+                                        <span>{new Date(schedule.pickup_scheduled_date).toLocaleDateString()}</span>
+                                      </div>
+                                      {schedule.pickup_scheduled_time_start && (
+                                        <div className="flex items-center gap-2 text-sm">
+                                          <Clock className="h-3 w-3 text-muted-foreground" />
+                                          <span>{schedule.pickup_scheduled_time_start} - {schedule.pickup_scheduled_time_end}</span>
+                                        </div>
+                                      )}
+                                      {schedule.pickup_driver && (
+                                        <div className="flex items-center gap-2 text-sm">
+                                          <User className="h-3 w-3 text-muted-foreground" />
+                                          <span>
+                                            {schedule.pickup_driver.first_name} {schedule.pickup_driver.last_name}
+                                          </span>
+                                        </div>
+                                      )}
+                                      {schedule.pickup_timezone && (
+                                        <div className="text-xs text-muted-foreground">
+                                          Timezone: {schedule.pickup_timezone}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+                                
+                                {/* Delivery Schedule */}
+                                {schedule.delivery_scheduled_date && (
+                                  <div className="space-y-3">
+                                    <div className="flex items-center gap-2">
+                                      <MapPin className="h-4 w-4 text-green-500" />
+                                      <h5 className="font-medium text-sm">Customer Delivery</h5>
+                                    </div>
+                                    <div className="pl-6 space-y-2">
+                                      <div className="flex items-center gap-2 text-sm">
+                                        <Calendar className="h-3 w-3 text-muted-foreground" />
+                                        <span>{new Date(schedule.delivery_scheduled_date).toLocaleDateString()}</span>
+                                      </div>
+                                      {schedule.delivery_scheduled_time_start && (
+                                        <div className="flex items-center gap-2 text-sm">
+                                          <Clock className="h-3 w-3 text-muted-foreground" />
+                                          <span>{schedule.delivery_scheduled_time_start} - {schedule.delivery_scheduled_time_end}</span>
+                                        </div>
+                                      )}
+                                      {schedule.delivery_driver && (
+                                        <div className="flex items-center gap-2 text-sm">
+                                          <User className="h-3 w-3 text-muted-foreground" />
+                                          <span>
+                                            {schedule.delivery_driver.first_name} {schedule.delivery_driver.last_name}
+                                          </span>
+                                        </div>
+                                      )}
+                                      {schedule.delivery_timezone && (
+                                        <div className="text-xs text-muted-foreground">
+                                          Timezone: {schedule.delivery_timezone}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
                                 )}
                               </div>
-                            )}
-                            {delivery.scheduled_delivery_date && (
-                              <div className="flex items-center gap-2 text-sm">
-                                <Clock className="h-4 w-4 text-muted-foreground" />
-                                <span>Delivery: {new Date(delivery.scheduled_delivery_date).toLocaleDateString()}</span>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </Card>
-                  ))}
+                            </div>
+                          )}
+
+                          {/* Legacy Schedule Display for backward compatibility */}
+                          {(delivery.scheduled_pickup_date || delivery.scheduled_delivery_date) && !schedule && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t">
+                              {delivery.scheduled_pickup_date && (
+                                <div className="flex items-center gap-2 text-sm">
+                                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                                  <span>Pickup: {new Date(delivery.scheduled_pickup_date).toLocaleDateString()}</span>
+                                  {delivery.factories && (
+                                    <span className="text-muted-foreground">
+                                      from {delivery.factories.name}, {delivery.factories.city}, {delivery.factories.state}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+                              {delivery.scheduled_delivery_date && (
+                                <div className="flex items-center gap-2 text-sm">
+                                  <Clock className="h-4 w-4 text-muted-foreground" />
+                                  <span>Delivery: {new Date(delivery.scheduled_delivery_date).toLocaleDateString()}</span>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </Card>
+                    );
+                  })}
                 </div>
               )}
 

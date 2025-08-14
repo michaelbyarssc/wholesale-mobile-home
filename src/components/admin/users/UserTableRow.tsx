@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -84,6 +83,13 @@ export const UserTableRow = ({ profile, onUserUpdated, mobileView = false, isSup
           <Badge variant="default" className="text-xs py-0 px-1">
             <Shield className="h-2.5 w-2.5 mr-0.5" />
             Admin
+          </Badge>
+        );
+      case 'driver':
+        return (
+          <Badge variant="secondary" className="text-xs py-0 px-1">
+            <Truck className="h-2.5 w-2.5 mr-0.5" />
+            Driver
           </Badge>
         );
       default:

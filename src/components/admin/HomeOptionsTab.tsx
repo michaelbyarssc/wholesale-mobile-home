@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 import { Plus, Edit, Trash2, Save, X } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
@@ -41,6 +42,7 @@ interface HomeOptionForm {
 export const HomeOptionsTab = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [selectedOption, setSelectedOption] = useState<string>('');
   const [formData, setFormData] = useState<HomeOptionForm>({
     name: '',
     description: '',
@@ -326,7 +328,7 @@ export const HomeOptionsTab = () => {
             </Button>
           </div>
           <p className="text-sm text-gray-600">
-            Manage home options with base costs. Customer-specific markup percentages will be applied automatically.
+            Manage home options with base costs. Customer-specific markup percentages will be applied automatically. Users can only select one option.
           </p>
         </CardHeader>
         <CardContent>
@@ -392,8 +394,52 @@ export const HomeOptionsTab = () => {
             </Card>
           )}
 
-          {/* Options List */}
+          {/* Options Selection */}
+          <div className="mb-6">
+            <Label className="text-base font-semibold mb-4 block">Select Home Option (Choose One)</Label>
+            <RadioGroup value={selectedOption} onValueChange={setSelectedOption} className="space-y-3">
+              {homeOptions.filter(option => option.active).map((option) => (
+                <div key={option.id} className="flex items-center space-x-3 p-4 border rounded-lg hover:bg-gray-50">
+                  <RadioGroupItem value={option.id} id={option.id} />
+                  <Label htmlFor={option.id} className="flex-1 cursor-pointer">
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <h3 className="text-lg font-semibold">{option.name}</h3>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            option.pricing_type === 'per_sqft'
+                              ? 'bg-blue-100 text-blue-800'
+                              : 'bg-purple-100 text-purple-800'
+                          }`}>
+                            {option.pricing_type === 'per_sqft' ? 'Per Sq Ft' : 'Fixed Price'}
+                          </span>
+                        </div>
+                        
+                        {option.description && (
+                          <p className="text-gray-600 mb-3">{option.description}</p>
+                        )}
+                        
+                        <div className="text-sm">
+                          {renderPricingDisplay(option)}
+                        </div>
+                      </div>
+                    </div>
+                  </Label>
+                </div>
+              ))}
+            </RadioGroup>
+            {selectedOption && (
+              <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-md">
+                <p className="text-green-800 text-sm font-medium">
+                  Selected: {homeOptions.find(opt => opt.id === selectedOption)?.name}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Admin Options List */}
           <div className="space-y-4">
+            <h3 className="text-lg font-semibold">All Options (Admin View)</h3>
             {homeOptions.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
                 <p>No home options found.</p>

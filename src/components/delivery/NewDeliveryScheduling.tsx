@@ -45,6 +45,15 @@ interface DeliveryWithSchedule {
     state: string;
     zip_code: string;
   } | null;
+  mobile_homes?: {
+    factories?: {
+      name: string;
+      street_address: string;
+      city: string;
+      state: string;
+      zip_code: string;
+    } | null;
+  } | null;
 }
 
 interface Driver {
@@ -93,7 +102,7 @@ export const NewDeliveryScheduling = () => {
 
   const queryClient = useQueryClient();
 
-  // Fetch deliveries awaiting scheduling
+  // Fetch deliveries awaiting scheduling with proper factory data
   const { data: deliveries, isLoading: deliveriesLoading } = useQuery({
     queryKey: ['deliveries-awaiting-scheduling'],
     queryFn: async () => {
@@ -120,6 +129,18 @@ export const NewDeliveryScheduling = () => {
             city,
             state,
             zip_code
+          ),
+          mobile_homes (
+            id,
+            mobile_home_factories (
+              factories (
+                name,
+                street_address,
+                city,
+                state,
+                zip_code
+              )
+            )
           )
         `)
         .in('status', ['needs_scheduled', 'awaiting_pickup_schedule', 'pickup_scheduled', 'pickup_completed', 'awaiting_delivery_schedule'])
@@ -315,6 +336,31 @@ export const NewDeliveryScheduling = () => {
            !delivery.delivery_schedules?.[0]?.delivery_scheduled_date;
   };
 
+  const getFactoryAddress = (delivery: any) => {
+    // First check if delivery has direct factory relationship
+    if (delivery.factories) {
+      return {
+        name: delivery.factories.name,
+        address: `${delivery.factories.street_address}, ${delivery.factories.city}, ${delivery.factories.state} ${delivery.factories.zip_code}`
+      };
+    }
+    
+    // Then check if mobile home has factory relationship
+    if (delivery.mobile_homes?.mobile_home_factories?.[0]?.factories) {
+      const factory = delivery.mobile_homes.mobile_home_factories[0].factories;
+      return {
+        name: factory.name,
+        address: `${factory.street_address}, ${factory.city}, ${factory.state} ${factory.zip_code}`
+      };
+    }
+    
+    // Fallback to pickup_address if no factory data
+    return {
+      name: 'Factory',
+      address: delivery.pickup_address || 'Factory Address TBD'
+    };
+  };
+
   if (deliveriesLoading || driversLoading) {
     return <div className="p-6">Loading...</div>;
   }
@@ -475,97 +521,96 @@ export const NewDeliveryScheduling = () => {
             </CardContent>
           </Card>
         ) : (
-          awaitingDeliveries.map((delivery) => (
-            <Card key={delivery.id}>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="text-lg">{delivery.delivery_number}</CardTitle>
-                    <CardDescription>{delivery.customer_name}</CardDescription>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {getDeliveryStatusBadge(delivery)}
-                    <Button 
-                      onClick={() => handleScheduleDelivery(delivery.id)}
-                      size="sm"
-                      variant="outline"
-                    >
-                      <CalendarIcon className="h-4 w-4 mr-2" />
-                      Schedule
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <div className="flex items-center text-sm">
-                      <User className="h-4 w-4 mr-2 text-muted-foreground" />
-                      <span>{delivery.customer_email}</span>
+          awaitingDeliveries.map((delivery) => {
+            const factoryInfo = getFactoryAddress(delivery);
+            
+            return (
+              <Card key={delivery.id}>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-lg">{delivery.delivery_number}</CardTitle>
+                      <CardDescription>{delivery.customer_name}</CardDescription>
                     </div>
-                    <div className="flex items-center text-sm">
-                      <span className="mr-2">📞</span>
-                      <span>{delivery.customer_phone}</span>
+                    <div className="flex items-center gap-2">
+                      {getDeliveryStatusBadge(delivery)}
+                      <Button 
+                        onClick={() => handleScheduleDelivery(delivery.id)}
+                        size="sm"
+                        variant="outline"
+                      >
+                        <CalendarIcon className="h-4 w-4 mr-2" />
+                        Schedule
+                      </Button>
                     </div>
                   </div>
-                  
-                  <div className="space-y-2">
-                    <div className="flex items-center text-sm">
-                      <Truck className="h-4 w-4 mr-2 text-muted-foreground" />
-                      <span>Factory: {delivery.factories?.name || 'Unknown'}</span>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <div className="flex items-center text-sm">
+                        <User className="h-4 w-4 mr-2 text-muted-foreground" />
+                        <span>{delivery.customer_email}</span>
+                      </div>
+                      <div className="flex items-center text-sm">
+                        <span className="mr-2">📞</span>
+                        <span>{delivery.customer_phone}</span>
+                      </div>
                     </div>
-                    <div className="flex items-center text-sm">
-                      <MapPin className="h-4 w-4 mr-2 text-muted-foreground" />
-                      <span className="truncate">
-                        {delivery.factories ? 
-                          `${delivery.factories.street_address}, ${delivery.factories.city}, ${delivery.factories.state} ${delivery.factories.zip_code}` :
-                          delivery.pickup_address
-                        }
-                      </span>
+                    
+                    <div className="space-y-2">
+                      <div className="flex items-center text-sm">
+                        <Truck className="h-4 w-4 mr-2 text-muted-foreground" />
+                        <span>Factory: {factoryInfo.name}</span>
+                      </div>
+                      <div className="flex items-center text-sm">
+                        <MapPin className="h-4 w-4 mr-2 text-muted-foreground" />
+                        <span className="truncate">{factoryInfo.address}</span>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <div className="flex items-center text-sm">
+                        <MapPin className="h-4 w-4 mr-2 text-muted-foreground" />
+                        <span className="truncate">{delivery.delivery_address}</span>
+                      </div>
+                      <div className="flex items-center text-sm">
+                        <span className="mr-2">🏠</span>
+                        <span>{delivery.mobile_home_type}</span>
+                      </div>
                     </div>
                   </div>
-                  
-                  <div className="space-y-2">
-                    <div className="flex items-center text-sm">
-                      <MapPin className="h-4 w-4 mr-2 text-muted-foreground" />
-                      <span className="truncate">{delivery.delivery_address}</span>
-                    </div>
-                    <div className="flex items-center text-sm">
-                      <span className="mr-2">🏠</span>
-                      <span>{delivery.mobile_home_type}</span>
-                    </div>
-                  </div>
-                </div>
 
-                {/* Schedule Information */}
-                {delivery.delivery_schedules?.[0] && (
-                  <div className="mt-4 pt-4 border-t">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {delivery.delivery_schedules[0].pickup_scheduled_date && (
-                        <div className="space-y-1">
-                          <h4 className="font-medium text-sm">Pickup Schedule</h4>
-                          <div className="text-sm text-muted-foreground">
-                            <p>{format(new Date(delivery.delivery_schedules[0].pickup_scheduled_date), 'PPP')}</p>
-                            <p>{delivery.delivery_schedules[0].pickup_scheduled_time_start} - {delivery.delivery_schedules[0].pickup_scheduled_time_end}</p>
+                  {/* Schedule Information */}
+                  {delivery.delivery_schedules?.[0] && (
+                    <div className="mt-4 pt-4 border-t">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {delivery.delivery_schedules[0].pickup_scheduled_date && (
+                          <div className="space-y-1">
+                            <h4 className="font-medium text-sm">Pickup Schedule</h4>
+                            <div className="text-sm text-muted-foreground">
+                              <p>{format(new Date(delivery.delivery_schedules[0].pickup_scheduled_date), 'PPP')}</p>
+                              <p>{delivery.delivery_schedules[0].pickup_scheduled_time_start} - {delivery.delivery_schedules[0].pickup_scheduled_time_end}</p>
+                            </div>
                           </div>
-                        </div>
-                      )}
-                      
-                      {delivery.delivery_schedules[0].delivery_scheduled_date && (
-                        <div className="space-y-1">
-                          <h4 className="font-medium text-sm">Delivery Schedule</h4>
-                          <div className="text-sm text-muted-foreground">
-                            <p>{format(new Date(delivery.delivery_schedules[0].delivery_scheduled_date), 'PPP')}</p>
-                            <p>{delivery.delivery_schedules[0].delivery_scheduled_time_start} - {delivery.delivery_schedules[0].delivery_scheduled_time_end}</p>
+                        )}
+                        
+                        {delivery.delivery_schedules[0].delivery_scheduled_date && (
+                          <div className="space-y-1">
+                            <h4 className="font-medium text-sm">Delivery Schedule</h4>
+                            <div className="text-sm text-muted-foreground">
+                              <p>{format(new Date(delivery.delivery_schedules[0].delivery_scheduled_date), 'PPP')}</p>
+                              <p>{delivery.delivery_schedules[0].delivery_scheduled_time_start} - {delivery.delivery_schedules[0].delivery_scheduled_time_end}</p>
+                            </div>
                           </div>
-                        </div>
-                      )}
+                        )}
+                      </div>
                     </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          ))
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })
         )}
       </div>
     </div>

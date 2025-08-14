@@ -50,23 +50,11 @@ export const useMultiUserAuth = () => {
   const navigate = useNavigate();
   const { validateSession } = useSessionValidation();
   
-  // If session integrity is compromised or addSession is not available, use simple auth for login
-  if (!isSessionValid || !addSession || (!sessions.length && !simpleAuth.user)) {
-    console.log('🔐 MULTI-USER AUTH: Using simple auth due to integrity issues or context not ready');
-    return {
-      ...simpleAuth,
-      // Add multi-user specific methods that redirect to simple auth
-      switchToSession: () => {},
-      signOutAll: simpleAuth.signOut,
-      fetchUserProfile: async () => null,
-      hasMultipleSessions: false,
-      sessionCount: simpleAuth.user ? 1 : 0,
-      userProfile: null,
-      getCurrentSession: () => simpleAuth.activeSession,
-      getCurrentUser: () => simpleAuth.user,
-      getCurrentUserProfile: () => null,
-      getSupabaseClient: () => simpleAuth.supabaseClient
-    };
+  // Only fallback to simple auth if there's no context at all - be more permissive for initialization
+  if (!sessionManager || !addSession) {
+    console.log('🔐 MULTI-USER AUTH: SessionManager not ready, initializing...');
+    // Don't immediately fallback - let the initialization process complete
+    setIsLoading(true);
   }
 
   // Initialize by checking for existing session with recovery
@@ -94,31 +82,29 @@ export const useMultiUserAuth = () => {
         
         // Set up auth state listener first - stable callback without dependencies
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
-          async (event, session) => {
+          (event, session) => {
             if (event === 'SIGNED_IN' && session?.user) {
-              // Use a separate check to avoid dependency on sessions array
-              const storedSessions = localStorage.getItem('wmh_sessions');
-              const existingSessions = storedSessions ? JSON.parse(storedSessions) : [];
-              const hasExistingSession = existingSessions.some((s: any) => s.user.id === session.user.id);
-              
-              if (!hasExistingSession) {
-                console.log('🔐 Auth state change: adding new session for user:', session.user.email);
+              // Use setTimeout to defer Supabase calls and prevent deadlock
+              setTimeout(async () => {
                 try {
-                  if (addSession && typeof addSession === 'function') {
+                  const storedSessions = localStorage.getItem('wmh_sessions');
+                  const existingSessions = storedSessions ? JSON.parse(storedSessions) : [];
+                  const hasExistingSession = existingSessions.some((s: any) => s.user.id === session.user.id);
+                  
+                  if (!hasExistingSession && addSession && typeof addSession === 'function') {
+                    console.log('🔐 Auth state change: adding new session for user:', session.user.email);
                     await addSession(session.user, session);
-                  } else {
-                    console.error('🔐 addSession is not available or not a function');
                   }
                 } catch (error) {
                   console.error('🔐 Error adding session during auth state change:', error);
-                  // Fallback: clear corrupted data
                   clearCorruptedSessions();
                 }
-              }
+              }, 0);
             }
           }
         );
         
+        // CRITICAL: Assign the subscription object to prevent null reference error
         authSubscription = subscription;
 
         // Then check for existing session with error handling
@@ -132,14 +118,10 @@ export const useMultiUserAuth = () => {
             const storedSessions = localStorage.getItem('wmh_sessions');
             const existingSessions = storedSessions ? JSON.parse(storedSessions) : [];
             
-            if (existingSessions.length === 0) {
+            if (existingSessions.length === 0 && addSession && typeof addSession === 'function') {
               console.log('🔐 Initializing auth with existing session for user:', session.user.email);
               try {
-                if (addSession && typeof addSession === 'function') {
-                  await addSession(session.user, session);
-                } else {
-                  console.error('🔐 addSession is not available during initialization');
-                }
+                await addSession(session.user, session);
               } catch (error) {
                 console.error('🔐 Error adding session during initialization:', error);
                 clearCorruptedSessions();
@@ -162,11 +144,12 @@ export const useMultiUserAuth = () => {
     initializeAuth();
     
     return () => {
-      if (authSubscription) {
+      // Add null check to prevent "Cannot read properties of null" error
+      if (authSubscription && typeof authSubscription.unsubscribe === 'function') {
         authSubscription.unsubscribe();
       }
     };
-  }, [addSession].filter(Boolean)); // Filter out undefined dependencies
+  }, [addSession]); // Remove filter to ensure proper dependency tracking
 
   const signIn = useCallback(async (email: string, password: string) => {
     setIsLoading(true);

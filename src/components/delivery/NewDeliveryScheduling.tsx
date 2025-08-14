@@ -102,7 +102,7 @@ export const NewDeliveryScheduling = () => {
 
   const queryClient = useQueryClient();
 
-  // Fetch deliveries awaiting scheduling with proper factory data
+  // Fetch deliveries awaiting scheduling with proper factory data and driver information
   const { data: deliveries, isLoading: deliveriesLoading } = useQuery({
     queryKey: ['deliveries-awaiting-scheduling'],
     queryFn: async () => {
@@ -121,7 +121,21 @@ export const NewDeliveryScheduling = () => {
             delivery_scheduled_time_start,
             delivery_scheduled_time_end,
             delivery_driver_id,
-            delivery_timezone
+            delivery_timezone,
+            pickup_driver:drivers!pickup_driver_id (
+              id,
+              first_name,
+              last_name,
+              phone,
+              email
+            ),
+            delivery_driver:drivers!delivery_driver_id (
+              id,
+              first_name,
+              last_name,
+              phone,
+              email
+            )
           ),
           factories (
             name,
@@ -537,6 +551,7 @@ export const NewDeliveryScheduling = () => {
         ) : (
           awaitingDeliveries.map((delivery) => {
             const factoryInfo = getFactoryAddress(delivery);
+            const schedule = delivery.delivery_schedules?.[0];
             
             return (
               <Card key={delivery.id}>
@@ -561,7 +576,9 @@ export const NewDeliveryScheduling = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {/* Customer Information */}
                     <div className="space-y-2">
+                      <h4 className="font-medium text-sm">Customer Details</h4>
                       <div className="flex items-center text-sm">
                         <User className="h-4 w-4 mr-2 text-muted-foreground" />
                         <span>{delivery.customer_email}</span>
@@ -572,10 +589,12 @@ export const NewDeliveryScheduling = () => {
                       </div>
                     </div>
                     
+                    {/* Factory Information */}
                     <div className="space-y-2">
+                      <h4 className="font-medium text-sm">Factory Pickup</h4>
                       <div className="flex items-center text-sm">
                         <Truck className="h-4 w-4 mr-2 text-muted-foreground" />
-                        <span>Factory: {factoryInfo.name}</span>
+                        <span>{factoryInfo.name}</span>
                       </div>
                       <div className="flex items-center text-sm">
                         <MapPin className="h-4 w-4 mr-2 text-muted-foreground" />
@@ -583,7 +602,9 @@ export const NewDeliveryScheduling = () => {
                       </div>
                     </div>
                     
+                    {/* Delivery Information */}
                     <div className="space-y-2">
+                      <h4 className="font-medium text-sm">Customer Delivery</h4>
                       <div className="flex items-center text-sm">
                         <MapPin className="h-4 w-4 mr-2 text-muted-foreground" />
                         <span className="truncate">{delivery.delivery_address}</span>
@@ -596,25 +617,72 @@ export const NewDeliveryScheduling = () => {
                   </div>
 
                   {/* Schedule Information */}
-                  {delivery.delivery_schedules?.[0] && (
-                    <div className="mt-4 pt-4 border-t">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {delivery.delivery_schedules[0].pickup_scheduled_date && (
-                          <div className="space-y-1">
-                            <h4 className="font-medium text-sm">Pickup Schedule</h4>
-                            <div className="text-sm text-muted-foreground">
-                              <p>{format(new Date(delivery.delivery_schedules[0].pickup_scheduled_date), 'PPP')}</p>
-                              <p>{delivery.delivery_schedules[0].pickup_scheduled_time_start} - {delivery.delivery_schedules[0].pickup_scheduled_time_end}</p>
+                  {schedule && (
+                    <div className="mt-6 pt-4 border-t">
+                      <h4 className="font-medium text-sm mb-3">Schedule Details</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Pickup Schedule */}
+                        {schedule.pickup_scheduled_date && (
+                          <div className="space-y-3">
+                            <div className="flex items-center gap-2">
+                              <Truck className="h-4 w-4 text-blue-500" />
+                              <h5 className="font-medium text-sm">Factory Pickup</h5>
+                            </div>
+                            <div className="pl-6 space-y-2">
+                              <div className="flex items-center gap-2 text-sm">
+                                <CalendarIcon className="h-3 w-3 text-muted-foreground" />
+                                <span>{format(new Date(schedule.pickup_scheduled_date), 'PPP')}</span>
+                              </div>
+                              <div className="flex items-center gap-2 text-sm">
+                                <Clock className="h-3 w-3 text-muted-foreground" />
+                                <span>{schedule.pickup_scheduled_time_start} - {schedule.pickup_scheduled_time_end}</span>
+                              </div>
+                              {schedule.pickup_driver && (
+                                <div className="flex items-center gap-2 text-sm">
+                                  <User className="h-3 w-3 text-muted-foreground" />
+                                  <span>
+                                    {schedule.pickup_driver.first_name} {schedule.pickup_driver.last_name}
+                                  </span>
+                                </div>
+                              )}
+                              {schedule.pickup_timezone && (
+                                <div className="text-xs text-muted-foreground">
+                                  Timezone: {schedule.pickup_timezone}
+                                </div>
+                              )}
                             </div>
                           </div>
                         )}
                         
-                        {delivery.delivery_schedules[0].delivery_scheduled_date && (
-                          <div className="space-y-1">
-                            <h4 className="font-medium text-sm">Delivery Schedule</h4>
-                            <div className="text-sm text-muted-foreground">
-                              <p>{format(new Date(delivery.delivery_schedules[0].delivery_scheduled_date), 'PPP')}</p>
-                              <p>{delivery.delivery_schedules[0].delivery_scheduled_time_start} - {delivery.delivery_schedules[0].delivery_scheduled_time_end}</p>
+                        {/* Delivery Schedule */}
+                        {schedule.delivery_scheduled_date && (
+                          <div className="space-y-3">
+                            <div className="flex items-center gap-2">
+                              <MapPin className="h-4 w-4 text-green-500" />
+                              <h5 className="font-medium text-sm">Customer Delivery</h5>
+                            </div>
+                            <div className="pl-6 space-y-2">
+                              <div className="flex items-center gap-2 text-sm">
+                                <CalendarIcon className="h-3 w-3 text-muted-foreground" />
+                                <span>{format(new Date(schedule.delivery_scheduled_date), 'PPP')}</span>
+                              </div>
+                              <div className="flex items-center gap-2 text-sm">
+                                <Clock className="h-3 w-3 text-muted-foreground" />
+                                <span>{schedule.delivery_scheduled_time_start} - {schedule.delivery_scheduled_time_end}</span>
+                              </div>
+                              {schedule.delivery_driver && (
+                                <div className="flex items-center gap-2 text-sm">
+                                  <User className="h-3 w-3 text-muted-foreground" />
+                                  <span>
+                                    {schedule.delivery_driver.first_name} {schedule.delivery_driver.last_name}
+                                  </span>
+                                </div>
+                              )}
+                              {schedule.delivery_timezone && (
+                                <div className="text-xs text-muted-foreground">
+                                  Timezone: {schedule.delivery_timezone}
+                                </div>
+                              )}
                             </div>
                           </div>
                         )}

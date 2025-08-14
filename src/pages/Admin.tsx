@@ -166,7 +166,7 @@ const Admin = () => {
             className={`${mobile ? 'justify-start w-full h-11 text-base font-medium' : ''} text-xs sm:text-sm`}
             onClick={() => handleTabChange('mobile-homes')}
           >
-            🏠 Mobile Homes
+            Mobile Homes
           </Button>
         </>
       ) : null}
@@ -175,21 +175,21 @@ const Admin = () => {
         className={`${mobile ? 'justify-start w-full h-11 text-base font-medium' : ''} text-xs sm:text-sm`}
         onClick={() => handleTabChange('sales')}
       >
-        💰 Sales
+        Sales
       </Button>
       <Button
         variant={activeTab === 'users' ? 'default' : 'ghost'}
         className={`${mobile ? 'justify-start w-full h-11 text-base font-medium' : ''} text-xs sm:text-sm`}
         onClick={() => handleTabChange('users')}
       >
-        👥 Users
+        Users
       </Button>
       <Button
         variant={activeTab === 'crm' ? 'default' : 'ghost'}
         className={`${mobile ? 'justify-start w-full h-11 text-base font-medium' : ''} text-xs sm:text-sm`}
         onClick={() => handleTabChange('crm')}
       >
-        📊 CRM
+        CRM
       </Button>
       {isSuperAdmin && (
         <Button
@@ -197,7 +197,7 @@ const Admin = () => {
           className={`${mobile ? 'justify-start w-full h-11 text-base font-medium' : ''} text-xs sm:text-sm`}
           onClick={() => handleTabChange('delivery')}
         >
-          🚚 Delivery
+          Delivery
         </Button>
       )}
        {isSuperAdmin && (
@@ -207,35 +207,35 @@ const Admin = () => {
              className={`${mobile ? 'justify-start w-full h-11 text-base font-medium' : ''} text-xs sm:text-sm`}
              onClick={() => handleTabChange('analytics')}
            >
-            📈 Analytics
+            Analytics
              </Button>
            <Button
              variant={activeTab === 'social-proof' ? 'default' : 'ghost'}
              className={`${mobile ? 'justify-start w-full h-11 text-base font-medium' : ''} text-xs sm:text-sm`}
              onClick={() => handleTabChange('social-proof')}
            >
-             ⭐ Social Proof
+             Social Proof
            </Button>
             <Button
               variant={activeTab === 'faq' ? 'default' : 'ghost'}
               className={`${mobile ? 'justify-start w-full h-11 text-base font-medium' : ''} text-xs sm:text-sm`}
               onClick={() => handleTabChange('faq')}
             >
-              ❓ FAQ
+              FAQ
             </Button>
             <Button
               variant={activeTab === 'testing' ? 'default' : 'ghost'}
               className={`${mobile ? 'justify-start w-full h-11 text-base font-medium' : ''} text-xs sm:text-sm`}
               onClick={() => handleTabChange('testing')}
             >
-              🧪 Testing
+              Testing
             </Button>
             <Button
               variant={activeTab === 'settings' ? 'default' : 'ghost'}
               className={`${mobile ? 'justify-start w-full h-11 text-base font-medium' : ''} text-xs sm:text-sm`}
               onClick={() => handleTabChange('settings')}
             >
-              ⚙️ Settings
+              Settings
             </Button>
         </>
       )}
@@ -367,67 +367,67 @@ const Admin = () => {
                   value="mobile-homes" 
                   className="text-xs sm:text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm px-3 py-2 whitespace-nowrap"
                 >
-                  🏠 Homes
+                  Homes
                 </TabsTrigger>
                 <TabsTrigger 
                   value="sales" 
                   className="text-xs sm:text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm px-3 py-2 whitespace-nowrap"
                 >
-                  💰 Sales
+                  Sales
                 </TabsTrigger>
                 <TabsTrigger 
                   value="users" 
                   className="text-xs sm:text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm px-3 py-2 whitespace-nowrap"
                 >
-                  👥 Users
+                  Users
                 </TabsTrigger>
                 <TabsTrigger 
                   value="crm" 
                   className="text-xs sm:text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm px-3 py-2 whitespace-nowrap"
                 >
-                  📊 CRM
+                  CRM
                 </TabsTrigger>
                 <TabsTrigger 
                   value="analytics" 
                   className="text-xs sm:text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm px-3 py-2 whitespace-nowrap"
                 >
-                  📈 Analytics
+                  Analytics
                 </TabsTrigger>
                 <TabsTrigger 
                   value="social-proof" 
                   className="text-xs sm:text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm px-3 py-2 whitespace-nowrap"
                 >
-                  ⭐ Social
+                  Social
                 </TabsTrigger>
                 <TabsTrigger 
                   value="faq" 
                   className="text-xs sm:text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm px-3 py-2 whitespace-nowrap"
                 >
-                  ❓ FAQ
+                  FAQ
                 </TabsTrigger>
                 <TabsTrigger 
                   value="delivery" 
                   className="text-xs sm:text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm px-3 py-2 whitespace-nowrap"
                 >
-                  🚚 Delivery
+                  Delivery
                 </TabsTrigger>
                 <TabsTrigger 
                   value="reviews" 
                   className="text-xs sm:text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm px-3 py-2 whitespace-nowrap"
                 >
-                  ⭐ Reviews
+                  Reviews
                 </TabsTrigger>
                 <TabsTrigger 
                   value="testing" 
                   className="text-xs sm:text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm px-3 py-2 whitespace-nowrap"
                 >
-                  🧪 Testing
+                  Testing
                 </TabsTrigger>
                 <TabsTrigger 
                   value="settings" 
                   className="text-xs sm:text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm px-3 py-2 whitespace-nowrap"
                 >
-                  ⚙️ Settings
+                  Settings
                 </TabsTrigger>
               </TabsList>
             </div>

@@ -64,7 +64,17 @@ const DeliveryManagement = () => {
             id,
             model,
             manufacturer,
-            display_name
+            display_name,
+            mobile_home_factories (
+              factories (
+                id,
+                name,
+                street_address,
+                city,
+                state,
+                zip_code
+              )
+            )
           ),
           factories (
             id,
@@ -228,6 +238,27 @@ const DeliveryManagement = () => {
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };
 
+  const getFactoryAddress = (delivery: any) => {
+    // First try to get factory info from the mobile_home_factories relationship
+    const mobileHomeFactory = delivery.mobile_homes?.mobile_home_factories?.[0]?.factories;
+    if (mobileHomeFactory) {
+      return {
+        name: mobileHomeFactory.name,
+        address: `${mobileHomeFactory.street_address}, ${mobileHomeFactory.city}, ${mobileHomeFactory.state} ${mobileHomeFactory.zip_code}`
+      };
+    }
+    
+    // Fallback to direct factory relationship
+    if (delivery.factories) {
+      return {
+        name: delivery.factories.name,
+        address: `${delivery.factories.street_address}, ${delivery.factories.city}, ${delivery.factories.state} ${delivery.factories.zip_code}`
+      };
+    }
+    
+    return null;
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -276,6 +307,7 @@ const DeliveryManagement = () => {
                 <div className="grid gap-4">
                   {deliveries.map((delivery: any) => {
                     const schedule = delivery.delivery_schedules?.[0];
+                    const factoryInfo = getFactoryAddress(delivery);
                     
                     return (
                       <Card key={delivery.id} className="p-4">
@@ -312,14 +344,11 @@ const DeliveryManagement = () => {
                                 <span>{delivery.customer_phone}</span>
                               </div>
                             )}
-                            {(delivery.pickup_address || delivery.factories) && (
+                            {factoryInfo && (
                               <div className="flex items-center gap-2 text-sm">
                                 <Truck className="h-4 w-4 text-muted-foreground" />
                                 <span className="truncate">
-                                  {delivery.factories && delivery.factories.name ? 
-                                    `${delivery.factories.name} - ${delivery.factories.street_address}, ${delivery.factories.city}, ${delivery.factories.state} ${delivery.factories.zip_code}` :
-                                    delivery.pickup_address
-                                  }
+                                  {factoryInfo.name} - {factoryInfo.address}
                                 </span>
                               </div>
                             )}
@@ -416,9 +445,9 @@ const DeliveryManagement = () => {
                                 <div className="flex items-center gap-2 text-sm">
                                   <Calendar className="h-4 w-4 text-muted-foreground" />
                                   <span>Pickup: {new Date(delivery.scheduled_pickup_date).toLocaleDateString()}</span>
-                                  {delivery.factories && (
+                                  {factoryInfo && (
                                     <span className="text-muted-foreground">
-                                      from {delivery.factories.name}, {delivery.factories.city}, {delivery.factories.state}
+                                      from {factoryInfo.name}, {factoryInfo.address}
                                     </span>
                                   )}
                                 </div>

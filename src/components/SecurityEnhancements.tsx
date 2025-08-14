@@ -22,9 +22,8 @@ export const SecurityEnhancements: React.FC<SecurityEnhancementsProps> = ({ chil
           "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://esm.sh; " +
           "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
           "font-src 'self' https://fonts.gstatic.com; " +
-          "img-src 'self' data: https: !https://*.facebook.com !https://*.facebook.net; " +
-          "connect-src 'self' https://vgdreuwmisludqxphsph.supabase.co wss://vgdreuwmisludqxphsph.supabase.co !https://*.facebook.com !https://*.facebook.net; " +
-          "frame-ancestors 'none'; " +
+          "img-src 'self' data: https:; " +
+          "connect-src 'self' https://vgdreuwmisludqxphsph.supabase.co wss://vgdreuwmisludqxphsph.supabase.co; " +
           "base-uri 'self'; " +
           "object-src 'none';"
         );
@@ -40,14 +39,6 @@ export const SecurityEnhancements: React.FC<SecurityEnhancementsProps> = ({ chil
         document.head.appendChild(xContentType);
       }
 
-      // X-Frame-Options
-      let xFrame = document.querySelector('meta[http-equiv="X-Frame-Options"]');
-      if (!xFrame) {
-        xFrame = document.createElement('meta');
-        xFrame.setAttribute('http-equiv', 'X-Frame-Options');
-        xFrame.setAttribute('content', 'DENY');
-        document.head.appendChild(xFrame);
-      }
 
       // X-XSS-Protection
       let xXSS = document.querySelector('meta[http-equiv="X-XSS-Protection"]');

@@ -34,17 +34,42 @@ export const useMultiUserAuth = () => {
       try {
         // Set up auth state listener first - stable callback without dependencies
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
-          async (event, session) => {
+          (event, session) => {
+            // Handle auth state changes without async operations to prevent deadlocks
             if (event === 'SIGNED_IN' && session?.user) {
-              // Use a separate check to avoid dependency on sessions array
-              const storedSessions = localStorage.getItem('wmh_sessions');
-              const existingSessions = storedSessions ? JSON.parse(storedSessions) : [];
-              const hasExistingSession = existingSessions.some((s: any) => s.user.id === session.user.id);
-              
-              if (!hasExistingSession) {
-                console.log('🔐 Auth state change: adding new session for user:', session.user.email);
-                await addSession(session.user, session);
-              }
+              // Defer session addition to prevent blocking the auth state change
+              setTimeout(async () => {
+                try {
+                  const storedSessions = localStorage.getItem('wmh_sessions');
+                  const existingSessions = storedSessions ? JSON.parse(storedSessions) : [];
+                  const hasExistingSession = existingSessions.some((s: any) => s.user.id === session.user.id);
+                  
+                  if (!hasExistingSession) {
+                    console.log('🔐 Auth state change: adding new session for user:', session.user.email);
+                    await addSession(session.user, session);
+                  }
+                } catch (error) {
+                  console.error('🔐 Error in deferred session addition:', error);
+                }
+              }, 0);
+            } else if (event === 'SIGNED_OUT') {
+              // Handle sign out events by cleaning up any orphaned sessions
+              setTimeout(() => {
+                try {
+                  const storedSessions = localStorage.getItem('wmh_sessions');
+                  if (storedSessions) {
+                    const sessionData = JSON.parse(storedSessions);
+                    // Check if any stored sessions are still valid
+                    if (sessionData.length > 0 && !session) {
+                      console.log('🔐 Cleaning up orphaned sessions after sign out');
+                      localStorage.removeItem('wmh_sessions');
+                      localStorage.removeItem('wmh_active_session');
+                    }
+                  }
+                } catch (error) {
+                  console.error('🔐 Error cleaning up after sign out:', error);
+                }
+              }, 0);
             }
           }
         );
@@ -52,8 +77,14 @@ export const useMultiUserAuth = () => {
         authSubscription = subscription;
 
         // Then check for existing session
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user) {
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          console.error('🔐 Error getting session:', sessionError);
+          // Clear any corrupted session data
+          localStorage.removeItem('wmh_sessions');
+          localStorage.removeItem('wmh_active_session');
+        } else if (session?.user) {
           const storedSessions = localStorage.getItem('wmh_sessions');
           const existingSessions = storedSessions ? JSON.parse(storedSessions) : [];
           
@@ -63,8 +94,23 @@ export const useMultiUserAuth = () => {
           }
         }
         
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error initializing auth:', error);
+        
+        // If auth initialization fails completely, clear all auth data
+        if (error?.message?.includes('Failed to fetch') || 
+            error?.message?.includes('session_not_found')) {
+          console.log('🔐 Clearing corrupted auth state due to initialization error');
+          localStorage.removeItem('wmh_sessions');
+          localStorage.removeItem('wmh_active_session');
+          
+          // Clear any auth-related storage keys
+          Object.keys(localStorage).forEach(key => {
+            if (key.startsWith('wmh_session_') || key.startsWith('sb-')) {
+              localStorage.removeItem(key);
+            }
+          });
+        }
       } finally {
         setIsLoading(false);
       }
@@ -139,29 +185,64 @@ export const useMultiUserAuth = () => {
     if (!targetSessionId) return;
 
     const session = sessions.find(s => s.id === targetSessionId);
-    if (!session) return;
+    if (!session) {
+      // Session already removed, just clean up local state
+      removeSession(targetSessionId);
+      return;
+    }
 
     try {
-      // Sign out from the specific session's client
+      // Check if session is still valid before attempting sign out
+      const { error: userError } = await session.supabaseClient.auth.getUser();
+      
+      if (userError && (userError.message.includes('session_not_found') || userError.message.includes('Session not found'))) {
+        // Session is already invalid on server, just clean up locally
+        console.log('🔐 Session already invalid on server, cleaning up locally:', targetSessionId);
+        removeSession(targetSessionId);
+        return;
+      }
+      
+      // Session is valid, attempt proper sign out
       await session.supabaseClient.auth.signOut();
       removeSession(targetSessionId);
       console.log('🔐 Signed out session:', targetSessionId);
-    } catch (error) {
+    } catch (error: any) {
       console.error('🔐 Sign out error:', error);
+      
+      // If sign out failed due to invalid session, clean up anyway
+      if (error?.message?.includes('session_not_found') || 
+          error?.message?.includes('Session not found') ||
+          error?.message?.includes('Failed to fetch')) {
+        console.log('🔐 Cleaning up invalid session after sign out error:', targetSessionId);
+        removeSession(targetSessionId);
+      }
     }
   }, [activeSessionId, sessions, removeSession]);
 
   const signOutAll = useCallback(async () => {
     try {
-      // Sign out all sessions
-      await Promise.all(sessions.map(session => 
-        session.supabaseClient.auth.signOut()
-      ));
+      // Attempt to sign out all valid sessions, but don't fail if some are invalid
+      const signOutPromises = sessions.map(async (session) => {
+        try {
+          const { error: userError } = await session.supabaseClient.auth.getUser();
+          if (!userError) {
+            await session.supabaseClient.auth.signOut();
+          }
+        } catch (error: any) {
+          // Log but don't fail - session might already be invalid
+          console.log('🔐 Session already invalid during sign out all:', session.id);
+        }
+      });
+      
+      await Promise.allSettled(signOutPromises);
       clearAllSessions();
       navigate('/');
       console.log('🔐 Signed out all sessions');
     } catch (error) {
       console.error('🔐 Sign out all error:', error);
+      // Force cleanup even if sign out failed
+      clearAllSessions();
+      navigate('/');
     }
   }, [sessions, clearAllSessions, navigate]);
 

@@ -2,12 +2,17 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthUser } from '@/hooks/useAuthUser';
 import { useUserRoles } from '@/hooks/useUserRoles';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { RefreshCw, AlertCircle } from 'lucide-react';
+import { RefreshCw, AlertCircle, Calendar, Clock, Truck, MapPin, User, Phone, Mail } from 'lucide-react';
+import { NewDeliveryScheduling } from '@/components/delivery/NewDeliveryScheduling';
+import { DeliveryScheduler } from '@/components/delivery/DeliveryScheduler';
+import { DeliveryScheduling } from '@/components/delivery/DeliveryScheduling';
 
 const DeliveryManagement = () => {
   const [deliveries, setDeliveries] = useState([]);
@@ -171,62 +176,157 @@ const DeliveryManagement = () => {
     );
   }
 
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          Delivery Management
-          <Button variant="outline" size="sm" onClick={handleRefresh}>
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Refresh
-          </Button>
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        {deliveries.length === 0 ? (
-          <div className="text-center p-8 text-muted-foreground">
-            No deliveries found.
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Found {deliveries.length} deliveries
-            </p>
-            {/* Add delivery list here when we get data loading working */}
-            <div className="grid gap-4">
-              {deliveries.map((delivery: any) => (
-                <div key={delivery.id} className="p-4 border rounded-lg">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className="font-semibold">
-                        {delivery.delivery_number || 'No delivery number'}
-                      </h3>
-                      <p className="text-sm text-muted-foreground">
-                        Customer: {delivery.customer_name || 'Unknown'}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        Status: {delivery.status || 'Unknown'}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-medium">
-                        ${delivery.total_delivery_cost || '0'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+  const getStatusBadge = (status: string) => {
+    const statusMap: Record<string, { variant: any; label: string }> = {
+      'scheduled': { variant: 'default', label: 'Scheduled' },
+      'pickup_scheduled': { variant: 'secondary', label: 'Pickup Scheduled' },
+      'pickup_completed': { variant: 'default', label: 'Pickup Complete' },
+      'delivery_scheduled': { variant: 'secondary', label: 'Delivery Scheduled' },
+      'in_transit': { variant: 'default', label: 'In Transit' },
+      'delivered': { variant: 'default', label: 'Delivered' },
+      'completed': { variant: 'default', label: 'Completed' },
+      'cancelled': { variant: 'destructive', label: 'Cancelled' },
+      'delayed': { variant: 'destructive', label: 'Delayed' },
+    };
+    
+    const config = statusMap[status] || { variant: 'outline', label: status };
+    return <Badge variant={config.variant}>{config.label}</Badge>;
+  };
 
-        {debugInfo && debugInfo.success && (
-          <div className="mt-4 p-2 bg-green-50 text-green-800 rounded text-xs">
-            ✅ Successfully loaded {debugInfo.deliveryCount} deliveries for {debugInfo.user} (roles: {debugInfo.roles.join(', ')})
-          </div>
-        )}
-      </CardContent>
-    </Card>
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight">Delivery Management</h2>
+          <p className="text-muted-foreground">
+            Manage deliveries, schedule pickup and delivery dates, and assign drivers
+          </p>
+        </div>
+        <Button variant="outline" size="sm" onClick={handleRefresh}>
+          <RefreshCw className="h-4 w-4 mr-2" />
+          Refresh
+        </Button>
+      </div>
+
+      <Tabs defaultValue="schedule" className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="schedule">Schedule Deliveries</TabsTrigger>
+          <TabsTrigger value="calendar">Calendar View</TabsTrigger>
+          <TabsTrigger value="list">All Deliveries</TabsTrigger>
+          <TabsTrigger value="quick">Quick Actions</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="schedule">
+          <NewDeliveryScheduling />
+        </TabsContent>
+
+        <TabsContent value="calendar">
+          <DeliveryScheduling />
+        </TabsContent>
+
+        <TabsContent value="list">
+          <Card>
+            <CardHeader>
+              <CardTitle>All Deliveries</CardTitle>
+              <p className="text-sm text-muted-foreground">
+                {deliveries.length > 0 ? `Found ${deliveries.length} deliveries` : 'No deliveries found'}
+              </p>
+            </CardHeader>
+            <CardContent>
+              {deliveries.length === 0 ? (
+                <div className="text-center p-8 text-muted-foreground">
+                  No deliveries found.
+                </div>
+              ) : (
+                <div className="grid gap-4">
+                  {deliveries.map((delivery: any) => (
+                    <Card key={delivery.id} className="p-4">
+                      <div className="space-y-4">
+                        <div className="flex justify-between items-start">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <h3 className="font-semibold">
+                                {delivery.delivery_number || 'No delivery number'}
+                              </h3>
+                              {getStatusBadge(delivery.status || 'unknown')}
+                            </div>
+                            <p className="text-sm text-muted-foreground">
+                              Customer: {delivery.customer_name || 'Unknown'}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-lg font-medium">
+                              ${delivery.total_delivery_cost || '0'}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              {delivery.mobile_home_type?.replace(/_/g, ' ') || 'Unknown type'}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {delivery.customer_email && (
+                            <div className="flex items-center gap-2 text-sm">
+                              <Mail className="h-4 w-4 text-muted-foreground" />
+                              <span>{delivery.customer_email}</span>
+                            </div>
+                          )}
+                          {delivery.customer_phone && (
+                            <div className="flex items-center gap-2 text-sm">
+                              <Phone className="h-4 w-4 text-muted-foreground" />
+                              <span>{delivery.customer_phone}</span>
+                            </div>
+                          )}
+                          {delivery.pickup_address && (
+                            <div className="flex items-center gap-2 text-sm">
+                              <Truck className="h-4 w-4 text-muted-foreground" />
+                              <span className="truncate">{delivery.pickup_address}</span>
+                            </div>
+                          )}
+                          {delivery.delivery_address && (
+                            <div className="flex items-center gap-2 text-sm">
+                              <MapPin className="h-4 w-4 text-muted-foreground" />
+                              <span className="truncate">{delivery.delivery_address}</span>
+                            </div>
+                          )}
+                        </div>
+
+                        {(delivery.scheduled_pickup_date || delivery.scheduled_delivery_date) && (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t">
+                            {delivery.scheduled_pickup_date && (
+                              <div className="flex items-center gap-2 text-sm">
+                                <Calendar className="h-4 w-4 text-muted-foreground" />
+                                <span>Pickup: {new Date(delivery.scheduled_pickup_date).toLocaleDateString()}</span>
+                              </div>
+                            )}
+                            {delivery.scheduled_delivery_date && (
+                              <div className="flex items-center gap-2 text-sm">
+                                <Clock className="h-4 w-4 text-muted-foreground" />
+                                <span>Delivery: {new Date(delivery.scheduled_delivery_date).toLocaleDateString()}</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              )}
+
+              {debugInfo && debugInfo.success && (
+                <div className="mt-4 p-2 bg-green-50 text-green-800 rounded text-xs">
+                  ✅ Successfully loaded {debugInfo.deliveryCount} deliveries for {debugInfo.user} (roles: {debugInfo.roles.join(', ')})
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="quick">
+          <DeliveryScheduler />
+        </TabsContent>
+      </Tabs>
+    </div>
   );
 };
 

@@ -362,66 +362,66 @@ const Admin = () => {
           {/* Desktop Tab Navigation */}
           {!isMobile && isSuperAdmin && (
             <div className="border rounded-lg p-1 bg-muted/30 overflow-x-auto">
-              <TabsList className="grid w-full grid-cols-10 h-12 bg-transparent min-w-[900px]">
+              <TabsList className="inline-flex h-12 w-max bg-transparent space-x-1 p-1">
                 <TabsTrigger 
                   value="mobile-homes" 
-                  className="text-xs sm:text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm px-2"
+                  className="text-xs sm:text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm px-3 py-2 whitespace-nowrap"
                 >
-                  Homes
+                  🏠 Homes
                 </TabsTrigger>
                 <TabsTrigger 
                   value="sales" 
-                  className="text-xs sm:text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm px-2"
+                  className="text-xs sm:text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm px-3 py-2 whitespace-nowrap"
                 >
-                  Sales
+                  💰 Sales
                 </TabsTrigger>
                 <TabsTrigger 
                   value="users" 
-                  className="text-xs sm:text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm px-2"
+                  className="text-xs sm:text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm px-3 py-2 whitespace-nowrap"
                 >
-                  Users
+                  👥 Users
                 </TabsTrigger>
                 <TabsTrigger 
                   value="crm" 
-                  className="text-xs sm:text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm px-2"
+                  className="text-xs sm:text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm px-3 py-2 whitespace-nowrap"
                 >
-                  CRM
+                  📊 CRM
                 </TabsTrigger>
                 <TabsTrigger 
                   value="analytics" 
-                  className="text-xs sm:text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm px-2"
+                  className="text-xs sm:text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm px-3 py-2 whitespace-nowrap"
                 >
-                  Analytics
+                  📈 Analytics
                 </TabsTrigger>
                 <TabsTrigger 
                   value="social-proof" 
-                  className="text-xs sm:text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm px-1"
+                  className="text-xs sm:text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm px-3 py-2 whitespace-nowrap"
                 >
-                  Social
+                  ⭐ Social
                 </TabsTrigger>
                 <TabsTrigger 
                   value="faq" 
-                  className="text-xs sm:text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm px-2"
+                  className="text-xs sm:text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm px-3 py-2 whitespace-nowrap"
                 >
-                  FAQ
+                  ❓ FAQ
                 </TabsTrigger>
                 <TabsTrigger 
                   value="delivery" 
-                  className="text-xs sm:text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm px-2"
+                  className="text-xs sm:text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm px-3 py-2 whitespace-nowrap"
                 >
-                  Delivery
+                  🚚 Delivery
                 </TabsTrigger>
                 <TabsTrigger 
                   value="testing" 
-                  className="text-xs sm:text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm px-1"
+                  className="text-xs sm:text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm px-3 py-2 whitespace-nowrap"
                 >
-                  Testing
+                  🧪 Testing
                 </TabsTrigger>
                 <TabsTrigger 
                   value="settings" 
-                  className="text-xs sm:text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm px-2"
+                  className="text-xs sm:text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm px-3 py-2 whitespace-nowrap"
                 >
-                  Settings
+                  ⚙️ Settings
                 </TabsTrigger>
               </TabsList>
             </div>

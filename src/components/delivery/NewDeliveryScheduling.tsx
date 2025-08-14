@@ -118,7 +118,7 @@ export const NewDeliveryScheduling = () => {
             timezone
           )
         `)
-        .in('status', ['awaiting_pickup_schedule', 'pickup_scheduled', 'pickup_completed', 'awaiting_delivery_schedule'])
+        .in('status', ['needs_scheduled', 'awaiting_pickup_schedule', 'pickup_scheduled', 'pickup_completed', 'awaiting_delivery_schedule'])
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -249,6 +249,9 @@ export const NewDeliveryScheduling = () => {
   const getDeliveryStatusBadge = (delivery: any) => {
     const schedule = delivery.delivery_schedules?.[0];
     
+    if (delivery.status === 'needs_scheduled') {
+      return <Badge variant="destructive">Needs Scheduled</Badge>;
+    }
     if (delivery.status === 'awaiting_pickup_schedule') {
       return <Badge variant="secondary">Awaiting Pickup Schedule</Badge>;
     }
@@ -266,7 +269,7 @@ export const NewDeliveryScheduling = () => {
   };
 
   const canSchedulePickup = (delivery: any) => {
-    return delivery.status === 'awaiting_pickup_schedule' && !delivery.delivery_schedules?.[0]?.pickup_scheduled_date;
+    return (delivery.status === 'needs_scheduled' || delivery.status === 'awaiting_pickup_schedule') && !delivery.delivery_schedules?.[0]?.pickup_scheduled_date;
   };
 
   const canScheduleDelivery = (delivery: any) => {

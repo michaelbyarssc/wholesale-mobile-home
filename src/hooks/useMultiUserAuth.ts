@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { useSessionManager } from '@/contexts/SessionManagerContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -57,6 +57,11 @@ export const useMultiUserAuth = () => {
     setIsLoading(true);
   }
 
+  // Circuit breaker for preventing rapid auth operations
+  const authOperationInProgress = useRef(false);
+  const lastAuthEventTime = useRef(0);
+  const authEventDebounceMs = 1000; // 1 second debounce
+
   // Initialize by checking for existing session with recovery
   useEffect(() => {
     // Guard against missing addSession function
@@ -80,26 +85,52 @@ export const useMultiUserAuth = () => {
           clearCorruptedSessions();
         }
         
-        // Set up auth state listener first - stable callback without dependencies
+        // Set up auth state listener with circuit breaker
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
           (event, session) => {
+            const now = Date.now();
+            
+            // Circuit breaker: prevent rapid successive auth events
+            if (now - lastAuthEventTime.current < authEventDebounceMs) {
+              console.log('🔐 Auth event debounced, skipping:', event);
+              return;
+            }
+            
+            if (authOperationInProgress.current) {
+              console.log('🔐 Auth operation in progress, skipping:', event);
+              return;
+            }
+            
+            lastAuthEventTime.current = now;
+            
             if (event === 'SIGNED_IN' && session?.user) {
+              authOperationInProgress.current = true;
+              
+              // Check if session already exists BEFORE attempting to add
+              const storedSessions = localStorage.getItem('wmh_sessions');
+              const existingSessions = storedSessions ? JSON.parse(storedSessions) : [];
+              const hasExistingSession = existingSessions.some((s: any) => s.user.id === session.user.id);
+              
+              if (hasExistingSession) {
+                console.log('🔐 Session already exists for user, skipping add:', session.user.email);
+                authOperationInProgress.current = false;
+                return;
+              }
+              
               // Use setTimeout to defer Supabase calls and prevent deadlock
               setTimeout(async () => {
                 try {
-                  const storedSessions = localStorage.getItem('wmh_sessions');
-                  const existingSessions = storedSessions ? JSON.parse(storedSessions) : [];
-                  const hasExistingSession = existingSessions.some((s: any) => s.user.id === session.user.id);
-                  
-                  if (!hasExistingSession && addSession && typeof addSession === 'function') {
+                  if (addSession && typeof addSession === 'function') {
                     console.log('🔐 Auth state change: adding new session for user:', session.user.email);
                     await addSession(session.user, session);
                   }
                 } catch (error) {
                   console.error('🔐 Error adding session during auth state change:', error);
                   clearCorruptedSessions();
+                } finally {
+                  authOperationInProgress.current = false;
                 }
-              }, 0);
+              }, 100); // Slight delay to ensure DOM is ready
             }
           }
         );
@@ -121,10 +152,13 @@ export const useMultiUserAuth = () => {
             if (existingSessions.length === 0 && addSession && typeof addSession === 'function') {
               console.log('🔐 Initializing auth with existing session for user:', session.user.email);
               try {
+                authOperationInProgress.current = true;
                 await addSession(session.user, session);
               } catch (error) {
                 console.error('🔐 Error adding session during initialization:', error);
                 clearCorruptedSessions();
+              } finally {
+                authOperationInProgress.current = false;
               }
             }
           }
@@ -148,8 +182,10 @@ export const useMultiUserAuth = () => {
       if (authSubscription && typeof authSubscription.unsubscribe === 'function') {
         authSubscription.unsubscribe();
       }
+      // Reset circuit breaker on cleanup
+      authOperationInProgress.current = false;
     };
-  }, [addSession]); // Remove filter to ensure proper dependency tracking
+  }, []); // Remove addSession dependency to prevent re-initialization loops
 
   const signIn = useCallback(async (email: string, password: string) => {
     setIsLoading(true);

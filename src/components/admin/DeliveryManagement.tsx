@@ -65,6 +65,14 @@ const DeliveryManagement = () => {
             model,
             manufacturer,
             display_name
+          ),
+          factories (
+            id,
+            name,
+            street_address,
+            city,
+            state,
+            zip_code
           )
         `)
         .order('created_at', { ascending: false });
@@ -277,10 +285,15 @@ const DeliveryManagement = () => {
                               <span>{delivery.customer_phone}</span>
                             </div>
                           )}
-                          {delivery.pickup_address && (
+                          {(delivery.pickup_address || delivery.factories) && (
                             <div className="flex items-center gap-2 text-sm">
                               <Truck className="h-4 w-4 text-muted-foreground" />
-                              <span className="truncate">{delivery.pickup_address}</span>
+                              <span className="truncate">
+                                {delivery.factories && delivery.factories.name ? 
+                                  `${delivery.factories.name} - ${delivery.factories.street_address}, ${delivery.factories.city}, ${delivery.factories.state} ${delivery.factories.zip_code}` :
+                                  delivery.pickup_address
+                                }
+                              </span>
                             </div>
                           )}
                           {delivery.delivery_address && (
@@ -297,6 +310,11 @@ const DeliveryManagement = () => {
                               <div className="flex items-center gap-2 text-sm">
                                 <Calendar className="h-4 w-4 text-muted-foreground" />
                                 <span>Pickup: {new Date(delivery.scheduled_pickup_date).toLocaleDateString()}</span>
+                                {delivery.factories && (
+                                  <span className="text-muted-foreground">
+                                    from {delivery.factories.name}, {delivery.factories.city}, {delivery.factories.state}
+                                  </span>
+                                )}
                               </div>
                             )}
                             {delivery.scheduled_delivery_date && (

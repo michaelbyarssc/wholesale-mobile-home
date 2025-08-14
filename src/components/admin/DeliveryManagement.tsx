@@ -1,2120 +1,233 @@
-import React, { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
+
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Separator } from '@/components/ui/separator';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Input } from '@/components/ui/input';
-import { Truck, Calendar as CalendarIcon, CheckCircle, Clock, AlertCircle, MapPin, FileText, User, Phone, Home, Package, CalendarDays, Plus, Edit, UserPlus, Settings, Key, Link } from 'lucide-react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { NewDeliveryScheduling } from '@/components/delivery/NewDeliveryScheduling';
-import { DriverScheduleDashboard } from '@/components/delivery/DriverScheduleDashboard';
-import { DriverScheduleCalendar } from '@/components/delivery/DriverScheduleCalendar';
-import { LoadTimelineView } from '@/components/delivery/LoadTimelineView';
-import { DriverWorkloadDashboard } from '@/components/delivery/DriverWorkloadDashboard';
+import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { format } from 'date-fns';
-import { cn } from '@/lib/utils';
-import { toast } from '@/hooks/use-toast';
-import { Calendar } from '@/components/ui/calendar';
-import { 
-  formatDateTimeForStorage, 
-  formatDateTimeForDisplay, 
-  formatDateTimeForUIDisplay,
-  validateTimezoneAwareDate 
-} from '@/lib/timezone-utils';
-import { useUserRoles } from '@/hooks/useUserRoles';
 import { useAuthUser } from '@/hooks/useAuthUser';
+import { useUserRoles } from '@/hooks/useUserRoles';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { RefreshCw, AlertCircle } from 'lucide-react';
 
-// Function to determine timezone based on delivery address
-const getTimezoneFromAddress = (address: string): string => {
-  const normalizedAddress = address.toLowerCase();
-  
-  // Map states to timezones - this is a simplified version
-  const stateTimezoneMap: Record<string, string> = {
-    // Eastern Time
-    'maine': 'America/New_York', 'me': 'America/New_York',
-    'new hampshire': 'America/New_York', 'nh': 'America/New_York',
-    'vermont': 'America/New_York', 'vt': 'America/New_York',
-    'massachusetts': 'America/New_York', 'ma': 'America/New_York',
-    'rhode island': 'America/New_York', 'ri': 'America/New_York',
-    'connecticut': 'America/New_York', 'ct': 'America/New_York',
-    'new york': 'America/New_York', 'ny': 'America/New_York',
-    'new jersey': 'America/New_York', 'nj': 'America/New_York',
-    'pennsylvania': 'America/New_York', 'pa': 'America/New_York',
-    'delaware': 'America/New_York', 'de': 'America/New_York',
-    'maryland': 'America/New_York', 'md': 'America/New_York',
-    'district of columbia': 'America/New_York', 'dc': 'America/New_York',
-    'virginia': 'America/New_York', 'va': 'America/New_York',
-    'west virginia': 'America/New_York', 'wv': 'America/New_York',
-    'north carolina': 'America/New_York', 'nc': 'America/New_York',
-    'south carolina': 'America/New_York', 'sc': 'America/New_York',
-    'georgia': 'America/New_York', 'ga': 'America/New_York',
-    'florida': 'America/New_York', 'fl': 'America/New_York',
-    'ohio': 'America/New_York', 'oh': 'America/New_York',
-    'kentucky': 'America/New_York', 'ky': 'America/New_York',
-    'tennessee': 'America/New_York', 'tn': 'America/New_York',
-    'indiana': 'America/New_York', 'in': 'America/New_York', // Most of Indiana
-    'michigan': 'America/New_York', 'mi': 'America/New_York',
-    
-    // Central Time
-    'alabama': 'America/Chicago', 'al': 'America/Chicago',
-    'arkansas': 'America/Chicago', 'ar': 'America/Chicago',
-    'illinois': 'America/Chicago', 'il': 'America/Chicago',
-    'iowa': 'America/Chicago', 'ia': 'America/Chicago',
-    'kansas': 'America/Chicago', 'ks': 'America/Chicago',
-    'louisiana': 'America/Chicago', 'la': 'America/Chicago',
-    'minnesota': 'America/Chicago', 'mn': 'America/Chicago',
-    'mississippi': 'America/Chicago', 'ms': 'America/Chicago',
-    'missouri': 'America/Chicago', 'mo': 'America/Chicago',
-    'nebraska': 'America/Chicago', 'ne': 'America/Chicago',
-    'north dakota': 'America/Chicago', 'nd': 'America/Chicago',
-    'oklahoma': 'America/Chicago', 'ok': 'America/Chicago',
-    'south dakota': 'America/Chicago', 'sd': 'America/Chicago',
-    'texas': 'America/Chicago', 'tx': 'America/Chicago',
-    'wisconsin': 'America/Chicago', 'wi': 'America/Chicago',
-    
-    // Mountain Time
-    'arizona': 'America/Phoenix', 'az': 'America/Phoenix', // No DST
-    'colorado': 'America/Denver', 'co': 'America/Denver',
-    'idaho': 'America/Denver', 'id': 'America/Denver',
-    'montana': 'America/Denver', 'mt': 'America/Denver',
-    'nevada': 'America/Denver', 'nv': 'America/Denver', // Most of Nevada
-    'new mexico': 'America/Denver', 'nm': 'America/Denver',
-    'utah': 'America/Denver', 'ut': 'America/Denver',
-    'wyoming': 'America/Denver', 'wy': 'America/Denver',
-    
-    // Pacific Time
-    'california': 'America/Los_Angeles', 'ca': 'America/Los_Angeles',
-    'oregon': 'America/Los_Angeles', 'or': 'America/Los_Angeles',
-    'washington': 'America/Los_Angeles', 'wa': 'America/Los_Angeles',
-    
-    // Alaska Time
-    'alaska': 'America/Anchorage', 'ak': 'America/Anchorage',
-    
-    // Hawaii Time
-    'hawaii': 'Pacific/Honolulu', 'hi': 'Pacific/Honolulu'
-  };
-  
-  // Try to find state in address
-  for (const [state, timezone] of Object.entries(stateTimezoneMap)) {
-    if (normalizedAddress.includes(state)) {
-      return timezone;
-    }
-  }
-  
-  // Default to Eastern Time if no match found
-  return 'America/New_York';
-};
+const DeliveryManagement = () => {
+  const [deliveries, setDeliveries] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [debugInfo, setDebugInfo] = useState<any>(null);
+  const { toast } = useToast();
+  const { user, session } = useAuthUser();
+  const { isAdmin, isSuperAdmin, userRoles } = useUserRoles();
 
-// Function to get timezone offset based on timezone
-const getTimezoneOffset = (timezone: string): string => {
-  const now = new Date();
-  
-  // Create a date in the target timezone
-  const formatter = new Intl.DateTimeFormat('en', {
-    timeZone: timezone,
-    timeZoneName: 'longOffset'
-  });
-  
-  const parts = formatter.formatToParts(now);
-  const offsetPart = parts.find(part => part.type === 'timeZoneName');
-  
-  if (offsetPart && offsetPart.value.startsWith('GMT')) {
-    // Convert GMT+/-X to +/-XX:XX format
-    const offset = offsetPart.value.replace('GMT', '');
-    if (offset === '') return '+00:00';
-    
-    // Handle single digit hours
-    if (offset.length === 2) {
-      return offset.charAt(0) + '0' + offset.charAt(1) + ':00';
-    }
-    
-    return offset + ':00';
-  }
-  
-  // Fallback: calculate offset manually
-  const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
-  const targetTime = new Date(utc + (getTimezoneOffsetHours(timezone) * 3600000));
-  const offsetHours = (targetTime.getTime() - utc) / 3600000;
-  
-  const sign = offsetHours >= 0 ? '+' : '-';
-  const hours = Math.abs(Math.floor(offsetHours));
-  const minutes = Math.abs((offsetHours % 1) * 60);
-  
-  return `${sign}${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-};
-
-// Helper function to get timezone offset in hours
-const getTimezoneOffsetHours = (timezone: string): number => {
-  const offsetMap: Record<string, number> = {
-    'America/New_York': -5, // EST, -4 for EDT
-    'America/Chicago': -6,  // CST, -5 for CDT
-    'America/Denver': -7,   // MST, -6 for MDT
-    'America/Los_Angeles': -8, // PST, -7 for PDT
-    'America/Phoenix': -7,  // MST (no DST)
-    'America/Anchorage': -9, // AKST, -8 for AKDT
-    'Pacific/Honolulu': -10  // HST (no DST)
-  };
-  
-  const baseOffset = offsetMap[timezone] || -5;
-  
-  // Check if we're in daylight saving time for zones that observe it
-  if (timezone !== 'America/Phoenix' && timezone !== 'Pacific/Honolulu') {
-    const now = new Date();
-    const year = now.getFullYear();
-    
-    // Rough DST calculation (second Sunday in March to first Sunday in November)
-    const dstStart = new Date(year, 2, 1); // March
-    dstStart.setDate(dstStart.getDate() + (7 - dstStart.getDay()) + 7);
-    
-    const dstEnd = new Date(year, 10, 1); // November
-    dstEnd.setDate(dstEnd.getDate() + (7 - dstEnd.getDay()));
-    
-    if (now >= dstStart && now < dstEnd) {
-      return baseOffset + 1; // Add 1 hour for DST
-    }
-  }
-  
-  return baseOffset;
-};
-
-type Driver = {
-  id: string;
-  first_name: string;
-  last_name: string;
-  email: string;
-  phone: string;
-  status: 'available' | 'on_delivery' | 'off_duty' | 'inactive';
-  user_id?: string;
-};
-
-type Delivery = {
-  id: string;
-  delivery_number: string;
-  customer_name: string;
-  customer_email: string;
-  customer_phone: string;
-  delivery_address: string;
-  pickup_address: string;
-  status: string;
-  mobile_home_type: string;
-  crew_type: string;
-  scheduled_pickup_date: string | null;
-  scheduled_delivery_date: string | null;
-  scheduled_pickup_date_tz: string | null;
-  scheduled_delivery_date_tz: string | null;
-  total_delivery_cost: number;
-  special_instructions: string;
-  created_at: string;
-  created_at_tz: string | null;
-  mso_vin_section_1: string | null;
-  mso_vin_section_2: string | null;
-  invoices?: {
-    transaction_number: string;
-  } | null;
-  mobile_homes?: {
-    manufacturer: string;
-    model: string;
-  } | null;
-  delivery_assignments?: Array<{
-    id: string;
-    driver_id: string;
-    assigned_at: string;
-    role: string;
-    drivers: {
-      first_name: string;
-      last_name: string;
-    };
-  }>;
-};
-
-const statusColors: Record<string, string> = {
-  pending_payment: 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200 dark:bg-yellow-900 dark:text-yellow-300',
-  scheduled: 'bg-blue-100 text-blue-800 hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-300',
-  factory_pickup_scheduled: 'bg-indigo-100 text-indigo-800 hover:bg-indigo-200 dark:bg-indigo-900 dark:text-indigo-300',
-  factory_pickup_in_progress: 'bg-purple-100 text-purple-800 hover:bg-purple-200 dark:bg-purple-900 dark:text-purple-300',
-  factory_pickup_completed: 'bg-cyan-100 text-cyan-800 hover:bg-cyan-200 dark:bg-cyan-900 dark:text-cyan-300',
-  in_transit: 'bg-purple-100 text-purple-800 hover:bg-purple-200 dark:bg-purple-900 dark:text-purple-300',
-  delivery_in_progress: 'bg-orange-100 text-orange-800 hover:bg-orange-200 dark:bg-orange-900 dark:text-orange-300',
-  delivered: 'bg-green-100 text-green-800 hover:bg-green-200 dark:bg-green-900 dark:text-green-300',
-  completed: 'bg-green-100 text-green-800 hover:bg-green-200 dark:bg-green-900 dark:text-green-300',
-  cancelled: 'bg-red-100 text-red-800 hover:bg-red-200 dark:bg-red-900 dark:text-red-300',
-  delayed: 'bg-orange-100 text-orange-800 hover:bg-orange-200 dark:bg-orange-900 dark:text-orange-300',
-};
-
-const getStatusBadge = (status: string) => {
-  const colorClass = statusColors[status] || 'bg-gray-100 text-gray-800';
-  return <Badge className={colorClass}>{status.replace('_', ' ')}</Badge>;
-};
-
-export const DeliveryManagement = () => {
-  const { isSuperAdmin, isAdmin, userRoles, forceRefreshRoles } = useUserRoles();
-  const { user: authUser, session, forceRefreshAuth } = useAuthUser();
-  
-  // SECURITY: Force complete auth and role refresh on mount to prevent caching issues
-  React.useEffect(() => {
-    const forceRefresh = async () => {
-      console.log('🔧 DeliveryManagement: Forcing auth and role refresh...');
-      await forceRefreshAuth();
-      await forceRefreshRoles();
-    };
-    forceRefresh();
-  }, [forceRefreshAuth, forceRefreshRoles]);
-  
-  // Enhanced debug logging with session info
-  React.useEffect(() => {
-    console.log('🔧 DeliveryManagement Debug:', { 
-      userEmail: authUser?.email,
-      sessionEmail: session?.user?.email,
-      userId: authUser?.id,
-      sessionUserId: session?.user?.id,
-      isSuperAdmin, 
-      isAdmin, 
-      userRoles: userRoles.map(r => r.role),
-      sessionMatch: authUser?.id === session?.user?.id,
-      canManageDrivers: isSuperAdmin && authUser && session && authUser.id === session.user.id,
-      canViewScheduleDashboard: isSuperAdmin && authUser && session && authUser.id === session.user.id,
-      timestamp: new Date().toISOString()
-    });
-    
-    // Log warning if admin tries to access super-admin features
-    if (isAdmin && !isSuperAdmin) {
-      console.warn('⚠️ Admin user accessing delivery management (limited access)', {
-        userEmail: authUser?.email,
-        availableTabs: ['Scheduling', 'All Deliveries']
-      });
-    }
-  }, [isSuperAdmin, isAdmin, userRoles, authUser, session]);
-  
-  // SECURITY: Session validation with forced logout on mismatch
-  React.useEffect(() => {
-    if (authUser && session) {
-      if (authUser.id !== session.user.id || authUser.email !== session.user.email) {
-        console.error('🚨 CRITICAL SECURITY: Session/User mismatch detected!', {
-          authUserId: authUser.id,
-          sessionUserId: session.user.id,
-          authEmail: authUser.email,
-          sessionEmail: session.user.email
-        });
-        // Force logout to prevent session hijacking
-        supabase.auth.signOut();
-        window.location.href = '/auth';
-        return;
-      }
-    }
-  }, [authUser, session]);
-
-  // SECURITY: Only super admins with valid session can manage drivers and schedule dashboard
-  const canManageDrivers = isSuperAdmin && authUser && session && authUser.id === session.user.id;
-  const canViewScheduleDashboard = isSuperAdmin && authUser && session && authUser.id === session.user.id;
-  
-  const [filter, setFilter] = useState<'all' | 'scheduled' | 'in_transit' | 'completed' | 'pending_payment' | 'factory_pickup_scheduled' | 'factory_pickup_in_progress' | 'factory_pickup_completed' | 'delivery_in_progress' | 'delivered' | 'cancelled' | 'delayed'>('all');
-  const [selectedDelivery, setSelectedDelivery] = useState<Delivery | null>(null);
-  
-  // Dashboard sub-tab state
-  const [currentWeek, setCurrentWeek] = useState(new Date());
-  const [dashboardSubTab, setDashboardSubTab] = useState('deliveries');
-  const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
-  const [selectedPickupDate, setSelectedPickupDate] = useState<Date>();
-  const [selectedPickupTime, setSelectedPickupTime] = useState<string>('');
-  const [selectedDriver, setSelectedDriver] = useState<string>('');
-  const [notes, setNotes] = useState('');
-  const [datePickerOpen, setDatePickerOpen] = useState(false);
-  
-  // Driver management state
-  const [addDriverDialogOpen, setAddDriverDialogOpen] = useState(false);
-  const [manageDriversDialogOpen, setManageDriversDialogOpen] = useState(false);
-  const [editDriverDialogOpen, setEditDriverDialogOpen] = useState(false);
-  const [editingDriver, setEditingDriver] = useState<Driver | null>(null);
-  const [newDriverData, setNewDriverData] = useState({
-    first_name: '',
-    last_name: '',
-    email: '',
-    phone: '',
-    license_number: '',
-    cdl_class: 'CDL-A'
-  });
-  const [editDriverData, setEditDriverData] = useState({
-    first_name: '',
-    last_name: '',
-    email: '',
-    phone: '',
-    license_number: '',
-    cdl_class: 'CDL-A'
-  });
-  
-  // MSO/VIN editing state
-  const [editMsoVinDialogOpen, setEditMsoVinDialogOpen] = useState(false);
-  const [editingMsoVinDelivery, setEditingMsoVinDelivery] = useState<Delivery | null>(null);
-  const [msoVinSection1, setMsoVinSection1] = useState('');
-  const [msoVinSection2, setMsoVinSection2] = useState('');
-  
-  const queryClient = useQueryClient();
-
-  const { data: deliveries, isLoading, error } = useQuery({
-    queryKey: ['deliveries', filter],
-    queryFn: async () => {
-      console.log('🔧 DeliveryManagement: Starting deliveries query...', {
-        filter,
-        userId: authUser?.id,
-        userEmail: authUser?.email,
-        isSuperAdmin,
-        isAdmin
-      });
+  const loadDeliveries = async () => {
+    try {
+      setLoading(true);
+      setError(null);
       
-      try {
-        let query = supabase
-          .from('deliveries')
-          .select(`
-            *,
-            invoices (
-              id,
-              transaction_number,
-              mobile_homes (
-                mobile_home_factories (
-                  factories (
-                    name,
-                    street_address,
-                    city,
-                    state,
-                    zip_code
-                  )
-                )
-              )
-            ),
-            mobile_homes (
-              manufacturer,
-              model,
-              mobile_home_factories (
-                factories (
-                  name,
-                  street_address,
-                  city,
-                  state,
-                  zip_code
-                )
-              )
-            ),
-            delivery_assignments (
-              id,
-              driver_id,
-              assigned_at,
-              role,
-              drivers (
-                first_name,
-                last_name
-              )
-            )
-          `);
-        
-        if (filter !== 'all') {
-          query = query.eq('status', filter);
-        }
-        
-        const { data, error } = await query.order('created_at', { ascending: false });
-        
-        console.log('🔧 DeliveryManagement: Query completed', {
-          success: !error,
-          error: error?.message,
-          dataCount: data?.length || 0
-        });
-        
-        if (error) {
-          console.error('🚨 DeliveryManagement: Query error details:', {
-            error,
-            code: error.code,
-            details: error.details,
-            hint: error.hint,
-            message: error.message
-          });
-          throw error;
-        }
-        return data as Delivery[];
-      } catch (err) {
-        console.error('🚨 DeliveryManagement: Caught error in query:', err);
-        throw err;
-      }
-    },
-  });
+      console.log('🚚 Loading deliveries with debug info:', {
+        user: user?.email,
+        userId: user?.id,
+        sessionUserId: session?.user?.id,
+        isAdmin,
+        isSuperAdmin,
+        userRoles: userRoles.map(r => r.role)
+      });
 
-  const { data: drivers } = useQuery({
-    queryKey: ['drivers'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('drivers')
+      // First, let's test a simple auth check
+      const { data: authUser, error: authError } = await supabase.auth.getUser();
+      console.log('Auth check:', { authUser: authUser?.user?.email, authError });
+
+      // Test if we can access user_roles table
+      const { data: roles, error: rolesError } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user?.id);
+      
+      console.log('User roles check:', { roles, rolesError });
+
+      // Test admin access function
+      const { data: adminCheck, error: adminError } = await supabase
+        .rpc('check_user_admin_access', { check_user_id: user?.id });
+      
+      console.log('Admin access function result:', { adminCheck, adminError });
+
+      // Now try to load deliveries with detailed error logging
+      const { data, error: deliveryError } = await supabase
+        .from('deliveries')
         .select(`
-          id, 
-          first_name, 
-          last_name, 
-          email, 
-          phone, 
-          status,
-          user_id,
-          delivery_assignments (
+          *,
+          mobile_homes (
             id,
-            delivery_id,
-            assigned_at,
-            role,
-            deliveries (
-              id,
-              delivery_number,
-              customer_name,
-              delivery_address,
-              status,
-              scheduled_pickup_date_tz,
-              scheduled_delivery_date_tz,
-              actual_pickup_date,
-              actual_delivery_date,
-              mobile_home_type,
-              total_delivery_cost,
-              mobile_homes (
-                manufacturer,
-                model
-              )
-            )
+            model,
+            manufacturer,
+            display_name
           )
         `)
-        .eq('active', true)
-        .order('first_name');
-      
-      if (error) throw error;
-      return data as Driver[];
-    },
-  });
+        .order('created_at', { ascending: false });
 
-  const scheduleDeliveryMutation = useMutation({
-    mutationFn: async ({ deliveryId, driverId, scheduledPickupDateTz, notes }: {
-      deliveryId: string;
-      driverId: string;
-      scheduledPickupDateTz: string;
-      notes: string;
-    }) => {
-      console.log('📅 Scheduling pickup with timezone-aware date:', {
-        deliveryId,
-        driverId,
-        scheduledPickupDateTz,
-        notes
+      console.log('Deliveries query result:', { 
+        data: data?.length, 
+        error: deliveryError,
+        errorDetails: deliveryError ? {
+          code: deliveryError.code,
+          message: deliveryError.message,
+          details: deliveryError.details,
+          hint: deliveryError.hint
+        } : null
       });
-
-      // Update delivery with timezone-aware scheduled pickup date and status
-      const { error: deliveryError } = await supabase
-        .from('deliveries')
-        .update({
-          scheduled_pickup_date_tz: scheduledPickupDateTz,
-          status: 'factory_pickup_scheduled',
-          special_instructions: notes
-        })
-        .eq('id', deliveryId);
 
       if (deliveryError) {
-        console.error('❌ Delivery update error:', deliveryError);
-        throw deliveryError;
-      }
-
-      // Create or update delivery assignment
-      const { error: assignmentError } = await supabase
-        .from('delivery_assignments')
-        .upsert({
-          delivery_id: deliveryId,
-          driver_id: driverId,
-          role: 'driver',
-          notes: notes,
-          assigned_by: (await supabase.auth.getUser()).data.user?.id
-        }, {
-          onConflict: 'delivery_id,driver_id,role'
+        console.error('Delivery loading error:', deliveryError);
+        setError(`Failed to load deliveries: ${deliveryError.message}`);
+        setDebugInfo({
+          errorCode: deliveryError.code,
+          errorMessage: deliveryError.message,
+          errorDetails: deliveryError.details,
+          hint: deliveryError.hint,
+          user: user?.email,
+          roles: userRoles.map(r => r.role)
         });
-
-      if (assignmentError) {
-        console.error('❌ Assignment error:', assignmentError);
-        throw assignmentError;
+        return;
       }
 
-      console.log('✅ Pickup scheduled successfully');
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['deliveries'] });
-      setScheduleDialogOpen(false);
-      setDatePickerOpen(false);
-      setSelectedPickupDate(undefined);
-      setSelectedPickupTime('');
-      setSelectedDriver('');
-      setNotes('');
-      setSelectedDelivery(null);
-      toast({
-        title: "Factory Pickup Scheduled",
-        description: "The factory pickup has been successfully scheduled with the driver."
+      setDeliveries(data || []);
+      setDebugInfo({
+        success: true,
+        deliveryCount: data?.length || 0,
+        user: user?.email,
+        roles: userRoles.map(r => r.role)
       });
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: "Failed to schedule factory pickup. Please try again.",
-        variant: "destructive"
+
+    } catch (err: any) {
+      console.error('Unexpected error loading deliveries:', err);
+      setError(`Unexpected error: ${err.message}`);
+      setDebugInfo({
+        unexpectedError: err.message,
+        user: user?.email,
+        roles: userRoles.map(r => r.role)
       });
-      console.error('Error scheduling delivery:', error);
+    } finally {
+      setLoading(false);
     }
-  });
-
-  const addDriverMutation = useMutation({
-    mutationFn: async (driverData: typeof newDriverData) => {
-      const { data: user } = await supabase.auth.getUser();
-      
-      const { error } = await supabase
-        .from('drivers')
-        .insert({
-          ...driverData,
-          status: 'available',
-          active: true,
-          created_by: user.user?.id
-        });
-
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['drivers'] });
-      setAddDriverDialogOpen(false);
-      setNewDriverData({
-        first_name: '',
-        last_name: '',
-        email: '',
-        phone: '',
-        license_number: '',
-        cdl_class: 'CDL-A'
-      });
-      toast({
-        title: "Driver Added",
-        description: "New driver has been successfully added to the system."
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: "Failed to add driver. Please try again.",
-        variant: "destructive"
-      });
-      console.error('Error adding driver:', error);
-    }
-  });
-
-  const updateDriverStatusMutation = useMutation({
-    mutationFn: async ({ driverId, status }: { driverId: string; status: 'available' | 'on_delivery' | 'off_duty' | 'inactive' }) => {
-      const { error } = await supabase
-        .from('drivers')
-        .update({ status })
-        .eq('id', driverId);
-
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['drivers'] });
-      toast({
-        title: "Driver Status Updated",
-        description: "Driver status has been successfully updated."
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: "Failed to update driver status. Please try again.",
-        variant: "destructive"
-      });
-      console.error('Error updating driver status:', error);
-    }
-  });
-
-  const editDriverMutation = useMutation({
-    mutationFn: async ({ driverId, driverData }: { driverId: string; driverData: typeof editDriverData }) => {
-      const { error } = await supabase
-        .from('drivers')
-        .update(driverData)
-        .eq('id', driverId);
-
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['drivers'] });
-      setEditDriverDialogOpen(false);
-      setEditingDriver(null);
-      toast({
-        title: "Driver Updated",
-        description: "Driver information has been successfully updated."
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: "Failed to update driver. Please try again.",
-        variant: "destructive"
-      });
-      console.error('Error updating driver:', error);
-    }
-  });
-
-  // Reset password mutation for drivers
-  const resetDriverPasswordMutation = useMutation({
-    mutationFn: async (driver: any) => {
-      if (!driver.user_id) {
-        throw new Error("Driver does not have an associated user account. Please contact support.");
-      }
-
-      const { data, error } = await supabase.functions.invoke('admin-reset-password-secure', {
-        body: {
-          user_id: driver.user_id,
-          new_password: 'Wholesale2025!'
-        }
-      });
-
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: (result, driver) => {
-      toast({
-        title: "Password Reset Successful",
-        description: `Driver password has been reset to: Wholesale2025! Please share this temporary password with ${driver.first_name} ${driver.last_name}.`,
-        duration: 10000, // Show for 10 seconds for drivers
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Password Reset Failed",
-        description: error.message || "Failed to reset driver password.",
-        variant: "destructive"
-      });
-    }
-  });
-
-  // Link drivers to user accounts mutation
-  const linkDriversMutation = useMutation({
-    mutationFn: async (driver_id?: string) => {
-      const { data, error } = await supabase.functions.invoke('admin-link-existing-drivers', {
-        body: { driver_id }
-      });
-
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: (result) => {
-      // Refetch drivers data to update the UI
-      queryClient.invalidateQueries({ queryKey: ['drivers'] });
-      
-      if (result.results && result.results.length > 0) {
-        const successfulLinks = result.results.filter((r: any) => r.success);
-        const failedLinks = result.results.filter((r: any) => !r.success);
-        
-        if (successfulLinks.length > 0) {
-          const passwords = successfulLinks.map((r: any) => 
-            `${r.driver_name}: ${r.temporary_password}`
-          ).join('\n');
-          
-          toast({
-            title: `${successfulLinks.length} Driver(s) Linked Successfully`,
-            description: `Temporary passwords:\n${passwords}\n\nPlease share these with the drivers.`,
-            duration: 15000, // Show for 15 seconds
-          });
-        }
-        
-        if (failedLinks.length > 0) {
-          const errors = failedLinks.map((r: any) => 
-            `${r.driver_name}: ${r.error}`
-          ).join('\n');
-          
-          toast({
-            title: `${failedLinks.length} Driver(s) Failed to Link`,
-            description: errors,
-            variant: "destructive",
-            duration: 10000,
-          });
-        }
-      } else {
-        toast({
-          title: "No Drivers to Link",
-          description: "All drivers already have user accounts.",
-        });
-      }
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Driver Linking Failed",
-        description: error.message || "Failed to link drivers to user accounts.",
-        variant: "destructive"
-      });
-    }
-  });
-  const updateMsoVinMutation = useMutation({
-    mutationFn: async ({ deliveryId, msoVinSection1, msoVinSection2 }: { 
-      deliveryId: string; 
-      msoVinSection1: string; 
-      msoVinSection2: string; 
-    }) => {
-      const { error } = await supabase
-        .from('deliveries')
-        .update({ 
-          mso_vin_section_1: msoVinSection1 || null,
-          mso_vin_section_2: msoVinSection2 || null 
-        })
-        .eq('id', deliveryId);
-
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['deliveries'] });
-      setEditMsoVinDialogOpen(false);
-      setEditingMsoVinDelivery(null);
-      setMsoVinSection1('');
-      setMsoVinSection2('');
-      toast({
-        title: "MSO/VIN Updated",
-        description: "The MSO/VIN numbers have been successfully updated."
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: "Failed to update MSO/VIN numbers. Please try again.",
-        variant: "destructive"
-      });
-      console.error('Error updating MSO/VIN:', error);
-    }
-  });
-
-  const getFilteredDeliveries = () => {
-    if (!deliveries) return [];
-    return deliveries;
   };
 
-  const filteredDeliveries = getFilteredDeliveries();
-
-  const handleScheduleDelivery = (delivery: Delivery) => {
-    setSelectedDelivery(delivery);
-    setDatePickerOpen(false); // Ensure any open popover is closed
-    setScheduleDialogOpen(true);
-  };
-
-  const handleEditMsoVin = (delivery: Delivery) => {
-    setEditingMsoVinDelivery(delivery);
-    // Pre-populate with existing values if they exist
-    setMsoVinSection1((delivery as any).mso_vin_section_1 || '');
-    setMsoVinSection2((delivery as any).mso_vin_section_2 || '');
-    setEditMsoVinDialogOpen(true);
-  };
-
-  const handleMsoVinSubmit = () => {
-    if (!editingMsoVinDelivery) return;
-
-    updateMsoVinMutation.mutate({
-      deliveryId: editingMsoVinDelivery.id,
-      msoVinSection1,
-      msoVinSection2
-    });
-  };
-
-  const handleScheduleSubmit = () => {
-    console.log('🔍 Schedule submit clicked');
-    console.log('🔍 Current form data:', {
-      selectedDelivery: selectedDelivery?.id,
-      selectedPickupDate,
-      selectedPickupTime,
-      selectedDriver,
-      notes
-    });
-
-    if (!selectedDelivery || !selectedPickupDate || !selectedDriver) {
-      console.log('❌ Missing required data');
-      toast({
-        title: "Missing Information",
-        description: "Please select a pickup date and assign a driver.",
-        variant: "destructive"
-      });
-      return;
+  useEffect(() => {
+    if (user && userRoles.length > 0) {
+      loadDeliveries();
     }
+  }, [user, userRoles]);
 
-    const timeStr = selectedPickupTime || '09:00';
-    const deliveryAddress = selectedDelivery?.delivery_address || '';
-    
-    // Create timezone-aware date string for storage
-    const scheduledPickupDateTz = formatDateTimeForStorage(selectedPickupDate, timeStr, deliveryAddress);
-    
-    console.log('🔍 Scheduling pickup with timezone-aware date:', scheduledPickupDateTz);
-
-    scheduleDeliveryMutation.mutate({
-      deliveryId: selectedDelivery.id,
-      driverId: selectedDriver,
-      scheduledPickupDateTz,
-      notes: notes
-    });
+  const handleRefresh = () => {
+    loadDeliveries();
   };
 
-  const handleAddDriver = () => {
-    if (!newDriverData.first_name || !newDriverData.last_name || !newDriverData.email || !newDriverData.phone) {
-      toast({
-        title: "Missing Information",
-        description: "Please fill in all required fields.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    addDriverMutation.mutate(newDriverData);
-  };
-
-  const handleDriverStatusChange = (driverId: string, status: 'available' | 'on_delivery' | 'off_duty' | 'inactive') => {
-    updateDriverStatusMutation.mutate({ driverId, status });
-  };
-
-  const handleEditDriver = (driver: Driver) => {
-    setEditingDriver(driver);
-    setEditDriverData({
-      first_name: driver.first_name,
-      last_name: driver.last_name,
-      email: driver.email,
-      phone: driver.phone,
-      license_number: '',
-      cdl_class: 'CDL-A'
-    });
-    setEditDriverDialogOpen(true);
-  };
-
-  const handleUpdateDriver = () => {
-    if (!editingDriver || !editDriverData.first_name || !editDriverData.last_name || !editDriverData.email || !editDriverData.phone) {
-      toast({
-        title: "Missing Information",
-        description: "Please fill in all required fields.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    editDriverMutation.mutate({
-      driverId: editingDriver.id,
-      driverData: editDriverData
-    });
-  };
-
-  const getFormattedDate = (dateString: string | null) => {
-    return formatDateTimeForDisplay(dateString);
-  };
-
-  const ScheduleDeliveryDialog = () => (
-    <Dialog open={scheduleDialogOpen} onOpenChange={setScheduleDialogOpen}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>Schedule Delivery</DialogTitle>
-          <DialogDescription>
-            Schedule delivery for {selectedDelivery?.delivery_number}
-          </DialogDescription>
-        </DialogHeader>
-        
-        <div className="space-y-4">
-          {/* Driver Selection */}
-          <div className="space-y-2">
-            <Label>Select Driver</Label>
-            <Select value={selectedDriver} onValueChange={setSelectedDriver}>
-              <SelectTrigger>
-                <SelectValue placeholder="Choose a driver" />
-              </SelectTrigger>
-              <SelectContent>
-                {drivers?.map((driver) => (
-                  <SelectItem key={driver.id} value={driver.id}>
-                    {driver.first_name} {driver.last_name} ({driver.status})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Pickup Date & Time Selection */}
-          <div className="space-y-2">
-            <Label>Factory Pickup Date & Time</Label>
-            <div className="grid grid-cols-2 gap-2">
-              <input
-                type="date"
-                className="px-3 py-2 border border-input rounded-md bg-background text-sm w-full"
-                value={selectedPickupDate ? format(selectedPickupDate, 'yyyy-MM-dd') : ''}
-                onChange={(e) => {
-                  if (e.target.value) {
-                    // Create date in local timezone to avoid UTC conversion issues
-                    const [year, month, day] = e.target.value.split('-').map(Number);
-                    setSelectedPickupDate(new Date(year, month - 1, day));
-                  } else {
-                    setSelectedPickupDate(undefined);
-                  }
-                }}
-                min={format(new Date(), 'yyyy-MM-dd')}
-              />
-               <div className="relative">
-                 <Select value={selectedPickupTime} onValueChange={setSelectedPickupTime}>
-                   <SelectTrigger className="w-full">
-                     <SelectValue placeholder="Select time" />
-                   </SelectTrigger>
-                   <SelectContent>
-                     {Array.from({ length: 24 }, (_, hour) => {
-                       const is12Hour = hour === 0 || hour > 12;
-                       const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
-                       const period = hour < 12 ? 'AM' : 'PM';
-                       
-                       return [0, 15, 30, 45].map(minute => {
-                         const timeValue = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-                         const displayTime = `${displayHour}:${minute.toString().padStart(2, '0')} ${period}`;
-                         
-                         return (
-                           <SelectItem key={timeValue} value={timeValue}>
-                             {displayTime}
-                           </SelectItem>
-                         );
-                       });
-                     }).flat()}
-                   </SelectContent>
-                 </Select>
-               </div>
-            </div>
-            
-            {/* Show timezone-aware preview */}
-            {selectedPickupDate && selectedPickupTime && selectedDelivery && (
-              <div className="mt-2 p-2 bg-muted rounded text-sm">
-                <span className="font-medium">Pickup scheduled for:</span>{' '}
-                {formatDateTimeForUIDisplay(selectedPickupDate, selectedPickupTime, selectedDelivery.delivery_address)}
-              </div>
-            )}
-            
-            <p className="text-xs text-muted-foreground">
-              Driver will pick up the mobile home from the factory at this scheduled time
-            </p>
-          </div>
-
-          {/* Special Instructions */}
-          <div className="space-y-2">
-            <Label>Special Instructions (Optional)</Label>
-            <Textarea
-              placeholder="Add any special pickup or delivery instructions..."
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={3}
-            />
-          </div>
-
-          <div className="flex justify-end space-x-2 pt-4">
-            <Button variant="outline" onClick={() => {
-              setScheduleDialogOpen(false);
-              setSelectedPickupDate(undefined);
-              setSelectedPickupTime('');
-              setSelectedDriver('');
-              setNotes('');
-              setSelectedDelivery(null);
-            }}>
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleScheduleSubmit}
-              disabled={scheduleDeliveryMutation.isPending}
-            >
-              {scheduleDeliveryMutation.isPending ? 'Scheduling...' : 'Schedule Factory Pickup'}
-            </Button>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-
-  const DeliveryDetailsDialog = ({ delivery }: { delivery: Delivery }) => {
-    const [deliveryData, setDeliveryData] = useState<any>(null);
-    const [mobileHome, setMobileHome] = useState<any>(null);
-    const [services, setServices] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
-
-    // Fetch detailed delivery data with mobile home and services
-    React.useEffect(() => {
-      const fetchDeliveryData = async () => {
-        try {
-          // Get delivery with mobile home data, factory information, and transaction number
-          const { data: deliveryWithHome, error: deliveryError } = await supabase
-            .from('deliveries')
-            .select(`
-              *,
-              invoices (
-                transaction_number
-              ),
-              mobile_homes (
-                manufacturer,
-                series,
-                model,
-                display_name,
-                bedrooms,
-                bathrooms,
-                square_footage,
-                width_feet,
-                length_feet,
-                price,
-                mobile_home_factories (
-                  factories (
-                    name,
-                    street_address,
-                    city,
-                    state,
-                    zip_code
-                  )
-                )
-              )
-            `)
-            .eq('id', delivery.id)
-            .single();
-
-          if (deliveryError) throw deliveryError;
-
-          setDeliveryData(deliveryWithHome);
-          setMobileHome(deliveryWithHome.mobile_homes);
-
-          // Get services if there's an invoice with selected services
-          if (deliveryWithHome.invoice_id) {
-            const { data: invoice, error: invoiceError } = await supabase
-              .from('invoices')
-              .select('selected_services')
-              .eq('id', deliveryWithHome.invoice_id)
-              .single();
-
-            if (!invoiceError && invoice?.selected_services?.length > 0) {
-              const { data: servicesData, error: servicesError } = await supabase
-                .from('services')
-                .select('name, description, category')
-                .in('id', invoice.selected_services);
-
-              if (!servicesError) {
-                setServices(servicesData || []);
-              }
-            }
-          }
-        } catch (error) {
-          console.error('Error fetching delivery details:', error);
-        } finally {
-          setLoading(false);
-        }
-      };
-
-      fetchDeliveryData();
-    }, [delivery.id]);
-
-    if (loading) {
-      return (
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Loading Delivery Details...</DialogTitle>
-          </DialogHeader>
-          <div className="flex items-center justify-center p-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-          </div>
-        </DialogContent>
-      );
-    }
-
-    const homeDisplayName = mobileHome?.display_name || 
-      `${mobileHome?.manufacturer} ${mobileHome?.series} ${mobileHome?.model}`;
-
+  if (loading) {
     return (
-      <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="text-xl font-bold">
-            Delivery Report - {delivery.delivery_number?.replace('WMH-I-', 'WMH-D-') || 'N/A'}
-          </DialogTitle>
-          <DialogDescription>
-            Detailed delivery specifications and information
-          </DialogDescription>
-        </DialogHeader>
-        
-        <div className="space-y-6">
-          {/* Customer Information Card */}
-          <Card className="shadow-lg">
-            <CardHeader className="bg-blue-50 border-b">
-              <CardTitle className="text-blue-900 flex items-center">
-                <User className="h-5 w-5 mr-2" />
-                Customer Information
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                    <span className="font-medium text-gray-600">Customer Name:</span>
-                    <span className="text-gray-900">{delivery.customer_name}</span>
-                  </div>
-                  <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                    <span className="font-medium text-gray-600">Email:</span>
-                    <span className="text-gray-900">{delivery.customer_email}</span>
-                  </div>
-                  <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                    <span className="font-medium text-gray-600">Phone:</span>
-                    <span className="text-gray-900">{delivery.customer_phone}</span>
-                  </div>
-                </div>
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                    <span className="font-medium text-gray-600">Delivery Status:</span>
-                    <div>{getStatusBadge(delivery.status)}</div>
-                  </div>
-                  <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                    <span className="font-medium text-gray-600">Delivery Number:</span>
-                    <span className="text-gray-900 font-mono">
-                      {delivery.delivery_number?.replace('WMH-I-', 'WMH-D-') || 'N/A'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Mobile Home Specifications Card */}
-          {mobileHome && (
-            <Card className="shadow-lg">
-              <CardHeader className="bg-green-50 border-b">
-                <CardTitle className="text-green-900 flex items-center">
-                  <Home className="h-5 w-5 mr-2" />
-                  Mobile Home Specifications
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-6">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <div>
-                    <h3 className="text-xl font-bold text-gray-900 mb-4">{homeDisplayName}</h3>
-                    <div className="space-y-3">
-                      <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                        <span className="font-medium text-gray-600">Manufacturer:</span>
-                        <span className="text-gray-900">{mobileHome.manufacturer}</span>
-                      </div>
-                      <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                        <span className="font-medium text-gray-600">Series:</span>
-                        <span className="text-gray-900">{mobileHome.series}</span>
-                      </div>
-                      <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                        <span className="font-medium text-gray-600">Model:</span>
-                        <span className="text-gray-900">{mobileHome.model}</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div>
-                    <div className="space-y-3">
-                      {mobileHome.bedrooms && (
-                        <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                          <span className="font-medium text-gray-600">Bedrooms:</span>
-                          <span className="text-gray-900">{mobileHome.bedrooms}</span>
-                        </div>
-                      )}
-                      {mobileHome.bathrooms && (
-                        <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                          <span className="font-medium text-gray-600">Bathrooms:</span>
-                          <span className="text-gray-900">{mobileHome.bathrooms}</span>
-                        </div>
-                      )}
-                      {mobileHome.square_footage && (
-                        <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                          <span className="font-medium text-gray-600">Square Footage:</span>
-                          <span className="text-gray-900">{mobileHome.square_footage} sq ft</span>
-                        </div>
-                      )}
-                      {mobileHome.width_feet && mobileHome.length_feet && (
-                        <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                          <span className="font-medium text-gray-600">Dimensions:</span>
-                          <span className="text-gray-900">{mobileHome.width_feet}' × {mobileHome.length_feet}'</span>
-                        </div>
-                      )}
-                      {deliveryData?.mso_vin_section_1 && (
-                        <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                          <span className="font-medium text-gray-600">
-                            MSO/VIN {deliveryData.mobile_home_type === 'double_wide' ? 'Section 1:' : 'Number:'}
-                          </span>
-                          <span className="text-gray-900 font-mono">{deliveryData.mso_vin_section_1}</span>
-                        </div>
-                      )}
-                      {deliveryData?.mso_vin_section_2 && deliveryData.mobile_home_type === 'double_wide' && (
-                        <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                          <span className="font-medium text-gray-600">MSO/VIN Section 2:</span>
-                          <span className="text-gray-900 font-mono">{deliveryData.mso_vin_section_2}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Factory Pickup Address Card */}
-          {mobileHome?.mobile_home_factories?.[0]?.factories && (
-            <Card className="shadow-lg">
-              <CardHeader className="bg-blue-50 border-b">
-                <CardTitle className="text-blue-900 flex items-center">
-                  <MapPin className="h-5 w-5 mr-2" />
-                  Factory Pickup Address
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-6">
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                    <span className="font-medium text-gray-600">Factory Name:</span>
-                    <span className="text-gray-900">{mobileHome.mobile_home_factories[0].factories.name}</span>
-                  </div>
-                  <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                    <span className="font-medium text-gray-600">Street Address:</span>
-                    <span className="text-gray-900">{mobileHome.mobile_home_factories[0].factories.street_address}</span>
-                  </div>
-                  <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                    <span className="font-medium text-gray-600">City, State, ZIP:</span>
-                    <span className="text-gray-900">
-                      {mobileHome.mobile_home_factories[0].factories.city}, {mobileHome.mobile_home_factories[0].factories.state} {mobileHome.mobile_home_factories[0].factories.zip_code}
-                    </span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Additional Services Card */}
-          {services.length > 0 && (
-            <Card className="shadow-lg">
-              <CardHeader className="bg-amber-50 border-b">
-                <CardTitle className="text-amber-900 flex items-center">
-                  <Package className="h-5 w-5 mr-2" />
-                  Additional Services
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-6">
-                <div className="space-y-3">
-                  {services.map((service, index) => (
-                    <div key={index} className="flex justify-between items-start py-3 border-b border-gray-200 last:border-b-0">
-                      <div>
-                        <p className="font-medium text-gray-900">{service.name}</p>
-                        {service.description && (
-                          <p className="text-sm text-gray-600">{service.description}</p>
-                        )}
-                        {service.category && (
-                          <p className="text-xs text-gray-500 mt-1 capitalize">{service.category}</p>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Delivery Information Card */}
-          <Card className="shadow-lg">
-            <CardHeader className="bg-purple-50 border-b">
-              <CardTitle className="text-purple-900 flex items-center">
-                <Truck className="h-5 w-5 mr-2" />
-                Delivery Information
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                    <span className="font-medium text-gray-600">Mobile Home Type:</span>
-                    <span className="text-gray-900 capitalize">{delivery.mobile_home_type?.replace('_', ' ')}</span>
-                  </div>
-                  <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                    <span className="font-medium text-gray-600">Crew Type:</span>
-                    <span className="text-gray-900 capitalize">{delivery.crew_type?.replace('_', ' ')}</span>
-                  </div>
-                  <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                    <span className="font-medium text-gray-600">Transaction Number:</span>
-                    <span className="text-gray-900 font-mono">
-                      {delivery.delivery_number?.replace('WMH-I-', 'WMH-D-') || 'N/A'}
-                    </span>
-                  </div>
-                </div>
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                    <span className="font-medium text-gray-600">Created:</span>
-                    <span className="text-gray-900">{getFormattedDate(delivery.created_at)}</span>
-                  </div>
-                  <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                    <span className="font-medium text-gray-600">Status:</span>
-                    <div>{getStatusBadge(delivery.status)}</div>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Addresses Card */}
-          <Card className="shadow-lg">
-            <CardHeader className="bg-orange-50 border-b">
-              <CardTitle className="text-orange-900 flex items-center">
-                <MapPin className="h-5 w-5 mr-2" />
-                Pickup & Delivery Locations
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div>
-                  <h4 className="font-semibold text-gray-900 mb-3">Pickup Location</h4>
-                  <p className="text-gray-700">
-                    {mobileHome?.mobile_home_factories?.[0]?.factories ? (
-                      <>
-                        {mobileHome.mobile_home_factories[0].factories.name}<br/>
-                        {mobileHome.mobile_home_factories[0].factories.street_address}<br/>
-                        {mobileHome.mobile_home_factories[0].factories.city}, {mobileHome.mobile_home_factories[0].factories.state} {mobileHome.mobile_home_factories[0].factories.zip_code}
-                      </>
-                    ) : (
-                      delivery.pickup_address || 'Factory address not available'
-                    )}
-                  </p>
-                </div>
-                <div>
-                  <h4 className="font-semibold text-gray-900 mb-3">Delivery Location</h4>
-                  <p className="text-gray-700">{delivery.delivery_address}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Schedule Information Card */}
-          <Card className="shadow-lg">
-            <CardHeader className="bg-teal-50 border-b">
-              <CardTitle className="text-teal-900 flex items-center">
-                <CalendarDays className="h-5 w-5 mr-2" />
-                Schedule Information
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                    <span className="font-medium text-gray-600">Scheduled Pickup:</span>
-                    <span className="text-gray-900">{getFormattedDate(delivery.scheduled_pickup_date_tz) || 'Not scheduled'}</span>
-                  </div>
-                </div>
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                    <span className="font-medium text-gray-600">Scheduled Delivery:</span>
-                    <span className="text-gray-900">{getFormattedDate(delivery.scheduled_delivery_date_tz) || 'Not scheduled'}</span>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Special Instructions Card */}
-          {delivery.special_instructions && (
-            <Card className="shadow-lg">
-              <CardHeader className="bg-slate-50 border-b">
-                <CardTitle className="text-slate-900 flex items-center">
-                  <FileText className="h-5 w-5 mr-2" />
-                  Special Instructions
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-6">
-                <p className="text-gray-700 whitespace-pre-wrap">{delivery.special_instructions}</p>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-      </DialogContent>
+      <Card>
+        <CardHeader>
+          <CardTitle>Delivery Management</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-center p-8">
+            <RefreshCw className="h-8 w-8 animate-spin" />
+            <span className="ml-2">Loading deliveries...</span>
+          </div>
+        </CardContent>
+      </Card>
     );
-  };
-
-  if (isLoading) {
-    return <div className="flex items-center justify-center h-64">Loading deliveries...</div>;
   }
 
   if (error) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <AlertCircle className="mx-auto h-8 w-8 text-red-500 mb-2" />
-          <p className="text-red-500">Error loading deliveries</p>
-        </div>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <AlertCircle className="h-5 w-5 text-destructive" />
+            Delivery Management - Error
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              {error}
+            </AlertDescription>
+          </Alert>
+
+          {debugInfo && (
+            <div className="mt-4 p-4 bg-muted rounded-lg">
+              <h4 className="font-semibold mb-2">Debug Information:</h4>
+              <pre className="text-xs overflow-auto">
+                {JSON.stringify(debugInfo, null, 2)}
+              </pre>
+            </div>
+          )}
+
+          <Button onClick={handleRefresh} className="w-full">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Try Again
+          </Button>
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-medium">Delivery Management</h3>
-          <p className="text-sm text-muted-foreground">
-            Track and manage customer deliveries
-          </p>
-        </div>
-      </div>
-
-      <Tabs defaultValue="scheduling" className="space-y-4">
-        <TabsList className={`grid w-full ${isSuperAdmin ? 'grid-cols-4' : 'grid-cols-2'}`}>
-          <TabsTrigger value="scheduling" className="flex items-center gap-2">
-            <CalendarIcon className="h-4 w-4" />
-            Scheduling
-          </TabsTrigger>
-          <TabsTrigger value="deliveries" className="flex items-center gap-2">
-            <Truck className="h-4 w-4" />
-            All Deliveries
-          </TabsTrigger>
-          {canManageDrivers && (
-            <TabsTrigger value="drivers" className="flex items-center gap-2">
-              <User className="h-4 w-4" />
-              Drivers
-            </TabsTrigger>
-          )}
-          {canViewScheduleDashboard && (
-            <TabsTrigger value="dashboard" className="flex items-center gap-2">
-              <CalendarDays className="h-4 w-4" />
-              Schedule Dashboard
-            </TabsTrigger>
-          )}
-        </TabsList>
-
-        <TabsContent value="scheduling" className="space-y-4">
-          <NewDeliveryScheduling />
-        </TabsContent>
-
-        <TabsContent value="deliveries" className="space-y-4">
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h4 className="text-md font-medium">All Deliveries</h4>
-                <p className="text-sm text-muted-foreground">
-                  View and manage all delivery records
-                </p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Total Deliveries</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center">
-              <Truck className="h-4 w-4 text-muted-foreground mr-2" />
-              <span className="text-2xl font-bold">{deliveries?.length || 0}</span>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Scheduled</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center">
-              <CalendarDays className="h-4 w-4 text-muted-foreground mr-2" />
-              <span className="text-2xl font-bold">
-                {deliveries?.filter(d => d.status === 'scheduled').length || 0}
-              </span>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">In Transit</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center">
-              <Clock className="h-4 w-4 text-muted-foreground mr-2" />
-              <span className="text-2xl font-bold">
-                {deliveries?.filter(d => d.status === 'in_transit').length || 0}
-              </span>
-            </div>
-          </CardContent>
-            </Card>
-            </div>
-
-            <div className="rounded-md border">
-        <Table>
-          <TableCaption>List of all deliveries</TableCaption>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Delivery #</TableHead>
-              <TableHead>Customer</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Pickup Date</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredDeliveries.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={5} className="text-center">No deliveries found</TableCell>
-              </TableRow>
-            ) : (
-              filteredDeliveries.map((delivery) => (
-                <TableRow key={delivery.id}>
-                  <TableCell className="font-medium">
-                    {delivery.delivery_number?.replace('WMH-I-', 'WMH-D-') || 'N/A'}
-                  </TableCell>
-                  <TableCell>
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center justify-between">
+          Delivery Management
+          <Button variant="outline" size="sm" onClick={handleRefresh}>
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {deliveries.length === 0 ? (
+          <div className="text-center p-8 text-muted-foreground">
+            No deliveries found.
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Found {deliveries.length} deliveries
+            </p>
+            {/* Add delivery list here when we get data loading working */}
+            <div className="grid gap-4">
+              {deliveries.map((delivery: any) => (
+                <div key={delivery.id} className="p-4 border rounded-lg">
+                  <div className="flex justify-between items-start">
                     <div>
-                      <div>{delivery.customer_name}</div>
-                      <div className="text-xs text-muted-foreground">{delivery.customer_phone}</div>
+                      <h3 className="font-semibold">
+                        {delivery.delivery_number || 'No delivery number'}
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        Customer: {delivery.customer_name || 'Unknown'}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        Status: {delivery.status || 'Unknown'}
+                      </p>
                     </div>
-                  </TableCell>
-                  <TableCell>{getStatusBadge(delivery.status)}</TableCell>
-                  <TableCell>{getFormattedDate(delivery.scheduled_pickup_date_tz)}</TableCell>
-                  <TableCell>
-                    <div className="flex space-x-2">
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => handleScheduleDelivery(delivery)}
-                        disabled={delivery.status === 'completed' || delivery.status === 'delivered'}
-                      >
-                        <CalendarDays className="h-3 w-3 mr-1" />
-                        Schedule
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => handleEditMsoVin(delivery)}
-                      >
-                        <Edit className="h-3 w-3 mr-1" />
-                        MSO/VIN
-                      </Button>
-                      <Button variant="outline" size="sm">
-                        <MapPin className="h-3 w-3 mr-1" />
-                        Track
-                      </Button>
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button variant="outline" size="sm">
-                            <FileText className="h-3 w-3 mr-1" />
-                            Details
-                          </Button>
-                        </DialogTrigger>
-                        <DeliveryDetailsDialog delivery={delivery} />
-                      </Dialog>
+                    <div className="text-right">
+                      <p className="text-sm font-medium">
+                        ${delivery.total_delivery_cost || '0'}
+                      </p>
                     </div>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-              </TableBody>
-            </Table>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
-        </TabsContent>
-
-        {isSuperAdmin && (
-          <TabsContent value="drivers" className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h4 className="text-md font-medium">Driver Management</h4>
-              <p className="text-sm text-muted-foreground">
-                Add and manage delivery drivers
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={() => setAddDriverDialogOpen(true)}>
-                <UserPlus className="h-4 w-4 mr-2" />
-                Add Driver
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => setManageDriversDialogOpen(true)}>
-                <User className="h-4 w-4 mr-2" />
-                Manage Drivers
-              </Button>
-            </div>
-          </div>
-          
-          {drivers && drivers.length > 0 ? (
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Phone</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {drivers.map((driver) => (
-                    <TableRow key={driver.id}>
-                      <TableCell className="font-medium">
-                        {driver.first_name} {driver.last_name}
-                      </TableCell>
-                      <TableCell>{driver.email}</TableCell>
-                      <TableCell>{driver.phone}</TableCell>
-                      <TableCell>
-                        <Badge className={
-                          driver.status === 'available' ? 'bg-green-100 text-green-800' :
-                          driver.status === 'on_delivery' ? 'bg-blue-100 text-blue-800' :
-                          driver.status === 'off_duty' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-red-100 text-red-800'
-                        }>
-                          {driver.status.replace('_', ' ')}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex space-x-2">
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => handleEditDriver(driver)}
-                          >
-                            <Edit className="h-3 w-3 mr-1" />
-                            Edit
-                          </Button>
-                          {driver.user_id ? (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => resetDriverPasswordMutation.mutate(driver)}
-                              disabled={resetDriverPasswordMutation.isPending || driver.status === 'inactive'}
-                              title="Reset driver password"
-                            >
-                              <Key className="h-3 w-3" />
-                            </Button>
-                          ) : (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => linkDriversMutation.mutate(driver.id)}
-                              disabled={linkDriversMutation.isPending}
-                              title="Create user account for driver"
-                            >
-                              <Link className="h-3 w-3" />
-                            </Button>
-                          )}
-                          <Select 
-                            value={driver.status} 
-                            onValueChange={(value) => handleDriverStatusChange(driver.id, value as 'available' | 'on_delivery' | 'off_duty' | 'inactive')}
-                          >
-                            <SelectTrigger className="w-32">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="available">Available</SelectItem>
-                              <SelectItem value="on_delivery">On Delivery</SelectItem>
-                              <SelectItem value="off_duty">Off Duty</SelectItem>
-                              <SelectItem value="inactive">Inactive</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          ) : (
-            <div className="text-center py-8">
-              <User className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-              <p className="text-muted-foreground">No drivers found</p>
-              <Button className="mt-4" onClick={() => setAddDriverDialogOpen(true)}>
-                <UserPlus className="h-4 w-4 mr-2" />
-                Add First Driver
-              </Button>
-            </div>
-          )}
-        </TabsContent>
         )}
 
-        <TabsContent value="dashboard" className="space-y-4">
-          <div className="space-y-4">
-            <Tabs value={dashboardSubTab} onValueChange={setDashboardSubTab} className="space-y-4">
-              <TabsList className="grid w-full grid-cols-4">
-                <TabsTrigger value="deliveries" className="flex items-center gap-2">
-                  <Truck className="h-4 w-4" />
-                  Deliveries
-                </TabsTrigger>
-                <TabsTrigger value="schedule-calendar" className="flex items-center gap-2">
-                  <CalendarIcon className="h-4 w-4" />
-                  Schedule Calendar
-                </TabsTrigger>
-                <TabsTrigger value="workload-analysis" className="flex items-center gap-2">
-                  <FileText className="h-4 w-4" />
-                  Workload Analysis
-                </TabsTrigger>
-                <TabsTrigger value="load-timeline" className="flex items-center gap-2">
-                  <Clock className="h-4 w-4" />
-                  Load Timeline
-                </TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="deliveries" className="space-y-4">
-                <LoadTimelineView 
-                  deliveries={deliveries as any || []} 
-                  drivers={drivers as any || []} 
-                  currentWeek={currentWeek} 
-                />
-              </TabsContent>
-
-              <TabsContent value="schedule-calendar" className="space-y-4">
-                <DriverScheduleCalendar 
-                  drivers={drivers as any || []} 
-                  deliveries={deliveries as any || []} 
-                  currentWeek={currentWeek}
-                  onWeekChange={setCurrentWeek}
-                />
-              </TabsContent>
-
-              <TabsContent value="workload-analysis" className="space-y-4">
-                <DriverWorkloadDashboard 
-                  drivers={drivers as any || []} 
-                  deliveries={deliveries as any || []} 
-                />
-              </TabsContent>
-
-              <TabsContent value="load-timeline" className="space-y-4">
-                <LoadTimelineView 
-                  deliveries={deliveries as any || []} 
-                  drivers={drivers as any || []} 
-                  currentWeek={currentWeek} 
-                />
-              </TabsContent>
-            </Tabs>
+        {debugInfo && debugInfo.success && (
+          <div className="mt-4 p-2 bg-green-50 text-green-800 rounded text-xs">
+            ✅ Successfully loaded {debugInfo.deliveryCount} deliveries for {debugInfo.user} (roles: {debugInfo.roles.join(', ')})
           </div>
-        </TabsContent>
-      </Tabs>
-      
-      <ScheduleDeliveryDialog />
-      
-      {/* Add Driver Dialog */}
-      <Dialog open={addDriverDialogOpen} onOpenChange={setAddDriverDialogOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Add New Driver</DialogTitle>
-            <DialogDescription>
-              Add a new driver to the delivery system
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="first-name">First Name *</Label>
-                <Input
-                  id="first-name"
-                  value={newDriverData.first_name}
-                  onChange={(e) => setNewDriverData(prev => ({ ...prev, first_name: e.target.value }))}
-                  placeholder="John"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="last-name">Last Name *</Label>
-                <Input
-                  id="last-name"
-                  value={newDriverData.last_name}
-                  onChange={(e) => setNewDriverData(prev => ({ ...prev, last_name: e.target.value }))}
-                  placeholder="Doe"
-                />
-              </div>
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="email">Email *</Label>
-              <Input
-                id="email"
-                type="email"
-                value={newDriverData.email}
-                onChange={(e) => setNewDriverData(prev => ({ ...prev, email: e.target.value }))}
-                placeholder="john.doe@example.com"
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="phone">Phone *</Label>
-              <Input
-                id="phone"
-                value={newDriverData.phone}
-                onChange={(e) => setNewDriverData(prev => ({ ...prev, phone: e.target.value }))}
-                placeholder="(555) 123-4567"
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="license">License Number</Label>
-              <Input
-                id="license"
-                value={newDriverData.license_number}
-                onChange={(e) => setNewDriverData(prev => ({ ...prev, license_number: e.target.value }))}
-                placeholder="CDL12345"
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="license-class">License Class</Label>
-              <Select value={newDriverData.cdl_class} onValueChange={(value) => 
-                setNewDriverData(prev => ({ ...prev, cdl_class: value }))
-              }>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select license class" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="CDL-A">CDL Class A</SelectItem>
-                  <SelectItem value="CDL-B">CDL Class B</SelectItem>
-                  <SelectItem value="CDL-C">CDL Class C</SelectItem>
-                  <SelectItem value="Regular">Regular License</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          
-          <div className="flex justify-end space-x-2 pt-4">
-            <Button variant="outline" onClick={() => setAddDriverDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleAddDriver}
-              disabled={addDriverMutation.isPending}
-            >
-              {addDriverMutation.isPending ? 'Adding...' : 'Add Driver'}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Manage Drivers Dialog */}
-      <Dialog open={manageDriversDialogOpen} onOpenChange={setManageDriversDialogOpen}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Manage Drivers</DialogTitle>
-            <DialogDescription>
-              View and manage all drivers in the system
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4">
-            {drivers && drivers.length > 0 ? (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Phone</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {drivers.map((driver) => (
-                    <TableRow key={driver.id}>
-                      <TableCell className="font-medium">
-                        {driver.first_name} {driver.last_name}
-                      </TableCell>
-                      <TableCell>{driver.email}</TableCell>
-                      <TableCell>{driver.phone}</TableCell>
-                      <TableCell>
-                        <Badge className={
-                          driver.status === 'available' ? 'bg-green-100 text-green-800' :
-                          driver.status === 'on_delivery' ? 'bg-blue-100 text-blue-800' :
-                          driver.status === 'off_duty' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-red-100 text-red-800'
-                        }>
-                          {driver.status.replace('_', ' ')}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex space-x-2">
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => handleEditDriver(driver)}
-                          >
-                            <Edit className="h-3 w-3 mr-1" />
-                            Edit
-                          </Button>
-                          <Select 
-                            value={driver.status} 
-                            onValueChange={(value) => handleDriverStatusChange(driver.id, value as 'available' | 'on_delivery' | 'off_duty' | 'inactive')}
-                          >
-                            <SelectTrigger className="w-32">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="available">Available</SelectItem>
-                              <SelectItem value="on_delivery">On Delivery</SelectItem>
-                              <SelectItem value="off_duty">Off Duty</SelectItem>
-                              <SelectItem value="inactive">Inactive</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            ) : (
-              <div className="text-center py-8">
-                <User className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                <p className="text-muted-foreground">No drivers found</p>
-                <Button className="mt-4" onClick={() => {
-                  setManageDriversDialogOpen(false);
-                  setAddDriverDialogOpen(true);
-                }}>
-                  <UserPlus className="h-4 w-4 mr-2" />
-                  Add First Driver
-                </Button>
-              </div>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Driver Dialog */}
-      <Dialog open={editDriverDialogOpen} onOpenChange={setEditDriverDialogOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Edit Driver</DialogTitle>
-            <DialogDescription>
-              Update driver information
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit-first-name">First Name *</Label>
-                <Input
-                  id="edit-first-name"
-                  value={editDriverData.first_name}
-                  onChange={(e) => setEditDriverData(prev => ({ ...prev, first_name: e.target.value }))}
-                  placeholder="John"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-last-name">Last Name *</Label>
-                <Input
-                  id="edit-last-name"
-                  value={editDriverData.last_name}
-                  onChange={(e) => setEditDriverData(prev => ({ ...prev, last_name: e.target.value }))}
-                  placeholder="Doe"
-                />
-              </div>
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="edit-email">Email *</Label>
-              <Input
-                id="edit-email"
-                type="email"
-                value={editDriverData.email}
-                onChange={(e) => setEditDriverData(prev => ({ ...prev, email: e.target.value }))}
-                placeholder="john.doe@example.com"
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="edit-phone">Phone *</Label>
-              <Input
-                id="edit-phone"
-                value={editDriverData.phone}
-                onChange={(e) => setEditDriverData(prev => ({ ...prev, phone: e.target.value }))}
-                placeholder="(555) 123-4567"
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="edit-license">License Number</Label>
-              <Input
-                id="edit-license"
-                value={editDriverData.license_number}
-                onChange={(e) => setEditDriverData(prev => ({ ...prev, license_number: e.target.value }))}
-                placeholder="CDL12345"
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="edit-license-class">License Class</Label>
-              <Select value={editDriverData.cdl_class} onValueChange={(value) => 
-                setEditDriverData(prev => ({ ...prev, cdl_class: value }))
-              }>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select license class" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="CDL-A">CDL Class A</SelectItem>
-                  <SelectItem value="CDL-B">CDL Class B</SelectItem>
-                  <SelectItem value="CDL-C">CDL Class C</SelectItem>
-                  <SelectItem value="Regular">Regular License</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          
-          <div className="flex justify-end space-x-2 pt-4">
-            <Button variant="outline" onClick={() => {
-              setEditDriverDialogOpen(false);
-              setEditingDriver(null);
-            }}>
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleUpdateDriver}
-              disabled={editDriverMutation.isPending}
-            >
-              {editDriverMutation.isPending ? 'Updating...' : 'Update Driver'}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit MSO/VIN Dialog */}
-      <Dialog open={editMsoVinDialogOpen} onOpenChange={setEditMsoVinDialogOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Edit MSO/VIN Numbers</DialogTitle>
-            <DialogDescription>
-              Update the MSO/VIN numbers for delivery {editingMsoVinDelivery?.delivery_number}
-              {editingMsoVinDelivery?.mobile_home_type === 'double_wide' ? 
-                ' (Double Wide - 2 sections)' : 
-                ' (Single Wide - 1 section)'
-              }
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="mso-vin-1">
-                MSO/VIN Section 1 {editingMsoVinDelivery?.mobile_home_type === 'single_wide' ? '(Single Wide)' : '(First Section)'}
-              </Label>
-              <Input
-                id="mso-vin-1"
-                value={msoVinSection1}
-                onChange={(e) => setMsoVinSection1(e.target.value)}
-                placeholder="Enter MSO/VIN number"
-                className="font-mono"
-              />
-            </div>
-            
-            {editingMsoVinDelivery?.mobile_home_type === 'double_wide' && (
-              <div className="space-y-2">
-                <Label htmlFor="mso-vin-2">MSO/VIN Section 2 (Second Section)</Label>
-                <Input
-                  id="mso-vin-2"
-                  value={msoVinSection2}
-                  onChange={(e) => setMsoVinSection2(e.target.value)}
-                  placeholder="Enter MSO/VIN number"
-                  className="font-mono"
-                />
-              </div>
-            )}
-          </div>
-          
-          <div className="flex justify-end space-x-2 pt-4">
-            <Button variant="outline" onClick={() => {
-              setEditMsoVinDialogOpen(false);
-              setEditingMsoVinDelivery(null);
-              setMsoVinSection1('');
-              setMsoVinSection2('');
-            }}>
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleMsoVinSubmit}
-              disabled={updateMsoVinMutation.isPending}
-            >
-              {updateMsoVinMutation.isPending ? 'Updating...' : 'Update MSO/VIN'}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-    </div>
+        )}
+      </CardContent>
+    </Card>
   );
 };
+
+export default DeliveryManagement;

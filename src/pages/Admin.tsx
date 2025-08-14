@@ -412,6 +412,12 @@ const Admin = () => {
                   🚚 Delivery
                 </TabsTrigger>
                 <TabsTrigger 
+                  value="reviews" 
+                  className="text-xs sm:text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm px-3 py-2 whitespace-nowrap"
+                >
+                  ⭐ Reviews
+                </TabsTrigger>
+                <TabsTrigger 
                   value="testing" 
                   className="text-xs sm:text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm px-3 py-2 whitespace-nowrap"
                 >

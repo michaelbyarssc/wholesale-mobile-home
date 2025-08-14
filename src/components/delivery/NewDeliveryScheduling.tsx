@@ -267,6 +267,22 @@ export const NewDeliveryScheduling = () => {
     });
   };
 
+  const handleScheduleDelivery = (deliveryId: string) => {
+    const delivery = deliveries?.find(d => d.id === deliveryId);
+    if (!delivery) return;
+
+    setSelectedDelivery(deliveryId);
+    
+    // Determine what type of scheduling is needed
+    if (canSchedulePickup(delivery)) {
+      setScheduleType('pickup');
+    } else if (canScheduleDelivery(delivery)) {
+      setScheduleType('delivery');
+    }
+    
+    setIsScheduleDialogOpen(true);
+  };
+
   const getDeliveryStatusBadge = (delivery: any) => {
     const schedule = delivery.delivery_schedules?.[0];
     
@@ -467,7 +483,17 @@ export const NewDeliveryScheduling = () => {
                     <CardTitle className="text-lg">{delivery.delivery_number}</CardTitle>
                     <CardDescription>{delivery.customer_name}</CardDescription>
                   </div>
-                  {getDeliveryStatusBadge(delivery)}
+                  <div className="flex items-center gap-2">
+                    {getDeliveryStatusBadge(delivery)}
+                    <Button 
+                      onClick={() => handleScheduleDelivery(delivery.id)}
+                      size="sm"
+                      variant="outline"
+                    >
+                      <CalendarIcon className="h-4 w-4 mr-2" />
+                      Schedule
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
@@ -490,7 +516,12 @@ export const NewDeliveryScheduling = () => {
                     </div>
                     <div className="flex items-center text-sm">
                       <MapPin className="h-4 w-4 mr-2 text-muted-foreground" />
-                      <span className="truncate">{delivery.pickup_address}</span>
+                      <span className="truncate">
+                        {delivery.factories ? 
+                          `${delivery.factories.street_address}, ${delivery.factories.city}, ${delivery.factories.state} ${delivery.factories.zip_code}` :
+                          delivery.pickup_address
+                        }
+                      </span>
                     </div>
                   </div>
                   

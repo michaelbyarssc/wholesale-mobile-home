@@ -109,7 +109,7 @@ export const TransactionHistory = () => {
     queryKey: ['transaction-history', searchQuery, selectedType, selectedStatus, selectedCustomer],
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('User not authenticated');
+      if (!user) return [];
 
       // Admin status is handled by useUserRoles hook
 

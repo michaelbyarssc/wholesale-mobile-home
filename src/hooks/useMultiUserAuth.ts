@@ -4,8 +4,14 @@ import { useSessionManager } from '@/contexts/SessionManagerContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { useSessionValidation } from '@/hooks/useSessionValidation';
+import { useSimpleAuth } from '@/hooks/useSimpleAuth';
+import { validateSessionIntegrity, clearCorruptedSessions } from '@/utils/sessionCleanup';
 
 export const useMultiUserAuth = () => {
+  // Check session integrity first - if corrupted, fall back to simple auth
+  const isSessionValid = validateSessionIntegrity();
+  const simpleAuth = useSimpleAuth();
+  
   const {
     sessions,
     activeSession,
@@ -21,8 +27,27 @@ export const useMultiUserAuth = () => {
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
   const { validateSession } = useSessionValidation();
+  
+  // If session integrity is compromised, use simple auth for login
+  if (!isSessionValid || (!sessions.length && !simpleAuth.user)) {
+    console.log('🔐 MULTI-USER AUTH: Using simple auth due to integrity issues');
+    return {
+      ...simpleAuth,
+      // Add multi-user specific methods that redirect to simple auth
+      switchToSession: () => {},
+      signOutAll: simpleAuth.signOut,
+      fetchUserProfile: async () => null,
+      hasMultipleSessions: false,
+      sessionCount: simpleAuth.user ? 1 : 0,
+      userProfile: null,
+      getCurrentSession: () => simpleAuth.activeSession,
+      getCurrentUser: () => simpleAuth.user,
+      getCurrentUserProfile: () => null,
+      getSupabaseClient: () => simpleAuth.supabaseClient
+    };
+  }
 
-  // Initialize by checking for existing session - stable approach
+  // Initialize by checking for existing session with recovery
   useEffect(() => {
     let initialized = false;
     let authSubscription: any = null;
@@ -32,6 +57,12 @@ export const useMultiUserAuth = () => {
       initialized = true;
       
       try {
+        // Check session integrity first
+        if (!validateSessionIntegrity()) {
+          console.warn('🔐 Session integrity check failed, clearing corrupted data');
+          clearCorruptedSessions();
+        }
+        
         // Set up auth state listener first - stable callback without dependencies
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
           async (event, session) => {
@@ -43,7 +74,13 @@ export const useMultiUserAuth = () => {
               
               if (!hasExistingSession) {
                 console.log('🔐 Auth state change: adding new session for user:', session.user.email);
-                await addSession(session.user, session);
+                try {
+                  await addSession(session.user, session);
+                } catch (error) {
+                  console.error('🔐 Error adding session during auth state change:', error);
+                  // Fallback: clear corrupted data
+                  clearCorruptedSessions();
+                }
               }
             }
           }
@@ -51,20 +88,35 @@ export const useMultiUserAuth = () => {
         
         authSubscription = subscription;
 
-        // Then check for existing session
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user) {
-          const storedSessions = localStorage.getItem('wmh_sessions');
-          const existingSessions = storedSessions ? JSON.parse(storedSessions) : [];
+        // Then check for existing session with error handling
+        try {
+          const { data: { session }, error } = await supabase.auth.getSession();
           
-          if (existingSessions.length === 0) {
-            console.log('🔐 Initializing auth with existing session for user:', session.user.email);
-            await addSession(session.user, session);
+          if (error) {
+            console.error('🔐 Error getting session:', error);
+            clearCorruptedSessions();
+          } else if (session?.user) {
+            const storedSessions = localStorage.getItem('wmh_sessions');
+            const existingSessions = storedSessions ? JSON.parse(storedSessions) : [];
+            
+            if (existingSessions.length === 0) {
+              console.log('🔐 Initializing auth with existing session for user:', session.user.email);
+              try {
+                await addSession(session.user, session);
+              } catch (error) {
+                console.error('🔐 Error adding session during initialization:', error);
+                clearCorruptedSessions();
+              }
+            }
           }
+        } catch (error) {
+          console.error('🔐 Session retrieval failed:', error);
+          clearCorruptedSessions();
         }
         
       } catch (error) {
         console.error('Error initializing auth:', error);
+        clearCorruptedSessions();
       } finally {
         setIsLoading(false);
       }

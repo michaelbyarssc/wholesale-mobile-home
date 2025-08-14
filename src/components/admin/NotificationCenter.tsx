@@ -28,38 +28,48 @@ export const NotificationCenter = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    loadNotifications();
+    let channel: any = null;
     
-    // Set up real-time subscription for new notifications
-    const channel = supabase
-      .channel('notifications')
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'notifications',
-        filter: `user_id=eq.${getCurrentUserId()}`
-      }, (payload) => {
-        console.log('New notification received:', payload);
-        setNotifications(prev => [payload.new as Notification, ...prev]);
-        setUnreadCount(prev => prev + 1);
-        
-        // Show toast for new notification
-        toast({
-          title: payload.new.title,
-          description: payload.new.message,
-        });
-      })
-      .subscribe();
+    const setupRealtimeSubscription = async () => {
+      try {
+        // Get user ID first
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        // Set up real-time subscription for new notifications
+        channel = supabase
+          .channel('notifications')
+          .on('postgres_changes', {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'notifications',
+            filter: `user_id=eq.${user.id}`
+          }, (payload) => {
+            console.log('New notification received:', payload);
+            setNotifications(prev => [payload.new as Notification, ...prev]);
+            setUnreadCount(prev => prev + 1);
+            
+            // Show toast for new notification
+            toast({
+              title: payload.new.title,
+              description: payload.new.message,
+            });
+          })
+          .subscribe();
+      } catch (error) {
+        console.error('Error setting up notifications subscription:', error);
+      }
+    };
+
+    loadNotifications();
+    setupRealtimeSubscription();
 
     return () => {
-      supabase.removeChannel(channel);
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
     };
-  }, []);
-
-  const getCurrentUserId = () => {
-    // This will be replaced with actual user ID from auth context
-    return supabase.auth.getUser().then(({ data }) => data.user?.id);
-  };
+  }, [toast]);
 
   const loadNotifications = async () => {
     setIsLoading(true);

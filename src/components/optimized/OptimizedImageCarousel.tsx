@@ -1,9 +1,9 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ImageGalleryModal } from '../ImageGalleryModal';
-import { OptimizedImage } from '@/components/ui/optimized-image';
 
 interface MobileHomeImage {
   id: string;
@@ -32,27 +32,57 @@ const MemoizedCarouselItem = React.memo(({
   onImageError: (id: string, url: string) => void;
   onImageLoad: (id: string) => void;
   onImageClick: (index: number) => void;
-}) => (
-  <CarouselItem key={image.id}>
-    <div className="relative">
-      <OptimizedImage
-        src={image.image_url}
-        alt={image.alt_text || `${homeModel} ${image.image_type} view`}
-        width={400}
-        height={225}
-        className="w-full h-56 object-cover rounded-lg cursor-pointer transition-transform duration-300 hover:scale-105"
-        lazy={index > 2}
-        onError={() => onImageError(image.id, image.image_url)}
-        onLoad={() => onImageLoad(image.id)}
-        onClick={() => onImageClick(index)}
-        sizes="(max-width: 768px) 100vw, 400px"
-      />
-      <div className="absolute top-2 right-2 bg-black/70 text-white px-2 py-1 rounded text-xs capitalize">
-        {image.image_type}
+}) => {
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [hasError, setHasError] = useState(false);
+
+  const handleLoad = () => {
+    setIsLoaded(true);
+    onImageLoad(image.id);
+  };
+
+  const handleError = () => {
+    setHasError(true);
+    onImageError(image.id, image.image_url);
+  };
+
+  return (
+    <CarouselItem key={image.id}>
+      <div className="relative">
+        {!hasError ? (
+          <img
+            src={image.image_url}
+            alt={image.alt_text || `${homeModel} ${image.image_type} view`}
+            className="w-full h-56 object-cover rounded-lg cursor-pointer transition-transform duration-300 hover:scale-105"
+            onLoad={handleLoad}
+            onError={handleError}
+            onClick={() => onImageClick(index)}
+            loading={index > 2 ? 'lazy' : 'eager'}
+            style={{
+              opacity: isLoaded ? 1 : 0,
+              transition: 'opacity 0.3s ease-in-out'
+            }}
+          />
+        ) : (
+          <div className="w-full h-56 bg-muted rounded-lg flex items-center justify-center">
+            <div className="text-center text-muted-foreground">
+              <div className="text-2xl mb-2">🖼️</div>
+              <p className="text-xs">Image unavailable</p>
+            </div>
+          </div>
+        )}
+        
+        {!isLoaded && !hasError && (
+          <div className="absolute inset-0 bg-gradient-to-br from-muted to-muted/50 animate-pulse rounded-lg" />
+        )}
+        
+        <div className="absolute top-2 right-2 bg-black/70 text-white px-2 py-1 rounded text-xs capitalize">
+          {image.image_type}
+        </div>
       </div>
-    </div>
-  </CarouselItem>
-));
+    </CarouselItem>
+  );
+});
 
 MemoizedCarouselItem.displayName = 'MemoizedCarouselItem';
 
@@ -70,10 +100,12 @@ export const OptimizedImageCarousel = React.memo(({ images, homeModel }: Optimiz
   }, [images]);
 
   const handleImageError = useCallback((imageId: string, imageUrl: string) => {
+    console.log('Image failed to load:', imageUrl);
     setFailedImages(prev => new Set([...prev, imageId]));
   }, []);
 
   const handleImageLoad = useCallback((imageId: string) => {
+    console.log('Image loaded successfully:', imageId);
     setLoadedImages(prev => new Set([...prev, imageId]));
   }, []);
 

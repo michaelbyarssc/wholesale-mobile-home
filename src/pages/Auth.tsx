@@ -26,8 +26,10 @@ const Auth = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   
-  // Multi-user authentication
-  const { user, userProfile, sessions, hasMultipleSessions } = useMultiUserAuth();
+  // Multi-user authentication - single source of truth
+  const { user, userProfile, sessions, hasMultipleSessions, isLoading: authLoading } = useMultiUserAuth();
+  
+  // Only check roles if we have a user and auth is not loading
   const { isAdmin, isLoading: rolesLoading } = useUserRoles();
   
   // Check if this is "add user" mode
@@ -56,7 +58,7 @@ const Auth = () => {
     }
     
     // If user is already logged in and not in add user mode, redirect
-    if (user && !rolesLoading) {
+    if (user && !authLoading && !rolesLoading) {
       console.log('🔐 AUTH PAGE: User already logged in, redirecting...');
       
       setTimeout(() => {
@@ -69,7 +71,7 @@ const Auth = () => {
         }
       }, 100);
     }
-  }, [user, isAdmin, rolesLoading, searchParams, navigate, isAddUserMode]);
+  }, [user, isAdmin, authLoading, rolesLoading, searchParams, navigate, isAddUserMode]);
 
   const resetForm = () => {
     setEmail('');
@@ -95,7 +97,7 @@ const Auth = () => {
     navigate('/');
   };
 
-  if (rolesLoading && !isAddUserMode) {
+  if ((authLoading || rolesLoading) && !isAddUserMode) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-green-50 to-yellow-50 flex items-center justify-center p-4">
         <div className="text-center">

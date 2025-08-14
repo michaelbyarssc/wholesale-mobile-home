@@ -29,27 +29,24 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
 }) => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [isError, setIsError] = useState(false);
-  const [imageSrc, setImageSrc] = useState(lazy ? '' : src);
+  const [imageSrc, setImageSrc] = useState(!lazy ? src : '');
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Always load image immediately if not lazy or if we don't have a src yet
-    if (!lazy || !imageSrc) {
+    // Always load image immediately if not lazy
+    if (!lazy) {
       setImageSrc(src);
       return;
     }
-  }, [src, lazy, imageSrc]);
-
-  useEffect(() => {
-    if (!lazy) return;
 
     const container = containerRef.current;
     if (!container) {
+      // Fallback: load immediately if no container
       setImageSrc(src);
       return;
     }
 
-    // Simple intersection observer with immediate fallback
+    // For lazy loading, use intersection observer with immediate fallback
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
@@ -62,11 +59,11 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
 
     observer.observe(container);
 
-    // Immediate fallback after 200ms
+    // Immediate fallback after 100ms to ensure images always load
     const fallbackTimer = setTimeout(() => {
       setImageSrc(src);
       observer.disconnect();
-    }, 200);
+    }, 100);
 
     return () => {
       observer.disconnect();
@@ -95,7 +92,7 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
         minHeight: height ? `${height}px` : '200px'
       }}
     >
-      {/* Placeholder background */}
+      {/* Placeholder background - only show when not loaded and no error */}
       {!isLoaded && !isError && (
         <div className="absolute inset-0 bg-gradient-to-br from-muted to-muted/50 animate-pulse">
           {placeholder && (
@@ -106,7 +103,7 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
         </div>
       )}
       
-      {/* Main image */}
+      {/* Main image - always render if we have a src */}
       {imageSrc && (
         <img
           src={imageSrc}

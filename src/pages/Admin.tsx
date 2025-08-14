@@ -16,7 +16,7 @@ import { UserManagementTab } from '@/components/admin/UserManagementTab';
 import { SocialProofManager } from '@/components/admin/SocialProofManager';
 import { NotificationCenter } from '@/components/admin/NotificationCenter';
 import { FAQManagementTab } from '@/components/admin/FAQManagementTab';
-import { DeliveryManagement } from '@/components/admin/DeliveryManagement';
+import DeliveryManagement from '@/components/admin/DeliveryManagement';
 import { ComprehensiveTestSuite } from '@/components/admin/ComprehensiveTestSuite';
 import { ComprehensiveTestRunner } from '@/components/ComprehensiveTestRunner';
 import { SecurityTestDashboard } from '@/components/SecurityTestDashboard';

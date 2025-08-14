@@ -5,7 +5,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useMultiUserAuth } from '@/hooks/useMultiUserAuth';
-import { useAuthErrorRecovery } from '@/hooks/useAuthErrorRecovery';
 import { supabase } from '@/integrations/supabase/client';
 
 interface AuthFormProps {
@@ -43,7 +42,6 @@ export const AuthForm = ({
 }: AuthFormProps) => {
   const { toast } = useToast();
   const { signIn, signUp } = useMultiUserAuth();
-  const { handleAuthError, clearAuthState } = useAuthErrorRecovery();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -134,39 +132,11 @@ export const AuthForm = ({
       }
     } catch (error: any) {
       console.error('Auth error:', error);
-      
-      // Try to handle auth errors with recovery
-      const wasHandled = handleAuthError(error);
-      
-      let errorMessage = error.message || "An unexpected error occurred";
-      
-      // Provide specific guidance for common errors
-      if (error.message?.includes('Invalid login credentials')) {
-        errorMessage = "Invalid email or password. Please check your credentials and try again.";
-      } else if (error.message?.includes('session_not_found') || error.message?.includes('Session not found')) {
-        errorMessage = "Your session has expired. Please try signing in again.";
-        // Clear auth state for session errors
-        clearAuthState();
-      } else if (error.message?.includes('Failed to fetch')) {
-        errorMessage = "Network error. Please check your connection and try again.";
-      }
-      
       toast({
         title: isSignUp ? "Sign Up Failed" : "Sign In Failed",
-        description: errorMessage,
+        description: error.message || "An unexpected error occurred",
         variant: "destructive",
       });
-      
-      if (wasHandled) {
-        // Reset form if error was handled with auth state cleanup
-        setEmail('');
-        setPassword('');
-        if (isSignUp) {
-          setFirstName('');
-          setLastName('');
-          setPhoneNumber('');
-        }
-      }
     } finally {
       setLoading(false);
     }

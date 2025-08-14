@@ -35,17 +35,77 @@ const Admin = () => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
 
-  // Initialize default tab based on role
+  // SECURITY: Enhanced admin validation with session checks
+  const isSecureAdmin = isAdmin && user && session && user.id === session.user.id;
+  
+  // SECURITY: Enhanced debug logging with session validation
+  console.log('🔐 Admin Panel State:', {
+    userEmail: user?.email,
+    userId: user?.id,
+    sessionUserId: session?.user?.id,
+    sessionUserEmail: session?.user?.email,
+    isAdmin,
+    isSuperAdmin,
+    isSecureAdmin,
+    userRoles: userRoles.map(r => r.role),
+    authLoading,
+    rolesLoading,
+    sessionMatch: user?.id === session?.user?.id,
+    timestamp: new Date().toISOString()
+  });
+
+  // SECURITY: Alert on session mismatch
+  if (user && session && user.id !== session.user.id) {
+    console.error('🚨 SECURITY ALERT: User/Session mismatch in Admin panel!', {
+      userId: user.id,
+      sessionUserId: session.user.id,
+      userEmail: user.email,
+      sessionUserEmail: session.user.email
+    });
+  }
+
+  // SECURITY: Force auth and role refresh on mount to prevent stale data
   useEffect(() => {
-    if (!rolesLoading && isAdmin) {
+    const initializeAdminPanel = async () => {
+      console.log('🔐 Initializing admin panel...');
+      await forceRefreshAuth();
+      await forceRefreshRoles();
+    };
+    
+    initializeAdminPanel();
+  }, []); // Only run once on mount
+
+  // SECURITY: Verify admin access with database function (no auto-logout; UI will handle)
+  useEffect(() => {
+    const verifyAccess = async () => {
+      if (user && !authLoading && !rolesLoading) {
+        const isVerifiedAdmin = await verifyAdminAccess();
+        if (!isVerifiedAdmin) {
+          console.warn('⚠️ Admin access verification failed - keeping session, showing limited UI');
+          toast({
+            title: 'Access check',
+            description: 'Admin privileges not verified yet. Try refresh or contact support.',
+            duration: 4000,
+          });
+        }
+      }
+    };
+    verifyAccess();
+  }, [user, authLoading, rolesLoading, verifyAdminAccess, toast]);
+
+  // Initialize default tab based on role (ProtectedRoute already handles auth)
+  useEffect(() => {
+    if (!authLoading && !rolesLoading && isSecureAdmin) {
       // Set default tab based on role
       if (isSuperAdmin) {
         setActiveTab('mobile-homes');
+        console.log('🔐 Admin: Super admin detected, setting tab to mobile-homes');
       } else {
         setActiveTab('sales');
+        console.log('🔐 Admin: Regular admin detected, setting tab to sales');
       }
     }
-  }, [isSuperAdmin, rolesLoading, isAdmin]);
+  }, [isSuperAdmin, authLoading, rolesLoading, isSecureAdmin]);
 
   const handleSignOut = async () => {
     await handleLogout();
@@ -62,16 +122,22 @@ const Admin = () => {
     setMobileMenuOpen(false) // Close mobile menu when tab changes
   };
 
-  // Show loading while roles are being verified
-  if (rolesLoading) {
+  // SECURITY: Show loading while verifying authentication and roles
+  if (authLoading || rolesLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center space-y-4">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-          <p className="text-sm text-muted-foreground">Loading admin dashboard...</p>
+          <p className="text-sm text-muted-foreground">Verifying admin access...</p>
         </div>
       </div>
     );
+  }
+
+  // SECURITY: Only redirect to auth when not logged in; otherwise let ProtectedRoute handle access
+  if (!user || !session) {
+    navigate('/auth');
+    return null;
   }
 
   const getTabDisplayName = (tab: string) => {
@@ -243,6 +309,23 @@ const Admin = () => {
               
               <NotificationCenter />
               
+              {/* Debug: Force Refresh Button */}
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={async () => {
+                  console.log('Manual refresh triggered');
+                  await forceRefreshAuth();
+                  await forceRefreshRoles();
+                  toast({
+                    title: "Refreshed",
+                    description: "Auth and roles have been refreshed. Check console for debug info.",
+                  });
+                }}
+                className="hidden sm:flex text-xs"
+              >
+                🔄 Refresh
+              </Button>
               
               <Button 
                 variant="outline" 

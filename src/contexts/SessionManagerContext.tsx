@@ -33,7 +33,19 @@ const SessionManagerContext = createContext<SessionManagerContextType | null>(nu
 export const useSessionManager = () => {
   const context = useContext(SessionManagerContext);
   if (!context) {
-    throw new Error('useSessionManager must be used within a SessionManagerProvider');
+    // Instead of throwing, return default values to prevent crashes
+    console.warn('🔐 SessionManager context not available, returning defaults');
+    return {
+      sessions: [],
+      activeSessionId: null,
+      activeSession: null,
+      addSession: async () => { throw new Error('SessionManager not initialized'); },
+      removeSession: () => {},
+      switchToSession: () => {},
+      clearAllSessions: () => {},
+      getSessionClient: () => null,
+      updateSessionProfile: () => {}
+    };
   }
   return context;
 };
@@ -184,9 +196,10 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
     }
   }, [sessions, activeSessionId]);
 
-  // Optimized cross-tab communication with debouncing
+  // Optimized cross-tab communication with debouncing and sync prevention
   useEffect(() => {
     let syncTimeout: NodeJS.Timeout | null = null;
+    let lastSyncHash = '';
     
     const debouncedSync = () => {
       if (syncTimeout) clearTimeout(syncTimeout);
@@ -194,6 +207,14 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
         try {
           const storedSessions = localStorage.getItem('wmh_sessions');
           const storedActiveId = localStorage.getItem('wmh_active_session');
+          
+          // Create a hash to prevent unnecessary syncs
+          const currentHash = JSON.stringify({ storedSessions, storedActiveId });
+          if (currentHash === lastSyncHash) {
+            console.log('🔐 Sync skipped: no changes detected');
+            return;
+          }
+          lastSyncHash = currentHash;
           
           if (storedSessions) {
             const sessionData = JSON.parse(storedSessions);
@@ -222,17 +243,34 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
                 supabaseClient: client,
                 createdAt: new Date(selectedSessionData.createdAt)
               };
-              setSessions([recreatedSession]);
-              setActiveSessionId(recreatedSession.id);
+              
+              // Only update if session actually changed
+              setSessions(prevSessions => {
+                const isDifferent = prevSessions.length !== 1 || 
+                  prevSessions[0]?.id !== recreatedSession.id;
+                
+                if (isDifferent) {
+                  console.log('🔐 Syncing session:', recreatedSession.id);
+                  return [recreatedSession];
+                }
+                return prevSessions;
+              });
+              
+              setActiveSessionId(prevId => {
+                if (prevId !== recreatedSession.id) {
+                  return recreatedSession.id;
+                }
+                return prevId;
+              });
             } else {
-              setSessions([]);
-              setActiveSessionId(null);
+              setSessions(prev => prev.length > 0 ? [] : prev);
+              setActiveSessionId(prev => prev !== null ? null : prev);
             }
           }
         } catch (error) {
           console.error('Error syncing sessions:', error);
         }
-      }, 100); // 100ms debounce
+      }, 300); // Increased debounce to 300ms to prevent rapid firing
     };
 
     const handleStorageChange = (event: StorageEvent) => {
@@ -275,12 +313,32 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
   }, []);
 
   const addSession = useCallback(async (user: User, session: Session): Promise<string> => {
-    // Check for existing session for this user first
+    // Check for existing session for this user first (both in memory and storage)
     const existingSession = sessions.find(s => s.user.id === user.id);
     if (existingSession) {
       console.log('🔐 Session already exists for user:', user.email, 'switching to existing');
       setActiveSessionId(existingSession.id);
       return existingSession.id;
+    }
+    
+    // Also check localStorage for any existing sessions to prevent duplicates
+    try {
+      const storedSessions = localStorage.getItem('wmh_sessions');
+      if (storedSessions) {
+        const existingSessions = JSON.parse(storedSessions);
+        const hasStoredSession = existingSessions.some((s: any) => s.user.id === user.id);
+        if (hasStoredSession) {
+          console.log('🔐 Session found in storage for user:', user.email, 'preventing duplicate');
+          // Force reload from storage to sync state
+          const storedSession = existingSessions.find((s: any) => s.user.id === user.id);
+          if (storedSession) {
+            setActiveSessionId(storedSession.id);
+            return storedSession.id;
+          }
+        }
+      }
+    } catch (error) {
+      console.error('🔐 Error checking stored sessions:', error);
     }
     
     // Single-session mode: replace any existing session
@@ -412,9 +470,6 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
   }, [sessions, broadcastSessionChange]);
 
   const clearAllSessions = useCallback(() => {
-    console.log('🔐 Starting comprehensive session cleanup');
-    
-    // Stop any ongoing requests immediately
     sessions.forEach(session => {
       // Clean up all session-specific storage and cached clients
       const timestamp = new Date(session.createdAt).getTime();
@@ -431,22 +486,15 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
       });
     });
     
-    // Clear all cached clients immediately
+    // Clear all cached clients
     clientCache.current.clear();
     
-    // Clear all auth-related localStorage entries
-    Object.keys(localStorage).forEach(key => {
-      if (key.startsWith('wmh_') || key.startsWith('sb-')) {
-        localStorage.removeItem(key);
-      }
-    });
-    
-    // Reset session state immediately
     setSessions([]);
     setActiveSessionId(null);
-    
+    localStorage.removeItem('wmh_sessions');
+    localStorage.removeItem('wmh_active_session');
     broadcastSessionChange();
-    console.log('🔐 Comprehensive session cleanup completed');
+    console.log('🔐 Cleared all sessions and storage');
   }, [sessions, broadcastSessionChange]);
 
   const getSessionClient = useCallback((sessionId?: string): SupabaseClient<Database> | null => {

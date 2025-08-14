@@ -1,13 +1,13 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
-import { useAuthUser } from '@/hooks/useAuthUser';
+import { User } from '@supabase/supabase-js';
+import { Link, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { Home, LogOut, Phone, Mail } from 'lucide-react';
 import { EstimateDocuSignButton } from '@/components/estimate-approval/EstimateDocuSignButton';
@@ -41,7 +41,32 @@ interface Service {
 
 const MyEstimates = () => {
   const { toast } = useToast();
-  const { user } = useAuthUser();
+  const navigate = useNavigate();
+  const [user, setUser] = useState<User | null>(null);
+
+  // Check for authenticated user
+  useEffect(() => {
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
+      
+      if (!user) {
+        navigate('/auth');
+      }
+    };
+    
+    getUser();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user || null);
+      if (!session?.user) {
+        navigate('/auth');
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [navigate]);
 
   // Fetch user's estimates
   const { data: estimates = [], isLoading: estimatesLoading, refetch } = useQuery({
@@ -120,6 +145,18 @@ const MyEstimates = () => {
     }
   };
 
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-green-50 to-yellow-50 flex items-center justify-center p-4">
+        <div className="text-center">
+          <p className="text-lg text-blue-900 mb-4">Please sign in to view your estimates.</p>
+          <Link to="/auth">
+            <Button>Sign In</Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   if (estimatesLoading) {
     return (

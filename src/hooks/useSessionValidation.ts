@@ -4,7 +4,7 @@ import { useSessionManager } from '@/contexts/SessionManagerContext';
 export const useSessionValidation = () => {
   const { sessions, activeSessionId, removeSession } = useSessionManager();
 
-  // Validate session integrity with better error handling
+  // Validate session integrity
   const validateSession = useCallback(async (sessionId: string) => {
     const session = sessions.find(s => s.id === sessionId);
     if (!session) return false;
@@ -13,37 +13,16 @@ export const useSessionValidation = () => {
       // Check if the session is still valid
       const { data: { user }, error } = await session.supabaseClient.auth.getUser();
       
-      if (error) {
-        if (error.message?.includes('session_not_found') || 
-            error.message?.includes('Session not found') ||
-            error.message?.includes('Failed to fetch')) {
-          console.warn('🔐 Session expired or invalid, removing:', sessionId);
-          removeSession(sessionId);
-          return false;
-        }
-        
-        // For other errors, don't remove session immediately
-        console.warn('🔐 Session validation error (not removing):', error.message);
-        return false;
-      }
-      
-      if (!user) {
-        console.warn('🔐 No user in session, removing:', sessionId);
+      if (error || !user) {
+        console.warn('🔐 Invalid session detected, removing:', sessionId);
         removeSession(sessionId);
         return false;
       }
       
       return true;
-    } catch (error: any) {
+    } catch (error) {
       console.error('🔐 Error validating session:', error);
-      
-      // Only remove session for specific errors that indicate it's truly invalid
-      if (error?.message?.includes('session_not_found') || 
-          error?.message?.includes('Session not found') ||
-          error?.message?.includes('Failed to fetch')) {
-        removeSession(sessionId);
-      }
-      
+      removeSession(sessionId);
       return false;
     }
   }, [sessions, removeSession]);

@@ -195,18 +195,15 @@ const Index = () => {
         </div>
       </section>
       
-          {/* Testimonials Section */}
-      <TestimonialsSection />
-
-      {/* Enhanced Testimonials Section */}
+          {/* Enhanced Testimonials Section */}
       <section className="py-16 bg-gradient-to-br from-gray-50 to-gray-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-extrabold text-gray-900 sm:text-4xl mb-4">
-              Share Your Experience
+              What Our Customers Say
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Help other customers by sharing your mobile home experience
+              Real stories from real customers who found their perfect mobile home with us
             </p>
           </div>
           

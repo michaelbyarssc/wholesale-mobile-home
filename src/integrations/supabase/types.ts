@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.3 (519615d)"
@@ -5674,11 +5674,11 @@ export type Database = {
     Functions: {
       add_transaction_payment: {
         Args: {
-          p_transaction_id: string
           p_amount: number
+          p_notes?: string
           p_payment_method?: string
           p_payment_reference?: string
-          p_notes?: string
+          p_transaction_id: string
         }
         Returns: Json
       }
@@ -5687,7 +5687,7 @@ export type Database = {
         Returns: Json
       }
       approve_transaction: {
-        Args: { p_transaction_id: string; p_approved_by?: string }
+        Args: { p_approved_by?: string; p_transaction_id: string }
         Returns: Json
       }
       bulk_approve_transactions: {
@@ -5696,9 +5696,9 @@ export type Database = {
       }
       calculate_delivery_eta: {
         Args: {
-          delivery_id_param: string
           current_lat: number
           current_lng: number
+          delivery_id_param: string
         }
         Returns: string
       }
@@ -5716,11 +5716,15 @@ export type Database = {
       }
       check_rate_limit: {
         Args: {
-          p_identifier: string
           p_action: string
+          p_identifier: string
           p_max_attempts?: number
           p_window_minutes?: number
         }
+        Returns: boolean
+      }
+      check_user_admin_access: {
+        Args: { check_user_id: string }
         Returns: boolean
       }
       cleanup_expired_notifications: {
@@ -5732,30 +5736,30 @@ export type Database = {
         Returns: number
       }
       convert_utc_to_tz_string: {
-        Args: { utc_timestamp: string; address: string }
+        Args: { address: string; utc_timestamp: string }
         Returns: string
       }
       create_activity: {
         Args: {
-          p_user_id: string
-          p_actor_id: string
           p_action: string
-          p_entity_type: string
-          p_entity_id: string
+          p_actor_id: string
           p_description: string
+          p_entity_id: string
+          p_entity_type: string
           p_metadata?: Json
+          p_user_id: string
         }
         Returns: string
       }
       create_notification: {
         Args: {
-          p_user_id: string
-          p_title: string
-          p_message: string
-          p_type?: string
           p_category?: string
           p_data?: Json
           p_expires_hours?: number
+          p_message: string
+          p_title: string
+          p_type?: string
+          p_user_id: string
         }
         Returns: string
       }
@@ -5765,34 +5769,38 @@ export type Database = {
       }
       create_transaction_from_estimate: {
         Args: {
-          p_estimate_id: string
-          p_mobile_home_id: string
-          p_customer_name: string
+          p_additional_requirements?: string
+          p_base_amount?: number
           p_customer_email: string
+          p_customer_name: string
           p_customer_phone?: string
           p_delivery_address?: string
-          p_selected_services?: string[]
+          p_estimate_id: string
+          p_mobile_home_id: string
+          p_preferred_contact?: string
           p_selected_home_options?: Json
-          p_base_amount?: number
+          p_selected_services?: string[]
           p_service_amount?: number
           p_tax_amount?: number
-          p_total_amount?: number
-          p_preferred_contact?: string
           p_timeline?: string
-          p_additional_requirements?: string
+          p_total_amount?: number
           p_transaction_type?: Database["public"]["Enums"]["transaction_type"]
         }
         Returns: string
       }
+      current_user_email: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       emit_automation_event: {
         Args: {
-          p_event_name: string
-          p_entity_type: string
-          p_entity_id: string
-          p_user_id?: string
           p_customer_email?: string
           p_customer_phone?: string
+          p_entity_id: string
+          p_entity_type: string
+          p_event_name: string
           p_payload?: Json
+          p_user_id?: string
         }
         Returns: string
       }
@@ -5861,53 +5869,53 @@ export type Database = {
       get_analytics_mobile_homes: {
         Args: Record<PropertyKey, never>
         Returns: {
+          appointment_rate: number
+          appointments: number
+          avg_view_time: number
+          conversion_rate: number
+          estimate_rate: number
+          estimate_requests: number
+          manufacturer: string
           mobile_home_id: string
           model: string
+          sales: number
           series: string
-          manufacturer: string
           total_views: number
           unique_views: number
-          avg_view_time: number
-          estimate_requests: number
-          appointments: number
-          sales: number
-          estimate_rate: number
-          appointment_rate: number
-          conversion_rate: number
         }[]
       }
       get_analytics_overview: {
         Args:
           | Record<PropertyKey, never>
-          | { p_start_date: string; p_end_date: string }
+          | { p_end_date: string; p_start_date: string }
         Returns: {
-          last_refresh: string
-          total_sessions: number
-          unique_session_ids: number
-          unique_users: number
-          avg_session_duration: number
-          total_estimates: number
-          total_appointments: number
-          total_sales: number
           avg_sale_value: number
-          total_pageviews: number
-          unique_pageviews: number
+          avg_session_duration: number
           avg_time_on_page: number
-          total_views: number
           avg_view_time: number
           homes_viewed: number
+          last_refresh: string
+          total_appointments: number
+          total_estimates: number
+          total_pageviews: number
+          total_sales: number
+          total_sessions: number
+          total_views: number
+          unique_pageviews: number
+          unique_session_ids: number
+          unique_users: number
         }[]
       }
       get_analytics_popular_pages: {
         Args: Record<PropertyKey, never>
         Returns: {
+          avg_scroll_depth: number
+          avg_time: number
           page_path: string
           page_title: string
-          views: number
-          unique_views: number
-          avg_time: number
-          avg_scroll_depth: number
           unique_view_rate: number
+          unique_views: number
+          views: number
         }[]
       }
       get_chat_lead_source: {
@@ -5917,17 +5925,17 @@ export type Database = {
       get_delivery_performance_metrics: {
         Args: Record<PropertyKey, never>
         Returns: {
-          delivery_id: string
-          status: string
-          delivery_start: string
-          total_gps_points: number
-          avg_gps_accuracy: number
           accurate_gps_points: number
-          total_photos: number
-          pickup_photos: number
+          avg_gps_accuracy: number
+          delivery_id: string
           delivery_photos: number
-          tracking_duration_hours: number
+          delivery_start: string
           last_gps_update: string
+          pickup_photos: number
+          status: string
+          total_gps_points: number
+          total_photos: number
+          tracking_duration_hours: number
         }[]
       }
       get_driver_id_for_user: {
@@ -5937,25 +5945,102 @@ export type Database = {
       get_popular_mobile_homes: {
         Args: { days_back?: number; limit_count?: number }
         Returns: {
-          mobile_home_id: string
-          view_count: number
-          total_time_spent: number
           avg_time_spent: number
           conversion_rate: number
+          mobile_home_id: string
+          total_time_spent: number
+          view_count: number
         }[]
+      }
+      get_public_mobile_home: {
+        Args: { p_id: string }
+        Returns: {
+          active: boolean
+          bathrooms: number
+          bedrooms: number
+          created_at: string
+          description: string
+          display_name: string
+          display_order: number
+          exterior_image_url: string
+          features: Json
+          floor_plan_image_url: string
+          id: string
+          length_feet: number
+          manufacturer: string
+          model: string
+          price: number
+          retail_price: number
+          series: string
+          square_footage: number
+          updated_at: string
+          width_feet: number
+        }[]
+      }
+      get_public_mobile_homes: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          active: boolean
+          bathrooms: number
+          bedrooms: number
+          created_at: string
+          description: string
+          display_name: string
+          display_order: number
+          exterior_image_url: string
+          features: Json
+          floor_plan_image_url: string
+          id: string
+          length_feet: number
+          manufacturer: string
+          model: string
+          price: number
+          retail_price: number
+          series: string
+          square_footage: number
+          updated_at: string
+          width_feet: number
+        }[]
+      }
+      get_public_services: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          active: boolean
+          applicable_manufacturers: Json
+          applicable_series: Json
+          dependencies: Json
+          description: string
+          double_wide_price: number
+          id: string
+          name: string
+          price: number
+          single_wide_price: number
+        }[]
+      }
+      get_query_eq_value: {
+        Args: { name: string }
+        Returns: string
+      }
+      get_request_header: {
+        Args: { name: string }
+        Returns: string
+      }
+      get_request_query: {
+        Args: { name: string }
+        Returns: string
       }
       get_timezone_abbrev: {
         Args: { address: string }
         Returns: string
       }
       get_transaction_dashboard_data: {
-        Args: { p_user_id?: string; p_date_range_days?: number }
+        Args: { p_date_range_days?: number; p_user_id?: string }
         Returns: Json
       }
       has_role: {
         Args: {
-          _user_id: string
           _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
         }
         Returns: boolean
       }
@@ -5968,7 +6053,7 @@ export type Database = {
         Returns: boolean
       }
       is_driver_for_delivery: {
-        Args: { _user_id: string; _delivery_id: string }
+        Args: { _delivery_id: string; _user_id: string }
         Returns: boolean
       }
       is_own_driver_record: {
@@ -5978,9 +6063,9 @@ export type Database = {
       log_security_event: {
         Args: {
           p_action: string
-          p_resource_type?: string
-          p_resource_id?: string
           p_details?: Json
+          p_resource_id?: string
+          p_resource_type?: string
           p_success?: boolean
         }
         Returns: undefined
@@ -5991,43 +6076,62 @@ export type Database = {
       }
       process_automation_variables: {
         Args: {
+          appointment_data?: Json
           content: string
           lead_data?: Json
-          appointment_data?: Json
           mobile_home_data?: Json
         }
         Returns: string
       }
       process_factory_email: {
         Args: {
-          factory_id_param: string
-          email_subject: string
           email_content: string
+          email_subject: string
+          factory_id_param: string
           sender_email: string
         }
         Returns: string
       }
       record_invoice_payment: {
         Args: {
-          p_invoice_id: string
           p_amount: number
-          p_payment_method?: string
+          p_invoice_id: string
           p_notes?: string
+          p_payment_method?: string
         }
         Returns: Json
       }
       record_invoice_payment_optimized: {
         Args: {
-          p_invoice_id: string
           p_amount: number
-          p_payment_method?: string
+          p_invoice_id: string
           p_notes?: string
+          p_payment_method?: string
         }
         Returns: Json
       }
       refresh_analytics_views: {
         Args: Record<PropertyKey, never>
         Returns: undefined
+      }
+      schedule_factory_pickup: {
+        Args:
+          | {
+              p_delivery_address?: string
+              p_delivery_id: string
+              p_driver_ids: string[]
+              p_pickup_address?: string
+              p_scheduled_delivery?: string
+              p_scheduled_pickup?: string
+              p_special_instructions?: string
+            }
+          | {
+              p_delivery_id: string
+              p_driver_id: string
+              p_notes?: string
+              p_scheduled_pickup_tz: string
+            }
+        Returns: Json
       }
       send_delivery_notifications: {
         Args: { delivery_id_param: string }
@@ -6038,14 +6142,14 @@ export type Database = {
         Returns: number
       }
       test_payment_insert: {
-        Args: { p_invoice_id: string; p_amount: number }
+        Args: { p_amount: number; p_invoice_id: string }
         Returns: Json
       }
       transition_transaction_stage: {
         Args: {
-          p_transaction_id: string
           p_new_status: Database["public"]["Enums"]["transaction_status"]
           p_notes?: string
+          p_transaction_id: string
         }
         Returns: Json
       }

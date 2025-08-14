@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -11,6 +12,7 @@ import { Calendar as CalendarIcon, Clock, Truck, MapPin } from "lucide-react";
 export const DeliveryScheduling = () => {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [selectedDriver, setSelectedDriver] = useState<string>("all");
+  const queryClient = useQueryClient();
 
   const { data: unscheduledDeliveries } = useQuery({
     queryKey: ["unscheduled-deliveries"],
@@ -24,12 +26,47 @@ export const DeliveryScheduling = () => {
             drivers(id, first_name, last_name)
           )
         `)
-        .eq("status", "scheduled")
+        .in("status", ["scheduled", "pickup_scheduled", "factory_pickup_scheduled", "pending_payment"])
         .is("scheduled_delivery_date", null)
         .order("created_at", { ascending: true });
       
       if (error) throw error;
       return data;
+    },
+  });
+
+  const scheduleDeliveryMutation = useMutation({
+    mutationFn: async ({ deliveryId, driverId }: { deliveryId: string; driverId?: string }) => {
+      const { error } = await supabase
+        .from("deliveries")
+        .update({ 
+          scheduled_delivery_date: selectedDate.toISOString().split('T')[0] 
+        })
+        .eq("id", deliveryId);
+      
+      if (error) throw error;
+
+      // If driver is selected, create or update delivery assignment
+      if (driverId && driverId !== "all") {
+        const { error: assignmentError } = await supabase
+          .from("delivery_assignments")
+          .upsert({
+            delivery_id: deliveryId,
+            driver_id: driverId,
+            active: true,
+            assigned_at: new Date().toISOString()
+          });
+        
+        if (assignmentError) throw assignmentError;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["unscheduled-deliveries"] });
+      queryClient.invalidateQueries({ queryKey: ["scheduled-deliveries"] });
+      toast.success("Delivery scheduled successfully");
+    },
+    onError: (error) => {
+      toast.error("Failed to schedule delivery: " + error.message);
     },
   });
 
@@ -190,8 +227,16 @@ export const DeliveryScheduling = () => {
                       </SelectContent>
                     </Select>
                     
-                    <Button size="sm" className="w-full">
-                      Schedule for {selectedDate.toLocaleDateString()}
+                    <Button 
+                      size="sm" 
+                      className="w-full"
+                      onClick={() => scheduleDeliveryMutation.mutate({ 
+                        deliveryId: delivery.id, 
+                        driverId: selectedDriver 
+                      })}
+                      disabled={scheduleDeliveryMutation.isPending}
+                    >
+                      {scheduleDeliveryMutation.isPending ? "Scheduling..." : `Schedule for ${selectedDate.toLocaleDateString()}`}
                     </Button>
                   </div>
                 </div>

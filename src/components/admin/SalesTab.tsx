@@ -1,8 +1,9 @@
+
 import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { EstimatesTab } from './EstimatesTab';
 import { InvoiceManagement } from './InvoiceManagement';
-import { DeliveryManagement } from './DeliveryManagement';
+import DeliveryManagement from './DeliveryManagement';
 import { Receipt, FileText, Truck } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 

@@ -361,14 +361,37 @@ export const DeliveryManagement = () => {
   const { data: deliveries, isLoading, error } = useQuery({
     queryKey: ['deliveries', filter],
     queryFn: async () => {
-      let query = supabase
-        .from('deliveries')
-        .select(`
-          *,
-          invoices (
-            id,
-            transaction_number,
+      console.log('🔧 DeliveryManagement: Starting deliveries query...', {
+        filter,
+        userId: authUser?.id,
+        userEmail: authUser?.email,
+        isSuperAdmin,
+        isAdmin
+      });
+      
+      try {
+        let query = supabase
+          .from('deliveries')
+          .select(`
+            *,
+            invoices (
+              id,
+              transaction_number,
+              mobile_homes (
+                mobile_home_factories (
+                  factories (
+                    name,
+                    street_address,
+                    city,
+                    state,
+                    zip_code
+                  )
+                )
+              )
+            ),
             mobile_homes (
+              manufacturer,
+              model,
               mobile_home_factories (
                 factories (
                   name,
@@ -378,41 +401,46 @@ export const DeliveryManagement = () => {
                   zip_code
                 )
               )
-            )
-          ),
-          mobile_homes (
-            manufacturer,
-            model,
-            mobile_home_factories (
-              factories (
-                name,
-                street_address,
-                city,
-                state,
-                zip_code
+            ),
+            delivery_assignments (
+              id,
+              driver_id,
+              assigned_at,
+              role,
+              drivers (
+                first_name,
+                last_name
               )
             )
-          ),
-          delivery_assignments (
-            id,
-            driver_id,
-            assigned_at,
-            role,
-            drivers (
-              first_name,
-              last_name
-            )
-          )
-        `);
-      
-      if (filter !== 'all') {
-        query = query.eq('status', filter);
+          `);
+        
+        if (filter !== 'all') {
+          query = query.eq('status', filter);
+        }
+        
+        const { data, error } = await query.order('created_at', { ascending: false });
+        
+        console.log('🔧 DeliveryManagement: Query completed', {
+          success: !error,
+          error: error?.message,
+          dataCount: data?.length || 0
+        });
+        
+        if (error) {
+          console.error('🚨 DeliveryManagement: Query error details:', {
+            error,
+            code: error.code,
+            details: error.details,
+            hint: error.hint,
+            message: error.message
+          });
+          throw error;
+        }
+        return data as Delivery[];
+      } catch (err) {
+        console.error('🚨 DeliveryManagement: Caught error in query:', err);
+        throw err;
       }
-      
-      const { data, error } = await query.order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      return data as Delivery[];
     },
   });
 

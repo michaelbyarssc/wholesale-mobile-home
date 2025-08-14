@@ -72,16 +72,21 @@ export const UserForm = ({ onUserCreated }: UserFormProps) => {
       console.log(`[SECURITY] Creating user with role: ${newUserRole} by user: ${session.user.id}`);
       console.log(`[SECURITY] Current user is super admin: ${isSuperAdmin}`);
 
+      // CRITICAL FIX: Ensure the role is properly passed to the edge function
+      const requestBody = {
+        email: newUserEmail,
+        first_name: newUserFirstName,
+        last_name: newUserLastName,
+        phone_number: newUserPhoneNumber,
+        role: newUserRole, // This is the key fix - ensure role is passed correctly
+        markup_percentage: 30,
+        created_by: session.user.id
+      };
+
+      console.log('[SECURITY] Request body being sent:', requestBody);
+
       const { data, error } = await supabase.functions.invoke('admin-create-user', {
-        body: {
-          email: newUserEmail,
-          first_name: newUserFirstName,
-          last_name: newUserLastName,
-          phone_number: newUserPhoneNumber,
-          role: newUserRole,
-          markup_percentage: 30,
-          created_by: session.user.id
-        }
+        body: requestBody
       });
 
       console.log('Edge function response:', { data, error });
@@ -101,7 +106,7 @@ export const UserForm = ({ onUserCreated }: UserFormProps) => {
         throw new Error('User creation failed - no success response');
       }
 
-      console.log('[SECURITY] User created successfully:', data);
+      console.log('[SECURITY] User created successfully with role:', newUserRole, data);
 
       const tempPassword = data?.tempPassword || 'Generated securely';
       
@@ -197,8 +202,11 @@ export const UserForm = ({ onUserCreated }: UserFormProps) => {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="role">Role</Label>
-              <Select value={newUserRole} onValueChange={(value: 'admin' | 'user' | 'driver') => setNewUserRole(value)}>
+              <Label htmlFor="role">Role *</Label>
+              <Select value={newUserRole} onValueChange={(value: 'admin' | 'user' | 'driver') => {
+                console.log('[SECURITY] Role selection changed to:', value);
+                setNewUserRole(value);
+              }}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -218,12 +226,13 @@ export const UserForm = ({ onUserCreated }: UserFormProps) => {
             <div className="text-sm text-gray-600">
               <p><strong>Password:</strong> Auto-generated secure password</p>
               <p className="text-green-600 font-medium">Users created by admins are automatically approved</p>
+              <p className="text-blue-600 font-medium">Selected Role: <strong>{newUserRole}</strong></p>
               {isSuperAdmin && (
                 <p className="text-blue-600 font-medium">As Super Admin, you can create both Admin and User accounts</p>
               )}
             </div>
             <Button type="submit" disabled={creatingUser}>
-              {creatingUser ? "Creating..." : "Create User"}
+              {creatingUser ? "Creating..." : `Create ${newUserRole === 'admin' ? 'Admin' : newUserRole === 'driver' ? 'Driver' : 'User'}`}
             </Button>
           </div>
         </form>

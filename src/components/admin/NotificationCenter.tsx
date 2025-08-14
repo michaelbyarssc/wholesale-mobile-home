@@ -29,6 +29,7 @@ export const NotificationCenter = () => {
 
   useEffect(() => {
     let channel: any = null;
+    let isSubscribed = false;
     
     const setupRealtimeSubscription = async () => {
       try {
@@ -36,9 +37,18 @@ export const NotificationCenter = () => {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
+        // Remove any existing channel before creating a new one
+        if (channel) {
+          await supabase.removeChannel(channel);
+          channel = null;
+        }
+
+        // Create a unique channel name to avoid conflicts
+        const channelName = `notifications-${user.id}-${Date.now()}`;
+        
         // Set up real-time subscription for new notifications
         channel = supabase
-          .channel('notifications')
+          .channel(channelName)
           .on('postgres_changes', {
             event: 'INSERT',
             schema: 'public',
@@ -54,8 +64,21 @@ export const NotificationCenter = () => {
               title: payload.new.title,
               description: payload.new.message,
             });
-          })
-          .subscribe();
+          });
+
+        // Subscribe with proper error handling
+        const subscriptionResult = await channel.subscribe((status) => {
+          if (status === 'SUBSCRIBED') {
+            isSubscribed = true;
+            console.log('Successfully subscribed to notifications');
+          } else if (status === 'CHANNEL_ERROR') {
+            console.error('Failed to subscribe to notifications channel');
+          }
+        });
+
+        if (subscriptionResult !== 'ok') {
+          console.error('Failed to initiate subscription');
+        }
       } catch (error) {
         console.error('Error setting up notifications subscription:', error);
       }
@@ -65,8 +88,10 @@ export const NotificationCenter = () => {
     setupRealtimeSubscription();
 
     return () => {
-      if (channel) {
-        supabase.removeChannel(channel);
+      if (channel && isSubscribed) {
+        supabase.removeChannel(channel).then(() => {
+          console.log('Notifications channel cleanup completed');
+        });
       }
     };
   }, [toast]);

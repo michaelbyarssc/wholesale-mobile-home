@@ -143,11 +143,25 @@ export const NewDeliveryScheduling = () => {
             )
           )
         `)
-        .in('status', ['needs_scheduled', 'awaiting_pickup_schedule', 'pickup_scheduled', 'pickup_completed', 'awaiting_delivery_schedule'])
-        .order('created_at', { ascending: false });
+        .in('status', ['needs_scheduled', 'awaiting_pickup_schedule', 'pickup_scheduled', 'pickup_completed', 'awaiting_delivery_schedule']);
 
       if (error) throw error;
-      return data as any;
+      
+      // Sort deliveries by transaction number numerically
+      const sortedData = data?.sort((a, b) => {
+        // Extract the numeric part from transaction numbers (e.g., "WMH-D-000123" -> 123)
+        const getNumericPart = (transactionNumber: string) => {
+          const match = transactionNumber?.match(/(\d+)$/);
+          return match ? parseInt(match[1], 10) : 0;
+        };
+        
+        const aNum = getNumericPart(a.transaction_number || a.delivery_number || '');
+        const bNum = getNumericPart(b.transaction_number || b.delivery_number || '');
+        
+        return aNum - bNum;
+      });
+
+      return sortedData as any;
     },
   });
 

@@ -103,6 +103,26 @@ export const useMultiUserAuth = () => {
             
             lastAuthEventTime.current = now;
             
+            // Handle SIGNED_OUT to properly clear sessions
+            if (event === 'SIGNED_OUT') {
+              console.log('🔐 Auth state change: user signed out');
+              authOperationInProgress.current = true;
+              
+              setTimeout(() => {
+                try {
+                  // Force clear all sessions on sign out
+                  localStorage.removeItem('wmh_sessions');
+                  localStorage.removeItem('wmh_active_session');
+                  console.log('🔐 Cleared session storage on sign out');
+                } catch (error) {
+                  console.error('🔐 Error clearing session storage:', error);
+                } finally {
+                  authOperationInProgress.current = false;
+                }
+              }, 100);
+              return;
+            }
+            
             if (event === 'SIGNED_IN' && session?.user) {
               authOperationInProgress.current = true;
               
@@ -250,17 +270,30 @@ export const useMultiUserAuth = () => {
     if (!session) return;
 
     try {
+      // Set circuit breaker to prevent interference during logout
+      authOperationInProgress.current = true;
+      
       // Sign out from the specific session's client
       await session.supabaseClient.auth.signOut();
       removeSession(targetSessionId);
       console.log('🔐 Signed out session:', targetSessionId);
+      
+      // Clear circuit breaker after successful logout
+      setTimeout(() => {
+        authOperationInProgress.current = false;
+      }, 1000); // Give 1 second buffer
+      
     } catch (error) {
       console.error('🔐 Sign out error:', error);
+      authOperationInProgress.current = false;
     }
   }, [activeSessionId, sessions, removeSession]);
 
   const signOutAll = useCallback(async () => {
     try {
+      // Set circuit breaker to prevent interference during logout
+      authOperationInProgress.current = true;
+      
       // Sign out all sessions
       await Promise.all(sessions.map(session => 
         session.supabaseClient.auth.signOut()
@@ -268,8 +301,15 @@ export const useMultiUserAuth = () => {
       clearAllSessions();
       navigate('/');
       console.log('🔐 Signed out all sessions');
+      
+      // Clear circuit breaker after successful logout
+      setTimeout(() => {
+        authOperationInProgress.current = false;
+      }, 1000); // Give 1 second buffer
+      
     } catch (error) {
       console.error('🔐 Sign out all error:', error);
+      authOperationInProgress.current = false;
     }
   }, [sessions, clearAllSessions, navigate]);
 

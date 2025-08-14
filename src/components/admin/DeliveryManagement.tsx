@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -263,9 +262,6 @@ const DeliveryManagement = () => {
                             </p>
                           </div>
                           <div className="text-right">
-                            <p className="text-lg font-medium">
-                              ${delivery.total_delivery_cost || '0'}
-                            </p>
                             <p className="text-sm text-muted-foreground">
                               {delivery.mobile_home_type?.replace(/_/g, ' ') || 'Unknown type'}
                             </p>

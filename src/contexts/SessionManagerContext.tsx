@@ -412,6 +412,9 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
   }, [sessions, broadcastSessionChange]);
 
   const clearAllSessions = useCallback(() => {
+    console.log('🔐 Starting comprehensive session cleanup');
+    
+    // Stop any ongoing requests immediately
     sessions.forEach(session => {
       // Clean up all session-specific storage and cached clients
       const timestamp = new Date(session.createdAt).getTime();
@@ -428,15 +431,22 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
       });
     });
     
-    // Clear all cached clients
+    // Clear all cached clients immediately
     clientCache.current.clear();
     
+    // Clear all auth-related localStorage entries
+    Object.keys(localStorage).forEach(key => {
+      if (key.startsWith('wmh_') || key.startsWith('sb-')) {
+        localStorage.removeItem(key);
+      }
+    });
+    
+    // Reset session state immediately
     setSessions([]);
     setActiveSessionId(null);
-    localStorage.removeItem('wmh_sessions');
-    localStorage.removeItem('wmh_active_session');
+    
     broadcastSessionChange();
-    console.log('🔐 Cleared all sessions and storage');
+    console.log('🔐 Comprehensive session cleanup completed');
   }, [sessions, broadcastSessionChange]);
 
   const getSessionClient = useCallback((sessionId?: string): SupabaseClient<Database> | null => {

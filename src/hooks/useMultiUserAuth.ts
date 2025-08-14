@@ -53,23 +53,20 @@ export const useMultiUserAuth = () => {
                 }
               }, 0);
             } else if (event === 'SIGNED_OUT') {
-              // Handle sign out events by cleaning up any orphaned sessions
-              setTimeout(() => {
-                try {
-                  const storedSessions = localStorage.getItem('wmh_sessions');
-                  if (storedSessions) {
-                    const sessionData = JSON.parse(storedSessions);
-                    // Check if any stored sessions are still valid
-                    if (sessionData.length > 0 && !session) {
-                      console.log('🔐 Cleaning up orphaned sessions after sign out');
-                      localStorage.removeItem('wmh_sessions');
-                      localStorage.removeItem('wmh_active_session');
-                    }
-                  }
-                } catch (error) {
-                  console.error('🔐 Error cleaning up after sign out:', error);
+              // Immediate cleanup on sign out - no timeout to prevent race conditions
+              console.log('🔐 SIGNED_OUT event detected, performing immediate cleanup');
+              
+              // Clear all local auth state immediately
+              clearAllSessions();
+              
+              // Force clear all auth-related storage
+              Object.keys(localStorage).forEach(key => {
+                if (key.startsWith('wmh_') || key.startsWith('sb-')) {
+                  localStorage.removeItem(key);
                 }
-              }, 0);
+              });
+              
+              console.log('🔐 Immediate sign out cleanup completed');
             }
           }
         );
@@ -185,43 +182,43 @@ export const useMultiUserAuth = () => {
     if (!targetSessionId) return;
 
     const session = sessions.find(s => s.id === targetSessionId);
+    
+    // Force immediate local cleanup first - prevents any UI issues
+    console.log('🔐 Starting sign out process, cleaning local state first:', targetSessionId);
+    removeSession(targetSessionId);
+    
+    // If session doesn't exist locally, we're done
     if (!session) {
-      // Session already removed, just clean up local state
-      removeSession(targetSessionId);
+      console.log('🔐 Session already removed locally:', targetSessionId);
       return;
     }
 
+    // Attempt server sign out, but don't block on it
     try {
-      // Check if session is still valid before attempting sign out
+      // Quick check if session might still be valid
       const { error: userError } = await session.supabaseClient.auth.getUser();
       
-      if (userError && (userError.message.includes('session_not_found') || userError.message.includes('Session not found'))) {
-        // Session is already invalid on server, just clean up locally
-        console.log('🔐 Session already invalid on server, cleaning up locally:', targetSessionId);
-        removeSession(targetSessionId);
-        return;
+      if (!userError) {
+        // Session appears valid, attempt proper sign out
+        await session.supabaseClient.auth.signOut();
+        console.log('🔐 Server sign out completed for session:', targetSessionId);
+      } else {
+        console.log('🔐 Session already invalid on server:', targetSessionId);
       }
-      
-      // Session is valid, attempt proper sign out
-      await session.supabaseClient.auth.signOut();
-      removeSession(targetSessionId);
-      console.log('🔐 Signed out session:', targetSessionId);
     } catch (error: any) {
-      console.error('🔐 Sign out error:', error);
-      
-      // If sign out failed due to invalid session, clean up anyway
-      if (error?.message?.includes('session_not_found') || 
-          error?.message?.includes('Session not found') ||
-          error?.message?.includes('Failed to fetch')) {
-        console.log('🔐 Cleaning up invalid session after sign out error:', targetSessionId);
-        removeSession(targetSessionId);
-      }
+      // Server sign out failed, but local cleanup already done
+      console.log('🔐 Server sign out failed, but local cleanup completed:', error.message);
     }
   }, [activeSessionId, sessions, removeSession]);
 
   const signOutAll = useCallback(async () => {
+    // Force immediate local cleanup first - ensures UI updates immediately
+    console.log('🔐 Starting sign out all process, immediate local cleanup');
+    clearAllSessions();
+    navigate('/');
+    
+    // Attempt server sign out in background, but don't block UI
     try {
-      // Attempt to sign out all valid sessions, but don't fail if some are invalid
       const signOutPromises = sessions.map(async (session) => {
         try {
           const { error: userError } = await session.supabaseClient.auth.getUser();
@@ -229,20 +226,14 @@ export const useMultiUserAuth = () => {
             await session.supabaseClient.auth.signOut();
           }
         } catch (error: any) {
-          // Log but don't fail - session might already be invalid
-          console.log('🔐 Session already invalid during sign out all:', session.id);
+          console.log('🔐 Background server sign out failed for session:', session.id);
         }
       });
       
       await Promise.allSettled(signOutPromises);
-      clearAllSessions();
-      navigate('/');
-      console.log('🔐 Signed out all sessions');
+      console.log('🔐 Background server sign out completed');
     } catch (error) {
-      console.error('🔐 Sign out all error:', error);
-      // Force cleanup even if sign out failed
-      clearAllSessions();
-      navigate('/');
+      console.log('🔐 Background sign out all error (non-blocking):', error);
     }
   }, [sessions, clearAllSessions, navigate]);
 

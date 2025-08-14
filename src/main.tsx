@@ -4,16 +4,9 @@ import { HelmetProvider } from 'react-helmet-async'
 import App from './App.tsx'
 import './index.css'
 import { registerServiceWorker, measureCoreWebVitals } from './utils/performance'
-import { validateSessionIntegrity, clearCorruptedSessions } from './utils/sessionCleanup'
 
 // Initialize performance monitoring and service worker
 if (typeof window !== 'undefined') {
-  // Clean up corrupted session data on app start
-  if (!validateSessionIntegrity()) {
-    console.log('🔐 STARTUP: Cleaning corrupted session data');
-    clearCorruptedSessions();
-  }
-  
   // Register service worker for better caching
   registerServiceWorker();
   

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LoadingSpinner } from '@/components/layout/LoadingSpinner';
 import { useUserRoles } from '@/hooks/useUserRoles';
-import { useMultiUserAuth } from '@/hooks/useMultiUserAuth';
+import { useAuthUser } from '@/hooks/useAuthUser';
 import { logger } from '@/utils/logger';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -20,7 +20,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   superAdminOnly = false
 }) => {
   const navigate = useNavigate();
-  const { user, isLoading: authLoading } = useMultiUserAuth();
+  const { user, isLoading: authLoading } = useAuthUser();
   const { isAdmin, isSuperAdmin, isLoading: rolesLoading, verifyAdminAccess, userRoles } = useUserRoles();
   const [authChecked, setAuthChecked] = useState(false);
   const [debugInfo, setDebugInfo] = useState<any>({});

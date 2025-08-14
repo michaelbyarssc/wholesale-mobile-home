@@ -33,19 +33,7 @@ const SessionManagerContext = createContext<SessionManagerContextType | null>(nu
 export const useSessionManager = () => {
   const context = useContext(SessionManagerContext);
   if (!context) {
-    // Instead of throwing, return default values to prevent crashes
-    console.warn('🔐 SessionManager context not available, returning defaults');
-    return {
-      sessions: [],
-      activeSessionId: null,
-      activeSession: null,
-      addSession: async () => { throw new Error('SessionManager not initialized'); },
-      removeSession: () => {},
-      switchToSession: () => {},
-      clearAllSessions: () => {},
-      getSessionClient: () => null,
-      updateSessionProfile: () => {}
-    };
+    throw new Error('useSessionManager must be used within a SessionManagerProvider');
   }
   return context;
 };
@@ -196,10 +184,9 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
     }
   }, [sessions, activeSessionId]);
 
-  // Optimized cross-tab communication with debouncing and sync prevention
+  // Optimized cross-tab communication with debouncing
   useEffect(() => {
     let syncTimeout: NodeJS.Timeout | null = null;
-    let lastSyncHash = '';
     
     const debouncedSync = () => {
       if (syncTimeout) clearTimeout(syncTimeout);
@@ -207,14 +194,6 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
         try {
           const storedSessions = localStorage.getItem('wmh_sessions');
           const storedActiveId = localStorage.getItem('wmh_active_session');
-          
-          // Create a hash to prevent unnecessary syncs
-          const currentHash = JSON.stringify({ storedSessions, storedActiveId });
-          if (currentHash === lastSyncHash) {
-            console.log('🔐 Sync skipped: no changes detected');
-            return;
-          }
-          lastSyncHash = currentHash;
           
           if (storedSessions) {
             const sessionData = JSON.parse(storedSessions);
@@ -243,34 +222,17 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
                 supabaseClient: client,
                 createdAt: new Date(selectedSessionData.createdAt)
               };
-              
-              // Only update if session actually changed
-              setSessions(prevSessions => {
-                const isDifferent = prevSessions.length !== 1 || 
-                  prevSessions[0]?.id !== recreatedSession.id;
-                
-                if (isDifferent) {
-                  console.log('🔐 Syncing session:', recreatedSession.id);
-                  return [recreatedSession];
-                }
-                return prevSessions;
-              });
-              
-              setActiveSessionId(prevId => {
-                if (prevId !== recreatedSession.id) {
-                  return recreatedSession.id;
-                }
-                return prevId;
-              });
+              setSessions([recreatedSession]);
+              setActiveSessionId(recreatedSession.id);
             } else {
-              setSessions(prev => prev.length > 0 ? [] : prev);
-              setActiveSessionId(prev => prev !== null ? null : prev);
+              setSessions([]);
+              setActiveSessionId(null);
             }
           }
         } catch (error) {
           console.error('Error syncing sessions:', error);
         }
-      }, 300); // Increased debounce to 300ms to prevent rapid firing
+      }, 100); // 100ms debounce
     };
 
     const handleStorageChange = (event: StorageEvent) => {
@@ -313,32 +275,12 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
   }, []);
 
   const addSession = useCallback(async (user: User, session: Session): Promise<string> => {
-    // Check for existing session for this user first (both in memory and storage)
+    // Check for existing session for this user first
     const existingSession = sessions.find(s => s.user.id === user.id);
     if (existingSession) {
       console.log('🔐 Session already exists for user:', user.email, 'switching to existing');
       setActiveSessionId(existingSession.id);
       return existingSession.id;
-    }
-    
-    // Also check localStorage for any existing sessions to prevent duplicates
-    try {
-      const storedSessions = localStorage.getItem('wmh_sessions');
-      if (storedSessions) {
-        const existingSessions = JSON.parse(storedSessions);
-        const hasStoredSession = existingSessions.some((s: any) => s.user.id === user.id);
-        if (hasStoredSession) {
-          console.log('🔐 Session found in storage for user:', user.email, 'preventing duplicate');
-          // Force reload from storage to sync state
-          const storedSession = existingSessions.find((s: any) => s.user.id === user.id);
-          if (storedSession) {
-            setActiveSessionId(storedSession.id);
-            return storedSession.id;
-          }
-        }
-      }
-    } catch (error) {
-      console.error('🔐 Error checking stored sessions:', error);
     }
     
     // Single-session mode: replace any existing session

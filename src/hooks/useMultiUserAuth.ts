@@ -1,41 +1,13 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { useSessionManager } from '@/contexts/SessionManagerContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { useSessionValidation } from '@/hooks/useSessionValidation';
-import { useSimpleAuth } from '@/hooks/useSimpleAuth';
-import { validateSessionIntegrity, clearCorruptedSessions } from '@/utils/sessionCleanup';
 
 export const useMultiUserAuth = () => {
-  // Check session integrity first - if corrupted, fall back to simple auth
-  const isSessionValid = validateSessionIntegrity();
-  const simpleAuth = useSimpleAuth();
-  
-  // Get session manager with safety check
-  let sessionManager;
-  try {
-    sessionManager = useSessionManager();
-  } catch (error) {
-    console.warn('🔐 SessionManager not available, falling back to simple auth');
-    return {
-      ...simpleAuth,
-      // Add multi-user specific methods that redirect to simple auth
-      switchToSession: () => {},
-      signOutAll: simpleAuth.signOut,
-      fetchUserProfile: async () => null,
-      hasMultipleSessions: false,
-      sessionCount: simpleAuth.user ? 1 : 0,
-      userProfile: null,
-      getCurrentSession: () => simpleAuth.activeSession,
-      getCurrentUser: () => simpleAuth.user,
-      getCurrentUserProfile: () => null,
-      getSupabaseClient: () => simpleAuth.supabaseClient
-    };
-  }
-  
   const {
-    sessions = [],
+    sessions,
     activeSession,
     activeSessionId,
     addSession,
@@ -44,33 +16,14 @@ export const useMultiUserAuth = () => {
     clearAllSessions,
     getSessionClient,
     updateSessionProfile
-  } = sessionManager;
+  } = useSessionManager();
   
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
   const { validateSession } = useSessionValidation();
-  
-  // Only fallback to simple auth if there's no context at all - be more permissive for initialization
-  if (!sessionManager || !addSession) {
-    console.log('🔐 MULTI-USER AUTH: SessionManager not ready, initializing...');
-    // Don't immediately fallback - let the initialization process complete
-    setIsLoading(true);
-  }
 
-  // Circuit breaker for preventing rapid auth operations
-  const authOperationInProgress = useRef(false);
-  const lastAuthEventTime = useRef(0);
-  const authEventDebounceMs = 1000; // 1 second debounce
-
-  // Initialize by checking for existing session with recovery
+  // Initialize by checking for existing session - stable approach
   useEffect(() => {
-    // Guard against missing addSession function
-    if (!addSession) {
-      console.warn('🔐 MULTI-USER AUTH: addSession not available, skipping initialization');
-      setIsLoading(false);
-      return;
-    }
-    
     let initialized = false;
     let authSubscription: any = null;
     
@@ -79,117 +32,39 @@ export const useMultiUserAuth = () => {
       initialized = true;
       
       try {
-        // Check session integrity first
-        if (!validateSessionIntegrity()) {
-          console.warn('🔐 Session integrity check failed, clearing corrupted data');
-          clearCorruptedSessions();
-        }
-        
-        // Set up auth state listener with circuit breaker
+        // Set up auth state listener first - stable callback without dependencies
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
-          (event, session) => {
-            const now = Date.now();
-            
-            // Circuit breaker: prevent rapid successive auth events
-            if (now - lastAuthEventTime.current < authEventDebounceMs) {
-              console.log('🔐 Auth event debounced, skipping:', event);
-              return;
-            }
-            
-            if (authOperationInProgress.current) {
-              console.log('🔐 Auth operation in progress, skipping:', event);
-              return;
-            }
-            
-            lastAuthEventTime.current = now;
-            
-            // Handle SIGNED_OUT to properly clear sessions
-            if (event === 'SIGNED_OUT') {
-              console.log('🔐 Auth state change: user signed out');
-              authOperationInProgress.current = true;
-              
-              setTimeout(() => {
-                try {
-                  // Force clear all sessions on sign out
-                  localStorage.removeItem('wmh_sessions');
-                  localStorage.removeItem('wmh_active_session');
-                  console.log('🔐 Cleared session storage on sign out');
-                } catch (error) {
-                  console.error('🔐 Error clearing session storage:', error);
-                } finally {
-                  authOperationInProgress.current = false;
-                }
-              }, 100);
-              return;
-            }
-            
+          async (event, session) => {
             if (event === 'SIGNED_IN' && session?.user) {
-              authOperationInProgress.current = true;
-              
-              // Check if session already exists BEFORE attempting to add
+              // Use a separate check to avoid dependency on sessions array
               const storedSessions = localStorage.getItem('wmh_sessions');
               const existingSessions = storedSessions ? JSON.parse(storedSessions) : [];
               const hasExistingSession = existingSessions.some((s: any) => s.user.id === session.user.id);
               
-              if (hasExistingSession) {
-                console.log('🔐 Session already exists for user, skipping add:', session.user.email);
-                authOperationInProgress.current = false;
-                return;
+              if (!hasExistingSession) {
+                console.log('🔐 Auth state change: adding new session for user:', session.user.email);
+                await addSession(session.user, session);
               }
-              
-              // Use setTimeout to defer Supabase calls and prevent deadlock
-              setTimeout(async () => {
-                try {
-                  if (addSession && typeof addSession === 'function') {
-                    console.log('🔐 Auth state change: adding new session for user:', session.user.email);
-                    await addSession(session.user, session);
-                  }
-                } catch (error) {
-                  console.error('🔐 Error adding session during auth state change:', error);
-                  clearCorruptedSessions();
-                } finally {
-                  authOperationInProgress.current = false;
-                }
-              }, 100); // Slight delay to ensure DOM is ready
             }
           }
         );
         
-        // CRITICAL: Assign the subscription object to prevent null reference error
         authSubscription = subscription;
 
-        // Then check for existing session with error handling
-        try {
-          const { data: { session }, error } = await supabase.auth.getSession();
+        // Then check for existing session
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          const storedSessions = localStorage.getItem('wmh_sessions');
+          const existingSessions = storedSessions ? JSON.parse(storedSessions) : [];
           
-          if (error) {
-            console.error('🔐 Error getting session:', error);
-            clearCorruptedSessions();
-          } else if (session?.user) {
-            const storedSessions = localStorage.getItem('wmh_sessions');
-            const existingSessions = storedSessions ? JSON.parse(storedSessions) : [];
-            
-            if (existingSessions.length === 0 && addSession && typeof addSession === 'function') {
-              console.log('🔐 Initializing auth with existing session for user:', session.user.email);
-              try {
-                authOperationInProgress.current = true;
-                await addSession(session.user, session);
-              } catch (error) {
-                console.error('🔐 Error adding session during initialization:', error);
-                clearCorruptedSessions();
-              } finally {
-                authOperationInProgress.current = false;
-              }
-            }
+          if (existingSessions.length === 0) {
+            console.log('🔐 Initializing auth with existing session for user:', session.user.email);
+            await addSession(session.user, session);
           }
-        } catch (error) {
-          console.error('🔐 Session retrieval failed:', error);
-          clearCorruptedSessions();
         }
         
       } catch (error) {
         console.error('Error initializing auth:', error);
-        clearCorruptedSessions();
       } finally {
         setIsLoading(false);
       }
@@ -198,14 +73,11 @@ export const useMultiUserAuth = () => {
     initializeAuth();
     
     return () => {
-      // Add null check to prevent "Cannot read properties of null" error
-      if (authSubscription && typeof authSubscription.unsubscribe === 'function') {
+      if (authSubscription) {
         authSubscription.unsubscribe();
       }
-      // Reset circuit breaker on cleanup
-      authOperationInProgress.current = false;
     };
-  }, []); // Remove addSession dependency to prevent re-initialization loops
+  }, [addSession]); // Only depend on addSession
 
   const signIn = useCallback(async (email: string, password: string) => {
     setIsLoading(true);
@@ -270,30 +142,17 @@ export const useMultiUserAuth = () => {
     if (!session) return;
 
     try {
-      // Set circuit breaker to prevent interference during logout
-      authOperationInProgress.current = true;
-      
       // Sign out from the specific session's client
       await session.supabaseClient.auth.signOut();
       removeSession(targetSessionId);
       console.log('🔐 Signed out session:', targetSessionId);
-      
-      // Clear circuit breaker after successful logout
-      setTimeout(() => {
-        authOperationInProgress.current = false;
-      }, 1000); // Give 1 second buffer
-      
     } catch (error) {
       console.error('🔐 Sign out error:', error);
-      authOperationInProgress.current = false;
     }
   }, [activeSessionId, sessions, removeSession]);
 
   const signOutAll = useCallback(async () => {
     try {
-      // Set circuit breaker to prevent interference during logout
-      authOperationInProgress.current = true;
-      
       // Sign out all sessions
       await Promise.all(sessions.map(session => 
         session.supabaseClient.auth.signOut()
@@ -301,15 +160,8 @@ export const useMultiUserAuth = () => {
       clearAllSessions();
       navigate('/');
       console.log('🔐 Signed out all sessions');
-      
-      // Clear circuit breaker after successful logout
-      setTimeout(() => {
-        authOperationInProgress.current = false;
-      }, 1000); // Give 1 second buffer
-      
     } catch (error) {
       console.error('🔐 Sign out all error:', error);
-      authOperationInProgress.current = false;
     }
   }, [sessions, clearAllSessions, navigate]);
 

@@ -11,8 +11,6 @@ type HomeOption = Database['public']['Tables']['home_options']['Row'];
 export const useCustomerPricing = (user: User | null) => {
   const [loading, setLoading] = useState(true);
 
-  console.log('useCustomerPricing: Hook called with user:', user?.id);
-
   // Fetch customer markup with tiered pricing info (cached for 5 minutes)
   const { data: customerMarkup, isLoading: markupLoading } = useQuery({
     queryKey: ['customer-markup', user?.id],
@@ -54,7 +52,6 @@ export const useCustomerPricing = (user: User | null) => {
 
   useEffect(() => {
     if (!markupLoading) {
-      console.log('useCustomerPricing: Setting loading to false');
       setLoading(false);
     }
   }, [markupLoading]);
@@ -83,20 +80,15 @@ export const useCustomerPricing = (user: User | null) => {
         break;
     }
 
-    console.log(`🔍 calculatePrice: Base: ${basePrice}, Tier: ${tierLevel}, Parent: ${parentMarkup}%, User: ${userMarkup}%, Final: ${finalPrice}`);
     return finalPrice;
   };
 
   const calculateMobileHomePrice = (mobileHome: MobileHome | null): number => {
-    console.log('useCustomerPricing: calculateMobileHomePrice called with:', mobileHome?.id);
-    
     if (!mobileHome) {
-      console.log('useCustomerPricing: mobileHome is null, returning 0');
       return 0;
     }
 
     if (!mobileHome.price) {
-      console.log('useCustomerPricing: mobileHome.price is null, returning 0');
       return 0;
     }
 
@@ -112,7 +104,6 @@ export const useCustomerPricing = (user: User | null) => {
     // Use the higher of the two prices
     const finalPrice = Math.max(tieredPrice, minProfitPrice);
     
-    console.log('useCustomerPricing: Tiered pricing - Base cost:', baseCost, 'Tiered price:', tieredPrice, 'Min profit:', minProfitPrice, 'Final (higher):', finalPrice);
     return finalPrice;
   };
 
@@ -125,15 +116,12 @@ export const useCustomerPricing = (user: User | null) => {
     if (mobileHome?.width_feet) {
       if (mobileHome.width_feet < 16 && service.single_wide_price) {
         baseCost = service.cost || service.single_wide_price;
-        console.log('useCustomerPricing: Using single wide cost for service:', service.name, baseCost);
       } else if (mobileHome.width_feet >= 16 && service.double_wide_price) {
         baseCost = service.cost || service.double_wide_price;
-        console.log('useCustomerPricing: Using double wide cost for service:', service.name, baseCost);
       }
     }
     
     const finalPrice = calculatePrice(baseCost);
-    console.log('useCustomerPricing: Service price calculation - Base cost:', baseCost, 'Final:', finalPrice);
     return finalPrice;
   };
 
@@ -144,14 +132,11 @@ export const useCustomerPricing = (user: User | null) => {
 
     if (option.pricing_type === 'per_sqft' && squareFootage && option.price_per_sqft) {
       baseCost = option.cost_price || (option.price_per_sqft * squareFootage);
-      console.log(`🔍 useCustomerPricing: Option ${option.name} - Per sq ft cost: ${option.cost_price || option.price_per_sqft} × ${squareFootage} = ${baseCost}`);
     } else if (option.pricing_type === 'fixed' && option.cost_price) {
       baseCost = option.cost_price;
-      console.log(`🔍 useCustomerPricing: Option ${option.name} - Fixed cost: ${baseCost}`);
     }
 
     const finalPrice = calculatePrice(baseCost);
-    console.log(`🔍 useCustomerPricing: Option ${option.name} - Base cost: ${baseCost}, Final: ${finalPrice}`);
     return finalPrice;
   };
 
@@ -160,8 +145,6 @@ export const useCustomerPricing = (user: User | null) => {
     selectedServices: Service[] = [],
     selectedHomeOptions: { option: HomeOption; quantity: number }[] = []
   ): number => {
-    console.log('useCustomerPricing: calculateTotalPrice called');
-    
     const homePrice = calculateMobileHomePrice(mobileHome);
     const servicesPrice = selectedServices.reduce((total, service) => {
       return total + calculateServicePrice(service, mobileHome);
@@ -173,11 +156,8 @@ export const useCustomerPricing = (user: User | null) => {
     }, 0);
 
     const totalPrice = homePrice + servicesPrice + optionsPrice;
-    console.log('useCustomerPricing: Total price calculated:', totalPrice);
     return totalPrice;
   };
-
-  console.log('useCustomerPricing: Returning hook values, loading:', loading);
 
   return {
     customerMarkup: customerMarkup?.markup_percentage || 30,

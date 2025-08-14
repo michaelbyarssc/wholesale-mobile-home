@@ -19,14 +19,11 @@ interface PricingTier {
 export const useThreeTierPricing = (user: User | null) => {
   const [loading, setLoading] = useState(true);
 
-  console.log('useThreeTierPricing: Hook called with user:', user?.id);
-
   // Fetch user role and tiered pricing structure
   const { data: pricingData, isLoading: pricingLoading } = useQuery({
     queryKey: ['three-tier-pricing', user?.id],
     queryFn: async () => {
       if (!user) {
-        console.log('useThreeTierPricing: No user, returning default pricing');
         return {
           userRole: 'user' as const,
           userMarkup: 30,
@@ -34,8 +31,6 @@ export const useThreeTierPricing = (user: User | null) => {
           tierLevel: 'user'
         };
       }
-
-      console.log('useThreeTierPricing: Fetching tiered pricing data for user:', user.id);
       
       // Get user role
       const { data: roleData, error: roleError } = await supabase
@@ -60,13 +55,6 @@ export const useThreeTierPricing = (user: User | null) => {
       const userMarkup = markupData?.markup_percentage || 30;
       const tierLevel = markupData?.tier_level || 'user';
       const parentMarkup = markupData?.super_admin_markup_percentage || 30;
-
-      console.log('useThreeTierPricing: Tiered pricing data fetched:', { 
-        userRole, 
-        userMarkup, 
-        parentMarkup, 
-        tierLevel 
-      });
       
       return {
         userRole: userRole as 'super_admin' | 'admin' | 'user',
@@ -80,7 +68,6 @@ export const useThreeTierPricing = (user: User | null) => {
 
   useEffect(() => {
     if (!pricingLoading) {
-      console.log('useThreeTierPricing: Setting loading to false');
       setLoading(false);
     }
   }, [pricingLoading]);
@@ -109,20 +96,15 @@ export const useThreeTierPricing = (user: User | null) => {
         break;
     }
 
-    console.log(`🔍 calculateTieredPrice: Base: ${baseCost}, Tier: ${tierLevel}, Parent: ${parentMarkup}%, User: ${userMarkup}%, Final: ${finalPrice}`);
     return finalPrice;
   };
 
   const calculateMobileHomePrice = (mobileHome: MobileHome | null): number => {
-    console.log('useThreeTierPricing: calculateMobileHomePrice called with:', mobileHome?.id);
-    
     if (!mobileHome || !pricingData) {
-      console.log('useThreeTierPricing: mobileHome or pricingData is null, returning 0');
       return 0;
     }
 
     if (!mobileHome.price) {
-      console.log('useThreeTierPricing: mobileHome.price is null, returning 0');
       return 0;
     }
 
@@ -132,7 +114,6 @@ export const useThreeTierPricing = (user: User | null) => {
     const minProfitPrice = baseCost + (mobileHome.minimum_profit || 0);
     const finalPrice = Math.max(tieredPrice, minProfitPrice);
     
-    console.log('useThreeTierPricing: Mobile home pricing - Base cost:', baseCost, 'Tiered:', tieredPrice, 'Min profit:', minProfitPrice, 'Final:', finalPrice);
     return finalPrice;
   };
 
@@ -152,7 +133,6 @@ export const useThreeTierPricing = (user: User | null) => {
     }
     
     const finalPrice = calculateTieredPrice(baseCost);
-    console.log('useThreeTierPricing: Service price calculation - Base cost:', baseCost, 'Final:', finalPrice);
     return finalPrice;
   };
 
@@ -168,7 +148,6 @@ export const useThreeTierPricing = (user: User | null) => {
     }
 
     const finalPrice = calculateTieredPrice(baseCost);
-    console.log(`🔍 useThreeTierPricing: Option ${option.name} - Base cost: ${baseCost}, Final: ${finalPrice}`);
     return finalPrice;
   };
 
@@ -177,8 +156,6 @@ export const useThreeTierPricing = (user: User | null) => {
     selectedServices: Service[] = [],
     selectedHomeOptions: { option: HomeOption; quantity: number }[] = []
   ): number => {
-    console.log('useThreeTierPricing: calculateTotalPrice called');
-    
     const homePrice = calculateMobileHomePrice(mobileHome);
     const servicesPrice = selectedServices.reduce((total, service) => {
       return total + calculateServicePrice(service, mobileHome);
@@ -190,11 +167,8 @@ export const useThreeTierPricing = (user: User | null) => {
     }, 0);
 
     const totalPrice = homePrice + servicesPrice + optionsPrice;
-    console.log('useThreeTierPricing: Total price calculated:', totalPrice);
     return totalPrice;
   };
-
-  console.log('useThreeTierPricing: Returning hook values, loading:', loading);
 
   return {
     userRole: pricingData?.userRole || 'user',

@@ -40,8 +40,10 @@ interface DeliveryWithSchedule {
   }> | null;
   factories?: {
     name: string;
-    address: string;
-    timezone: string;
+    street_address: string;
+    city: string;
+    state: string;
+    zip_code: string;
   } | null;
 }
 
@@ -114,8 +116,10 @@ export const NewDeliveryScheduling = () => {
           ),
           factories (
             name,
-            address,
-            timezone
+            street_address,
+            city,
+            state,
+            zip_code
           )
         `)
         .in('status', ['needs_scheduled', 'awaiting_pickup_schedule', 'pickup_scheduled', 'pickup_completed', 'awaiting_delivery_schedule'])
@@ -172,13 +176,30 @@ export const NewDeliveryScheduling = () => {
         delivery_timezone: timezone,
       };
 
-      // First update the schedule
-      const { error: scheduleError } = await supabase
+      // First check if delivery_schedule exists, if not create one
+      const { data: existingSchedule } = await supabase
         .from('delivery_schedules')
-        .update(updateData)
-        .eq('delivery_id', deliveryId);
+        .select('id')
+        .eq('delivery_id', deliveryId)
+        .single();
 
-      if (scheduleError) throw scheduleError;
+      if (existingSchedule) {
+        // Update existing schedule
+        const { error: scheduleError } = await supabase
+          .from('delivery_schedules')
+          .update(updateData)
+          .eq('delivery_id', deliveryId);
+        if (scheduleError) throw scheduleError;
+      } else {
+        // Create new schedule record
+        const { error: scheduleError } = await supabase
+          .from('delivery_schedules')
+          .insert({
+            delivery_id: deliveryId,
+            ...updateData
+          });
+        if (scheduleError) throw scheduleError;
+      }
 
       // Then update the delivery status
       const newStatus = scheduleType === 'pickup' ? 'pickup_scheduled' : 'delivery_scheduled';
@@ -232,7 +253,7 @@ export const NewDeliveryScheduling = () => {
     if (!delivery) return;
 
     const timezone = scheduleType === 'pickup' 
-      ? delivery.factories?.timezone || getTimezoneFromAddress(delivery.pickup_address)
+      ? getTimezoneFromAddress(delivery.factories?.state || delivery.pickup_address)
       : getTimezoneFromAddress(delivery.delivery_address);
 
     scheduleDeliveryMutation.mutate({

@@ -1470,6 +1470,54 @@ export type Database = {
         }
         Relationships: []
       }
+      cost_analysis_records: {
+        Row: {
+          analysis_date: string
+          created_at: string
+          delivery_id: string
+          fuel_cost: number | null
+          id: string
+          insurance_cost: number | null
+          labor_cost: number | null
+          overhead_cost: number | null
+          permit_cost: number | null
+          profit_margin: number | null
+          revenue: number | null
+          total_cost: number | null
+          vehicle_maintenance_cost: number | null
+        }
+        Insert: {
+          analysis_date?: string
+          created_at?: string
+          delivery_id: string
+          fuel_cost?: number | null
+          id?: string
+          insurance_cost?: number | null
+          labor_cost?: number | null
+          overhead_cost?: number | null
+          permit_cost?: number | null
+          profit_margin?: number | null
+          revenue?: number | null
+          total_cost?: number | null
+          vehicle_maintenance_cost?: number | null
+        }
+        Update: {
+          analysis_date?: string
+          created_at?: string
+          delivery_id?: string
+          fuel_cost?: number | null
+          id?: string
+          insurance_cost?: number | null
+          labor_cost?: number | null
+          overhead_cost?: number | null
+          permit_cost?: number | null
+          profit_margin?: number | null
+          revenue?: number | null
+          total_cost?: number | null
+          vehicle_maintenance_cost?: number | null
+        }
+        Relationships: []
+      }
       customer_interactions: {
         Row: {
           attachments: Json | null
@@ -1627,6 +1675,54 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      damage_inspections: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          damage_description: string | null
+          damage_found: boolean
+          damage_photos: Json | null
+          delivery_id: string
+          id: string
+          inspection_items: Json
+          inspection_type: string
+          inspector_id: string | null
+          repair_cost_estimate: number | null
+          repair_required: boolean | null
+          severity_level: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          damage_description?: string | null
+          damage_found?: boolean
+          damage_photos?: Json | null
+          delivery_id: string
+          id?: string
+          inspection_items?: Json
+          inspection_type?: string
+          inspector_id?: string | null
+          repair_cost_estimate?: number | null
+          repair_required?: boolean | null
+          severity_level?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          damage_description?: string | null
+          damage_found?: boolean
+          damage_photos?: Json | null
+          delivery_id?: string
+          id?: string
+          inspection_items?: Json
+          inspection_type?: string
+          inspector_id?: string | null
+          repair_cost_estimate?: number | null
+          repair_required?: boolean | null
+          severity_level?: string | null
+        }
+        Relationships: []
       }
       deliveries: {
         Row: {
@@ -2174,6 +2270,54 @@ export type Database = {
           },
         ]
       }
+      delivery_insurance: {
+        Row: {
+          coverage_amount: number | null
+          coverage_type: string
+          created_at: string
+          delivery_id: string
+          document_url: string | null
+          effective_date: string
+          expiry_date: string
+          id: string
+          insurance_provider: string
+          policy_number: string
+          premium_amount: number | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          coverage_amount?: number | null
+          coverage_type: string
+          created_at?: string
+          delivery_id: string
+          document_url?: string | null
+          effective_date: string
+          expiry_date: string
+          id?: string
+          insurance_provider: string
+          policy_number: string
+          premium_amount?: number | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          coverage_amount?: number | null
+          coverage_type?: string
+          created_at?: string
+          delivery_id?: string
+          document_url?: string | null
+          effective_date?: string
+          expiry_date?: string
+          id?: string
+          insurance_provider?: string
+          policy_number?: string
+          premium_amount?: number | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       delivery_issues: {
         Row: {
           assignment_id: string | null
@@ -2290,6 +2434,54 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      delivery_permits: {
+        Row: {
+          cost: number | null
+          created_at: string
+          delivery_id: string
+          document_url: string | null
+          expiry_date: string | null
+          id: string
+          issue_date: string | null
+          issuing_authority: string | null
+          notes: string | null
+          permit_number: string
+          permit_type: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          cost?: number | null
+          created_at?: string
+          delivery_id: string
+          document_url?: string | null
+          expiry_date?: string | null
+          id?: string
+          issue_date?: string | null
+          issuing_authority?: string | null
+          notes?: string | null
+          permit_number: string
+          permit_type: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          cost?: number | null
+          created_at?: string
+          delivery_id?: string
+          document_url?: string | null
+          expiry_date?: string | null
+          id?: string
+          issue_date?: string | null
+          issuing_authority?: string | null
+          notes?: string | null
+          permit_number?: string
+          permit_type?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       delivery_photos: {
         Row: {
@@ -2416,6 +2608,84 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      delivery_receipts: {
+        Row: {
+          created_at: string
+          customer_signature_url: string | null
+          delivery_id: string
+          delivery_photos: Json | null
+          driver_signature_url: string | null
+          id: string
+          items_delivered: Json
+          notes: string | null
+          receipt_number: string
+          signed_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          customer_signature_url?: string | null
+          delivery_id: string
+          delivery_photos?: Json | null
+          driver_signature_url?: string | null
+          id?: string
+          items_delivered?: Json
+          notes?: string | null
+          receipt_number: string
+          signed_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          customer_signature_url?: string | null
+          delivery_id?: string
+          delivery_photos?: Json | null
+          driver_signature_url?: string | null
+          id?: string
+          items_delivered?: Json
+          notes?: string | null
+          receipt_number?: string
+          signed_at?: string | null
+        }
+        Relationships: []
+      }
+      delivery_routes: {
+        Row: {
+          created_at: string
+          delivery_id: string
+          estimated_duration_minutes: number | null
+          id: string
+          optimized_route: Json | null
+          total_distance_miles: number | null
+          traffic_conditions: Json | null
+          updated_at: string
+          waypoints: Json
+          weather_conditions: Json | null
+        }
+        Insert: {
+          created_at?: string
+          delivery_id: string
+          estimated_duration_minutes?: number | null
+          id?: string
+          optimized_route?: Json | null
+          total_distance_miles?: number | null
+          traffic_conditions?: Json | null
+          updated_at?: string
+          waypoints?: Json
+          weather_conditions?: Json | null
+        }
+        Update: {
+          created_at?: string
+          delivery_id?: string
+          estimated_duration_minutes?: number | null
+          id?: string
+          optimized_route?: Json | null
+          total_distance_miles?: number | null
+          traffic_conditions?: Json | null
+          updated_at?: string
+          waypoints?: Json
+          weather_conditions?: Json | null
+        }
+        Relationships: []
       }
       delivery_schedules: {
         Row: {
@@ -2598,6 +2868,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      delivery_time_slots: {
+        Row: {
+          available: boolean
+          booked_count: number
+          capacity: number
+          created_at: string
+          date: string
+          delivery_type: string | null
+          end_time: string
+          id: string
+          price_modifier: number | null
+          service_area: string | null
+          start_time: string
+        }
+        Insert: {
+          available?: boolean
+          booked_count?: number
+          capacity?: number
+          created_at?: string
+          date: string
+          delivery_type?: string | null
+          end_time: string
+          id?: string
+          price_modifier?: number | null
+          service_area?: string | null
+          start_time: string
+        }
+        Update: {
+          available?: boolean
+          booked_count?: number
+          capacity?: number
+          created_at?: string
+          date?: string
+          delivery_type?: string | null
+          end_time?: string
+          id?: string
+          price_modifier?: number | null
+          service_area?: string | null
+          start_time?: string
+        }
+        Relationships: []
       }
       docusign_templates: {
         Row: {
@@ -2871,6 +3183,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      emergency_protocols: {
+        Row: {
+          active: boolean
+          contact_list: Json
+          created_at: string
+          created_by: string | null
+          emergency_type: string
+          escalation_rules: Json | null
+          id: string
+          protocol_name: string
+          required_documentation: Json | null
+          response_steps: Json
+          severity_level: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          contact_list?: Json
+          created_at?: string
+          created_by?: string | null
+          emergency_type: string
+          escalation_rules?: Json | null
+          id?: string
+          protocol_name: string
+          required_documentation?: Json | null
+          response_steps?: Json
+          severity_level: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          contact_list?: Json
+          created_at?: string
+          created_by?: string | null
+          emergency_type?: string
+          escalation_rules?: Json | null
+          id?: string
+          protocol_name?: string
+          required_documentation?: Json | null
+          response_steps?: Json
+          severity_level?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       estimate_documents: {
         Row: {
@@ -4417,6 +4774,45 @@ export type Database = {
           },
         ]
       }
+      predictive_analytics_data: {
+        Row: {
+          accuracy_score: number | null
+          actual_outcome: Json | null
+          confidence_score: number | null
+          created_at: string
+          delivery_id: string | null
+          id: string
+          input_features: Json
+          model_version: string | null
+          predicted_outcome: Json
+          prediction_type: string
+        }
+        Insert: {
+          accuracy_score?: number | null
+          actual_outcome?: Json | null
+          confidence_score?: number | null
+          created_at?: string
+          delivery_id?: string | null
+          id?: string
+          input_features?: Json
+          model_version?: string | null
+          predicted_outcome?: Json
+          prediction_type: string
+        }
+        Update: {
+          accuracy_score?: number | null
+          actual_outcome?: Json | null
+          confidence_score?: number | null
+          created_at?: string
+          delivery_id?: string | null
+          id?: string
+          input_features?: Json
+          model_version?: string | null
+          predicted_outcome?: Json
+          prediction_type?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           approved: boolean
@@ -5166,6 +5562,51 @@ export type Database = {
         }
         Relationships: []
       }
+      traffic_conditions: {
+        Row: {
+          affected_road: string | null
+          alternative_route_suggested: boolean | null
+          condition_type: string
+          created_at: string
+          delivery_id: string | null
+          description: string | null
+          estimated_delay_minutes: number | null
+          id: string
+          resolved_at: string | null
+          route_id: string | null
+          severity: string
+          traffic_data: Json | null
+        }
+        Insert: {
+          affected_road?: string | null
+          alternative_route_suggested?: boolean | null
+          condition_type: string
+          created_at?: string
+          delivery_id?: string | null
+          description?: string | null
+          estimated_delay_minutes?: number | null
+          id?: string
+          resolved_at?: string | null
+          route_id?: string | null
+          severity: string
+          traffic_data?: Json | null
+        }
+        Update: {
+          affected_road?: string | null
+          alternative_route_suggested?: boolean | null
+          condition_type?: string
+          created_at?: string
+          delivery_id?: string | null
+          description?: string | null
+          estimated_delay_minutes?: number | null
+          id?: string
+          resolved_at?: string | null
+          route_id?: string | null
+          severity?: string
+          traffic_data?: Json | null
+        }
+        Relationships: []
+      }
       transaction_notes: {
         Row: {
           content: string
@@ -5666,6 +6107,96 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      weather_alerts: {
+        Row: {
+          acknowledged: boolean | null
+          affected_area: string | null
+          alert_type: string
+          created_at: string
+          delivery_id: string | null
+          description: string | null
+          end_time: string | null
+          id: string
+          severity: string
+          start_time: string | null
+          title: string
+          weather_data: Json | null
+        }
+        Insert: {
+          acknowledged?: boolean | null
+          affected_area?: string | null
+          alert_type: string
+          created_at?: string
+          delivery_id?: string | null
+          description?: string | null
+          end_time?: string | null
+          id?: string
+          severity: string
+          start_time?: string | null
+          title: string
+          weather_data?: Json | null
+        }
+        Update: {
+          acknowledged?: boolean | null
+          affected_area?: string | null
+          alert_type?: string
+          created_at?: string
+          delivery_id?: string | null
+          description?: string | null
+          end_time?: string | null
+          id?: string
+          severity?: string
+          start_time?: string | null
+          title?: string
+          weather_data?: Json | null
+        }
+        Relationships: []
+      }
+      workflow_automations: {
+        Row: {
+          actions: Json
+          active: boolean
+          created_at: string
+          created_by: string | null
+          description: string | null
+          execution_count: number | null
+          id: string
+          last_executed_at: string | null
+          name: string
+          trigger_conditions: Json | null
+          trigger_event: string
+          updated_at: string
+        }
+        Insert: {
+          actions?: Json
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          execution_count?: number | null
+          id?: string
+          last_executed_at?: string | null
+          name: string
+          trigger_conditions?: Json | null
+          trigger_event: string
+          updated_at?: string
+        }
+        Update: {
+          actions?: Json
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          execution_count?: number | null
+          id?: string
+          last_executed_at?: string | null
+          name?: string
+          trigger_conditions?: Json | null
+          trigger_event?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
     }
     Views: {

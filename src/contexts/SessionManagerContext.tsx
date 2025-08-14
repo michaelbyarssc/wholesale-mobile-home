@@ -33,7 +33,19 @@ const SessionManagerContext = createContext<SessionManagerContextType | null>(nu
 export const useSessionManager = () => {
   const context = useContext(SessionManagerContext);
   if (!context) {
-    throw new Error('useSessionManager must be used within a SessionManagerProvider');
+    // Instead of throwing, return default values to prevent crashes
+    console.warn('🔐 SessionManager context not available, returning defaults');
+    return {
+      sessions: [],
+      activeSessionId: null,
+      activeSession: null,
+      addSession: async () => { throw new Error('SessionManager not initialized'); },
+      removeSession: () => {},
+      switchToSession: () => {},
+      clearAllSessions: () => {},
+      getSessionClient: () => null,
+      updateSessionProfile: () => {}
+    };
   }
   return context;
 };

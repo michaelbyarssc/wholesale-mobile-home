@@ -12,8 +12,30 @@ export const useMultiUserAuth = () => {
   const isSessionValid = validateSessionIntegrity();
   const simpleAuth = useSimpleAuth();
   
+  // Get session manager with safety check
+  let sessionManager;
+  try {
+    sessionManager = useSessionManager();
+  } catch (error) {
+    console.warn('🔐 SessionManager not available, falling back to simple auth');
+    return {
+      ...simpleAuth,
+      // Add multi-user specific methods that redirect to simple auth
+      switchToSession: () => {},
+      signOutAll: simpleAuth.signOut,
+      fetchUserProfile: async () => null,
+      hasMultipleSessions: false,
+      sessionCount: simpleAuth.user ? 1 : 0,
+      userProfile: null,
+      getCurrentSession: () => simpleAuth.activeSession,
+      getCurrentUser: () => simpleAuth.user,
+      getCurrentUserProfile: () => null,
+      getSupabaseClient: () => simpleAuth.supabaseClient
+    };
+  }
+  
   const {
-    sessions,
+    sessions = [],
     activeSession,
     activeSessionId,
     addSession,
@@ -22,15 +44,15 @@ export const useMultiUserAuth = () => {
     clearAllSessions,
     getSessionClient,
     updateSessionProfile
-  } = useSessionManager();
+  } = sessionManager;
   
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
   const { validateSession } = useSessionValidation();
   
-  // If session integrity is compromised, use simple auth for login
-  if (!isSessionValid || (!sessions.length && !simpleAuth.user)) {
-    console.log('🔐 MULTI-USER AUTH: Using simple auth due to integrity issues');
+  // If session integrity is compromised or addSession is not available, use simple auth for login
+  if (!isSessionValid || !addSession || (!sessions.length && !simpleAuth.user)) {
+    console.log('🔐 MULTI-USER AUTH: Using simple auth due to integrity issues or context not ready');
     return {
       ...simpleAuth,
       // Add multi-user specific methods that redirect to simple auth
@@ -49,6 +71,13 @@ export const useMultiUserAuth = () => {
 
   // Initialize by checking for existing session with recovery
   useEffect(() => {
+    // Guard against missing addSession function
+    if (!addSession) {
+      console.warn('🔐 MULTI-USER AUTH: addSession not available, skipping initialization');
+      setIsLoading(false);
+      return;
+    }
+    
     let initialized = false;
     let authSubscription: any = null;
     
@@ -75,7 +104,11 @@ export const useMultiUserAuth = () => {
               if (!hasExistingSession) {
                 console.log('🔐 Auth state change: adding new session for user:', session.user.email);
                 try {
-                  await addSession(session.user, session);
+                  if (addSession && typeof addSession === 'function') {
+                    await addSession(session.user, session);
+                  } else {
+                    console.error('🔐 addSession is not available or not a function');
+                  }
                 } catch (error) {
                   console.error('🔐 Error adding session during auth state change:', error);
                   // Fallback: clear corrupted data
@@ -102,7 +135,11 @@ export const useMultiUserAuth = () => {
             if (existingSessions.length === 0) {
               console.log('🔐 Initializing auth with existing session for user:', session.user.email);
               try {
-                await addSession(session.user, session);
+                if (addSession && typeof addSession === 'function') {
+                  await addSession(session.user, session);
+                } else {
+                  console.error('🔐 addSession is not available during initialization');
+                }
               } catch (error) {
                 console.error('🔐 Error adding session during initialization:', error);
                 clearCorruptedSessions();
@@ -129,7 +166,7 @@ export const useMultiUserAuth = () => {
         authSubscription.unsubscribe();
       }
     };
-  }, [addSession]); // Only depend on addSession
+  }, [addSession].filter(Boolean)); // Filter out undefined dependencies
 
   const signIn = useCallback(async (email: string, password: string) => {
     setIsLoading(true);

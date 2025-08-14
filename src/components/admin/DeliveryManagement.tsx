@@ -9,10 +9,14 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuthUser } from '@/hooks/useAuthUser';
 import { useUserRoles } from '@/hooks/useUserRoles';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { RefreshCw, AlertCircle, Calendar, Clock, Truck, MapPin, User, Phone, Mail } from 'lucide-react';
+import { RefreshCw, AlertCircle, Calendar, Clock, Truck, MapPin, User, Phone, Mail, MessageSquare, Settings, FileText } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { NewDeliveryScheduling } from '@/components/delivery/NewDeliveryScheduling';
 import { DeliveryScheduler } from '@/components/delivery/DeliveryScheduler';
 import { DeliveryScheduling } from '@/components/delivery/DeliveryScheduling';
+import { EnhancedCustomerNotifications } from '@/components/delivery/EnhancedCustomerNotifications';
+import { ETACalculator } from '@/components/delivery/ETACalculator';
+import { AutomatedStatusUpdates } from '@/components/delivery/AutomatedStatusUpdates';
 
 const DeliveryManagement = () => {
   const [deliveries, setDeliveries] = useState([]);

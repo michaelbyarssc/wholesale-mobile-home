@@ -12,7 +12,6 @@ import { UserWelcome } from '@/components/auth/UserWelcome';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { SessionClearButton } from '@/components/admin/SessionClearButton';
 
 const Auth = () => {
   const [isSignUp, setIsSignUp] = useState(false);
@@ -206,13 +205,6 @@ const Auth = () => {
           isOpen={showPasswordChange}
           onClose={() => setShowPasswordChange(false)}
         />
-        
-        {/* Development and testing utilities */}
-        {(process.env.NODE_ENV === 'development' || !user) && (
-          <div className="mt-4 text-center">
-            <SessionClearButton />
-          </div>
-        )}
       </div>
     </div>
   );

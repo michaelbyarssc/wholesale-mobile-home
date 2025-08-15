@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
+import { Routes, Route, Navigate, useParams } from "react-router-dom";
 import { usePageTracking } from '@/hooks/usePageTracking';
 import { usePerformanceMetrics } from '@/hooks/usePerformanceMetrics';
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -155,13 +155,11 @@ const App = () => {
         <ErrorBoundary>
           <QueryClientProvider client={queryClient}>
             <SessionManagerProvider>
-              <BrowserRouter>
-                <TooltipProvider>
-                  <AppRoutes />
-                  <Toaster />
-                  <Sonner />
-                </TooltipProvider>
-              </BrowserRouter>
+              <TooltipProvider>
+                <AppRoutes />
+                <Toaster />
+                <Sonner />
+              </TooltipProvider>
             </SessionManagerProvider>
           </QueryClientProvider>
         </ErrorBoundary>

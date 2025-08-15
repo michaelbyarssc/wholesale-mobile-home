@@ -5,6 +5,7 @@ import { useUserRoles } from '@/hooks/useUserRoles';
 import { useMultiUserAuth } from '@/hooks/useMultiUserAuth';
 import { logger } from '@/utils/logger';
 import { supabase } from '@/integrations/supabase/client';
+import { markLoginFlowEnd } from '@/utils/sessionCleanup';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -146,6 +147,10 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
         console.log(`[ACCESS_GRANTED] User ${user.id} granted access`);
         logDebugInfo('ACCESS_GRANTED');
+        
+        // End any login flow tracking when access is granted
+        markLoginFlowEnd();
+        
         setAuthChecked(true);
         clearTimeout(timeoutId);
         
@@ -170,6 +175,9 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     return (
       <div className="min-h-screen flex flex-col items-center justify-center space-y-4">
         <LoadingSpinner />
+        <div className="text-center">
+          <p className="text-sm text-muted-foreground">Verifying authentication...</p>
+        </div>
         {process.env.NODE_ENV === 'development' && (
           <div className="text-xs text-muted-foreground max-w-md">
             <div>Auth Loading: {authLoading ? 'Yes' : 'No'}</div>

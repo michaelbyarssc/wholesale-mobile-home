@@ -60,39 +60,18 @@ const Auth = () => {
     }
     
     // Only redirect if we have a valid authenticated user AND all checks are complete
-    // This prevents premature redirects from corrupted sessions
+    // No artificial delays - rely on proper state validation
     if (user && !authLoading && !rolesLoading) {
-      console.log('🔐 AUTH PAGE: User detected, validating session before redirect...');
+      console.log('🔐 AUTH PAGE: User authenticated, redirecting immediately');
       
-      // Add a small delay to ensure session validation is complete
-      // and prevent race conditions with session cleanup
-      setTimeout(async () => {
-        try {
-          // Double-check that the user session is still valid
-          const { data: { user: currentUser }, error } = await supabase.auth.getUser();
-          
-          if (currentUser && !error) {
-            console.log('🔐 AUTH PAGE: Session validated, redirecting authenticated user');
-            if (isAdmin) {
-              console.log('🔐 AUTH PAGE: Redirecting admin to /admin');
-              navigate('/admin');
-            } else {
-              console.log('🔐 AUTH PAGE: Redirecting user to /');
-              navigate('/');
-            }
-          } else {
-            console.log('🔐 AUTH PAGE: Session invalid, clearing corrupted data');
-            // Clear corrupted session data if validation fails
-            localStorage.removeItem('wmh_sessions');
-            localStorage.removeItem('wmh_active_session');
-          }
-        } catch (error) {
-          console.error('🔐 AUTH PAGE: Session validation failed:', error);
-          // Clear potentially corrupted session data
-          localStorage.removeItem('wmh_sessions');
-          localStorage.removeItem('wmh_active_session');
-        }
-      }, 300); // Increased delay to ensure proper validation
+      // Immediate redirect without delay to prevent race conditions
+      if (isAdmin) {
+        console.log('🔐 AUTH PAGE: Redirecting admin to /admin');
+        navigate('/admin');
+      } else {
+        console.log('🔐 AUTH PAGE: Redirecting user to /');
+        navigate('/');
+      }
     }
   }, [user, isAdmin, authLoading, rolesLoading, searchParams, navigate, isAddUserMode]);
 

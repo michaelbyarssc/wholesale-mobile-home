@@ -8,6 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useMultiUserAuth } from '@/hooks/useMultiUserAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { setSessionConfig } from '@/utils/sessionControl';
+import { markLoginFlowStart, markLoginFlowEnd } from '@/utils/sessionCleanup';
 
 interface AuthFormProps {
   isSignUp: boolean;
@@ -123,6 +124,9 @@ export const AuthForm = ({
       } else {
         console.log('Starting sign in process...');
         
+        // Mark login flow start to prevent aggressive session cleanup
+        markLoginFlowStart();
+        
         // Save session config based on "Remember Me" choice
         setSessionConfig({
           rememberMe,
@@ -134,6 +138,9 @@ export const AuthForm = ({
 
         if (error) throw error;
 
+        // Mark login flow end with grace period
+        markLoginFlowEnd();
+
         toast({
           title: isAddUserMode ? "User Added Successfully!" : "Welcome back!",
           description: isAddUserMode 
@@ -143,6 +150,12 @@ export const AuthForm = ({
       }
     } catch (error: any) {
       console.error('Auth error:', error);
+      
+      // End login flow tracking on error
+      if (!isSignUp) {
+        markLoginFlowEnd();
+      }
+      
       toast({
         title: isSignUp ? "Sign Up Failed" : "Sign In Failed",
         description: error.message || "An unexpected error occurred",

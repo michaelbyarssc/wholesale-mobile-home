@@ -2,6 +2,32 @@
  * Session cleanup utilities to fix authentication issues
  */
 
+// Track login state to prevent aggressive cleanup during auth flow
+let isInLoginFlow = false;
+let loginFlowStartTime = 0;
+const LOGIN_GRACE_PERIOD_MS = 10000; // 10 seconds grace period after login
+
+export const markLoginFlowStart = () => {
+  console.log('🔐 LOGIN FLOW: Started - disabling aggressive cleanup');
+  isInLoginFlow = true;
+  loginFlowStartTime = Date.now();
+};
+
+export const markLoginFlowEnd = () => {
+  console.log('🔐 LOGIN FLOW: Ended - re-enabling cleanup after delay');
+  setTimeout(() => {
+    isInLoginFlow = false;
+    loginFlowStartTime = 0;
+    console.log('🔐 LOGIN FLOW: Grace period ended, cleanup re-enabled');
+  }, LOGIN_GRACE_PERIOD_MS);
+};
+
+const isInLoginGracePeriod = () => {
+  if (!isInLoginFlow && loginFlowStartTime === 0) return false;
+  const elapsed = Date.now() - loginFlowStartTime;
+  return elapsed < LOGIN_GRACE_PERIOD_MS;
+};
+
 export const clearCorruptedSessions = () => {
   try {
     console.log('🔐 CLEANUP: Starting session cleanup');
@@ -78,24 +104,24 @@ export const validateSessionIntegrity = async () => {
       return false;
     }
     
-    // Check if active session exists in sessions
-    if (activeSessionId && !parsed.some((s: any) => s.id === activeSessionId)) {
-      console.warn('🔐 VALIDATE: Active session not found in sessions');
-      return false;
-    }
+    // More lenient validation - don't require active session to exist in sessions
+    // This prevents false positives during session creation/switching
     
-    // Check session structure
+    // Check session structure - be more lenient
     for (const session of parsed) {
-      if (!session.id || !session.user || !session.session) {
-        console.warn('🔐 VALIDATE: Invalid session structure');
+      if (!session.id || !session.user) {
+        console.warn('🔐 VALIDATE: Invalid session structure - missing id or user');
         return false;
       }
       
-      // Check if session tokens are expired
+      // Only check expiration if we have a clear expires_at field
+      // Add buffer time to prevent false positives due to clock drift
       if (session.session?.expires_at) {
         const expiresAt = new Date(session.session.expires_at);
         const now = new Date();
-        if (expiresAt <= now) {
+        const bufferMs = 60000; // 1 minute buffer
+        
+        if (expiresAt.getTime() <= (now.getTime() - bufferMs)) {
           console.warn('🔐 VALIDATE: Session expired for user:', session.user.email);
           return false;
         }
@@ -135,6 +161,12 @@ export const detectAndClearStaleSession = async () => {
   try {
     console.log('🔐 STALE CHECK: Detecting stale sessions');
     
+    // Don't perform aggressive cleanup during login flow
+    if (isInLoginGracePeriod()) {
+      console.log('🔐 STALE CHECK: In login grace period, skipping cleanup');
+      return true;
+    }
+    
     // Check if local session exists
     const hasLocalSession = localStorage.getItem('wmh_sessions') || localStorage.getItem('wmh_active_session');
     
@@ -143,22 +175,35 @@ export const detectAndClearStaleSession = async () => {
       return true;
     }
     
-    // Validate both local and server integrity
+    // More lenient validation - only clear if both checks fail
     const localIntegrity = await validateSessionIntegrity();
     const serverValidity = await validateServerSession();
     
-    if (!localIntegrity || !serverValidity) {
-      console.warn('🔐 STALE CHECK: Detected stale/corrupted session, clearing...');
+    // Only clear if BOTH local AND server validation fail
+    // AND we're not in a login flow
+    if (!localIntegrity && !serverValidity) {
+      console.warn('🔐 STALE CHECK: Both local and server validation failed, clearing...');
       clearCorruptedSessions();
       return false;
+    }
+    
+    // If only one validation fails, log but don't clear (could be temporary)
+    if (!localIntegrity) {
+      console.warn('🔐 STALE CHECK: Local validation failed but server valid - keeping session');
+    }
+    if (!serverValidity) {
+      console.warn('🔐 STALE CHECK: Server validation failed but local valid - keeping session');
     }
     
     console.log('🔐 STALE CHECK: Session integrity validated');
     return true;
   } catch (error) {
     console.error('🔐 STALE CHECK: Error during stale session detection:', error);
-    // Clear on any validation error to be safe
-    clearCorruptedSessions();
-    return false;
+    // Only clear on critical errors, and only if not in login flow
+    if (!isInLoginGracePeriod()) {
+      clearCorruptedSessions();
+      return false;
+    }
+    return true;
   }
 };

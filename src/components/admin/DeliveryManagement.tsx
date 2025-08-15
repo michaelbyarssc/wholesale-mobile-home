@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuthUser } from '@/hooks/useAuthUser';
+import { useCompatibleAuth } from '@/hooks/useCompatibleAuth';
 import { useUserRoles } from '@/hooks/useUserRoles';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { RefreshCw, AlertCircle, Calendar, Clock, Truck, MapPin, User, Phone, Mail, MessageSquare, Settings, FileText } from 'lucide-react';
@@ -24,7 +24,7 @@ const DeliveryManagement = () => {
   const [error, setError] = useState<string | null>(null);
   const [debugInfo, setDebugInfo] = useState<any>(null);
   const { toast } = useToast();
-  const { user, session } = useAuthUser();
+  const { user, session } = useCompatibleAuth();
   const { isAdmin, isSuperAdmin, userRoles } = useUserRoles();
 
   const loadDeliveries = async () => {

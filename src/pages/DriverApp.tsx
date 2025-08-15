@@ -4,14 +4,14 @@ import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useAuthUser } from "@/hooks/useAuthUser";
+import { useCompatibleAuth } from "@/hooks/useCompatibleAuth";
 import { useShoppingCart } from "@/hooks/useShoppingCart";
 import { InstallPrompt } from "@/components/pwa/InstallPrompt";
 import { Link } from "react-router-dom";
 import { Truck, Download, ExternalLink, ShieldCheck } from "lucide-react";
 
 const DriverApp: React.FC = () => {
-  const { user, userProfile, handleLogout } = useAuthUser();
+  const { user, userProfile, handleLogout } = useCompatibleAuth();
   const { cartItems } = useShoppingCart();
 
   const structuredData = {

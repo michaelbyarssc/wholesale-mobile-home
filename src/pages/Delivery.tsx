@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
-import { useAuthUser } from "@/hooks/useAuthUser";
+import { useCompatibleAuth } from '@/hooks/useCompatibleAuth';
 import { useUserRoles } from "@/hooks/useUserRoles";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
@@ -30,7 +30,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const Delivery = () => {
-  const { user, userProfile, handleLogout } = useAuthUser();
+  const { user, userProfile, handleLogout } = useCompatibleAuth();
   const { isAdmin, isSuperAdmin, isLoading: rolesLoading } = useUserRoles();
   const { cartItems } = useShoppingCart();
   const navigate = useNavigate();

@@ -11,7 +11,7 @@ import { Search, HelpCircle, Star } from "lucide-react";
 import { Tables } from "@/integrations/supabase/types";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
-import { useAuthUser } from "@/hooks/useAuthUser";
+import { useCompatibleAuth } from "@/hooks/useCompatibleAuth";
 import { useShoppingCart } from "@/hooks/useShoppingCart";
 import { SEO } from "@/components/SEO";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
@@ -30,7 +30,7 @@ export default function FAQ() {
   const [loading, setLoading] = useState(true);
   
   const navigate = useNavigate();
-  const { user, userProfile, handleLogout, isLoading: authLoading } = useAuthUser();
+  const { user, userProfile, handleLogout, handleProfileUpdated, isLoading } = useCompatibleAuth();
   const { cartItems, toggleCart } = useShoppingCart();
 
   useEffect(() => {
@@ -120,7 +120,7 @@ export default function FAQ() {
         user={user}
         userProfile={userProfile}
         cartItems={cartItems}
-        isLoading={authLoading}
+        isLoading={isLoading}
         onLogout={handleLogout}
         onToggleCart={toggleCart}
       />

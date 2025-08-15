@@ -4,7 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useUserRoles } from '@/hooks/useUserRoles';
-import { useAuthUser } from '@/hooks/useAuthUser';
+import { useCompatibleAuth } from '@/hooks/useCompatibleAuth';
 import { useSearchDebounce } from '@/hooks/useSearchDebounce';
 import { GlobalSearchBar } from '@/components/search/GlobalSearchBar';
 import { UserForm } from './users/UserForm';
@@ -20,7 +20,7 @@ export const UserManagementTab = () => {
   const [loading, setLoading] = useState(true);
   const [isDataReady, setIsDataReady] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const { user: currentUser } = useAuthUser();
+  const { user: currentUser } = useCompatibleAuth();
   const { isSuperAdmin, isLoading: rolesLoading } = useUserRoles();
   const { toast } = useToast();
   

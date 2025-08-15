@@ -5,7 +5,7 @@ import { MyAppointments } from '@/components/appointments/MyAppointments';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useAuthUser } from '@/hooks/useAuthUser';
+import { useCompatibleAuth } from '@/hooks/useCompatibleAuth';
 const Appointments = () => {
   const {
     user,
@@ -13,7 +13,7 @@ const Appointments = () => {
     isLoading,
     handleLogout,
     handleProfileUpdated
-  } = useAuthUser();
+  } = useCompatibleAuth();
   return <div className="min-h-screen bg-gradient-to-br from-blue-50 via-green-50 to-yellow-50">
       <Header user={user} userProfile={userProfile} cartItems={[]} isLoading={isLoading} onLogout={handleLogout} onToggleCart={() => {}} onProfileUpdated={handleProfileUpdated} />
       

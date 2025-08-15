@@ -21,8 +21,8 @@ export const useSimpleAuth = () => {
       try {
         console.log('🔐 SIMPLE AUTH: Initializing...');
         
-        // Clear any corrupted session data first
-        clearCorruptedSessions();
+        // Only clear corrupted data if there's an actual issue
+        // Don't preemptively clear working sessions
         
         // Set up auth state listener
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -79,8 +79,8 @@ export const useSimpleAuth = () => {
     try {
       console.log('🔐 SIMPLE AUTH: Signing in user:', email);
       
-      // Clear any existing corrupted data
-      clearCorruptedSessions();
+      // Don't preemptively clear sessions on sign in
+      // Let the auth flow handle session management
       
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
@@ -107,8 +107,8 @@ export const useSimpleAuth = () => {
     try {
       console.log('🔐 SIMPLE AUTH: Signing up user:', email);
       
-      // Clear any existing corrupted data
-      clearCorruptedSessions();
+      // Don't preemptively clear sessions on sign up
+      // Let the auth flow handle session management
       
       const redirectUrl = `${window.location.origin}/`;
       

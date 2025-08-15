@@ -3,34 +3,35 @@ import { User, Session } from '@supabase/supabase-js';
 import { useSessionManager } from '@/contexts/SessionManagerContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
-import { useSessionValidation } from '@/hooks/useSessionValidation';
+import { useOptimizedSessionValidation } from '@/hooks/useOptimizedSessionValidation';
 import { useSimpleAuth } from '@/hooks/useSimpleAuth';
 import { validateSessionIntegrity, clearCorruptedSessions } from '@/utils/sessionCleanup';
 
 export const useMultiUserAuth = () => {
-  // Check session integrity first - if corrupted, fall back to simple auth
-  const isSessionValid = validateSessionIntegrity();
-  const simpleAuth = useSimpleAuth();
-  
-  // Get session manager with safety check
+  // Get session manager with safety check - no fallback to prevent conflicts
   let sessionManager;
   try {
     sessionManager = useSessionManager();
   } catch (error) {
-    console.warn('🔐 SessionManager not available, falling back to simple auth');
+    console.warn('🔐 SessionManager not available, using fallback');
+    // Return minimal fallback without competing auth systems
     return {
-      ...simpleAuth,
-      // Add multi-user specific methods that redirect to simple auth
+      user: null,
+      session: null,
+      userProfile: null,
+      isLoading: false,
+      sessions: [],
+      activeSession: null,
+      activeSessionId: null,
+      signIn: async () => ({ data: null, error: new Error('Session manager not available') }),
+      signUp: async () => ({ data: null, error: new Error('Session manager not available') }),
+      signOut: async () => {},
+      signOutAll: async () => {},
       switchToSession: () => {},
-      signOutAll: simpleAuth.signOut,
       fetchUserProfile: async () => null,
       hasMultipleSessions: false,
-      sessionCount: simpleAuth.user ? 1 : 0,
-      userProfile: null,
-      getCurrentSession: () => simpleAuth.activeSession,
-      getCurrentUser: () => simpleAuth.user,
-      getCurrentUserProfile: () => null,
-      getSupabaseClient: () => simpleAuth.supabaseClient
+      sessionCount: 0,
+      supabaseClient: supabase
     };
   }
   
@@ -48,7 +49,7 @@ export const useMultiUserAuth = () => {
   
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
-  const { validateSession } = useSessionValidation();
+  const { validateSession } = useOptimizedSessionValidation();
   
   // Only fallback to simple auth if there's no context at all - be more permissive for initialization
   if (!sessionManager || !addSession) {
@@ -79,25 +80,29 @@ export const useMultiUserAuth = () => {
       initialized = true;
       
       try {
-        // Check session integrity first
-        if (!validateSessionIntegrity()) {
-          console.warn('🔐 Session integrity check failed, clearing corrupted data');
-          clearCorruptedSessions();
-        }
+        // Only check session integrity once on initialization, not repeatedly
+        console.log('🔐 MULTI-USER AUTH: Initializing authentication...');
         
-        // Set up auth state listener with circuit breaker
+        // Set up auth state listener with improved debouncing
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
           (event, session) => {
             const now = Date.now();
             
-            // Circuit breaker: prevent rapid successive auth events
-            if (now - lastAuthEventTime.current < authEventDebounceMs) {
-              console.log('🔐 Auth event debounced, skipping:', event);
+            // Improved circuit breaker: only block rapid identical events
+            if (authOperationInProgress.current && event !== 'TOKEN_REFRESHED') {
+              console.log('🔐 Auth operation in progress, skipping:', event);
               return;
             }
             
-            if (authOperationInProgress.current) {
-              console.log('🔐 Auth operation in progress, skipping:', event);
+            // Allow token refresh events through
+            if (event === 'TOKEN_REFRESHED') {
+              return;
+            }
+            
+            // Debounce only for non-critical events
+            if (event !== 'SIGNED_IN' && event !== 'SIGNED_OUT' && 
+                now - lastAuthEventTime.current < authEventDebounceMs) {
+              console.log('🔐 Auth event debounced, skipping:', event);
               return;
             }
             
@@ -108,18 +113,16 @@ export const useMultiUserAuth = () => {
               console.log('🔐 Auth state change: user signed out');
               authOperationInProgress.current = true;
               
-              setTimeout(() => {
-                try {
-                  // Force clear all sessions on sign out
-                  localStorage.removeItem('wmh_sessions');
-                  localStorage.removeItem('wmh_active_session');
-                  console.log('🔐 Cleared session storage on sign out');
-                } catch (error) {
-                  console.error('🔐 Error clearing session storage:', error);
-                } finally {
-                  authOperationInProgress.current = false;
-                }
-              }, 100);
+              // Use immediate cleanup instead of setTimeout to prevent race conditions
+              try {
+                localStorage.removeItem('wmh_sessions');
+                localStorage.removeItem('wmh_active_session');
+                console.log('🔐 Cleared session storage on sign out');
+              } catch (error) {
+                console.error('🔐 Error clearing session storage:', error);
+              } finally {
+                authOperationInProgress.current = false;
+              }
               return;
             }
             
@@ -164,7 +167,7 @@ export const useMultiUserAuth = () => {
           
           if (error) {
             console.error('🔐 Error getting session:', error);
-            clearCorruptedSessions();
+            // Don't immediately clear sessions on error - could be temporary network issue
           } else if (session?.user) {
             const storedSessions = localStorage.getItem('wmh_sessions');
             const existingSessions = storedSessions ? JSON.parse(storedSessions) : [];
@@ -174,22 +177,25 @@ export const useMultiUserAuth = () => {
               try {
                 authOperationInProgress.current = true;
                 await addSession(session.user, session);
-              } catch (error) {
-                console.error('🔐 Error adding session during initialization:', error);
-                clearCorruptedSessions();
-              } finally {
+                } catch (error) {
+                  console.error('🔐 Error adding session during initialization:', error);
+                  // Don't clear sessions on initialization error - let user retry
+                } finally {
                 authOperationInProgress.current = false;
               }
             }
           }
         } catch (error) {
           console.error('🔐 Session retrieval failed:', error);
-          clearCorruptedSessions();
+          // Don't clear sessions on retrieval failure - could be temporary
         }
         
       } catch (error) {
         console.error('Error initializing auth:', error);
-        clearCorruptedSessions();
+        // Only clear sessions if there's a critical initialization failure
+        if (error.message?.includes('corrupt') || error.message?.includes('invalid')) {
+          clearCorruptedSessions();
+        }
       } finally {
         setIsLoading(false);
       }

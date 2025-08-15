@@ -158,13 +158,13 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
 
     loadSessions();
     
-    // Start continuous storage integrity monitoring
+    // Reduce storage integrity monitoring frequency to prevent performance issues
     storageValidationInterval.current = setInterval(() => {
       const isIntegrityOk = checkStorageIntegrity();
       if (isIntegrityOk) {
         cleanupOrphanedStorage();
       }
-    }, 5 * 60 * 1000); // Check every 5 minutes
+    }, 15 * 60 * 1000); // Check every 15 minutes instead of 5
     
     return () => {
       if (storageValidationInterval.current) {

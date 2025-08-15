@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { useOptimizedSessionValidation } from '@/hooks/useOptimizedSessionValidation';
 import { useSimpleAuth } from '@/hooks/useSimpleAuth';
-import { validateSessionIntegrity, clearCorruptedSessions } from '@/utils/sessionCleanup';
+import { validateSessionIntegrity, clearCorruptedSessions, detectAndClearStaleSession } from '@/utils/sessionCleanup';
 
 export const useMultiUserAuth = () => {
   // Get session manager with safety check - no fallback to prevent conflicts
@@ -80,8 +80,14 @@ export const useMultiUserAuth = () => {
       initialized = true;
       
       try {
-        // Only check session integrity once on initialization, not repeatedly
         console.log('🔐 MULTI-USER AUTH: Initializing authentication...');
+        
+        // Perform stale session detection and cleanup before initialization
+        const hasValidSession = await detectAndClearStaleSession();
+        
+        if (!hasValidSession) {
+          console.log('🔐 MULTI-USER AUTH: Stale sessions cleared, continuing with fresh state');
+        }
         
         // Set up auth state listener with improved debouncing
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -161,13 +167,16 @@ export const useMultiUserAuth = () => {
         // CRITICAL: Assign the subscription object to prevent null reference error
         authSubscription = subscription;
 
-        // Then check for existing session with error handling
+        // Then check for existing session with error handling - only after cleanup
         try {
           const { data: { session }, error } = await supabase.auth.getSession();
           
           if (error) {
             console.error('🔐 Error getting session:', error);
-            // Don't immediately clear sessions on error - could be temporary network issue
+            // Clear corrupted sessions if there's an auth error
+            if (error.message?.includes('invalid') || error.message?.includes('expired')) {
+              clearCorruptedSessions();
+            }
           } else if (session?.user) {
             const storedSessions = localStorage.getItem('wmh_sessions');
             const existingSessions = storedSessions ? JSON.parse(storedSessions) : [];
@@ -179,7 +188,8 @@ export const useMultiUserAuth = () => {
                 await addSession(session.user, session);
                 } catch (error) {
                   console.error('🔐 Error adding session during initialization:', error);
-                  // Don't clear sessions on initialization error - let user retry
+                  // Clear sessions on initialization error to prevent loops
+                  clearCorruptedSessions();
                 } finally {
                 authOperationInProgress.current = false;
               }
@@ -187,15 +197,14 @@ export const useMultiUserAuth = () => {
           }
         } catch (error) {
           console.error('🔐 Session retrieval failed:', error);
-          // Don't clear sessions on retrieval failure - could be temporary
+          // Clear sessions on critical retrieval failure
+          clearCorruptedSessions();
         }
         
       } catch (error) {
         console.error('Error initializing auth:', error);
-        // Only clear sessions if there's a critical initialization failure
-        if (error.message?.includes('corrupt') || error.message?.includes('invalid')) {
-          clearCorruptedSessions();
-        }
+        // Clear sessions on any critical initialization failure
+        clearCorruptedSessions();
       } finally {
         setIsLoading(false);
       }

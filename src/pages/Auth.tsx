@@ -11,6 +11,7 @@ import { AuthNavigation } from '@/components/auth/AuthNavigation';
 import { UserWelcome } from '@/components/auth/UserWelcome';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 const Auth = () => {
   const [isSignUp, setIsSignUp] = useState(false);
@@ -57,19 +58,40 @@ const Auth = () => {
       return;
     }
     
-    // If user is already logged in and not in add user mode, redirect
+    // Only redirect if we have a valid authenticated user AND all checks are complete
+    // This prevents premature redirects from corrupted sessions
     if (user && !authLoading && !rolesLoading) {
-      console.log('🔐 AUTH PAGE: User already logged in, redirecting...');
+      console.log('🔐 AUTH PAGE: User detected, validating session before redirect...');
       
-      setTimeout(() => {
-        if (isAdmin) {
-          console.log('🔐 AUTH PAGE: Redirecting admin to /admin');
-          navigate('/admin');
-        } else {
-          console.log('🔐 AUTH PAGE: Redirecting user to /');
-          navigate('/');
+      // Add a small delay to ensure session validation is complete
+      // and prevent race conditions with session cleanup
+      setTimeout(async () => {
+        try {
+          // Double-check that the user session is still valid
+          const { data: { user: currentUser }, error } = await supabase.auth.getUser();
+          
+          if (currentUser && !error) {
+            console.log('🔐 AUTH PAGE: Session validated, redirecting authenticated user');
+            if (isAdmin) {
+              console.log('🔐 AUTH PAGE: Redirecting admin to /admin');
+              navigate('/admin');
+            } else {
+              console.log('🔐 AUTH PAGE: Redirecting user to /');
+              navigate('/');
+            }
+          } else {
+            console.log('🔐 AUTH PAGE: Session invalid, clearing corrupted data');
+            // Clear corrupted session data if validation fails
+            localStorage.removeItem('wmh_sessions');
+            localStorage.removeItem('wmh_active_session');
+          }
+        } catch (error) {
+          console.error('🔐 AUTH PAGE: Session validation failed:', error);
+          // Clear potentially corrupted session data
+          localStorage.removeItem('wmh_sessions');
+          localStorage.removeItem('wmh_active_session');
         }
-      }, 100);
+      }, 300); // Increased delay to ensure proper validation
     }
   }, [user, isAdmin, authLoading, rolesLoading, searchParams, navigate, isAddUserMode]);
 

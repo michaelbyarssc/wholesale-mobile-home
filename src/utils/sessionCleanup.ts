@@ -63,7 +63,7 @@ export const resetAuthenticationState = () => {
   }
 };
 
-export const validateSessionIntegrity = () => {
+export const validateSessionIntegrity = async () => {
   try {
     const sessions = localStorage.getItem('wmh_sessions');
     const activeSessionId = localStorage.getItem('wmh_active_session');
@@ -90,11 +90,75 @@ export const validateSessionIntegrity = () => {
         console.warn('🔐 VALIDATE: Invalid session structure');
         return false;
       }
+      
+      // Check if session tokens are expired
+      if (session.session?.expires_at) {
+        const expiresAt = new Date(session.session.expires_at);
+        const now = new Date();
+        if (expiresAt <= now) {
+          console.warn('🔐 VALIDATE: Session expired for user:', session.user.email);
+          return false;
+        }
+      }
     }
     
     return true;
   } catch (error) {
     console.error('🔐 VALIDATE: Error validating session integrity:', error);
+    return false;
+  }
+};
+
+export const validateServerSession = async () => {
+  try {
+    console.log('🔐 SERVER VALIDATE: Checking server-side session validity');
+    
+    // Import here to avoid circular dependencies
+    const { supabase } = await import('@/integrations/supabase/client');
+    
+    const { data: { user }, error } = await supabase.auth.getUser();
+    
+    if (error || !user) {
+      console.warn('🔐 SERVER VALIDATE: Server session invalid:', error?.message);
+      return false;
+    }
+    
+    console.log('🔐 SERVER VALIDATE: Server session valid for user:', user.email);
+    return true;
+  } catch (error) {
+    console.error('🔐 SERVER VALIDATE: Error validating server session:', error);
+    return false;
+  }
+};
+
+export const detectAndClearStaleSession = async () => {
+  try {
+    console.log('🔐 STALE CHECK: Detecting stale sessions');
+    
+    // Check if local session exists
+    const hasLocalSession = localStorage.getItem('wmh_sessions') || localStorage.getItem('wmh_active_session');
+    
+    if (!hasLocalSession) {
+      console.log('🔐 STALE CHECK: No local sessions found');
+      return true;
+    }
+    
+    // Validate both local and server integrity
+    const localIntegrity = await validateSessionIntegrity();
+    const serverValidity = await validateServerSession();
+    
+    if (!localIntegrity || !serverValidity) {
+      console.warn('🔐 STALE CHECK: Detected stale/corrupted session, clearing...');
+      clearCorruptedSessions();
+      return false;
+    }
+    
+    console.log('🔐 STALE CHECK: Session integrity validated');
+    return true;
+  } catch (error) {
+    console.error('🔐 STALE CHECK: Error during stale session detection:', error);
+    // Clear on any validation error to be safe
+    clearCorruptedSessions();
     return false;
   }
 };

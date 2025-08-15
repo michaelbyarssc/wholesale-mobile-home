@@ -20,6 +20,8 @@ import { LoadingSpinner } from '@/components/layout/LoadingSpinner';
 import { HeaderSkeleton } from '@/components/loading/HeaderSkeleton';
 import { InstallPrompt } from '@/components/pwa/InstallPrompt';
 import { OfflineIndicator } from '@/components/pwa/OfflineIndicator';
+import { StickyMobileNav } from '@/components/mobile/StickyMobileNav';
+import { QuickActionButtons } from '@/components/mobile/QuickActionButtons';
 
 
 import { TestimonialForm } from '@/components/reviews/TestimonialForm';
@@ -123,27 +125,30 @@ const Index = () => {
   console.log('Index component: Rendering main content');
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-green-50 to-yellow-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-green-50 to-yellow-50 mobile-optimized">
       <SEO 
         title="Wholesale Mobile Homes for Sale | Quality Homes at Best Prices"
         description="Browse quality mobile homes at wholesale prices. Get instant quotes, view detailed specs, and save thousands. Clayton, Champion, and Fleetwood homes available with financing options."
         keywords="mobile homes for sale, wholesale mobile homes, manufactured homes, modular homes, clayton homes, champion homes, fleetwood homes, mobile home financing, affordable housing, single wide, double wide"
         structuredData={homepageStructuredData}
       />
+      
       {/* PWA Components */}
       <OfflineIndicator variant="alert" />
       
+      {/* Main Header */}
       <MultiUserHeader
         cartItems={cartItems}
         isLoading={isLoading}
         onToggleCart={toggleCart}
       />
 
-
+      {/* Mobile Quick Action Buttons */}
+      <QuickActionButtons />
 
       {/* Top competitive pricing message */}
-      <div className="bg-green-600 text-white py-4 text-center">
-        <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold">
+      <div className="bg-green-600 text-white py-fluid-sm text-center mobile-safe-area">
+        <h2 className="text-fluid-lg sm:text-fluid-xl lg:text-fluid-2xl font-bold px-fluid-sm leading-tight">
           The absolute best deal is always ensured with our verified price match guarantee!
         </h2>
       </div>
@@ -151,11 +156,11 @@ const Index = () => {
       <HeroSection user={user} />
 
       {/* PWA Install Prompt */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="container mx-auto mobile-container py-fluid-sm">
         <InstallPrompt variant="inline" />
       </div>
 
-      <div id="mobile-homes">
+      <div id="mobile-homes" className="scroll-mt-20">
         <MobileHomesShowcase 
           user={user} 
           {...cartProps}
@@ -255,6 +260,13 @@ const Index = () => {
       <MultiUserSessionTest />
 
       <Footer />
+
+      {/* Mobile Sticky Navigation */}
+      <StickyMobileNav 
+        user={user}
+        cartCount={cartItems.length}
+        onCartToggle={toggleCart}
+      />
     </div>
   );
 };

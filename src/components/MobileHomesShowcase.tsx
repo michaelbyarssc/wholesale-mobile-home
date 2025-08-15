@@ -346,106 +346,106 @@ export const MobileHomesShowcase = ({
     const homeFeatures = getHomeFeatures(home.features);
     
     return (
-      <Card key={home.id} className="overflow-hidden hover:shadow-lg transition-shadow group">
-        <CardHeader className="pb-4">
-          <div className="flex justify-between items-start">
+      <Card key={home.id} className="overflow-hidden hover:shadow-xl transition-all duration-300 group mobile-tap border-0 shadow-md hover:scale-[1.02] bg-white">
+        <CardHeader className="pb-fluid-xs">
+          <div className="flex justify-between items-start gap-fluid-xs">
             <CardTitle 
-              className="text-xl font-bold text-gray-900 cursor-pointer hover:text-blue-600 transition-colors"
+              className="text-fluid-lg sm:text-fluid-xl font-bold text-gray-900 cursor-pointer hover:text-blue-600 transition-colors line-clamp-2 flex-1"
               onClick={() => window.open(`/home/${home.id}`, '_blank')}
             >
               {getHomeName(home)}
             </CardTitle>
-            <div className="flex items-center gap-2">
-              <Badge variant="secondary" className="bg-blue-100 text-blue-800">
-                {home.series} Series
+            <div className="flex flex-col gap-1 flex-shrink-0">
+              <Badge variant="secondary" className="bg-blue-100 text-blue-800 text-xs sm:text-sm">
+                {home.series}
               </Badge>
               {user && isInCart && (
-                <Badge variant="default" className="bg-green-100 text-green-800">
+                <Badge variant="default" className="bg-green-100 text-green-800 text-xs">
                   In Cart
                 </Badge>
               )}
             </div>
           </div>
           {home.description && (
-            <p className="text-gray-600 text-sm mt-2">{home.description}</p>
+            <p className="text-gray-600 text-fluid-sm mt-fluid-xs line-clamp-2">{home.description}</p>
           )}
           
-          {/* Pricing Display Logic - Always show retail price for logged in users */}
+          {/* Enhanced Mobile-First Pricing Display */}
           {user ? (
-            // Logged in users always see retail price when available
-            <div className="mt-2 space-y-1">
+            <div className="mt-fluid-xs space-y-1">
               {home.retail_price && (
                 <div>
                   <p className="text-xs text-gray-400 uppercase tracking-wide">Retail Price</p>
-                  <span className="text-lg text-gray-400 line-through">
+                  <span className="text-fluid-base text-gray-400 line-through">
                     {formatPrice(home.retail_price)}
                   </span>
                 </div>
               )}
               <div>
-                <p className="text-sm text-green-600 font-medium">Your Price</p>
+                <p className="text-fluid-sm text-green-600 font-medium">Your Price</p>
                  {!pricingLoading ? (
-                   <>
-                     <span className="text-2xl font-bold text-green-600">
-                       {formatPrice(getHomePrice(home.id))}
-                     </span>
-                     {home.retail_price && (
-                       <p className="text-sm text-green-600 font-medium mt-1">
-                         You Save: {formatPrice(home.retail_price - getHomePrice(home.id))}
-                       </p>
-                     )}
-                  </>
+                  <div className="space-y-1">
+                    <span className="text-fluid-xl sm:text-fluid-2xl font-bold text-green-600 block">
+                      {formatPrice(getHomePrice(home.id))}
+                    </span>
+                    {home.retail_price && (
+                      <p className="text-fluid-sm text-green-600 font-medium">
+                        You Save: {formatPrice(home.retail_price - getHomePrice(home.id))}
+                      </p>
+                    )}
+                  </div>
                 ) : (
-                  <div className="flex items-center">
+                  <div className="flex items-center py-2">
                     <LoadingSpinner size="sm" className="mr-2" />
-                    <span className="text-sm text-gray-500 italic">Calculating...</span>
+                    <span className="text-fluid-sm text-gray-500 italic">Calculating...</span>
                   </div>
                 )}
               </div>
             </div>
           ) : (
-            // Non-logged in users see retail price or login prompt
             home.retail_price ? (
-              <div className="mt-2">
-                <p className="text-sm text-blue-600 mb-1">Starting at:</p>
-                <span className="text-2xl font-bold text-blue-600">{formatPrice(home.retail_price)}</span>
-                <p className="text-sm text-gray-500 mt-1">
-                  <span className="text-blue-600 font-medium cursor-pointer hover:underline" onClick={() => navigate('/auth')}>Login to see your price</span>
+              <div className="mt-fluid-xs">
+                <p className="text-fluid-sm text-blue-600 mb-1">Starting at:</p>
+                <span className="text-fluid-xl sm:text-fluid-2xl font-bold text-blue-600">{formatPrice(home.retail_price)}</span>
+                <p className="text-fluid-sm text-gray-500 mt-1">
+                  <span className="text-blue-600 font-medium cursor-pointer hover:underline touch-manipulation" onClick={() => navigate('/auth')}>Login to see your price</span>
                 </p>
               </div>
             ) : (
-              <div className="mt-2">
-                <span className="text-lg text-gray-500 italic">Login to view pricing</span>
+              <div className="mt-fluid-xs">
+                <span className="text-fluid-base text-gray-500 italic">Login to view pricing</span>
               </div>
             )
           )}
         </CardHeader>
         
-        <CardContent className="space-y-4">
-          {/* Home Image Carousel */}
-          <MobileHomeImageCarousel 
-            images={homeImageList} 
-            homeModel={getHomeName(home)}
-          />
+        <CardContent className="space-y-fluid-sm">
+          {/* Home Image Carousel - Mobile optimized */}
+          <div className="relative">
+            <MobileHomeImageCarousel 
+              images={homeImageList} 
+              homeModel={getHomeName(home)}
+            />
+          </div>
 
-          {/* Specifications Grid - Mobile Optimized */}
-          <div className="space-y-3 sm:space-y-4">
-            {/* Top row - Square footage and dimensions on mobile stack */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-              <div className="flex flex-col items-center text-center p-3 bg-gray-50 rounded-lg">
-                <div className="flex items-center space-x-1 text-gray-600 mb-2">
+          {/* Enhanced Mobile-First Specifications Grid */}
+          <div className="space-y-fluid-xs">
+            {/* Top row - Square footage and dimensions optimized for mobile */}
+            <div className="grid grid-cols-1 xs:grid-cols-2 gap-fluid-xs">
+              <div className="flex flex-col items-center text-center p-fluid-xs bg-gray-50 rounded-lg border border-gray-100">
+                <div className="flex items-center space-x-1 text-gray-600 mb-1">
                   <Maximize className="h-4 w-4 text-blue-600" />
-                  <span className="text-sm font-medium">Square Footage</span>
+                  <span className="text-fluid-xs font-medium">Sq Ft</span>
                 </div>
-                <span className="font-bold text-lg text-gray-900">{home.square_footage || 'N/A'} sq ft</span>
+                <span className="font-bold text-fluid-sm text-gray-900">{home.square_footage || 'N/A'}</span>
               </div>
               
-              <div className="flex flex-col items-center text-center p-3 bg-gray-50 rounded-lg">
-                <div className="flex items-center space-x-1 text-gray-600 mb-2">
+              <div className="flex flex-col items-center text-center p-fluid-xs bg-gray-50 rounded-lg border border-gray-100">
+                <div className="flex items-center space-x-1 text-gray-600 mb-1">
                   <Ruler className="h-4 w-4 text-blue-600" />
-                  <span className="text-sm font-medium">Dimensions</span>
+                  <span className="text-fluid-xs font-medium">Size</span>
                 </div>
-                <span className="font-bold text-lg text-gray-900">
+                <span className="font-bold text-fluid-sm text-gray-900">
                   {home.length_feet && home.width_feet 
                     ? `${home.width_feet}' × ${home.length_feet}'` 
                     : 'N/A'}
@@ -454,78 +454,85 @@ export const MobileHomesShowcase = ({
             </div>
             
             {/* Bottom row - Bedrooms and bathrooms */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="flex items-center justify-center space-x-2 p-3 bg-blue-50 rounded-lg">
+            <div className="grid grid-cols-2 gap-fluid-xs">
+              <div className="flex items-center justify-center space-x-2 p-fluid-xs bg-blue-50 rounded-lg border border-blue-100">
                 <Bed className="h-4 w-4 text-blue-600 flex-shrink-0" />
                 <div className="text-center">
-                  <span className="text-xs text-gray-600 block">Bedrooms</span>
-                  <span className="font-bold text-gray-900">{home.bedrooms || 'N/A'}</span>
+                  <span className="text-xs text-gray-600 block">Bed</span>
+                  <span className="font-bold text-fluid-sm text-gray-900">{home.bedrooms || 'N/A'}</span>
                 </div>
               </div>
               
-              <div className="flex items-center justify-center space-x-2 p-3 bg-blue-50 rounded-lg">
+              <div className="flex items-center justify-center space-x-2 p-fluid-xs bg-blue-50 rounded-lg border border-blue-100">
                 <Bath className="h-4 w-4 text-blue-600 flex-shrink-0" />
                 <div className="text-center">
-                  <span className="text-xs text-gray-600 block">Bathrooms</span>
-                  <span className="font-bold text-gray-900">{home.bathrooms || 'N/A'}</span>
+                  <span className="text-xs text-gray-600 block">Bath</span>
+                  <span className="font-bold text-fluid-sm text-gray-900">{home.bathrooms || 'N/A'}</span>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Features */}
+          {/* Enhanced Mobile Features */}
           {homeFeatures.length > 0 && (
             <div>
-              <h4 className="font-semibold text-gray-900 mb-2 flex items-center">
+              <h4 className="font-semibold text-gray-900 mb-fluid-xs flex items-center text-fluid-sm">
                 <Home className="h-4 w-4 mr-2 text-blue-600" />
                 Key Features
               </h4>
               <div className="grid grid-cols-1 gap-1">
-                {homeFeatures.map((feature, index) => (
-                  <div key={index} className="flex items-center text-sm text-gray-600">
-                    <span className="w-2 h-2 bg-blue-600 rounded-full mr-2"></span>
-                    {feature}
+                {homeFeatures.slice(0, 4).map((feature, index) => (
+                  <div key={index} className="flex items-center text-fluid-xs text-gray-600">
+                    <span className="w-1.5 h-1.5 bg-blue-600 rounded-full mr-2 flex-shrink-0"></span>
+                    <span className="line-clamp-1">{feature}</span>
                   </div>
                 ))}
+                {homeFeatures.length > 4 && (
+                  <div className="text-fluid-xs text-blue-600 font-medium mt-1">
+                    +{homeFeatures.length - 4} more features
+                  </div>
+                )}
               </div>
             </div>
           )}
 
+          {/* Enhanced Mobile Action Buttons */}
+          <div className="space-y-fluid-xs relative z-20">
+            {/* Top row - Wishlist and Compare */}
+            <div className="grid grid-cols-2 gap-fluid-xs">
+              <Button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  toggleWishlist(home);
+                }}
+                variant="outline"
+                size="sm"
+                className={`flex items-center justify-center gap-1 text-fluid-xs transition-all duration-200 ${
+                  isInWishlist(home.id) 
+                    ? 'text-red-500 border-red-200 hover:border-red-300 bg-red-50' 
+                    : 'hover:text-red-500 hover:bg-red-50'
+                }`}
+              >
+                <Heart className={`h-3 w-3 ${isInWishlist(home.id) ? 'fill-current' : ''}`} />
+                <span className="hidden xs:inline">{isInWishlist(home.id) ? 'Saved' : 'Wishlist'}</span>
+              </Button>
 
-          {/* Action Buttons */}
-          <div className="space-y-2 relative z-20">
-            {/* Wishlist Button - Always visible */}
-            <Button
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                toggleWishlist(home);
-              }}
-              variant="outline"
-              className={`w-full flex items-center gap-2 ${
-                isInWishlist(home.id) 
-                  ? 'text-red-500 border-red-200 hover:border-red-300' 
-                  : 'hover:text-red-500'
-              }`}
-            >
-              <Heart className={`h-4 w-4 ${isInWishlist(home.id) ? 'fill-current' : ''}`} />
-              {isInWishlist(home.id) ? 'Saved to Wishlist' : 'Add to Wishlist'}
-            </Button>
-
-            {/* Compare Button - Always visible */}
-            <Button
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                addToComparison(home);
-              }}
-              variant="outline"
-              className="w-full flex items-center gap-2"
-              disabled={isInComparison(home.id)}
-            >
-              <Scale className="h-4 w-4" />
-              {isInComparison(home.id) ? 'Added to Compare' : 'Compare'}
-            </Button>
+              <Button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  addToComparison(home);
+                }}
+                variant="outline"
+                size="sm"
+                className="flex items-center justify-center gap-1 text-fluid-xs transition-all duration-200"
+                disabled={isInComparison(home.id)}
+              >
+                <Scale className="h-3 w-3" />
+                <span className="hidden xs:inline">{isInComparison(home.id) ? 'Added' : 'Compare'}</span>
+              </Button>
+            </div>
 
             {/* Quick View Button */}
             <MobileHomeQuickView
@@ -542,14 +549,15 @@ export const MobileHomesShowcase = ({
             >
               <Button
                 variant="outline"
-                className="w-full flex items-center gap-2"
+                size="sm"
+                className="w-full flex items-center justify-center gap-2 text-fluid-sm mobile-button transition-all duration-200 hover:bg-blue-50 hover:border-blue-300"
               >
                 <Eye className="h-4 w-4" />
                 Quick View
               </Button>
             </MobileHomeQuickView>
 
-            {/* Add to Cart Button - Only show for logged in users */}
+            {/* Primary Action Button - Enhanced for mobile */}
             {user ? (
               <Button 
                 onClick={(e) => {
@@ -558,11 +566,14 @@ export const MobileHomesShowcase = ({
                   console.log('🔍 Button clicked for home:', home.id);
                   handleAddToCart(home);
                 }}
-                className="w-full"
-                variant={isInCart ? "outline" : "default"}
+                className={`w-full mobile-button text-fluid-sm font-semibold transition-all duration-200 shadow-md ${
+                  isInCart 
+                    ? 'bg-green-600 hover:bg-green-700 text-white' 
+                    : 'bg-blue-600 hover:bg-blue-700 text-white hover:shadow-lg'
+                }`}
                 type="button"
               >
-                {isInCart ? 'Update in Cart' : 'Add to Cart'}
+                {isInCart ? 'Update Cart' : 'Add to Cart'}
               </Button>
             ) : (
               <Button 
@@ -571,8 +582,7 @@ export const MobileHomesShowcase = ({
                   e.stopPropagation();
                   navigate('/auth');
                 }}
-                className="w-full"
-                variant="outline"
+                className="w-full mobile-button text-fluid-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white transition-all duration-200 shadow-md hover:shadow-lg"
                 type="button"
               >
                 Login to Add to Cart
@@ -649,71 +659,78 @@ export const MobileHomesShowcase = ({
   }
 
   return (
-    <section className="py-20 bg-amber-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-8 sm:mb-16">
-          <h3 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2 sm:mb-4">
+    <section className="py-fluid-lg sm:py-fluid-xl bg-amber-50 mobile-optimized">
+      <div className="container mx-auto mobile-container">
+        {/* Mobile-optimized header */}
+        <div className="text-center mb-fluid-md sm:mb-fluid-lg">
+          <h3 className="text-fluid-2xl sm:text-fluid-3xl font-bold text-gray-900 mb-fluid-sm leading-tight">
             Our Mobile Home Models
           </h3>
-          <p className="text-base sm:text-lg text-gray-600 max-w-2xl mx-auto px-4">
+          <p className="text-fluid-sm sm:text-fluid-base text-gray-600 max-w-2xl mx-auto leading-relaxed">
             Explore our premium collection of mobile homes featuring modern designs, 
             quality construction, and thoughtful amenities for comfortable living.
             {!user && (
-              <span className="block mt-2 text-blue-600 font-medium text-sm sm:text-base">
+              <span className="block mt-fluid-xs text-blue-600 font-medium">
                 Login to view your personalized pricing and add items to your cart.
               </span>
             )}
           </p>
         </div>
 
-        {/* Saved Searches - Only show when user has saved homes */}
+        {/* Saved Searches - Mobile optimized */}
         {wishlistCount > 0 && (
-          <SavedSearches
-            currentFilters={filters}
-            currentSearchQuery={filters.searchQuery}
-            onApplySearch={handleApplySearch}
-            resultCount={filteredHomes.length}
-          />
+          <div className="mb-fluid-md">
+            <SavedSearches
+              currentFilters={filters}
+              currentSearchQuery={filters.searchQuery}
+              onApplySearch={handleApplySearch}
+              resultCount={filteredHomes.length}
+            />
+          </div>
         )}
 
-        {/* Enhanced Search & Filtering */}
+        {/* Enhanced Mobile-First Search & Filtering */}
         {isLoading ? (
           <FiltersSkeleton />
         ) : (
-          <MobileHomeFilters
-            homes={mobileHomes}
-            filters={filters}
-            onFiltersChange={setFilters}
-            isCollapsed={isFiltersCollapsed}
-            onToggleCollapse={() => setIsFiltersCollapsed(!isFiltersCollapsed)}
-            showSearch={true}
-            searchResultCount={isSearchActive ? filteredHomes.length : undefined}
-          />
+          <div className="mb-fluid-md">
+            <MobileHomeFilters
+              homes={mobileHomes}
+              filters={filters}
+              onFiltersChange={setFilters}
+              isCollapsed={isFiltersCollapsed}
+              onToggleCollapse={() => setIsFiltersCollapsed(!isFiltersCollapsed)}
+              showSearch={true}
+              searchResultCount={isSearchActive ? filteredHomes.length : undefined}
+            />
+          </div>
         )}
         
-        {/* Search Results Header - Only show when search is active */}
+        {/* Search Results Header - Mobile optimized */}
         {isSearchActive && !isLoading && (
-          <SearchResultsHeader
-            searchQuery={debouncedSearchQuery}
-            resultCount={filteredHomes.length}
-            totalCount={mobileHomes.length}
-            onClearSearch={clearSearch}
-            hasActiveFilters={hasActiveFilters}
-            onToggleFilters={() => setIsFiltersCollapsed(!isFiltersCollapsed)}
-          />
+          <div className="mb-fluid-sm">
+            <SearchResultsHeader
+              searchQuery={debouncedSearchQuery}
+              resultCount={filteredHomes.length}
+              totalCount={mobileHomes.length}
+              onClearSearch={clearSearch}
+              hasActiveFilters={hasActiveFilters}
+              onToggleFilters={() => setIsFiltersCollapsed(!isFiltersCollapsed)}
+            />
+          </div>
         )}
 
-        {/* Loading State */}
+        {/* Loading State - Mobile optimized */}
         {isLoading ? (
-          <div className="space-y-6">
+          <div className="space-y-fluid-md">
             <TabsSkeleton />
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 sm:gap-8">
+            <div className="mobile-grid-1 sm:mobile-grid-2 lg:mobile-grid-3 xl:mobile-grid-4 gap-fluid-sm sm:gap-fluid-md">
               <MobileHomeCardSkeleton count={6} />
             </div>
           </div>
         ) : (
           <>
-            {/* No Results State */}
+            {/* No Results State - Mobile friendly */}
             {filteredHomes.length === 0 ? (
               isSearchActive ? (
                 <NoResultsState
@@ -723,36 +740,36 @@ export const MobileHomesShowcase = ({
                   hasActiveFilters={hasActiveFilters}
                 />
               ) : (
-                <div className="text-center py-8">
-                  <p className="text-base sm:text-lg text-gray-600">No mobile homes available for the selected filters.</p>
-                  <p className="text-sm text-gray-500 mt-2">
+                <div className="text-center py-fluid-lg">
+                  <p className="text-fluid-base text-gray-600">No mobile homes available for the selected filters.</p>
+                  <p className="text-fluid-sm text-gray-500 mt-fluid-xs">
                     Try adjusting your filter settings above.
                   </p>
                 </div>
               )
             ) : uniqueSeries.length === 0 ? (
-              <div className="text-center py-8">
-                <p className="text-base sm:text-lg text-gray-600">No mobile homes available for the selected series.</p>
-                <p className="text-sm text-gray-500 mt-2">
+              <div className="text-center py-fluid-lg">
+                <p className="text-fluid-base text-gray-600">No mobile homes available for the selected series.</p>
+                <p className="text-fluid-sm text-gray-500 mt-fluid-xs">
                   Try selecting a different series above.
                 </p>
               </div>
             ) : (
               <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <div className="flex justify-center mb-6 sm:mb-8">
+                <div className="flex justify-center mb-fluid-sm sm:mb-fluid-md">
                   <div className="w-full max-w-4xl">
-                    {/* Mobile: Horizontal scroll */}
-                    <div className="flex sm:hidden overflow-x-auto pb-2 gap-2">
+                    {/* Mobile: Enhanced horizontal scroll with better spacing */}
+                    <div className="flex sm:hidden overflow-x-auto pb-fluid-xs space-fluid-xs mobile-scroll">
                       {uniqueSeries.map((series) => {
                         const seriesHomes = filteredHomes.filter(home => home.series === series);
                         return (
                           <button
                             key={series}
                             onClick={() => setActiveTab(series)}
-                            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap touch-manipulation ${
+                            className={`mobile-button text-fluid-sm font-medium transition-all duration-200 whitespace-nowrap flex-shrink-0 ${
                               activeTab === series
-                                ? 'bg-blue-600 text-white'
-                                : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50 bg-white border border-gray-200'
+                                ? 'bg-blue-600 text-white shadow-md'
+                                : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50 bg-white border border-gray-200 shadow-sm'
                             }`}
                           >
                             {series} ({seriesHomes.length})
@@ -761,17 +778,17 @@ export const MobileHomesShowcase = ({
                       })}
                     </div>
                     
-                    {/* Desktop: Centered buttons */}
-                    <div className="hidden sm:inline-flex rounded-lg border border-gray-200 bg-white p-1 w-full justify-center">
+                    {/* Desktop: Enhanced centered buttons */}
+                    <div className="hidden sm:inline-flex rounded-xl border border-gray-200 bg-white p-1 w-full justify-center shadow-sm">
                       {uniqueSeries.map((series) => {
                         const seriesHomes = filteredHomes.filter(home => home.series === series);
                         return (
                           <button
                             key={series}
                             onClick={() => setActiveTab(series)}
-                            className={`px-4 lg:px-6 py-2 lg:py-3 rounded-md text-sm lg:text-base font-medium transition-colors touch-manipulation ${
+                            className={`px-fluid-sm lg:px-fluid-md py-fluid-xs lg:py-fluid-sm rounded-lg text-fluid-sm lg:text-fluid-base font-medium transition-all duration-200 touch-manipulation ${
                               activeTab === series
-                                ? 'bg-blue-600 text-white'
+                                ? 'bg-blue-600 text-white shadow-md'
                                 : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'
                             }`}
                           >
@@ -789,12 +806,13 @@ export const MobileHomesShowcase = ({
                   
                   return (
                     <TabsContent key={series} value={series} className="mt-0">
-                      <div className="grid gap-4 sm:gap-6 lg:gap-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                      {/* Mobile-optimized grid with better spacing */}
+                      <div className="mobile-grid-1 sm:mobile-grid-2 lg:mobile-grid-3 xl:mobile-grid-4 gap-fluid-sm sm:gap-fluid-md lg:gap-fluid-lg">
                         {seriesHomes.length > 0 ? (
                           seriesHomes.map((home, index) => renderHomeCard(home, index))
                         ) : (
-                          <div className="col-span-full text-center py-8">
-                            <p className="text-gray-500 text-sm sm:text-base">No {series} series models available for the selected width category.</p>
+                          <div className="col-span-full text-center py-fluid-lg">
+                            <p className="text-gray-500 text-fluid-sm sm:text-fluid-base">No {series} series models available for the selected width category.</p>
                           </div>
                         )}
                       </div>

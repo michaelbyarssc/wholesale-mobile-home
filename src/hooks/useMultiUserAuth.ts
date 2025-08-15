@@ -1,20 +1,20 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { User, Session } from '@supabase/supabase-js';
-import { useSessionManager } from '@/contexts/SessionManagerContext';
+import { useSingleClientSessionManager } from '@/contexts/SingleClientSessionManager';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { useOptimizedSessionValidation } from '@/hooks/useOptimizedSessionValidation';
-import { useSimpleAuth } from '@/hooks/useSimpleAuth';
+import { useTokenRefresh } from '@/hooks/useTokenRefresh';
 import { validateSessionIntegrity, clearCorruptedSessions, detectAndClearStaleSession } from '@/utils/sessionCleanup';
+import { logger } from '@/utils/logger';
 
 export const useMultiUserAuth = () => {
-  // Get session manager with safety check - no fallback to prevent conflicts
+  // Get single client session manager
   let sessionManager;
   try {
-    sessionManager = useSessionManager();
+    sessionManager = useSingleClientSessionManager();
   } catch (error) {
-    console.warn('🔐 SessionManager not available, using fallback');
-    // Return minimal fallback without competing auth systems
+    logger.warn('🔐 SingleClientSessionManager not available, using fallback');
     return {
       user: null,
       session: null,
@@ -43,21 +43,15 @@ export const useMultiUserAuth = () => {
     removeSession,
     switchToSession,
     clearAllSessions,
-    getSessionClient,
-    updateSessionProfile
+    updateSessionProfile,
+    isTokenRefreshing
   } = sessionManager;
   
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
   const { validateSession } = useOptimizedSessionValidation();
+  const { handleTokenRefreshError, silentRefresh } = useTokenRefresh();
   
-  // Only fallback to simple auth if there's no context at all - be more permissive for initialization
-  if (!sessionManager || !addSession) {
-    console.log('🔐 MULTI-USER AUTH: SessionManager not ready, initializing...');
-    // Don't immediately fallback - let the initialization process complete
-    setIsLoading(true);
-  }
-
   // Circuit breaker for preventing rapid auth operations
   const authOperationInProgress = useRef(false);
   const lastAuthEventTime = useRef(0);
@@ -67,7 +61,7 @@ export const useMultiUserAuth = () => {
   useEffect(() => {
     // Guard against missing addSession function
     if (!addSession) {
-      console.warn('🔐 MULTI-USER AUTH: addSession not available, skipping initialization');
+      logger.warn('🔐 MULTI-USER AUTH: addSession not available, skipping initialization');
       setIsLoading(false);
       return;
     }
@@ -80,52 +74,54 @@ export const useMultiUserAuth = () => {
       initialized = true;
       
       try {
-        console.log('🔐 MULTI-USER AUTH: Initializing authentication...');
+        logger.log('🔐 MULTI-USER AUTH: Initializing authentication...');
         
         // Perform stale session detection and cleanup before initialization
         const hasValidSession = await detectAndClearStaleSession();
         
         if (!hasValidSession) {
-          console.log('🔐 MULTI-USER AUTH: Stale sessions cleared, continuing with fresh state');
+          logger.log('🔐 MULTI-USER AUTH: Stale sessions cleared, continuing with fresh state');
         }
         
-        // Set up auth state listener with improved debouncing
+        // Set up auth state listener with improved error handling
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
-          (event, session) => {
+          async (event, session) => {
             const now = Date.now();
+            
+            logger.debug('🔐 Auth state change:', { event, hasSession: !!session });
             
             // Improved circuit breaker: only block rapid identical events
             if (authOperationInProgress.current && event !== 'TOKEN_REFRESHED') {
-              console.log('🔐 Auth operation in progress, skipping:', event);
+              logger.debug('🔐 Auth operation in progress, skipping:', event);
               return;
             }
             
-            // Allow token refresh events through
+            // Handle token refresh events with better error handling
             if (event === 'TOKEN_REFRESHED') {
+              logger.log('🔐 Token refreshed successfully');
               return;
             }
             
             // Debounce only for non-critical events
             if (event !== 'SIGNED_IN' && event !== 'SIGNED_OUT' && 
                 now - lastAuthEventTime.current < authEventDebounceMs) {
-              console.log('🔐 Auth event debounced, skipping:', event);
+              logger.debug('🔐 Auth event debounced, skipping:', event);
               return;
             }
             
             lastAuthEventTime.current = now;
             
-            // Handle SIGNED_OUT to properly clear sessions
+            // Handle SIGNED_OUT
             if (event === 'SIGNED_OUT') {
-              console.log('🔐 Auth state change: user signed out');
+              logger.log('🔐 Auth state change: user signed out');
               authOperationInProgress.current = true;
               
-              // Use immediate cleanup instead of setTimeout to prevent race conditions
               try {
                 localStorage.removeItem('wmh_sessions');
                 localStorage.removeItem('wmh_active_session');
-                console.log('🔐 Cleared session storage on sign out');
+                logger.log('🔐 Cleared session storage on sign out');
               } catch (error) {
-                console.error('🔐 Error clearing session storage:', error);
+                logger.error('🔐 Error clearing session storage:', error);
               } finally {
                 authOperationInProgress.current = false;
               }
@@ -141,7 +137,7 @@ export const useMultiUserAuth = () => {
               const hasExistingSession = existingSessions.some((s: any) => s.user.id === session.user.id);
               
               if (hasExistingSession) {
-                console.log('🔐 Session already exists for user, skipping add:', session.user.email);
+                logger.log('🔐 Session already exists for user, skipping add:', session.user.email);
                 authOperationInProgress.current = false;
                 return;
               }
@@ -150,16 +146,19 @@ export const useMultiUserAuth = () => {
               setTimeout(async () => {
                 try {
                   if (addSession && typeof addSession === 'function') {
-                    console.log('🔐 Auth state change: adding new session for user:', session.user.email);
+                    logger.log('🔐 Auth state change: adding new session for user:', session.user.email);
                     await addSession(session.user, session);
                   }
                 } catch (error) {
-                  console.error('🔐 Error adding session during auth state change:', error);
-                  clearCorruptedSessions();
+                  logger.error('🔐 Error adding session during auth state change:', error);
+                  // Only clear on critical errors, not network issues
+                  if (error?.message?.includes('invalid') || error?.message?.includes('expired')) {
+                    clearCorruptedSessions();
+                  }
                 } finally {
                   authOperationInProgress.current = false;
                 }
-              }, 100); // Slight delay to ensure DOM is ready
+              }, 100);
             }
           }
         );
@@ -167,44 +166,52 @@ export const useMultiUserAuth = () => {
         // CRITICAL: Assign the subscription object to prevent null reference error
         authSubscription = subscription;
 
-        // Then check for existing session with error handling - only after cleanup
+        // Then check for existing session with better error handling
         try {
           const { data: { session }, error } = await supabase.auth.getSession();
           
           if (error) {
-            console.error('🔐 Error getting session:', error);
-            // Clear corrupted sessions if there's an auth error
+            logger.error('🔐 Error getting session:', error);
+            // Only clear on confirmed auth issues, not network errors
             if (error.message?.includes('invalid') || error.message?.includes('expired')) {
               clearCorruptedSessions();
+            } else {
+              logger.warn('🔐 Session retrieval error, but not clearing sessions:', error.message);
             }
           } else if (session?.user) {
             const storedSessions = localStorage.getItem('wmh_sessions');
             const existingSessions = storedSessions ? JSON.parse(storedSessions) : [];
             
             if (existingSessions.length === 0 && addSession && typeof addSession === 'function') {
-              console.log('🔐 Initializing auth with existing session for user:', session.user.email);
+              logger.log('🔐 Initializing auth with existing session for user:', session.user.email);
               try {
                 authOperationInProgress.current = true;
                 await addSession(session.user, session);
-                } catch (error) {
-                  console.error('🔐 Error adding session during initialization:', error);
-                  // Clear sessions on initialization error to prevent loops
+              } catch (error) {
+                logger.error('🔐 Error adding session during initialization:', error);
+                // Only clear on critical initialization errors
+                if (error?.message?.includes('invalid') || error?.message?.includes('expired')) {
                   clearCorruptedSessions();
-                } finally {
+                }
+              } finally {
                 authOperationInProgress.current = false;
               }
             }
           }
         } catch (error) {
-          console.error('🔐 Session retrieval failed:', error);
-          // Clear sessions on critical retrieval failure
-          clearCorruptedSessions();
+          logger.error('🔐 Session retrieval failed:', error);
+          // Only clear on critical retrieval failures
+          if (error?.message?.includes('invalid') || error?.message?.includes('expired')) {
+            clearCorruptedSessions();
+          }
         }
         
       } catch (error) {
-        console.error('Error initializing auth:', error);
-        // Clear sessions on any critical initialization failure
-        clearCorruptedSessions();
+        logger.error('Error initializing auth:', error);
+        // Only clear on critical initialization failures
+        if (error?.message?.includes('invalid') || error?.message?.includes('expired')) {
+          clearCorruptedSessions();
+        }
       } finally {
         setIsLoading(false);
       }
@@ -213,14 +220,12 @@ export const useMultiUserAuth = () => {
     initializeAuth();
     
     return () => {
-      // Add null check to prevent "Cannot read properties of null" error
       if (authSubscription && typeof authSubscription.unsubscribe === 'function') {
         authSubscription.unsubscribe();
       }
-      // Reset circuit breaker on cleanup
       authOperationInProgress.current = false;
     };
-  }, []); // Remove addSession dependency to prevent re-initialization loops
+  }, [addSession, clearAllSessions, handleTokenRefreshError, silentRefresh]);
 
   const signIn = useCallback(async (email: string, password: string) => {
     setIsLoading(true);
@@ -234,13 +239,13 @@ export const useMultiUserAuth = () => {
 
       if (data.user && data.session) {
         const sessionId = await addSession(data.user, data.session);
-        console.log('🔐 Sign in successful, session ID:', sessionId);
+        logger.log('🔐 Sign in successful, session ID:', sessionId);
         return { data, error: null };
       }
 
       return { data, error: null };
     } catch (error: any) {
-      console.error('🔐 Sign in error:', error);
+      logger.error('🔐 Sign in error:', error);
       return { data: null, error };
     } finally {
       setIsLoading(false);
@@ -265,12 +270,12 @@ export const useMultiUserAuth = () => {
 
       if (data.user && data.session) {
         const sessionId = await addSession(data.user, data.session);
-        console.log('🔐 Sign up successful, session ID:', sessionId);
+        logger.log('🔐 Sign up successful, session ID:', sessionId);
       }
 
       return { data, error: null };
     } catch (error: any) {
-      console.error('🔐 Sign up error:', error);
+      logger.error('🔐 Sign up error:', error);
       return { data: null, error };
     } finally {
       setIsLoading(false);
@@ -279,96 +284,35 @@ export const useMultiUserAuth = () => {
 
   const signOut = useCallback(async (sessionId?: string) => {
     try {
-      console.log('🔐 Starting sign out process...');
+      logger.log('🔐 Starting sign out process...');
       authOperationInProgress.current = true;
 
-      // Clear session storage immediately to prevent loops
+      // Clear session storage
       try {
         localStorage.removeItem('sb-vgdreuwmisludqxphsph-auth-token');
         localStorage.removeItem('supabase-sessions');
         sessionStorage.clear();
       } catch (e) {
-        console.warn('🔐 Error clearing storage:', e);
+        logger.warn('🔐 Error clearing storage:', e);
       }
 
-      // Sign out from Supabase
-      const targetSessionId = sessionId || activeSessionId;
-      if (targetSessionId) {
-        const session = sessions.find(s => s.id === targetSessionId);
-        if (session?.supabaseClient) {
-          await session.supabaseClient.auth.signOut();
-        }
-      }
-      
-      // Also sign out from default client to be safe
+      // Sign out from Supabase (single client now)
       await supabase.auth.signOut();
       
-      // Clear all session state
+      // Clear session state
+      const targetSessionId = sessionId || activeSessionId;
       if (removeSession && targetSessionId) {
         removeSession(targetSessionId);
-      }
-      
-      // Clear all sessions if needed
-      if (clearAllSessions) {
+      } else if (clearAllSessions) {
         clearAllSessions();
       }
       
-      console.log('🔐 Sign out completed');
+      logger.log('🔐 Sign out completed');
       authOperationInProgress.current = false;
       navigate('/');
       
     } catch (error) {
-      console.error('🔐 Sign out error:', error);
-      authOperationInProgress.current = false;
-      
-      // Force clear everything on error
-      try {
-        localStorage.removeItem('sb-vgdreuwmisludqxphsph-auth-token');
-        localStorage.removeItem('supabase-sessions');
-        sessionStorage.clear();
-        if (clearAllSessions) clearAllSessions();
-      } catch (e) {
-        console.warn('🔐 Error force clearing:', e);
-      }
-      navigate('/');
-    }
-  }, [activeSessionId, sessions, removeSession, clearAllSessions, navigate]);
-
-  const signOutAll = useCallback(async () => {
-    try {
-      console.log('🔐 Starting sign out all process...');
-      authOperationInProgress.current = true;
-      
-      // Clear session storage immediately
-      try {
-        localStorage.removeItem('sb-vgdreuwmisludqxphsph-auth-token');
-        localStorage.removeItem('supabase-sessions');
-        sessionStorage.clear();
-      } catch (e) {
-        console.warn('🔐 Error clearing storage:', e);
-      }
-
-      // Sign out all sessions
-      await Promise.all(sessions.map(session => 
-        session.supabaseClient.auth.signOut().catch(e => 
-          console.warn('🔐 Error signing out session:', e)
-        )
-      ));
-      
-      // Also sign out from default client
-      await supabase.auth.signOut();
-      
-      // Clear all sessions
-      if (clearAllSessions) {
-        clearAllSessions();
-      }
-      
-      console.log('🔐 Signed out all sessions');
-      authOperationInProgress.current = false;
-      navigate('/');
-      
-    } catch (error) {
-      console.error('🔐 Sign out all error:', error);
+      logger.error('🔐 Sign out error:', error);
       authOperationInProgress.current = false;
       
       // Force clear on error
@@ -378,11 +322,54 @@ export const useMultiUserAuth = () => {
         sessionStorage.clear();
         if (clearAllSessions) clearAllSessions();
       } catch (e) {
-        console.warn('🔐 Error force clearing:', e);
+        logger.warn('🔐 Error force clearing:', e);
       }
       navigate('/');
     }
-  }, [sessions, clearAllSessions, navigate]);
+  }, [activeSessionId, removeSession, clearAllSessions, navigate]);
+
+  const signOutAll = useCallback(async () => {
+    try {
+      logger.log('🔐 Starting sign out all process...');
+      authOperationInProgress.current = true;
+      
+      // Clear session storage
+      try {
+        localStorage.removeItem('sb-vgdreuwmisludqxphsph-auth-token');
+        localStorage.removeItem('supabase-sessions');
+        sessionStorage.clear();
+      } catch (e) {
+        logger.warn('🔐 Error clearing storage:', e);
+      }
+
+      // Sign out from single client
+      await supabase.auth.signOut();
+      
+      // Clear all sessions
+      if (clearAllSessions) {
+        clearAllSessions();
+      }
+      
+      logger.log('🔐 Signed out all sessions');
+      authOperationInProgress.current = false;
+      navigate('/');
+      
+    } catch (error) {
+      logger.error('🔐 Sign out all error:', error);
+      authOperationInProgress.current = false;
+      
+      // Force clear on error
+      try {
+        localStorage.removeItem('sb-vgdreuwmisludqxphsph-auth-token');
+        localStorage.removeItem('supabase-sessions');
+        sessionStorage.clear();
+        if (clearAllSessions) clearAllSessions();
+      } catch (e) {
+        logger.warn('🔐 Error force clearing:', e);
+      }
+      navigate('/');
+    }
+  }, [clearAllSessions, navigate]);
 
   const switchToSessionSafe = useCallback(async (sessionId: string) => {
     // Switch immediately for better UX, validate in background
@@ -395,10 +382,10 @@ export const useMultiUserAuth = () => {
         try {
           const isValid = await validateSession(sessionId);
           if (!isValid) {
-            console.warn('🔐 Session validation failed after switch:', sessionId);
+            logger.warn('🔐 Session validation failed after switch:', sessionId);
           }
         } catch (error) {
-          console.error('🔐 Session validation error:', error);
+          logger.error('🔐 Session validation error:', error);
         }
       }, 0);
     }
@@ -412,7 +399,7 @@ export const useMultiUserAuth = () => {
     if (!session) return null;
 
     try {
-      const { data: profile } = await session.supabaseClient
+      const { data: profile } = await supabase
         .from('profiles')
         .select('first_name, last_name')
         .eq('user_id', session.user.id)
@@ -424,7 +411,7 @@ export const useMultiUserAuth = () => {
 
       return profile;
     } catch (error) {
-      console.error('Error fetching user profile:', error);
+      logger.error('Error fetching user profile:', error);
       return null;
     }
   }, [activeSessionId, sessions, updateSessionProfile]);
@@ -442,8 +429,8 @@ export const useMultiUserAuth = () => {
   }, [activeSession]);
 
   const getSupabaseClient = useCallback(() => {
-    return activeSession?.supabaseClient || supabase;
-  }, [activeSession]);
+    return supabase; // Always use the single client
+  }, []);
 
   return {
     // Session management
@@ -472,6 +459,7 @@ export const useMultiUserAuth = () => {
     
     // Utilities
     hasMultipleSessions: sessions.length > 1,
-    sessionCount: sessions.length
+    sessionCount: sessions.length,
+    isTokenRefreshing
   };
 };

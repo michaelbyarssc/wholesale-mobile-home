@@ -11,6 +11,12 @@ import { LoadingSpinner } from "@/components/layout/LoadingSpinner";
 import { SecurityEnhancements } from "@/components/SecurityEnhancements";
 import { SessionManagerProvider } from "@/contexts/SessionManagerContext";
 import ProtectedRoute from "./components/ProtectedRoute";
+import { addGlobalTestingUtils } from "@/utils/testingUtils";
+
+// Add testing utilities in development
+if (process.env.NODE_ENV === 'development') {
+  addGlobalTestingUtils();
+}
 
 // Lazy load components with proper error handling
 const lazyWithErrorBoundary = (importFunc: () => Promise<any>, componentName: string) => {

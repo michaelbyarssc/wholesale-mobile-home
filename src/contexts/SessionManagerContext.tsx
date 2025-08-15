@@ -92,10 +92,32 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
     return client;
   }, []);
 
-  // Initialize from localStorage on mount
+  // Initialize from localStorage on mount with session control
   useEffect(() => {
-    const loadSessions = () => {
+    const loadSessions = async () => {
       try {
+        console.log('🔐 Loading sessions from localStorage');
+        
+        // Import session control utilities
+        const { shouldRestoreSession, validateAndCleanExpiredSessions } = await import('@/utils/sessionControl');
+        
+        // Check if we should restore sessions at all
+        if (!shouldRestoreSession()) {
+          console.log('🔐 Session restoration disabled (Remember Me not selected)');
+          setSessions([]);
+          setActiveSessionId(null);
+          return;
+        }
+        
+        // Validate and clean expired sessions first
+        const hasValidSessions = validateAndCleanExpiredSessions();
+        if (!hasValidSessions) {
+          console.log('🔐 No valid sessions found after cleanup');
+          setSessions([]);
+          setActiveSessionId(null);
+          return;
+        }
+        
         // Check storage integrity and clean up orphaned storage
         const isIntegrityOk = checkStorageIntegrity();
         if (isIntegrityOk) {
@@ -142,6 +164,7 @@ export const SessionManagerProvider: React.FC<{ children: React.ReactNode }> = (
             
             setSessions([recreatedSession]);
             setActiveSessionId(recreatedSession.id);
+            console.log('🔐 Session restored for:', recreatedSession.user.email);
           } else {
             setSessions([]);
             setActiveSessionId(null);

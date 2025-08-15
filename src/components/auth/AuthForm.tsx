@@ -1,11 +1,13 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { useMultiUserAuth } from '@/hooks/useMultiUserAuth';
 import { supabase } from '@/integrations/supabase/client';
+import { setSessionConfig } from '@/utils/sessionControl';
 
 interface AuthFormProps {
   isSignUp: boolean;
@@ -42,6 +44,7 @@ export const AuthForm = ({
 }: AuthFormProps) => {
   const { toast } = useToast();
   const { signIn, signUp } = useMultiUserAuth();
+  const [rememberMe, setRememberMe] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -118,6 +121,14 @@ export const AuthForm = ({
             : "Your account has been created and is pending admin approval. You will receive an email once approved.",
         });
       } else {
+        console.log('Starting sign in process...');
+        
+        // Save session config based on "Remember Me" choice
+        setSessionConfig({
+          rememberMe,
+          expirationHours: 24
+        });
+        
         // Sign in process using multi-user auth
         const { error } = await signIn(email, password);
 
@@ -208,6 +219,19 @@ export const AuthForm = ({
             placeholder="Enter your password"
           />
         </div>
+        
+        {!isSignUp && !isAddUserMode && (
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="rememberMe"
+              checked={rememberMe}
+              onCheckedChange={(checked) => setRememberMe(checked as boolean)}
+            />
+            <Label htmlFor="rememberMe" className="text-sm font-normal">
+              Remember me (stay signed in for 24 hours)
+            </Label>
+          </div>
+        )}
         
         <Button type="submit" className="w-full" disabled={loading}>
           {loading ? "Processing..." : (isSignUp ? "Create Account" : "Sign In")}

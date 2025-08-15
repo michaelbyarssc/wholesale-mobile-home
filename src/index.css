@@ -298,6 +298,10 @@
     .lg\:mobile-grid-3 { grid-template-columns: repeat(3, 1fr); }
     .lg\:mobile-grid-4 { grid-template-columns: repeat(4, 1fr); }
   }
+  
+  @media (min-width: 1280px) {
+    .xl\:mobile-grid-4 { grid-template-columns: repeat(4, 1fr); }
+  }
 }
 
 @layer base {

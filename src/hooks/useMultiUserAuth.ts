@@ -278,53 +278,109 @@ export const useMultiUserAuth = () => {
   }, [addSession]);
 
   const signOut = useCallback(async (sessionId?: string) => {
-    const targetSessionId = sessionId || activeSessionId;
-    if (!targetSessionId) return;
-
-    const session = sessions.find(s => s.id === targetSessionId);
-    if (!session) return;
-
     try {
-      // Set circuit breaker to prevent interference during logout
+      console.log('🔐 Starting sign out process...');
       authOperationInProgress.current = true;
+
+      // Clear session storage immediately to prevent loops
+      try {
+        localStorage.removeItem('sb-vgdreuwmisludqxphsph-auth-token');
+        localStorage.removeItem('supabase-sessions');
+        sessionStorage.clear();
+      } catch (e) {
+        console.warn('🔐 Error clearing storage:', e);
+      }
+
+      // Sign out from Supabase
+      const targetSessionId = sessionId || activeSessionId;
+      if (targetSessionId) {
+        const session = sessions.find(s => s.id === targetSessionId);
+        if (session?.supabaseClient) {
+          await session.supabaseClient.auth.signOut();
+        }
+      }
       
-      // Sign out from the specific session's client
-      await session.supabaseClient.auth.signOut();
-      removeSession(targetSessionId);
-      console.log('🔐 Signed out session:', targetSessionId);
+      // Also sign out from default client to be safe
+      await supabase.auth.signOut();
       
-      // Clear circuit breaker after successful logout
-      setTimeout(() => {
-        authOperationInProgress.current = false;
-      }, 1000); // Give 1 second buffer
+      // Clear all session state
+      if (removeSession && targetSessionId) {
+        removeSession(targetSessionId);
+      }
+      
+      // Clear all sessions if needed
+      if (clearAllSessions) {
+        clearAllSessions();
+      }
+      
+      console.log('🔐 Sign out completed');
+      authOperationInProgress.current = false;
+      navigate('/');
       
     } catch (error) {
       console.error('🔐 Sign out error:', error);
       authOperationInProgress.current = false;
+      
+      // Force clear everything on error
+      try {
+        localStorage.removeItem('sb-vgdreuwmisludqxphsph-auth-token');
+        localStorage.removeItem('supabase-sessions');
+        sessionStorage.clear();
+        if (clearAllSessions) clearAllSessions();
+      } catch (e) {
+        console.warn('🔐 Error force clearing:', e);
+      }
+      navigate('/');
     }
-  }, [activeSessionId, sessions, removeSession]);
+  }, [activeSessionId, sessions, removeSession, clearAllSessions, navigate]);
 
   const signOutAll = useCallback(async () => {
     try {
-      // Set circuit breaker to prevent interference during logout
+      console.log('🔐 Starting sign out all process...');
       authOperationInProgress.current = true;
       
+      // Clear session storage immediately
+      try {
+        localStorage.removeItem('sb-vgdreuwmisludqxphsph-auth-token');
+        localStorage.removeItem('supabase-sessions');
+        sessionStorage.clear();
+      } catch (e) {
+        console.warn('🔐 Error clearing storage:', e);
+      }
+
       // Sign out all sessions
       await Promise.all(sessions.map(session => 
-        session.supabaseClient.auth.signOut()
+        session.supabaseClient.auth.signOut().catch(e => 
+          console.warn('🔐 Error signing out session:', e)
+        )
       ));
-      clearAllSessions();
-      navigate('/');
-      console.log('🔐 Signed out all sessions');
       
-      // Clear circuit breaker after successful logout
-      setTimeout(() => {
-        authOperationInProgress.current = false;
-      }, 1000); // Give 1 second buffer
+      // Also sign out from default client
+      await supabase.auth.signOut();
+      
+      // Clear all sessions
+      if (clearAllSessions) {
+        clearAllSessions();
+      }
+      
+      console.log('🔐 Signed out all sessions');
+      authOperationInProgress.current = false;
+      navigate('/');
       
     } catch (error) {
       console.error('🔐 Sign out all error:', error);
       authOperationInProgress.current = false;
+      
+      // Force clear on error
+      try {
+        localStorage.removeItem('sb-vgdreuwmisludqxphsph-auth-token');
+        localStorage.removeItem('supabase-sessions');
+        sessionStorage.clear();
+        if (clearAllSessions) clearAllSessions();
+      } catch (e) {
+        console.warn('🔐 Error force clearing:', e);
+      }
+      navigate('/');
     }
   }, [sessions, clearAllSessions, navigate]);
 

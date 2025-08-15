@@ -3,7 +3,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import { useCompatibleAuth } from '@/hooks/useCompatibleAuth';
 import { User } from '@supabase/supabase-js';
 
 interface EstimateHeaderProps {
@@ -14,6 +14,7 @@ interface EstimateHeaderProps {
 
 export const EstimateHeader = ({ user, displayName, customerMarkup }: EstimateHeaderProps) => {
   const navigate = useNavigate();
+  const { handleLogout } = useCompatibleAuth();
   
   return (
     <div className="text-center mb-8">
@@ -31,7 +32,7 @@ export const EstimateHeader = ({ user, displayName, customerMarkup }: EstimateHe
               </Button>
             </Link>
             <Button 
-              onClick={() => supabase.auth.signOut()} 
+              onClick={handleLogout} 
               variant="outline"
             >
               Sign Out

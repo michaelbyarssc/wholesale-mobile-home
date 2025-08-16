@@ -2,6 +2,7 @@ import React, { useMemo, useCallback } from 'react';
 import { FixedSizeGrid as Grid } from 'react-window';
 import { OptimizedMobileHomeCard } from './OptimizedMobileHomeCard';
 import { User } from '@supabase/supabase-js';
+import { useViewportSize } from '@/hooks/useViewportSize';
 
 import type { Database } from '@/integrations/supabase/types';
 
@@ -131,11 +132,41 @@ export const VirtualizedMobileHomesGrid = React.memo(({
   onAddToWishlist,
   onRemoveFromWishlist
 }: VirtualizedMobileHomesGridProps) => {
-  const columnsPerRow = 1; // Single column for mobile-first approach
-  const columnWidth = 400;
-  const rowHeight = 800;
-  const containerWidth = 400;
-  const containerHeight = Math.min(600, homes.length * rowHeight);
+  const { width, isMobile, isTablet, isDesktop } = useViewportSize();
+  
+  // Responsive column calculation
+  const columnsPerRow = useMemo(() => {
+    if (isMobile) return 1;
+    if (isTablet) return 2;
+    if (width >= 1536) return 4; // 2xl breakpoint for 4 columns
+    return 3; // lg and xl get 3 columns
+  }, [isMobile, isTablet, isDesktop, width]);
+
+  // Responsive sizing
+  const { columnWidth, containerWidth, rowHeight } = useMemo(() => {
+    const padding = 16; // 8px on each side
+    const gap = 16; // gap between items
+    
+    if (isMobile) {
+      return {
+        columnWidth: Math.min(400, width - 32),
+        containerWidth: Math.min(400, width - 32),
+        rowHeight: 800
+      };
+    }
+    
+    const availableWidth = Math.min(width - 64, 1536); // max container width
+    const totalGaps = (columnsPerRow - 1) * gap;
+    const itemWidth = (availableWidth - totalGaps) / columnsPerRow;
+    
+    return {
+      columnWidth: itemWidth,
+      containerWidth: availableWidth,
+      rowHeight: isTablet ? 700 : 650 // slightly shorter for desktop
+    };
+  }, [columnsPerRow, width, isMobile, isTablet]);
+
+  const containerHeight = Math.min(600, Math.ceil(homes.length / columnsPerRow) * rowHeight);
 
   const itemData = useMemo(() => ({
     homes,
@@ -169,7 +200,8 @@ export const VirtualizedMobileHomesGrid = React.memo(({
     onAddToComparison,
     onRemoveFromComparison,
     onAddToWishlist,
-    onRemoveFromWishlist
+    onRemoveFromWishlist,
+    columnsPerRow
   ]);
 
   if (homes.length === 0) {

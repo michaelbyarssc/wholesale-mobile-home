@@ -136,7 +136,13 @@ export const VirtualizedMobileHomesGrid = React.memo(({
   
   // Responsive column calculation
   const columnsPerRow = useMemo(() => {
-    console.log('VirtualizedGrid - Screen size debug:', { width, isMobile, isTablet, isDesktop });
+    console.log('🔍 VirtualizedGrid - Debug:', { 
+      width, 
+      isMobile, 
+      isTablet, 
+      isDesktop,
+      calculatedColumns: isMobile ? 1 : isTablet ? 3 : width >= 1024 ? 4 : 4
+    });
     if (isMobile) return 1;
     if (isTablet) return 3; // Changed from 2 to 3 for tablets
     if (width >= 1024) return 4; // lg breakpoint for 4 columns

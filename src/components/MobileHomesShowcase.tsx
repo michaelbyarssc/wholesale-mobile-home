@@ -596,7 +596,7 @@ export const MobileHomesShowcase = ({
                          {seriesHomes.length > 0 ? (
                             seriesHomes.length > 50 ? (
                               <div>
-                                <p>Using VirtualizedMobileHomesGrid for {seriesHomes.length} homes</p>
+                                <p>🔍 Using VirtualizedMobileHomesGrid for {seriesHomes.length} homes</p>
                                 <VirtualizedMobileHomesGrid
                                 homes={seriesHomes}
                                 homeImages={homeImages}
@@ -616,7 +616,10 @@ export const MobileHomesShowcase = ({
                               />
                               </div>
                             ) : (
-                              seriesHomes.map((home, index) => renderOptimizedHomeCard(home, index))
+                              <div>
+                                <p>🔍 Using regular grid for {seriesHomes.length} homes</p>
+                                {seriesHomes.map((home, index) => renderOptimizedHomeCard(home, index))}
+                              </div>
                             )
                           ) : (
                            <div className="col-span-full text-center py-fluid-lg">

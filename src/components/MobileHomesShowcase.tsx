@@ -595,32 +595,35 @@ export const MobileHomesShowcase = ({
                             }}>
                          {seriesHomes.length > 0 ? (
                             seriesHomes.length > 50 ? (
-                             <VirtualizedMobileHomesGrid
-                               homes={seriesHomes}
-                               homeImages={homeImages}
-                               user={user}
-                               cartItems={cartItems}
-                               pricingLoading={pricingLoading}
-                               getHomePrice={getHomePrice}
-                               isInComparison={isInComparison}
-                               isInWishlist={isInWishlist}
-                               onAddToCart={user ? handleAddToCart : () => {}}
-                               onViewDetails={(homeId) => window.open(`/home/${homeId}`, '_blank')}
-                               onQuickView={() => {}}
-                               onAddToComparison={addToComparison}
-                               onRemoveFromComparison={removeFromComparison}
-                               onAddToWishlist={addToWishlist}
-                               onRemoveFromWishlist={removeFromWishlist}
-                             />
-                           ) : (
-                             seriesHomes.map((home, index) => renderOptimizedHomeCard(home, index))
-                           )
-                         ) : (
-                          <div className="col-span-full text-center py-fluid-lg">
-                            <p className="text-gray-500 text-fluid-sm sm:text-fluid-base">No {series} series models available for the selected width category.</p>
-                          </div>
-                        )}
-                      </div>
+                              <div>
+                                <p>Using VirtualizedMobileHomesGrid for {seriesHomes.length} homes</p>
+                                <VirtualizedMobileHomesGrid
+                                homes={seriesHomes}
+                                homeImages={homeImages}
+                                user={user}
+                                cartItems={cartItems}
+                                pricingLoading={pricingLoading}
+                                getHomePrice={getHomePrice}
+                                isInComparison={isInComparison}
+                                isInWishlist={isInWishlist}
+                                onAddToCart={user ? handleAddToCart : () => {}}
+                                onViewDetails={(homeId) => window.open(`/home/${homeId}`, '_blank')}
+                                onQuickView={() => {}}
+                                onAddToComparison={addToComparison}
+                                onRemoveFromComparison={removeFromComparison}
+                                onAddToWishlist={addToWishlist}
+                                onRemoveFromWishlist={removeFromWishlist}
+                              />
+                              </div>
+                            ) : (
+                              seriesHomes.map((home, index) => renderOptimizedHomeCard(home, index))
+                            )
+                          ) : (
+                           <div className="col-span-full text-center py-fluid-lg">
+                             <p className="text-gray-500 text-fluid-sm sm:text-fluid-base">No {series} series models available for the selected width category.</p>
+                           </div>
+                         )}
+                       </div>
                     </TabsContent>
                   );
                 })}

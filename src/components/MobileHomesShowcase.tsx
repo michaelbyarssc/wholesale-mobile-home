@@ -586,8 +586,13 @@ export const MobileHomesShowcase = ({
                   return (
                     <TabsContent key={series} value={series} className="mt-0">
                       {/* Mobile-optimized grid with better spacing */}
-                      <div className="mobile-grid-1 sm:mobile-grid-2 md:mobile-grid-4 lg:mobile-grid-4 gap-fluid-sm sm:gap-fluid-md lg:gap-fluid-lg"
-                           onLoad={() => console.log('Grid width:', window.innerWidth, 'Applied classes:', document.querySelector('.mobile-grid-1')?.className)}>
+                       <div className="mobile-grid-1 sm:mobile-grid-2 md:mobile-grid-4 lg:mobile-grid-4 gap-fluid-sm sm:gap-fluid-md lg:gap-fluid-lg"
+                            onLoad={() => {
+                              console.log('Grid loaded - Screen width:', window.innerWidth);
+                              const gridEl = document.querySelector('.mobile-grid-1');
+                              console.log('Grid element classes:', gridEl?.className);
+                              console.log('Computed grid-template-columns:', window.getComputedStyle(gridEl).gridTemplateColumns);
+                            }}>
                          {seriesHomes.length > 0 ? (
                             seriesHomes.length > 50 ? (
                              <VirtualizedMobileHomesGrid

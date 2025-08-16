@@ -306,8 +306,6 @@
   @media (min-width: 1280px) {
     .xl\:mobile-grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); }
   }
-  }
-}
 
 @layer base {
   * {

@@ -56,7 +56,7 @@ export const useCustomerPricing = (user: User | null) => {
     }
   }, [markupLoading]);
 
-  const calculatePrice = (basePrice: number): number => {
+  const calculatePrice = useCallback((basePrice: number): number => {
     if (!basePrice || !customerMarkup) return 0;
     
     const userMarkup = customerMarkup.markup_percentage || 30;
@@ -81,7 +81,7 @@ export const useCustomerPricing = (user: User | null) => {
     }
 
     return finalPrice;
-  };
+  }, [customerMarkup]);
 
   // Calculate mobile home price based on tier and markup - memoized for performance
   const calculateMobileHomePrice = useCallback((mobileHome: MobileHome | null): number => {

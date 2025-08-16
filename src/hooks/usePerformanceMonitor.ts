@@ -8,8 +8,11 @@ interface PerformanceMetrics {
   firstInputDelay: number;
 }
 
+const isProduction = window.location.hostname !== 'localhost';
+
 export const usePerformanceMonitor = () => {
   const measurePerformance = useCallback(() => {
+    if (isProduction) return; // Disable in production
     if (typeof window === 'undefined' || !window.performance) return;
 
     // Core Web Vitals measurement
@@ -53,6 +56,7 @@ export const usePerformanceMonitor = () => {
   }, []);
 
   const logResourceTiming = useCallback(() => {
+    if (isProduction) return;
     if (typeof window === 'undefined' || !window.performance) return;
 
     const resources = performance.getEntriesByType('resource') as PerformanceResourceTiming[];
@@ -80,12 +84,14 @@ export const usePerformanceMonitor = () => {
   }, [measurePerformance, logResourceTiming]);
 
   const markFeature = useCallback((featureName: string) => {
+    if (isProduction) return;
     if (typeof window !== 'undefined' && window.performance) {
       performance.mark(`feature-${featureName}-start`);
     }
   }, []);
 
   const measureFeature = useCallback((featureName: string) => {
+    if (isProduction) return;
     if (typeof window !== 'undefined' && window.performance) {
       performance.mark(`feature-${featureName}-end`);
       performance.measure(

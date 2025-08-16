@@ -18,7 +18,7 @@ export const useMemoizedPricing = (user: User | null, mobileHomes: MobileHome[])
     });
     
     return pricing;
-  }, [mobileHomes, pricingLoading]);
+  }, [mobileHomes, pricingLoading, calculateMobileHomePrice]);
 
   const getHomePrice = (homeId: string) => homePricing[homeId] || 0;
 

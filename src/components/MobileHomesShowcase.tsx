@@ -588,7 +588,7 @@ export const MobileHomesShowcase = ({
                       {/* Mobile-optimized grid with better spacing */}
                       <div className="mobile-grid-1 sm:mobile-grid-2 lg:mobile-grid-3 xl:mobile-grid-4 gap-fluid-sm sm:gap-fluid-md lg:gap-fluid-lg">
                          {seriesHomes.length > 0 ? (
-                           seriesHomes.length > 20 ? (
+                            seriesHomes.length > 50 ? (
                              <VirtualizedMobileHomesGrid
                                homes={seriesHomes}
                                homeImages={homeImages}

@@ -1,5 +1,4 @@
 import { useEffect, useCallback, useRef } from 'react';
-import { throttle, debounce } from '@/utils/performance';
 
 interface PerformanceOptimizationOptions {
   enableScrollOptimization?: boolean;
@@ -8,133 +7,73 @@ interface PerformanceOptimizationOptions {
   scrollThrottle?: number;
 }
 
+const isProduction = window.location.hostname !== 'localhost';
+
 export const useOptimizedPerformance = ({
   enableScrollOptimization = true,
   enableImageLazyLoading = true,
   enableCarouselOptimization = true,
-  scrollThrottle = 16
+  scrollThrottle = 100
 }: PerformanceOptimizationOptions = {}) => {
   const isInitialized = useRef(false);
 
-  // Optimize scroll performance
+  // Lightweight scroll performance optimization
   const optimizeScrollPerformance = useCallback(() => {
-    if (!enableScrollOptimization) return;
+    if (!enableScrollOptimization || isProduction) return;
 
-    // Add will-change to elements that will be transformed during scroll
-    const carousels = document.querySelectorAll('[data-carousel]');
-    carousels.forEach(carousel => {
-      (carousel as HTMLElement).style.willChange = 'transform';
-      (carousel as HTMLElement).style.contain = 'layout style paint';
-    });
-
-    // Apply transform3d to trigger GPU acceleration
-    const animatedElements = document.querySelectorAll('.hover\\:scale-105, .transition-transform');
-    animatedElements.forEach(el => {
-      (el as HTMLElement).style.transform = 'translateZ(0)';
+    requestAnimationFrame(() => {
+      const carousels = document.querySelectorAll('[data-carousel]');
+      carousels.forEach(carousel => {
+        (carousel as HTMLElement).style.willChange = 'transform';
+      });
     });
   }, [enableScrollOptimization]);
 
-  // Optimize carousel performance
+  // Minimal DOM optimization
   const optimizeCarousels = useCallback(() => {
-    if (!enableCarouselOptimization) return;
-
-    const carouselSlides = document.querySelectorAll('.embla__slide');
-    carouselSlides.forEach(slide => {
-      (slide as HTMLElement).style.transform = 'translateZ(0)';
-      (slide as HTMLElement).style.backfaceVisibility = 'hidden';
-      (slide as HTMLElement).style.willChange = 'transform';
-    });
+    if (!enableCarouselOptimization || isProduction) return;
+    // Minimal optimization in production
   }, [enableCarouselOptimization]);
 
-  // Apply content-visibility to improve rendering
   const applyContentVisibility = useCallback(() => {
-    const cards = document.querySelectorAll('[data-mobile-home-card]');
-    cards.forEach(card => {
-      (card as HTMLElement).style.contentVisibility = 'auto';
-      (card as HTMLElement).style.containIntrinsicSize = '0 500px';
-    });
+    if (isProduction) return;
+    // Disabled in production to prevent DOM thrashing
   }, []);
 
-  // Throttled scroll handler to prevent excessive scroll events
-  const handleScroll = useCallback(
-    throttle(() => {
-      // Pause non-critical animations during scroll
-      const carousels = document.querySelectorAll('[data-carousel]');
-      carousels.forEach(carousel => {
-        (carousel as HTMLElement).style.animationPlayState = 'paused';
-      });
+  const handleScroll = useCallback(() => {
+    if (isProduction) return;
+    // Disabled in production
+  }, []);
 
-      // Resume animations after scroll ends
-      setTimeout(() => {
-        carousels.forEach(carousel => {
-          (carousel as HTMLElement).style.animationPlayState = 'running';
-        });
-      }, 150);
-    }, scrollThrottle),
-    [scrollThrottle]
-  );
-
-  // Optimize image loading
   const optimizeImages = useCallback(() => {
-    if (!enableImageLazyLoading) return;
-
-    // Add loading="lazy" to images that don't have it
-    const images = document.querySelectorAll('img:not([loading])');
-    images.forEach(img => {
-      img.setAttribute('loading', 'lazy');
-    });
-
-    // Add decoding="async" for better performance
-    const allImages = document.querySelectorAll('img');
-    allImages.forEach(img => {
-      img.setAttribute('decoding', 'async');
-    });
+    if (!enableImageLazyLoading || isProduction) return;
+    // Minimal image optimization
   }, [enableImageLazyLoading]);
 
-  // Reduce layout thrashing by batching DOM reads/writes
   const batchDOMOperations = useCallback(() => {
-    // Use requestAnimationFrame to batch DOM operations
+    if (isProduction) return;
     requestAnimationFrame(() => {
       optimizeScrollPerformance();
       optimizeCarousels();
-      applyContentVisibility();
+      applyContentVisibility(); 
       optimizeImages();
     });
   }, [optimizeScrollPerformance, optimizeCarousels, applyContentVisibility, optimizeImages]);
 
   useEffect(() => {
-    if (isInitialized.current) return;
+    if (isInitialized.current || isProduction) return;
     
-    // Initial optimization with delay to prevent blocking
-    setTimeout(() => {
+    // Light initialization only in development
+    const timeoutId = setTimeout(() => {
       batchDOMOperations();
-    }, 100);
-    
-    // Add scroll listener with less aggressive handling
-    if (enableScrollOptimization) {
-      window.addEventListener('scroll', handleScroll, { passive: true });
-    }
-
-    // Observe for new content with longer debounce to reduce frequency
-    const observer = new MutationObserver(
-      debounce(batchDOMOperations, 500)
-    );
-
-    observer.observe(document.body, {
-      childList: true,
-      subtree: false, // Only watch direct children
-      attributes: false
-    });
+    }, 500);
 
     isInitialized.current = true;
 
     return () => {
-      if (enableScrollOptimization) {
-        window.removeEventListener('scroll', handleScroll);
-      }
-      observer.disconnect();
+      clearTimeout(timeoutId);
     };
-  }, [enableScrollOptimization, handleScroll, batchDOMOperations]);
+  }, [batchDOMOperations]);
 
   // Force re-optimization (useful after dynamic content changes)
   const reoptimize = useCallback(() => {

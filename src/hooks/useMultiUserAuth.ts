@@ -76,11 +76,15 @@ export const useMultiUserAuth = () => {
       try {
         logger.log('🔐 MULTI-USER AUTH: Initializing authentication...');
         
-        // Perform stale session detection and cleanup before initialization
-        const hasValidSession = await detectAndClearStaleSession();
-        
-        if (!hasValidSession) {
-          logger.log('🔐 MULTI-USER AUTH: Stale sessions cleared, continuing with fresh state');
+        // Only perform stale session detection on initial mount, not on every re-render
+        const shouldCheckStale = !sessionStorage.getItem('auth_initialized');
+        if (shouldCheckStale) {
+          sessionStorage.setItem('auth_initialized', 'true');
+          const hasValidSession = await detectAndClearStaleSession();
+          
+          if (!hasValidSession) {
+            logger.log('🔐 MULTI-USER AUTH: Stale sessions cleared, continuing with fresh state');
+          }
         }
         
         // Set up auth state listener with improved error handling
@@ -225,7 +229,7 @@ export const useMultiUserAuth = () => {
       }
       authOperationInProgress.current = false;
     };
-  }, [addSession, clearAllSessions, handleTokenRefreshError, silentRefresh]);
+  }, [addSession]); // Reduced dependencies to prevent re-initialization loops
 
   const signIn = useCallback(async (email: string, password: string) => {
     setIsLoading(true);

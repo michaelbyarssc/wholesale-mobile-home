@@ -157,53 +157,56 @@ export const validateServerSession = async () => {
   }
 };
 
-export const detectAndClearStaleSession = async () => {
+// Detect and clear stale sessions - throttled version to prevent loops
+let lastStaleCheckTime = 0;
+const staleCheckCooldown = 2 * 60 * 1000; // 2 minutes cooldown
+
+export const detectAndClearStaleSession = async (): Promise<boolean> => {
+  const now = Date.now();
+  
+  // Throttle stale session checks to prevent loops
+  if (now - lastStaleCheckTime < staleCheckCooldown) {
+    console.log('🔐 STALE CHECK: Throttled, skipping check (cooldown active)');
+    return true; // Assume valid during cooldown
+  }
+  
+  if (isInLoginGracePeriod()) {
+    console.log('🔐 STALE CHECK: Skipping during login grace period');
+    return true;
+  }
+
+  lastStaleCheckTime = now;
+  console.log('🔐 STALE CHECK: Detecting stale sessions');
+  
+  // Check local session integrity first
+  const localIntegrity = await validateSessionIntegrity();
+  if (!localIntegrity) {
+    console.log('🔐 STALE CHECK: Session integrity failed, clearing corrupted sessions');
+    clearCorruptedSessions();
+    return false;
+  }
+  
+  console.log('🔐 STALE CHECK: Session integrity validated');
+  
+  // Check server session validity with timeout
   try {
-    console.log('🔐 STALE CHECK: Detecting stale sessions');
+    const isServerValid = await Promise.race([
+      validateServerSession(),
+      new Promise<boolean>((_, reject) => 
+        setTimeout(() => reject(new Error('Validation timeout')), 5000)
+      )
+    ]);
     
-    // Don't perform aggressive cleanup during login flow
-    if (isInLoginGracePeriod()) {
-      console.log('🔐 STALE CHECK: In login grace period, skipping cleanup');
-      return true;
-    }
-    
-    // Check if local session exists
-    const hasLocalSession = localStorage.getItem('wmh_sessions') || localStorage.getItem('wmh_active_session');
-    
-    if (!hasLocalSession) {
-      console.log('🔐 STALE CHECK: No local sessions found');
-      return true;
-    }
-    
-    // More lenient validation - only clear if both checks fail
-    const localIntegrity = await validateSessionIntegrity();
-    const serverValidity = await validateServerSession();
-    
-    // Only clear if BOTH local AND server validation fail
-    // AND we're not in a login flow
-    if (!localIntegrity && !serverValidity) {
-      console.warn('🔐 STALE CHECK: Both local and server validation failed, clearing...');
+    if (!isServerValid) {
+      console.log('🔐 STALE CHECK: Server session invalid, clearing stale sessions');
       clearCorruptedSessions();
       return false;
     }
     
-    // If only one validation fails, log but don't clear (could be temporary)
-    if (!localIntegrity) {
-      console.warn('🔐 STALE CHECK: Local validation failed but server valid - keeping session');
-    }
-    if (!serverValidity) {
-      console.warn('🔐 STALE CHECK: Server validation failed but local valid - keeping session');
-    }
-    
-    console.log('🔐 STALE CHECK: Session integrity validated');
+    console.log('🔐 STALE CHECK: All validations passed');
     return true;
   } catch (error) {
-    console.error('🔐 STALE CHECK: Error during stale session detection:', error);
-    // Only clear on critical errors, and only if not in login flow
-    if (!isInLoginGracePeriod()) {
-      clearCorruptedSessions();
-      return false;
-    }
-    return true;
+    console.log('🔐 STALE CHECK: Validation timeout or error, assuming valid to prevent blocking');
+    return true; // Don't block on validation errors
   }
 };

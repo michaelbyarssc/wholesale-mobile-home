@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MobileHomesShowcase } from '@/components/MobileHomesShowcase';
+import { MobileHomesErrorBoundary } from '@/components/MobileHomesErrorBoundary';
+import { FallbackMobileHomesShowcase } from '@/components/FallbackMobileHomesShowcase';
 import { TestimonialsSection } from '@/components/reviews/TestimonialsSection';
 import { FinancingCalculator } from '@/components/financing/FinancingCalculator';
 import { supabase } from '@/integrations/supabase/client';
@@ -162,10 +164,14 @@ const Index = () => {
       </div>
 
       <div id="mobile-homes" className="scroll-mt-20">
-        <MobileHomesShowcase 
-          user={user} 
-          {...cartProps}
-        />
+        <MobileHomesErrorBoundary 
+          fallbackComponent={<FallbackMobileHomesShowcase onRetry={() => window.location.reload()} />}
+        >
+          <MobileHomesShowcase 
+            user={user} 
+            {...cartProps}
+          />
+        </MobileHomesErrorBoundary>
       </div>
 
       <FeaturesSection />

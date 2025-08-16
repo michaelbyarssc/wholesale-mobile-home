@@ -112,9 +112,10 @@ export const MobileHomesShowcase = ({
   logger.debug('MobileHomesShowcase render - cart items from props:', cartItems.length);
   logger.debug('MobileHomesShowcase - selectedHomeForServices:', selectedHomeForServices?.id);
 
-  const { data: mobileHomes = [], isLoading } = useQuery({
+  const { data: mobileHomes = [], isLoading, error: homesError } = useQuery({
     queryKey: ['public-mobile-homes'],
     queryFn: async () => {
+      console.log('🏠 FETCH START: Fetching mobile homes...');
       
       const { data, error } = await supabase
         .from('mobile_homes')
@@ -124,22 +125,27 @@ export const MobileHomesShowcase = ({
         .order('created_at', { ascending: true });
       
       if (error) {
-        console.error('Error fetching mobile homes:', error);
+        console.error('🏠 FETCH ERROR: Error fetching mobile homes:', error);
         throw error;
       }
       
+      console.log('🏠 FETCH SUCCESS: Mobile homes fetched:', data?.length || 0);
       logger.log('Mobile homes fetched:', data?.length || 0);
       
       return data as MobileHome[];
     },
     staleTime: 3 * 60 * 1000, // Cache for 3 minutes
     gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
-    refetchOnWindowFocus: false
+    refetchOnWindowFocus: false,
+    retry: 3,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000)
   });
 
-  const { data: homeImages = [], isLoading: imagesLoading } = useQuery({
+  const { data: homeImages = [], isLoading: imagesLoading, error: imagesError } = useQuery({
     queryKey: ['mobile-home-images'],
     queryFn: async () => {
+      console.log('🖼️ FETCH START: Fetching mobile home images...');
+      
       const { data, error } = await supabase
         .from('mobile_home_images')
         .select('*')
@@ -148,14 +154,19 @@ export const MobileHomesShowcase = ({
         .order('display_order');
       
       if (error) {
-        console.error('Error fetching mobile home images:', error);
+        console.error('🖼️ FETCH ERROR: Error fetching mobile home images:', error);
         throw error;
       }
+      
+      console.log('🖼️ FETCH SUCCESS: Mobile home images fetched:', data?.length || 0);
+      
       return data as MobileHomeImage[];
     },
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
     gcTime: 15 * 60 * 1000, // Keep in cache for 15 minutes
-    refetchOnWindowFocus: false
+    refetchOnWindowFocus: false,
+    retry: 3,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000)
   });
 
   // Initialize memoized pricing for better performance
@@ -373,7 +384,7 @@ export const MobileHomesShowcase = ({
     addToWishlist, removeFromWishlist
   ]);
 
-  console.log('Render state:', { 
+  console.log('🏠 RENDER STATE:', { 
     isLoading, 
     imagesLoading, 
     pricingLoading,
@@ -383,7 +394,10 @@ export const MobileHomesShowcase = ({
     activeTab,
     cartItemsCount: cartItems.length,
     filtersActive: filters.widthType !== 'all' || filters.bedrooms.length > 0 || filters.manufacturers.length > 0,
-    filteredHomesCount: filteredHomes.length
+    filteredHomesCount: filteredHomes.length,
+    hasErrors: !!homesError || !!imagesError,
+    homesError: homesError?.message,
+    imagesError: imagesError?.message
   });
 
   // Track home clicks
@@ -401,7 +415,15 @@ export const MobileHomesShowcase = ({
     });
   };
 
+  // Handle errors with fallback
+  if (homesError || imagesError) {
+    console.log('🚨 SHOWCASE ERROR: Falling back due to errors:', { homesError: homesError?.message, imagesError: imagesError?.message });
+    const { FallbackMobileHomesShowcase } = require('./FallbackMobileHomesShowcase');
+    return <FallbackMobileHomesShowcase onRetry={() => window.location.reload()} />;
+  }
+
   if (isLoading) {
+    console.log('🏠 SHOWCASE: Still loading, showing loading state');
     return (
       <section className="py-20 bg-amber-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

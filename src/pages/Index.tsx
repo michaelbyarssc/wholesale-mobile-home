@@ -35,7 +35,8 @@ import { MultiUserSessionTest } from '@/components/test/MultiUserSessionTest';
 import { MultiUserStabilityTest } from '@/components/test/MultiUserStabilityTest';
 
 const Index = () => {
-  console.log('Index component: Starting to render');
+  console.log('🚨 Index component: Starting to render - THIS SHOULD ALWAYS SHOW');
+  console.error('🚨 Index component: FORCED ERROR LOG TO TEST CONSOLE');
   
   const navigate = useNavigate();
   

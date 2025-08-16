@@ -294,6 +294,10 @@
     .sm\:mobile-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); }
   }
   
+  @media (min-width: 768px) {
+    .md\:mobile-grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); }
+  }
+  
   @media (min-width: 1024px) {
     .lg\:mobile-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); }
     .lg\:mobile-grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); }

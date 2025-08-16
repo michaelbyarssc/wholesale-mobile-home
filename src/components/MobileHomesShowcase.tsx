@@ -26,6 +26,8 @@ import { MobileHomeCardSkeleton } from './loading/MobileHomeCardSkeleton';
 import { FiltersSkeleton } from './loading/FiltersSkeleton';
 import { TabsSkeleton } from './loading/TabsSkeleton';
 import { LoadingSpinner } from './loading/LoadingSpinner';
+import { OptimizedMobileHomeCard } from './optimized/OptimizedMobileHomeCard';
+import { VirtualizedMobileHomesGrid } from './optimized/VirtualizedMobileHomesGrid';
 import { useMemoizedPricing } from '@/hooks/useMemoizedPricing';
 import { useHomeComparison } from '@/hooks/useHomeComparison';
 import { useWishlist } from '@/hooks/useWishlist';
@@ -340,259 +342,36 @@ export const MobileHomesShowcase = ({
     setFilters({ ...newFilters, searchQuery });
   }, []);
 
-  const renderHomeCard = (home: MobileHome, index: number) => {
+  // Optimize rendering with OptimizedMobileHomeCard or virtualization
+  const renderOptimizedHomeCard = useCallback((home: MobileHome, index: number) => {
     const homeImageList = getHomeImages(home.id);
     const isInCart = cartItems.some(item => item.mobileHome.id === home.id);
-    const homeFeatures = getHomeFeatures(home.features);
     
     return (
-      <Card key={home.id} className="overflow-hidden hover:shadow-xl transition-all duration-300 group mobile-tap border-0 shadow-md hover:scale-[1.02] bg-white">
-        <CardHeader className="pb-fluid-xs">
-          <div className="flex justify-between items-start gap-fluid-xs">
-            <CardTitle 
-              className="text-fluid-lg sm:text-fluid-xl font-bold text-gray-900 cursor-pointer hover:text-blue-600 transition-colors line-clamp-2 flex-1"
-              onClick={() => window.open(`/home/${home.id}`, '_blank')}
-            >
-              {getHomeName(home)}
-            </CardTitle>
-            <div className="flex flex-col gap-1 flex-shrink-0">
-              <Badge variant="secondary" className="bg-blue-100 text-blue-800 text-xs sm:text-sm">
-                {home.series}
-              </Badge>
-              {user && isInCart && (
-                <Badge variant="default" className="bg-green-100 text-green-800 text-xs">
-                  In Cart
-                </Badge>
-              )}
-            </div>
-          </div>
-          {home.description && (
-            <p className="text-gray-600 text-fluid-sm mt-fluid-xs line-clamp-2">{home.description}</p>
-          )}
-          
-          {/* Enhanced Mobile-First Pricing Display */}
-          {user ? (
-            <div className="mt-fluid-xs space-y-1">
-              {home.retail_price && (
-                <div>
-                  <p className="text-xs text-gray-400 uppercase tracking-wide">Retail Price</p>
-                  <span className="text-fluid-base text-gray-400 line-through">
-                    {formatPrice(home.retail_price)}
-                  </span>
-                </div>
-              )}
-              <div>
-                <p className="text-fluid-sm text-green-600 font-medium">Your Price</p>
-                 {!pricingLoading ? (
-                  <div className="space-y-1">
-                    <span className="text-fluid-xl sm:text-fluid-2xl font-bold text-green-600 block">
-                      {formatPrice(getHomePrice(home.id))}
-                    </span>
-                    {home.retail_price && (
-                      <p className="text-fluid-sm text-green-600 font-medium">
-                        You Save: {formatPrice(home.retail_price - getHomePrice(home.id))}
-                      </p>
-                    )}
-                  </div>
-                ) : (
-                  <div className="flex items-center py-2">
-                    <LoadingSpinner size="sm" className="mr-2" />
-                    <span className="text-fluid-sm text-gray-500 italic">Calculating...</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          ) : (
-            home.retail_price ? (
-              <div className="mt-fluid-xs">
-                <p className="text-fluid-sm text-blue-600 mb-1">Starting at:</p>
-                <span className="text-fluid-xl sm:text-fluid-2xl font-bold text-blue-600">{formatPrice(home.retail_price)}</span>
-                <p className="text-fluid-sm text-gray-500 mt-1">
-                  <span className="text-blue-600 font-medium cursor-pointer hover:underline touch-manipulation" onClick={() => navigate('/auth')}>Login to see your price</span>
-                </p>
-              </div>
-            ) : (
-              <div className="mt-fluid-xs">
-                <span className="text-fluid-base text-gray-500 italic">Login to view pricing</span>
-              </div>
-            )
-          )}
-        </CardHeader>
-        
-        <CardContent className="space-y-fluid-sm">
-          {/* Home Image Carousel - Mobile optimized */}
-          <div className="relative">
-            <MobileHomeImageCarousel 
-              images={homeImageList} 
-              homeModel={getHomeName(home)}
-            />
-          </div>
-
-          {/* Enhanced Mobile-First Specifications Grid */}
-          <div className="space-y-fluid-xs">
-            {/* Top row - Square footage and dimensions optimized for mobile */}
-            <div className="grid grid-cols-1 xs:grid-cols-2 gap-fluid-xs">
-              <div className="flex flex-col items-center text-center p-fluid-xs bg-gray-50 rounded-lg border border-gray-100">
-                <div className="flex items-center space-x-1 text-gray-600 mb-1">
-                  <Maximize className="h-4 w-4 text-blue-600" />
-                  <span className="text-fluid-xs font-medium">Sq Ft</span>
-                </div>
-                <span className="font-bold text-fluid-sm text-gray-900">{home.square_footage || 'N/A'}</span>
-              </div>
-              
-              <div className="flex flex-col items-center text-center p-fluid-xs bg-gray-50 rounded-lg border border-gray-100">
-                <div className="flex items-center space-x-1 text-gray-600 mb-1">
-                  <Ruler className="h-4 w-4 text-blue-600" />
-                  <span className="text-fluid-xs font-medium">Size</span>
-                </div>
-                <span className="font-bold text-fluid-sm text-gray-900">
-                  {home.length_feet && home.width_feet 
-                    ? `${home.width_feet}' × ${home.length_feet}'` 
-                    : 'N/A'}
-                </span>
-              </div>
-            </div>
-            
-            {/* Bottom row - Bedrooms and bathrooms */}
-            <div className="grid grid-cols-2 gap-fluid-xs">
-              <div className="flex items-center justify-center space-x-2 p-fluid-xs bg-blue-50 rounded-lg border border-blue-100">
-                <Bed className="h-4 w-4 text-blue-600 flex-shrink-0" />
-                <div className="text-center">
-                  <span className="text-xs text-gray-600 block">Bed</span>
-                  <span className="font-bold text-fluid-sm text-gray-900">{home.bedrooms || 'N/A'}</span>
-                </div>
-              </div>
-              
-              <div className="flex items-center justify-center space-x-2 p-fluid-xs bg-blue-50 rounded-lg border border-blue-100">
-                <Bath className="h-4 w-4 text-blue-600 flex-shrink-0" />
-                <div className="text-center">
-                  <span className="text-xs text-gray-600 block">Bath</span>
-                  <span className="font-bold text-fluid-sm text-gray-900">{home.bathrooms || 'N/A'}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Enhanced Mobile Features */}
-          {homeFeatures.length > 0 && (
-            <div>
-              <h4 className="font-semibold text-gray-900 mb-fluid-xs flex items-center text-fluid-sm">
-                <Home className="h-4 w-4 mr-2 text-blue-600" />
-                Key Features
-              </h4>
-              <div className="grid grid-cols-1 gap-1">
-                {homeFeatures.slice(0, 4).map((feature, index) => (
-                  <div key={index} className="flex items-center text-fluid-xs text-gray-600">
-                    <span className="w-1.5 h-1.5 bg-blue-600 rounded-full mr-2 flex-shrink-0"></span>
-                    <span className="line-clamp-1">{feature}</span>
-                  </div>
-                ))}
-                {homeFeatures.length > 4 && (
-                  <div className="text-fluid-xs text-blue-600 font-medium mt-1">
-                    +{homeFeatures.length - 4} more features
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Enhanced Mobile Action Buttons */}
-          <div className="space-y-fluid-xs relative z-20">
-            {/* Top row - Wishlist and Compare */}
-            <div className="grid grid-cols-2 gap-fluid-xs">
-              <Button
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  toggleWishlist(home);
-                }}
-                variant="outline"
-                size="sm"
-                className={`flex items-center justify-center gap-1 text-fluid-xs transition-all duration-200 ${
-                  isInWishlist(home.id) 
-                    ? 'text-red-500 border-red-200 hover:border-red-300 bg-red-50' 
-                    : 'hover:text-red-500 hover:bg-red-50'
-                }`}
-              >
-                <Heart className={`h-3 w-3 ${isInWishlist(home.id) ? 'fill-current' : ''}`} />
-                <span className="hidden xs:inline">{isInWishlist(home.id) ? 'Saved' : 'Wishlist'}</span>
-              </Button>
-
-              <Button
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  addToComparison(home);
-                }}
-                variant="outline"
-                size="sm"
-                className="flex items-center justify-center gap-1 text-fluid-xs transition-all duration-200"
-                disabled={isInComparison(home.id)}
-              >
-                <Scale className="h-3 w-3" />
-                <span className="hidden xs:inline">{isInComparison(home.id) ? 'Added' : 'Compare'}</span>
-              </Button>
-            </div>
-
-            {/* Quick View Button */}
-            <MobileHomeQuickView
-              home={home}
-              images={homeImageList.map(img => ({
-                ...img,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-              }))}
-              userPrice={user && !pricingLoading ? getHomePrice(home.id) : undefined}
-              onAddToCart={user ? handleAddToCart : undefined}
-              onToggleWishlist={toggleWishlist}
-              isInWishlist={isInWishlist(home.id)}
-            >
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full flex items-center justify-center gap-2 text-fluid-sm mobile-button transition-all duration-200 hover:bg-blue-50 hover:border-blue-300"
-              >
-                <Eye className="h-4 w-4" />
-                Quick View
-              </Button>
-            </MobileHomeQuickView>
-
-            {/* Primary Action Button - Enhanced for mobile */}
-            {user ? (
-              <Button 
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  console.log('🔍 Button clicked for home:', home.id);
-                  handleAddToCart(home);
-                }}
-                className={`w-full mobile-button text-fluid-sm font-semibold transition-all duration-200 shadow-md ${
-                  isInCart 
-                    ? 'bg-green-600 hover:bg-green-700 text-white' 
-                    : 'bg-blue-600 hover:bg-blue-700 text-white hover:shadow-lg'
-                }`}
-                type="button"
-              >
-                {isInCart ? 'Update Cart' : 'Add to Cart'}
-              </Button>
-            ) : (
-              <Button 
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  navigate('/auth');
-                }}
-                className="w-full mobile-button text-fluid-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white transition-all duration-200 shadow-md hover:shadow-lg"
-                type="button"
-              >
-                Login to Add to Cart
-              </Button>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+      <OptimizedMobileHomeCard
+        key={home.id}
+        home={home}
+        images={homeImageList}
+        user={user}
+        homePrice={user && !pricingLoading ? getHomePrice(home.id) : 0}
+        isInCart={isInCart}
+        isInComparison={isInComparison(home.id)}
+        isInWishlist={isInWishlist(home.id)}
+        onAddToCart={user ? handleAddToCart : () => {}}
+        onViewDetails={(homeId) => window.open(`/home/${homeId}`, '_blank')}
+        onQuickView={() => {}}
+        onAddToComparison={() => addToComparison(home)}
+        onRemoveFromComparison={() => removeFromComparison(home.id)}
+        onAddToWishlist={() => addToWishlist(home)}
+        onRemoveFromWishlist={() => removeFromWishlist(home.id)}
+        pricingLoading={pricingLoading}
+      />
     );
-  };
+  }, [
+    homeImages, cartItems, user, pricingLoading, getHomePrice, 
+    isInComparison, isInWishlist, handleAddToCart, addToComparison, removeFromComparison,
+    addToWishlist, removeFromWishlist
+  ]);
 
   console.log('Render state:', { 
     isLoading, 
@@ -808,9 +587,29 @@ export const MobileHomesShowcase = ({
                     <TabsContent key={series} value={series} className="mt-0">
                       {/* Mobile-optimized grid with better spacing */}
                       <div className="mobile-grid-1 sm:mobile-grid-2 lg:mobile-grid-3 xl:mobile-grid-4 gap-fluid-sm sm:gap-fluid-md lg:gap-fluid-lg">
-                        {seriesHomes.length > 0 ? (
-                          seriesHomes.map((home, index) => renderHomeCard(home, index))
-                        ) : (
+                         {seriesHomes.length > 0 ? (
+                           seriesHomes.length > 20 ? (
+                             <VirtualizedMobileHomesGrid
+                               homes={seriesHomes}
+                               homeImages={homeImages}
+                               user={user}
+                               cartItems={cartItems}
+                               pricingLoading={pricingLoading}
+                               getHomePrice={getHomePrice}
+                               isInComparison={isInComparison}
+                               isInWishlist={isInWishlist}
+                               onAddToCart={user ? handleAddToCart : () => {}}
+                               onViewDetails={(homeId) => window.open(`/home/${homeId}`, '_blank')}
+                               onQuickView={() => {}}
+                               onAddToComparison={addToComparison}
+                               onRemoveFromComparison={removeFromComparison}
+                               onAddToWishlist={addToWishlist}
+                               onRemoveFromWishlist={removeFromWishlist}
+                             />
+                           ) : (
+                             seriesHomes.map((home, index) => renderOptimizedHomeCard(home, index))
+                           )
+                         ) : (
                           <div className="col-span-full text-center py-fluid-lg">
                             <p className="text-gray-500 text-fluid-sm sm:text-fluid-base">No {series} series models available for the selected width category.</p>
                           </div>

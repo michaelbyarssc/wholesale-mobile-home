@@ -105,22 +105,24 @@ export const useOptimizedPerformance = ({
   useEffect(() => {
     if (isInitialized.current) return;
     
-    // Initial optimization
-    batchDOMOperations();
+    // Initial optimization with delay to prevent blocking
+    setTimeout(() => {
+      batchDOMOperations();
+    }, 100);
     
-    // Add scroll listener
+    // Add scroll listener with less aggressive handling
     if (enableScrollOptimization) {
       window.addEventListener('scroll', handleScroll, { passive: true });
     }
 
-    // Observe for new content and re-optimize
+    // Observe for new content with longer debounce to reduce frequency
     const observer = new MutationObserver(
-      debounce(batchDOMOperations, 100)
+      debounce(batchDOMOperations, 500)
     );
 
     observer.observe(document.body, {
       childList: true,
-      subtree: true,
+      subtree: false, // Only watch direct children
       attributes: false
     });
 

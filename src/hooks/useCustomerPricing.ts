@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { User } from '@supabase/supabase-js';
@@ -83,7 +83,8 @@ export const useCustomerPricing = (user: User | null) => {
     return finalPrice;
   };
 
-  const calculateMobileHomePrice = (mobileHome: MobileHome | null): number => {
+  // Calculate mobile home price based on tier and markup - memoized for performance
+  const calculateMobileHomePrice = useCallback((mobileHome: MobileHome | null): number => {
     if (!mobileHome) {
       return 0;
     }
@@ -105,7 +106,7 @@ export const useCustomerPricing = (user: User | null) => {
     const finalPrice = Math.max(tieredPrice, minProfitPrice);
     
     return finalPrice;
-  };
+  }, [calculatePrice]);
 
   const calculateServicePrice = (service: Service, mobileHome?: MobileHome | null): number => {
     if (!service) return 0;
